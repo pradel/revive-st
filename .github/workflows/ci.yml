@@ -11,11 +11,20 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: voidzero-dev/setup-vp@v1
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: vite-plus setup
+        uses: voidzero-dev/setup-vp@v1
         with:
           node-version: "24"
           cache: true
+
       - run: vp install
-      - run: vp check
+
+      - name: Check formatting, linting and type checks.
+        run: vp check
+
       - run: vp test
+
       - run: vp build
