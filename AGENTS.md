@@ -13,3 +13,17 @@ Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.de
 - [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
 
 <!--VITE PLUS END-->
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as GitHub issues on `pradel/revive-st`, managed via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage labels (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`) are used verbatim. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md` files. System-wide ADRs at `docs/adr/`, context-scoped at `src/<context>/docs/adr/`. See `docs/agents/domain.md`.
