@@ -5,7 +5,13 @@ export default defineConfig({
     "*": "vp check --fix",
   },
   fmt: {},
-  lint: { options: { typeAware: true, typeCheck: true } },
+  lint: {
+    options: { typeAware: true, typeCheck: true },
+    categories: {
+      correctness: "error",
+      suspicious: "error",
+    },
+  },
   run: {
     cache: true,
   },
