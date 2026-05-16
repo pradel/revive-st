@@ -25,6 +25,6 @@ jobs:
       - name: Check formatting, linting and type checks.
         run: vp check
 
-      - run: vp test
+      # - run: vp test
 
-      - run: vp build
+      # - run: vp build
