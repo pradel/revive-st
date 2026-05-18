@@ -1,0 +1,31 @@
+import { createContext, useContext, useReducer, useCallback } from "react";
+import type { ProvisioningAction, ProvisioningState } from "./types";
+import { initialState } from "./types";
+import { provisioningReducer } from "./reducer";
+
+interface ProvisioningContextValue {
+  state: ProvisioningState;
+  dispatch: React.Dispatch<ProvisioningAction>;
+  start: () => void;
+}
+
+const ProvisioningContext = createContext<ProvisioningContextValue | null>(null);
+
+export function ProvisioningProvider({ children }: { children: React.ReactNode }) {
+  const [state, dispatch] = useReducer(provisioningReducer, initialState);
+  const start = useCallback(() => dispatch({ type: "START" }), []);
+
+  return (
+    <ProvisioningContext.Provider value={{ state, dispatch, start }}>
+      {children}
+    </ProvisioningContext.Provider>
+  );
+}
+
+export function useProvisioning() {
+  const ctx = useContext(ProvisioningContext);
+  if (!ctx) {
+    throw new Error("useProvisioning must be used within a ProvisioningProvider");
+  }
+  return ctx;
+}
