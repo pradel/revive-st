@@ -11,7 +11,7 @@ import {
 import { useRouter } from "expo-router";
 import WifiManager from "react-native-wifi-reborn";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
-import { SPEAKER_SSID_PREFIX } from "@/features/onboarding/utils/networkHelpers";
+import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 
 export default function NetworkPickerScreen() {
   const { state, dispatch } = useWifiProvisioning();
@@ -38,10 +38,10 @@ export default function NetworkPickerScreen() {
   useEffect(() => {
     void (async () => {
       try {
-        const list = await WifiManager.loadWifiList();
+        const list = await WifiManager.reScanAndLoadWifiList();
         const filtered = list
           .map((n) => n.SSID)
-          .filter((ssid): ssid is string => !!ssid && !ssid.startsWith(SPEAKER_SSID_PREFIX))
+          .filter((ssid): ssid is string => !!ssid && !isSpeakerHotspot(ssid))
           .sort();
         setNetworks(filtered);
       } catch {

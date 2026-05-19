@@ -3,44 +3,50 @@ import { Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 import * as Location from "expo-location";
 import { useProvisioning } from "../ProvisioningContext";
-import {
-  findSpeakerIP,
-  isSpeakerHotspot,
-  sendCredentials,
-  SPEAKER_SSID_PREFIX,
-} from "../utils/networkHelpers";
+import { findSpeakerIP, isSpeakerHotspot, sendCredentials } from "../utils/networkHelpers";
 
 export function useWifiProvisioning() {
   const { state, dispatch } = useProvisioning();
 
   const scanForHotspot = useCallback(async () => {
     try {
-      const networks = await WifiManager.loadWifiList();
+      console.log("[WiFi Scan] Starting active scan...");
+      const networks = await WifiManager.reScanAndLoadWifiList();
+      console.log(`[WiFi Scan] Scan complete. Found ${networks.length} networks:`);
+      networks.forEach((n) => {
+        console.log(`[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level}`);
+      });
       const speaker = networks.find((n) => isSpeakerHotspot(n.SSID));
       if (speaker) {
+        console.log(`[WiFi Scan] Speaker found: "${speaker.SSID}"`);
         dispatch({ type: "HOTSPOT_FOUND", ssid: speaker.SSID });
       } else {
+        console.log("[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern");
         dispatch({ type: "HOTSPOT_TIMEOUT" });
       }
-    } catch {
+    } catch (err) {
+      console.log("[WiFi Scan] Error:", err);
       dispatch({ type: "HOTSPOT_TIMEOUT" });
     }
   }, [dispatch]);
 
   const connectToHotspot = useCallback(async () => {
+    const s = state as { ssid: string };
     try {
-      await WifiManager.connectToProtectedSSIDPrefix(SPEAKER_SSID_PREFIX, "", false);
+      console.log(`[WiFi Connect] Connecting to hotspot: "${s.ssid}"`);
+      await WifiManager.connectToProtectedSSID(s.ssid, null, false, false);
       const ip = await findSpeakerIP();
       if (ip) {
         dispatch({
           type: "HOTSPOT_CONNECTED",
-          ssid: (state as { ssid: string }).ssid,
+          ssid: s.ssid,
           speakerIP: ip,
         });
       } else {
         dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
       }
-    } catch {
+    } catch (err) {
+      console.log("[WiFi Connect] Error:", err);
       dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
     }
   }, [dispatch, state]);

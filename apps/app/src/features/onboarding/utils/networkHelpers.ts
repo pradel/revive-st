@@ -7,11 +7,15 @@ export const PROBE_TIMEOUT_MS = 2000;
 export const CREDENTIALS_TIMEOUT_MS = 5000;
 export const HOTSPOT_SCAN_TIMEOUT_MS = 15000;
 export const MDNS_DISCOVERY_TIMEOUT_MS = 30000;
-export const SPEAKER_SSID_PREFIX = "Bose SoundTouch";
+
+const SPEAKER_SSID_PATTERN = /bose\s*(st|soundtouch)/i;
+
+export function isSpeakerHotspot(ssid: string): boolean {
+  return SPEAKER_SSID_PATTERN.test(ssid);
+}
 
 export function normalizeSSID(ssid: string): string {
-  const match = ssid.match(/(Bose SoundTouch \w+)/);
-  return match?.[1] ?? ssid;
+  return ssid;
 }
 
 export function escapeXml(value: string): string {
@@ -64,10 +68,6 @@ export async function sendCredentials(
   if (!response.ok) {
     throw new Error(`Speaker returned HTTP ${response.status}`);
   }
-}
-
-export function isSpeakerHotspot(ssid: string): boolean {
-  return ssid.startsWith(SPEAKER_SSID_PREFIX);
 }
 
 export function usesSystemDialog(): boolean {
