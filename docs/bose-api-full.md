@@ -1,3 +1,5 @@
+https://assets.bosecreative.com/m/496577402d128874/original/SoundTouch-Web-API.pdf
+
 ## BOSE SOUNDTOUCH WEB API
 
 - Version 1. Bose Corporation
