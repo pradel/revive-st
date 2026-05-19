@@ -1,0 +1,18 @@
+# Fix: Gradle 9.0.0 crashes with "IBM_SEMERU NoSuchFieldError" on Android build.
+# foojay-resolver-convention 0.5.0 references JvmVendorSpec.IBM_SEMERU, removed in Gradle 9.
+# Bump to 1.0.0 for Gradle 9 compatibility. Can be removed once upstream fix ships in Expo SDK.
+# Refs: https://github.com/facebook/react-native/issues/55781
+#       https://github.com/facebook/react-native/pull/56743
+diff --git a/settings.gradle.kts b/settings.gradle.kts
+index b3c46a3bf5eb21c0bb1c9435b5582aecbc57d57a..14f1e9c2063ef10ca3f2ecbb2336b8a4aacfcc9c 100644
+--- a/settings.gradle.kts
++++ b/settings.gradle.kts
+@@ -13,7 +13,7 @@ pluginManagement {
+   }
+ }
+ 
+-plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("0.5.0") }
++plugins { id("org.gradle.toolchains.foojay-resolver-convention").version("1.0.0") }
+ 
+ include(
+     ":react-native-gradle-plugin",

@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  '@react-native/gradle-plugin@0.83.6': 74518847faae69314a6ee94f0d4fb2183f8ef2b8207ebff0c774d15846c05cee
+
 importers:
 
   .:
@@ -5498,7 +5501,7 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@react-native/gradle-plugin@0.83.6': {}
+  '@react-native/gradle-plugin@0.83.6(patch_hash=74518847faae69314a6ee94f0d4fb2183f8ef2b8207ebff0c774d15846c05cee)': {}
 
   '@react-native/js-polyfills@0.83.6': {}
 
@@ -7444,7 +7447,7 @@ snapshots:
       '@react-native/assets-registry': 0.83.6
       '@react-native/codegen': 0.83.6(@babel/core@7.29.0)
       '@react-native/community-cli-plugin': 0.83.6
-      '@react-native/gradle-plugin': 0.83.6
+      '@react-native/gradle-plugin': 0.83.6(patch_hash=74518847faae69314a6ee94f0d4fb2183f8ef2b8207ebff0c774d15846c05cee)
       '@react-native/js-polyfills': 0.83.6
       '@react-native/normalize-colors': 0.83.6
       '@react-native/virtualized-lists': 0.83.6(@types/react@19.2.14)(react-native@0.83.6(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.2.0))(react@19.2.0)
