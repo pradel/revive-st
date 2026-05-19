@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -18,6 +19,7 @@ class BoseWifiModule : Module() {
   private var networkCallback: ConnectivityManager.NetworkCallback? = null
   private var currentNetwork: Network? = null
   private var connectivityManager: ConnectivityManager? = null
+  private var isConnecting = false
 
   override fun definition() = ModuleDefinition {
     Name("BoseWifi")
@@ -47,16 +49,20 @@ class BoseWifiModule : Module() {
       return
     }
 
+    Log.d("BoseWifi", "connectWithSpecifier: SSID=\"$ssid\" BSSID=\"$bssid\"")
+
     val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     connectivityManager = cm
 
     releaseNetwork()
 
+    Log.d("BoseWifi", "Building WifiNetworkSpecifier...")
     val specifier = WifiNetworkSpecifier.Builder()
       .setSsid(ssid)
       .setBssid(MacAddress.fromString(bssid))
       .build()
 
+    Log.d("BoseWifi", "Building NetworkRequest (no internet capability)...")
     val request = NetworkRequest.Builder()
       .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
       .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
@@ -65,13 +71,16 @@ class BoseWifiModule : Module() {
 
     var settled = false
 
+    Log.d("BoseWifi", "Registering network callback with 30s timeout...")
     networkCallback = object : ConnectivityManager.NetworkCallback() {
 
       override fun onAvailable(network: Network) {
+        Log.d("BoseWifi", "onAvailable: network=$network settled=$settled")
         if (settled) return
         settled = true
         currentNetwork = network
         cm.bindProcessToNetwork(network)
+        Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
         promise.resolve(
           mapOf(
             "success" to true,
@@ -84,9 +93,11 @@ class BoseWifiModule : Module() {
       }
 
       override fun onUnavailable() {
+        Log.d("BoseWifi", "onUnavailable: settled=$settled")
         if (settled) return
         settled = true
         currentNetwork = null
+        Log.d("BoseWifi", "onUnavailable: rejecting promise with CONNECTION_FAILED")
         promise.reject(
           "CONNECTION_FAILED",
           "Could not connect to Bose AP. Make sure the speaker is in setup mode (LED amber).",
@@ -95,16 +106,21 @@ class BoseWifiModule : Module() {
       }
 
       override fun onLost(network: Network) {
+        Log.d("BoseWifi", "onLost: network=$network currentNetwork=$currentNetwork")
         if (network == currentNetwork) {
           currentNetwork = null
           cm.bindProcessToNetwork(null)
+          Log.d("BoseWifi", "onLost: unbound, currentNetwork cleared")
         }
       }
     }
 
     try {
+      Log.d("BoseWifi", "Calling requestNetwork with 30s timeout...")
       cm.requestNetwork(request, networkCallback!!, 30_000)
+      Log.d("BoseWifi", "requestNetwork returned — waiting for callback")
     } catch (e: Exception) {
+      Log.e("BoseWifi", "requestNetwork threw: ${e.message}", e)
       settled = true
       promise.reject("REQUEST_FAILED", e.message ?: "Unknown error", e)
     }
