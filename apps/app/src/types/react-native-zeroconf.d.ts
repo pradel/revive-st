@@ -1,5 +1,5 @@
 declare module "react-native-zeroconf" {
-  interface ZeroconfService {
+  export interface ZeroconfService {
     name: string;
     host: string;
     port: number;
