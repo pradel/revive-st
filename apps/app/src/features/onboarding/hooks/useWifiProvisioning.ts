@@ -76,22 +76,27 @@ export function useWifiProvisioning() {
         if (Platform.OS === "android") {
           console.log("[WiFi Connect] Using native BoseWifi module");
           const result = await connectToOpenNetwork(ssid, bssid);
-          console.log(`[WiFi Connect] Native result: ${result}`);
+          console.log(`[WiFi Connect] Native result: ${result.message}`);
+          dispatch({
+            type: "HOTSPOT_CONNECTED",
+            ssid,
+            speakerIP: result.ip,
+          });
         } else {
           console.log("[WiFi Connect] Using react-native-wifi-reborn (iOS)");
           await WifiManager.connectToProtectedSSIDPrefix(ssid, "", false);
-        }
 
-        console.log("[WiFi Connect] Connected, probing speaker IP...");
-        const ip = await findSpeakerIP();
-        if (ip) {
-          console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
-          dispatch({ type: "HOTSPOT_CONNECTED", ssid, speakerIP: ip });
-        } else {
-          console.log(
-            "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",
-          );
-          dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
+          console.log("[WiFi Connect] Connected, probing speaker IP...");
+          const ip = await findSpeakerIP();
+          if (ip) {
+            console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
+            dispatch({ type: "HOTSPOT_CONNECTED", ssid, speakerIP: ip });
+          } else {
+            console.log(
+              "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",
+            );
+            dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
+          }
         }
       } catch (err: unknown) {
         const e = err as { code?: string; message?: string };
