@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
-import { openWifiSettings } from "expo-bose-wifi";
+import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
 
 export default function ConnectingScreen() {
@@ -27,19 +27,34 @@ export default function ConnectingScreen() {
 
   const handleManualRetry = useCallback(async () => {
     setManualPolling(true);
+    const s = state as { ssid: string; bssid: string };
+    try {
+      // Call specifier to bind process to the Bose network
+      console.log(
+        "[Manual Retry] Calling connectToOpenNetwork with",
+        s.ssid,
+        s.bssid,
+      );
+      await connectToOpenNetwork(s.ssid, s.bssid);
+      console.log("[Manual Retry] Specifier succeeded, probing speaker IP...");
+    } catch {
+      console.log(
+        "[Manual Retry] Specifier also failed, trying IP probe anyway...",
+      );
+    }
     for (let i = 0; i < 30; i++) {
       const ip = await findSpeakerIP();
       if (ip) {
-        const s = state as { ssid?: string };
         dispatch({
           type: "HOTSPOT_CONNECTED",
-          ssid: s.ssid ?? "",
+          ssid: s.ssid,
           speakerIP: ip,
         });
         return;
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
+    console.log("[Manual Retry] Speaker not reachable after 30s polling");
     setManualPolling(false);
   }, [state, dispatch]);
 

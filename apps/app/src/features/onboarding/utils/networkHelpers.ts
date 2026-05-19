@@ -2,6 +2,7 @@ import { Platform } from "react-native";
 
 export const SPEAKER_HOTSPOT_CANDIDATES = [
   "192.0.2.1",
+  "192.0.2.50",
   "192.168.1.1",
   "172.20.10.1",
   "192.168.0.1",
@@ -61,6 +62,12 @@ export async function findSpeakerIP(
 ): Promise<string | null> {
   for (const ip of SPEAKER_HOTSPOT_CANDIDATES) {
     const alive = await probeSpeakerIP(ip, timeout);
+    console.log(
+      "Probe result for",
+      ip,
+      ":",
+      alive ? "alive" : "not responding",
+    );
     if (alive) return ip;
   }
   return null;

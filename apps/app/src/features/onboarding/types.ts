@@ -5,7 +5,7 @@ export type ProvisioningState =
   | { step: "SCANNING_FOR_HOTSPOT" }
   | { step: "HOTSPOT_NOT_FOUND" }
   | { step: "CONNECTING_TO_HOTSPOT"; ssid: string; bssid: string }
-  | { step: "CONNECTION_FAILED" }
+  | { step: "CONNECTION_FAILED"; ssid: string; bssid: string }
   | {
       step: "CONNECTED_TO_HOTSPOT";
       ssid: string;

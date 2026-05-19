@@ -11,7 +11,11 @@ const SCANNING_FOR_HOTSPOT: ProvisioningState = {
   step: "SCANNING_FOR_HOTSPOT",
 };
 const HOTSPOT_NOT_FOUND: ProvisioningState = { step: "HOTSPOT_NOT_FOUND" };
-const CONNECTION_FAILED: ProvisioningState = { step: "CONNECTION_FAILED" };
+const CONNECTION_FAILED: ProvisioningState = {
+  step: "CONNECTION_FAILED",
+  ssid: "Bose SoundTouch 1234",
+  bssid: "aa:bb:cc:dd:ee:ff",
+};
 const DISCOVERY_TIMEOUT: ProvisioningState = { step: "DISCOVERY_TIMEOUT" };
 
 describe("provisioningReducer", () => {

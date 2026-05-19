@@ -52,7 +52,11 @@ export function provisioningReducer(
 
     case "HOTSPOT_CONNECTION_FAILED":
       if (state.step === "CONNECTING_TO_HOTSPOT") {
-        return { step: "CONNECTION_FAILED" };
+        return {
+          step: "CONNECTION_FAILED",
+          ssid: state.ssid,
+          bssid: state.bssid,
+        };
       }
       return state;
 
