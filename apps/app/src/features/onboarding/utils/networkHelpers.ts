@@ -126,7 +126,24 @@ export async function sendCredentials(
     }
   } catch (err) {
     clearTimeout(id);
-    console.log(`[Send Creds] Exception thrown: ${(err as Error).message}`);
+    const errMsg = (err as Error).message || "";
+    const errName = (err as Error).name || "";
+    console.log(`[Send Creds] Exception thrown: ${errName} - ${errMsg}`);
+
+    const isAbortOrNetworkError =
+      errName === "AbortError" ||
+      errMsg.toLowerCase().includes("abort") ||
+      errMsg.toLowerCase().includes("network request failed") ||
+      errMsg.toLowerCase().includes("failed to connect") ||
+      errMsg.toLowerCase().includes("connection") ||
+      errMsg.toLowerCase().includes("timeout");
+
+    if (isAbortOrNetworkError) {
+      console.log(
+        `[Send Creds] Treating abort/network error as success (AP likely shut down by speaker)`,
+      );
+      return;
+    }
     throw err;
   }
 }
