@@ -149,7 +149,8 @@ export function useWifiProvisioning() {
       }
       await sendCredentials(s.speakerIP, s.homeSSID, s.homePassword);
       dispatch({ type: "CREDENTIALS_SENT" });
-    } catch {
+    } catch (err) {
+      console.log("[Send Creds Hook] Error caught in sendCreds callback:", err);
       dispatch({ type: "CREDENTIALS_SEND_FAILED" });
     } finally {
       sendingRef.current = false;

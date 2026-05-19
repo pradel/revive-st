@@ -37,7 +37,10 @@ export function buildCredentialsPayload(
   ssid: string,
   password: string,
 ): string {
-  return `<network><ssid>${escapeXml(ssid)}</ssid><password>${escapeXml(password)}</password></network>`;
+  const securityType = password ? "wpa_or_wpa2" : "none";
+  return `<AddWirelessProfile timeout="30"><profile ssid="${escapeXml(
+    ssid,
+  )}" password="${escapeXml(password)}" securityType="${securityType}"></profile></AddWirelessProfile>`;
 }
 
 export async function probeSpeakerIP(
@@ -95,26 +98,35 @@ export async function sendCredentials(
   timeout = CREDENTIALS_TIMEOUT_MS,
 ): Promise<void> {
   const payload = buildCredentialsPayload(homeSSID, homePassword);
+  const url = `http://${speakerIp}:${SPEAKER_PORT}/addWirelessProfile`;
+  console.log(`[Send Creds] Sending POST to ${url}`);
+  console.log(`[Send Creds] Headers: { "Content-Type": "application/xml" }`);
+  console.log(`[Send Creds] Payload: ${payload}`);
+
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
 
   try {
-    const response = await fetch(
-      `http://${speakerIp}:${SPEAKER_PORT}/network`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/xml" },
-        body: payload,
-        signal: controller.signal,
-      },
-    );
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml; charset=utf-8" },
+      body: payload,
+      signal: controller.signal,
+    });
     clearTimeout(id);
 
+    console.log(
+      `[Send Creds] Response status: ${response.status} (${response.statusText || "unknown"})`,
+    );
+    const text = await response.text();
+    console.log(`[Send Creds] Response body: ${text}`);
+
     if (!response.ok) {
-      throw new Error(`Speaker returned HTTP ${response.status}`);
+      throw new Error(`Speaker returned HTTP ${response.status}: ${text}`);
     }
   } catch (err) {
     clearTimeout(id);
+    console.log(`[Send Creds] Exception thrown: ${(err as Error).message}`);
     throw err;
   }
 }
