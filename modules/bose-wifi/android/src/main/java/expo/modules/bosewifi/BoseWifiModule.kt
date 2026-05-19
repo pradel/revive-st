@@ -71,7 +71,7 @@ class BoseWifiModule : Module() {
 
     var settled = false
 
-    Log.d("BoseWifi", "Registering network callback with 30s timeout...")
+    Log.d("BoseWifi", "Registering network callback with 90s timeout...")
     networkCallback = object : ConnectivityManager.NetworkCallback() {
 
       override fun onAvailable(network: Network) {
@@ -116,8 +116,8 @@ class BoseWifiModule : Module() {
     }
 
     try {
-      Log.d("BoseWifi", "Calling requestNetwork with 30s timeout...")
-      cm.requestNetwork(request, networkCallback!!, 30_000)
+      Log.d("BoseWifi", "Calling requestNetwork with 90s timeout...")
+      cm.requestNetwork(request, networkCallback!!, 90_000)
       Log.d("BoseWifi", "requestNetwork returned — waiting for callback")
     } catch (e: Exception) {
       Log.e("BoseWifi", "requestNetwork threw: ${e.message}", e)
