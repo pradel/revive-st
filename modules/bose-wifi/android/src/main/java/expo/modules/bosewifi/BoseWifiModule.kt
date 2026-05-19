@@ -12,6 +12,7 @@ import android.net.wifi.WifiNetworkSpecifier
 import android.os.Build
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -24,7 +25,20 @@ class BoseWifiModule : Module() {
     Name("BoseWifi")
 
     AsyncFunction("connectToOpenNetwork") { ssid: String, bssid: String ->
-      connectToOpenNetwork(ssid, bssid)
+      val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+
+      // Release any previous binding
+      networkCallback?.let { connectivityManager.unregisterNetworkCallback(it) }
+      connectivityManager.bindProcessToNetwork(null)
+      networkCallback = null
+      boundNetwork = null
+
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        runBlocking { connectViaNetworkSpecifier(ssid, bssid, connectivityManager) }
+      } else {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        runBlocking { connectViaLegacyApi(wifiManager, ssid) }
+      }
     }
 
     AsyncFunction("disconnect") {
@@ -34,23 +48,6 @@ class BoseWifiModule : Module() {
 
   private val context: Context
     get() = requireNotNull(appContext.reactContext)
-
-  private suspend fun connectToOpenNetwork(ssid: String, bssid: String): String {
-    val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-
-    // Release any previous binding
-    networkCallback?.let { connectivityManager.unregisterNetworkCallback(it) }
-    connectivityManager.bindProcessToNetwork(null)
-    networkCallback = null
-    boundNetwork = null
-
-    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-      connectViaNetworkSpecifier(ssid, bssid, connectivityManager)
-    } else {
-      val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-      connectViaLegacyApi(wifiManager, ssid)
-    }
-  }
 
   @androidx.annotation.RequiresApi(Build.VERSION_CODES.Q)
   private suspend fun connectViaNetworkSpecifier(
