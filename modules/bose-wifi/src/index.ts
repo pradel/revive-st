@@ -18,3 +18,7 @@ export function disconnect(): Promise<null> {
 export function isConnected(): Promise<boolean> {
   return BoseWifiModule.isConnected();
 }
+
+export function openWifiSettings(): Promise<null> {
+  return BoseWifiModule.openWifiSettings();
+}

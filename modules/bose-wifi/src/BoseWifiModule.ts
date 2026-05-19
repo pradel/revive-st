@@ -15,6 +15,7 @@ declare class BoseWifiModule extends NativeModule {
   ): Promise<BoseConnectionResult>;
   disconnect(): Promise<null>;
   isConnected(): Promise<boolean>;
+  openWifiSettings(): Promise<null>;
 }
 
 export default requireNativeModule<BoseWifiModule>("BoseWifi");
