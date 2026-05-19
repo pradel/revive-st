@@ -8,6 +8,11 @@ import {
   setSpeakerVolume,
   BoseSpeakerInfo,
   selectSpeakerSource,
+  BosePreset,
+  fetchPresets,
+  fetchSpeakerBass,
+  setSpeakerBass,
+  sendLongKeyCommand,
 } from "../utils/boseParser";
 import { BoseWSClient } from "../utils/boseWebSocket";
 
@@ -26,6 +31,8 @@ export interface BoseSpeaker {
   volume?: number;
   muteEnabled?: boolean;
   isUpdating?: boolean;
+  presets?: BosePreset[];
+  bass?: number;
 }
 
 export function useBoseScanner(scanDurationMs = 5000) {
@@ -63,9 +70,18 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const refreshSpeakerStatus = useCallback(async (speaker: BoseSpeaker) => {
     try {
-      const [nowPlaying, volumeInfo] = await Promise.all([
+      const hasPresetsLoaded = speaker.presets !== undefined;
+      const hasBassLoaded = speaker.bass !== undefined;
+
+      const [nowPlaying, volumeInfo, presets, bassInfo] = await Promise.all([
         fetchNowPlaying(speaker.host).catch(() => null),
         fetchVolume(speaker.host).catch(() => null),
+        hasPresetsLoaded
+          ? fetchPresets(speaker.host).catch(() => null)
+          : Promise.resolve(null),
+        hasBassLoaded
+          ? fetchSpeakerBass(speaker.host).catch(() => null)
+          : Promise.resolve(null),
       ]);
 
       if (!isMounted.current) return;
@@ -83,6 +99,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
               artUrl: nowPlaying?.artUrl ?? s.artUrl,
               volume: volumeInfo?.actualVolume ?? s.volume,
               muteEnabled: volumeInfo?.muteEnabled ?? s.muteEnabled,
+              presets: presets ?? s.presets,
+              bass: bassInfo ? bassInfo.actualBass : s.bass,
             };
           }
           return s;
@@ -421,6 +439,109 @@ export function useBoseScanner(scanDurationMs = 5000) {
     [refreshSpeakerStatus],
   );
 
+  const loadPresets = useCallback(async (deviceID: string) => {
+    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    if (!speaker) return;
+    try {
+      const presets = await fetchPresets(speaker.host);
+      if (!isMounted.current) return;
+      setSpeakers((prev) =>
+        prev.map((s) => (s.deviceID === deviceID ? { ...s, presets } : s)),
+      );
+    } catch (err) {
+      console.warn(
+        `[useBoseScanner] Failed to load presets for ${speaker.name}:`,
+        err,
+      );
+    }
+  }, []);
+
+  const loadBass = useCallback(async (deviceID: string) => {
+    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    if (!speaker) return;
+    try {
+      const bassInfo = await fetchSpeakerBass(speaker.host);
+      if (!isMounted.current) return;
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, bass: bassInfo.actualBass } : s,
+        ),
+      );
+    } catch (err) {
+      console.warn(
+        `[useBoseScanner] Failed to load bass for ${speaker.name}:`,
+        err,
+      );
+    }
+  }, []);
+
+  const savePreset = useCallback(async (deviceID: string, presetId: number) => {
+    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    if (!speaker) return;
+    try {
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        ),
+      );
+      await sendLongKeyCommand(speaker.host, `PRESET_${presetId}`);
+      const presets = await fetchPresets(speaker.host);
+      if (!isMounted.current) return;
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, presets, isUpdating: false } : s,
+        ),
+      );
+    } catch (err) {
+      if (isMounted.current) {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          ),
+        );
+      }
+      console.warn(
+        `[useBoseScanner] Failed to save preset for ${speaker.name}:`,
+        err,
+      );
+      throw err;
+    }
+  }, []);
+
+  const setBass = useCallback(async (deviceID: string, value: number) => {
+    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    if (!speaker) return;
+    try {
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        ),
+      );
+      await setSpeakerBass(speaker.host, value);
+      if (!isMounted.current) return;
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID
+            ? { ...s, bass: value, isUpdating: false }
+            : s,
+        ),
+      );
+    } catch (err) {
+      if (isMounted.current) {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          ),
+        );
+      }
+      console.warn(
+        `[useBoseScanner] Failed to set bass for ${speaker.name}:`,
+        err,
+      );
+      throw err;
+    }
+  }, []);
+
   // Start initial scan and polling loop
   useEffect(() => {
     isMounted.current = true;
@@ -458,5 +579,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
     triggerKey,
     selectSource,
     refreshStatus: refreshSpeakerStatus,
+    loadPresets,
+    loadBass,
+    savePreset,
+    setBass,
   };
 }

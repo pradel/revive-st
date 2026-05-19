@@ -3,6 +3,8 @@ import {
   parseInfoResponse,
   parseNowPlayingResponse,
   parseVolumeResponse,
+  parsePresetsResponse,
+  parseBassResponse,
 } from "./boseParser";
 
 describe("boseParser", () => {
@@ -119,6 +121,64 @@ describe("boseParser", () => {
         targetVolume: 15,
         actualVolume: 15,
         muteEnabled: true,
+      });
+    });
+  });
+
+  describe("parsePresetsResponse", () => {
+    it("parses empty presets successfully", () => {
+      const xml = `<presets></presets>`;
+      const result = parsePresetsResponse(xml);
+      expect(result).toEqual([]);
+    });
+
+    it("parses valid presets successfully", () => {
+      const xml = `
+        <presets>
+          <preset id="1" createdOn="1463123456" updateOn="1463999999">
+            <ContentItem source="SPOTIFY" location="spotify:playlist:abc" sourceAccount="user@spotify" isPresetable="true">
+              <itemName>Rock Mix</itemName>
+            </ContentItem>
+          </preset>
+          <preset id="2" createdOn="1463123456" updateOn="1463999999">
+            <ContentItem source="INTERNET_RADIO" location="http://stream.url" sourceAccount="" isPresetable="true">
+              <itemName>BBC Radio 1</itemName>
+            </ContentItem>
+          </preset>
+        </presets>
+      `;
+      const result = parsePresetsResponse(xml);
+      expect(result).toEqual([
+        {
+          id: "1",
+          name: "Rock Mix",
+          source: "SPOTIFY",
+          sourceAccount: "user@spotify",
+          location: "spotify:playlist:abc",
+        },
+        {
+          id: "2",
+          name: "BBC Radio 1",
+          source: "INTERNET_RADIO",
+          sourceAccount: undefined,
+          location: "http://stream.url",
+        },
+      ]);
+    });
+  });
+
+  describe("parseBassResponse", () => {
+    it("parses valid bass response successfully", () => {
+      const xml = `
+        <bass deviceID="000C8A123456">
+          <targetbass>-4</targetbass>
+          <actualbass>-4</actualbass>
+        </bass>
+      `;
+      const result = parseBassResponse(xml);
+      expect(result).toEqual({
+        targetBass: -4,
+        actualBass: -4,
       });
     });
   });

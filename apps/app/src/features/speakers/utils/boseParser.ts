@@ -22,6 +22,19 @@ export interface BoseVolume {
   muteEnabled: boolean;
 }
 
+export interface BosePreset {
+  id: string;
+  name: string;
+  source: string;
+  sourceAccount?: string;
+  location?: string;
+}
+
+export interface BoseBass {
+  targetBass: number;
+  actualBass: number;
+}
+
 function unescapeXml(val: string): string {
   if (!val) return "";
   return val
@@ -237,6 +250,147 @@ export async function selectSpeakerSource(
     clearTimeout(id);
     if (!response.ok) {
       throw new Error(`Failed to select source ${source} on ${ip}`);
+    }
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+export function parsePresetsResponse(xml: string): BosePreset[] {
+  const presets: BosePreset[] = [];
+  const presetRegex = /<preset id="(\d+)"[^>]*>([\s\S]*?)<\/preset>/g;
+  let match;
+  while ((match = presetRegex.exec(xml)) !== null) {
+    const id = match[1];
+    const block = match[2];
+
+    const sourceMatch = block.match(/<ContentItem source="([^"]+)"/);
+    const sourceAccountMatch = block.match(/sourceAccount="([^"]+)"/);
+    const locationMatch = block.match(/location="([^"]+)"/);
+    const itemNameMatch = block.match(/<itemName>(.*?)<\/itemName>/);
+
+    presets.push({
+      id,
+      name: itemNameMatch ? unescapeXml(itemNameMatch[1]) : `Preset ${id}`,
+      source: sourceMatch ? sourceMatch[1] : "UNKNOWN",
+      sourceAccount: sourceAccountMatch ? sourceAccountMatch[1] : undefined,
+      location: locationMatch ? locationMatch[1] : undefined,
+    });
+  }
+  return presets;
+}
+
+export function parseBassResponse(xml: string): BoseBass {
+  const targetMatch = xml.match(/<targetbass>(-?\d+)<\/targetbass>/);
+  const actualMatch = xml.match(/<actualbass>(-?\d+)<\/actualbass>/);
+  return {
+    targetBass: targetMatch ? parseInt(targetMatch[1], 10) : 0,
+    actualBass: actualMatch ? parseInt(actualMatch[1], 10) : 0,
+  };
+}
+
+export async function fetchPresets(
+  ip: string,
+  timeout = 2000,
+): Promise<BosePreset[]> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`http://${ip}:${SPEAKER_PORT}/presets`, {
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch /presets from ${ip}`);
+    }
+    const text = await response.text();
+    return parsePresetsResponse(text);
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+export async function fetchSpeakerBass(
+  ip: string,
+  timeout = 2000,
+): Promise<BoseBass> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(`http://${ip}:${SPEAKER_PORT}/bass`, {
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch /bass from ${ip}`);
+    }
+    const text = await response.text();
+    return parseBassResponse(text);
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+export async function setSpeakerBass(
+  ip: string,
+  bass: number,
+  timeout = 2000,
+): Promise<void> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const payload = `<bass>${bass}</bass>`;
+    const response = await fetch(`http://${ip}:${SPEAKER_PORT}/bass`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: payload,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response.ok) {
+      throw new Error(`Failed to set bass to ${bass} on ${ip}`);
+    }
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
+export async function sendLongKeyCommand(
+  ip: string,
+  key: string,
+  durationMs = 2000,
+  timeout = 5000,
+): Promise<void> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const pressPayload = `<key state="press" sender="Gabbo">${key}</key>`;
+    const response1 = await fetch(`http://${ip}:${SPEAKER_PORT}/key`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: pressPayload,
+      signal: controller.signal,
+    });
+    if (!response1.ok) {
+      throw new Error(`Failed to send press key ${key} to ${ip}`);
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, durationMs));
+
+    const releasePayload = `<key state="release" sender="Gabbo">${key}</key>`;
+    const response2 = await fetch(`http://${ip}:${SPEAKER_PORT}/key`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: releasePayload,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response2.ok) {
+      throw new Error(`Failed to send release key ${key} to ${ip}`);
     }
   } catch (err) {
     clearTimeout(id);

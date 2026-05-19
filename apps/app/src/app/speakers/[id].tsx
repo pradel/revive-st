@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
   Image,
   GestureResponderEvent,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -23,10 +24,23 @@ export default function SpeakerDetail() {
     playPause,
     triggerKey,
     selectSource,
+    loadPresets,
+    loadBass,
+    savePreset,
+    setBass,
   } = useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
   const [sliderWidth, setSliderWidth] = useState(0);
+  const [bassSliderWidth, setBassSliderWidth] = useState(0);
+  const [savingPresetId, setSavingPresetId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (speaker) {
+      void loadPresets(speaker.deviceID);
+      void loadBass(speaker.deviceID);
+    }
+  }, [id]);
 
   if (!speaker) {
     return (
@@ -62,6 +76,21 @@ export default function SpeakerDetail() {
     void changeVolume(speaker.deviceID, newVol);
   };
 
+  const handleBassSliderPress = (e: GestureResponderEvent) => {
+    if (bassSliderWidth <= 0) return;
+    const touchX = e.nativeEvent.locationX;
+    const percentage = Math.max(0, Math.min(1, touchX / bassSliderWidth));
+    // Bass goes from -9 to 0
+    const newBass = -9 + Math.round(percentage * 9);
+    void setBass(speaker.deviceID, newBass);
+  };
+
+  const adjustBassStep = (delta: number) => {
+    const currentBass = speaker.bass ?? -5;
+    const newBass = Math.max(-9, Math.min(0, currentBass + delta));
+    void setBass(speaker.deviceID, newBass);
+  };
+
   const handleToggleMute = () => {
     void triggerKey(speaker.deviceID, "MUTE");
   };
@@ -72,6 +101,45 @@ export default function SpeakerDetail() {
 
   const handlePrevTrack = () => {
     void triggerKey(speaker.deviceID, "PREV_TRACK");
+  };
+
+  const handlePresetPress = (presetId: number) => {
+    void triggerKey(speaker.deviceID, `PRESET_${presetId}`);
+  };
+
+  const handlePresetLongPress = (presetId: number) => {
+    if (isStandby || !speaker.track) {
+      Alert.alert(
+        "Cannot Save Preset",
+        "Please play a streaming music source (e.g. Spotify Connect, Wi-Fi Radio) on this speaker before saving it to a preset.",
+      );
+      return;
+    }
+
+    Alert.alert(
+      "Save Preset",
+      `Would you like to assign the currently playing stream ("${speaker.track}") to Preset Slot ${presetId}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Save",
+          onPress: async () => {
+            try {
+              setSavingPresetId(presetId);
+              await savePreset(speaker.deviceID, presetId);
+            } catch (err) {
+              console.warn("[SpeakerDetail] Failed to save preset:", err);
+              Alert.alert(
+                "Error",
+                "Failed to assign preset. Please try again.",
+              );
+            } finally {
+              setSavingPresetId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   const getSourceLabel = (src: string) => {
@@ -317,6 +385,135 @@ export default function SpeakerDetail() {
                     <Text style={styles.stepButtonText}>+</Text>
                   </Pressable>
                 </View>
+              </View>
+            </View>
+
+            {/* Acoustic Bass Tuning Panel */}
+            <View style={styles.panel}>
+              <View style={styles.panelHeader}>
+                <Text style={styles.panelTitle}>Bass Tuning</Text>
+                <Text style={styles.panelValue}>
+                  {speaker.bass !== undefined ? speaker.bass : "..."}
+                </Text>
+              </View>
+
+              <View style={styles.volumeRow}>
+                <View style={styles.sliderContainer}>
+                  <Pressable
+                    style={styles.volTrack}
+                    onLayout={(e) =>
+                      setBassSliderWidth(e.nativeEvent.layout.width)
+                    }
+                    onPress={handleBassSliderPress}
+                  >
+                    <View
+                      style={[
+                        styles.volFill,
+                        {
+                          backgroundColor: "#f59e0b", // Amber accent color for bass tuning
+                          // Bass range is -9 to 0. Mapped to percentage.
+                          width: `${
+                            speaker.bass !== undefined
+                              ? ((speaker.bass + 9) / 9) * 100
+                              : 50
+                          }%`,
+                        },
+                      ]}
+                    />
+                  </Pressable>
+                </View>
+
+                {/* Bass Steppers */}
+                <View style={styles.steppersContainer}>
+                  <Pressable
+                    style={styles.stepButton}
+                    onPress={() => adjustBassStep(-1)}
+                  >
+                    <Text style={styles.stepButtonText}>-</Text>
+                  </Pressable>
+                  <Pressable
+                    style={styles.stepButton}
+                    onPress={() => adjustBassStep(1)}
+                  >
+                    <Text style={styles.stepButtonText}>+</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+
+            {/* Presets Grid Panel */}
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Quick Presets (1-6)</Text>
+              <View style={styles.presetGrid}>
+                {[1, 2, 3, 4, 5, 6].map((num) => {
+                  const preset = speaker.presets?.find(
+                    (p) => p.id === String(num),
+                  );
+                  const isSaving = savingPresetId === num;
+
+                  return (
+                    <Pressable
+                      key={num}
+                      style={[
+                        styles.presetCard,
+                        preset && styles.presetCardActive,
+                      ]}
+                      onPress={() => handlePresetPress(num)}
+                      onLongPress={() => handlePresetLongPress(num)}
+                      delayLongPress={600}
+                    >
+                      <View style={styles.presetHeader}>
+                        <View
+                          style={[
+                            styles.presetBadge,
+                            preset && styles.presetBadgeActive,
+                          ]}
+                        >
+                          <Text style={styles.presetBadgeText}>{num}</Text>
+                        </View>
+
+                        {preset && (
+                          <View
+                            style={[
+                              styles.presetSourceBadge,
+                              {
+                                backgroundColor: getSourceBadgeColor(
+                                  preset.source,
+                                ),
+                              },
+                            ]}
+                          >
+                            <Text style={styles.presetSourceText}>
+                              {preset.source === "INTERNET_RADIO"
+                                ? "Radio"
+                                : preset.source}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+
+                      {isSaving ? (
+                        <ActivityIndicator
+                          size="small"
+                          color="#fafafa"
+                          style={{ marginVertical: 4 }}
+                        />
+                      ) : (
+                        <Text
+                          style={[
+                            styles.presetName,
+                            preset
+                              ? styles.presetNameFilled
+                              : styles.presetNameEmpty,
+                          ]}
+                          numberOfLines={2}
+                        >
+                          {preset ? preset.name : "Hold to Assign"}
+                        </Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
@@ -735,6 +932,71 @@ const styles = StyleSheet.create({
     color: "#fafafa",
     fontSize: 16,
     fontWeight: "bold",
+  },
+  /* Presets Grid */
+  presetGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
+  },
+  presetCard: {
+    width: "48%", // Grid layout
+    aspectRatio: 1.3,
+    backgroundColor: "#18181b",
+    borderWidth: 1,
+    borderColor: "#27272a",
+    borderRadius: 12,
+    padding: 10,
+    justifyContent: "space-between",
+  },
+  presetCardActive: {
+    borderColor: "rgba(245, 158, 11, 0.4)", // Amber highlight for assigned presets
+    backgroundColor: "rgba(245, 158, 11, 0.03)",
+  },
+  presetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  presetBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#27272a",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  presetBadgeActive: {
+    backgroundColor: "#f59e0b", // Amber glowing badge for presets
+  },
+  presetBadgeText: {
+    color: "#fafafa",
+    fontSize: 12,
+    fontWeight: "bold",
+  },
+  presetSourceBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  presetSourceText: {
+    color: "#fafafa",
+    fontSize: 9,
+    fontWeight: "bold",
+    textTransform: "uppercase",
+  },
+  presetName: {
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 16,
+  },
+  presetNameFilled: {
+    color: "#fafafa",
+  },
+  presetNameEmpty: {
+    color: "#71717a",
+    fontStyle: "italic",
   },
   sourcesGrid: {
     flexDirection: "row",

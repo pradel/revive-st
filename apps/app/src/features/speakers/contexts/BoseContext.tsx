@@ -16,6 +16,10 @@ interface BoseContextType {
     sourceAccount?: string,
   ) => Promise<void>;
   refreshStatus: (speaker: BoseSpeaker) => Promise<void>;
+  loadPresets: (deviceID: string) => Promise<void>;
+  loadBass: (deviceID: string) => Promise<void>;
+  savePreset: (deviceID: string, presetId: number) => Promise<void>;
+  setBass: (deviceID: string, value: number) => Promise<void>;
 }
 
 const BoseContext = createContext<BoseContextType | null>(null);
