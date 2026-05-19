@@ -1,6 +1,7 @@
 import { Platform } from "react-native";
 
 export const SPEAKER_HOTSPOT_CANDIDATES = [
+  "192.0.2.1",
   "192.168.1.1",
   "172.20.10.1",
   "192.168.0.1",
