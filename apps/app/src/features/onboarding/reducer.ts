@@ -45,6 +45,7 @@ export function provisioningReducer(
         return {
           step: "CONNECTED_TO_HOTSPOT",
           ssid: state.ssid,
+          bssid: state.bssid,
           speakerIP: action.speakerIP,
         };
       }
@@ -68,6 +69,7 @@ export function provisioningReducer(
         return {
           step: "SENDING_CREDENTIALS",
           ssid: state.ssid,
+          bssid: state.bssid,
           speakerIP: state.speakerIP,
           homeSSID: action.homeSSID,
           homePassword: action.homePassword,
@@ -89,6 +91,7 @@ export function provisioningReducer(
         return {
           step: "CREDENTIALS_FAILED",
           ssid: state.ssid,
+          bssid: state.bssid,
           speakerIP: state.speakerIP,
           homeSSID: state.homeSSID,
         };
@@ -155,6 +158,7 @@ export function provisioningReducer(
           return {
             step: "SELECTING_HOME_NETWORK",
             ssid: state.ssid,
+            bssid: state.bssid,
             speakerIP: state.speakerIP,
             homeSSID: state.homeSSID,
           };

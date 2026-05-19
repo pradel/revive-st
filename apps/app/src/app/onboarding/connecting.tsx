@@ -48,6 +48,7 @@ export default function ConnectingScreen() {
         dispatch({
           type: "HOTSPOT_CONNECTED",
           ssid: s.ssid,
+          bssid: s.bssid,
           speakerIP: ip,
         });
         return;

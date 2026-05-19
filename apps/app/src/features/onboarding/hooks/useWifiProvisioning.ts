@@ -80,6 +80,7 @@ export function useWifiProvisioning() {
           dispatch({
             type: "HOTSPOT_CONNECTED",
             ssid,
+            bssid,
             speakerIP: result.ip,
           });
         } else {
@@ -90,7 +91,7 @@ export function useWifiProvisioning() {
           const ip = await findSpeakerIP();
           if (ip) {
             console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
-            dispatch({ type: "HOTSPOT_CONNECTED", ssid, speakerIP: ip });
+            dispatch({ type: "HOTSPOT_CONNECTED", ssid, bssid, speakerIP: ip });
           } else {
             console.log(
               "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",

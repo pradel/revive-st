@@ -92,11 +92,13 @@ describe("provisioningReducer", () => {
       const result = provisioningReducer(connectingState, {
         type: "HOTSPOT_CONNECTED",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       });
       expect(result).toEqual({
         step: "CONNECTED_TO_HOTSPOT",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       });
     });
@@ -121,6 +123,7 @@ describe("provisioningReducer", () => {
       const connectedState: ProvisioningState = {
         step: "CONNECTED_TO_HOTSPOT",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       };
       const result = provisioningReducer(connectedState, {
@@ -131,6 +134,7 @@ describe("provisioningReducer", () => {
       expect(result).toEqual({
         step: "SENDING_CREDENTIALS",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
         homePassword: "password123",
@@ -143,6 +147,7 @@ describe("provisioningReducer", () => {
       const sendingState: ProvisioningState = {
         step: "SENDING_CREDENTIALS",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
         homePassword: "password123",
@@ -163,6 +168,7 @@ describe("provisioningReducer", () => {
       const sendingState: ProvisioningState = {
         step: "SENDING_CREDENTIALS",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
         homePassword: "password123",
@@ -173,6 +179,7 @@ describe("provisioningReducer", () => {
       expect(result).toEqual({
         step: "CREDENTIALS_FAILED",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
       });
@@ -291,6 +298,7 @@ describe("provisioningReducer", () => {
       const state: ProvisioningState = {
         step: "CREDENTIALS_FAILED",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
       };
@@ -298,6 +306,7 @@ describe("provisioningReducer", () => {
       expect(result).toEqual({
         step: "SELECTING_HOME_NETWORK",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "MyHomeWiFi",
       });
@@ -354,11 +363,13 @@ describe("provisioningReducer", () => {
       state = provisioningReducer(state, {
         type: "HOTSPOT_CONNECTED",
         ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       });
       expect(state).toEqual({
         step: "CONNECTED_TO_HOTSPOT",
         ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       });
 
@@ -417,6 +428,7 @@ describe("provisioningReducer", () => {
       state = provisioningReducer(state, {
         type: "HOTSPOT_CONNECTED",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
       });
       state = provisioningReducer(state, {
@@ -431,6 +443,7 @@ describe("provisioningReducer", () => {
       expect(state).toEqual({
         step: "SELECTING_HOME_NETWORK",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
         speakerIP: "192.168.1.1",
         homeSSID: "HomeWiFi",
       });

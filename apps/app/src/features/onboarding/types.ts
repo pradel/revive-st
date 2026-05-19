@@ -9,11 +9,13 @@ export type ProvisioningState =
   | {
       step: "CONNECTED_TO_HOTSPOT";
       ssid: string;
+      bssid: string;
       speakerIP: string;
     }
   | {
       step: "SELECTING_HOME_NETWORK";
       ssid: string;
+      bssid: string;
       speakerIP: string;
       homeSSID?: string;
       scannedNetworks?: string[];
@@ -21,6 +23,7 @@ export type ProvisioningState =
   | {
       step: "SENDING_CREDENTIALS";
       ssid: string;
+      bssid: string;
       speakerIP: string;
       homeSSID: string;
       homePassword: string;
@@ -28,6 +31,7 @@ export type ProvisioningState =
   | {
       step: "CREDENTIALS_FAILED";
       ssid: string;
+      bssid: string;
       speakerIP: string;
       homeSSID: string;
     }
@@ -47,7 +51,12 @@ export type ProvisioningAction =
   | { type: "PERMISSIONS_DENIED" }
   | { type: "HOTSPOT_FOUND"; ssid: string; bssid: string }
   | { type: "HOTSPOT_TIMEOUT" }
-  | { type: "HOTSPOT_CONNECTED"; ssid: string; speakerIP: string }
+  | {
+      type: "HOTSPOT_CONNECTED";
+      ssid: string;
+      bssid: string;
+      speakerIP: string;
+    }
   | { type: "HOTSPOT_CONNECTION_FAILED" }
   | {
       type: "NETWORK_SELECTED";
