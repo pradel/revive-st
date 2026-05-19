@@ -4,7 +4,9 @@ export default defineConfig({
   staged: {
     "*": "vp check --fix",
   },
-  fmt: {},
+  fmt: {
+    printWidth: 80,
+  },
   lint: {
     options: { typeAware: true, typeCheck: true },
   },
