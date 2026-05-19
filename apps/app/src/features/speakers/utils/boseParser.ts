@@ -212,3 +212,34 @@ export async function setSpeakerVolume(
     throw err;
   }
 }
+
+export async function selectSpeakerSource(
+  ip: string,
+  source: string,
+  sourceAccount = "",
+  timeout = 2000,
+): Promise<void> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    let payload = "";
+    if (sourceAccount) {
+      payload = `<ContentItem source="${source}" sourceAccount="${sourceAccount}"></ContentItem>`;
+    } else {
+      payload = `<ContentItem source="${source}"></ContentItem>`;
+    }
+    const response = await fetch(`http://${ip}:${SPEAKER_PORT}/select`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: payload,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response.ok) {
+      throw new Error(`Failed to select source ${source} on ${ip}`);
+    }
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}

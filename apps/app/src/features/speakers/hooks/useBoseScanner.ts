@@ -7,6 +7,7 @@ import {
   sendKeyCommand,
   setSpeakerVolume,
   BoseSpeakerInfo,
+  selectSpeakerSource,
 } from "../utils/boseParser";
 import { BoseWSClient } from "../utils/boseWebSocket";
 
@@ -356,6 +357,70 @@ export function useBoseScanner(scanDurationMs = 5000) {
     [refreshSpeakerStatus],
   );
 
+  const triggerKey = useCallback(
+    async (deviceID: string, key: string) => {
+      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      if (!speaker) return;
+
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        ),
+      );
+
+      try {
+        await sendKeyCommand(speaker.host, key);
+        setTimeout(() => {
+          void refreshSpeakerStatus(speaker);
+        }, 500);
+      } catch (err) {
+        console.error(
+          `[BoseScanner] Failed to send key ${key} to ${speaker.name}:`,
+          err,
+        );
+      } finally {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          ),
+        );
+      }
+    },
+    [refreshSpeakerStatus],
+  );
+
+  const selectSource = useCallback(
+    async (deviceID: string, source: string, sourceAccount = "") => {
+      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      if (!speaker) return;
+
+      setSpeakers((prev) =>
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        ),
+      );
+
+      try {
+        await selectSpeakerSource(speaker.host, source, sourceAccount);
+        setTimeout(() => {
+          void refreshSpeakerStatus(speaker);
+        }, 500);
+      } catch (err) {
+        console.error(
+          `[BoseScanner] Failed to select source ${source} on ${speaker.name}:`,
+          err,
+        );
+      } finally {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          ),
+        );
+      }
+    },
+    [refreshSpeakerStatus],
+  );
+
   // Start initial scan and polling loop
   useEffect(() => {
     isMounted.current = true;
@@ -390,6 +455,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
     togglePower,
     changeVolume,
     playPause,
+    triggerKey,
+    selectSource,
     refreshStatus: refreshSpeakerStatus,
   };
 }

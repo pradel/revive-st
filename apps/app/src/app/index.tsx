@@ -11,10 +11,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
-import {
-  useBoseScanner,
-  BoseSpeaker,
-} from "@/features/speakers/hooks/useBoseScanner";
+import { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+import { useBose } from "@/features/speakers/contexts/BoseContext";
 
 export default function HomeIndex() {
   const router = useRouter();
@@ -26,7 +24,7 @@ export default function HomeIndex() {
     togglePower,
     changeVolume,
     playPause,
-  } = useBoseScanner();
+  } = useBose();
 
   const handleSetupNew = () => {
     router.push("/onboarding/permissions" as any);
@@ -105,6 +103,9 @@ export default function HomeIndex() {
               onTogglePower={togglePower}
               onChangeVolume={changeVolume}
               onPlayPause={playPause}
+              onPress={() =>
+                router.push(`/speakers/${speaker.deviceID}` as any)
+              }
             />
           ))}
         </ScrollView>
@@ -118,6 +119,7 @@ interface SpeakerCardProps {
   onTogglePower: (id: string) => void;
   onChangeVolume: (id: string, vol: number) => void;
   onPlayPause: (id: string) => void;
+  onPress: () => void;
 }
 
 function SpeakerCard({
@@ -125,6 +127,7 @@ function SpeakerCard({
   onTogglePower,
   onChangeVolume,
   onPlayPause,
+  onPress,
 }: SpeakerCardProps) {
   const isStandby =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
@@ -148,7 +151,7 @@ function SpeakerCard({
     <View style={[styles.card, isStandby && styles.cardStandby]}>
       {/* Top Header Row */}
       <View style={styles.cardHeader}>
-        <View style={styles.cardTitleContainer}>
+        <Pressable style={styles.cardTitleContainer} onPress={onPress}>
           <Text style={styles.cardEmoji}>🔊</Text>
           <View>
             <Text style={styles.cardName}>{speaker.name}</Text>
@@ -156,7 +159,7 @@ function SpeakerCard({
               {speaker.type} • {speaker.host}
             </Text>
           </View>
-        </View>
+        </Pressable>
 
         <Pressable
           style={[
@@ -190,30 +193,35 @@ function SpeakerCard({
         <View style={styles.activeContainer}>
           {/* Media Info Section */}
           <View style={styles.mediaRow}>
-            {speaker.artUrl ? (
-              <Image source={{ uri: speaker.artUrl }} style={styles.albumArt} />
-            ) : (
-              <View style={styles.albumArtPlaceholder}>
-                <Text style={styles.musicNote}>🎵</Text>
-              </View>
-            )}
+            <Pressable style={styles.mediaPressable} onPress={onPress}>
+              {speaker.artUrl ? (
+                <Image
+                  source={{ uri: speaker.artUrl }}
+                  style={styles.albumArt}
+                />
+              ) : (
+                <View style={styles.albumArtPlaceholder}>
+                  <Text style={styles.musicNote}>🎵</Text>
+                </View>
+              )}
 
-            <View style={styles.mediaDetails}>
-              <Text style={styles.trackName} numberOfLines={1}>
-                {speaker.track || "Nothing Playing"}
-              </Text>
-              <Text style={styles.artistName} numberOfLines={1}>
-                {speaker.artist || "Unknown Artist"}
-              </Text>
-              {speaker.album ? (
-                <Text style={styles.albumName} numberOfLines={1}>
-                  {speaker.album}
+              <View style={styles.mediaDetails}>
+                <Text style={styles.trackName} numberOfLines={1}>
+                  {speaker.track || "Nothing Playing"}
                 </Text>
-              ) : null}
-              <View style={styles.sourceBadge}>
-                <Text style={styles.sourceText}>{speaker.source}</Text>
+                <Text style={styles.artistName} numberOfLines={1}>
+                  {speaker.artist || "Unknown Artist"}
+                </Text>
+                {speaker.album ? (
+                  <Text style={styles.albumName} numberOfLines={1}>
+                    {speaker.album}
+                  </Text>
+                ) : null}
+                <View style={styles.sourceBadge}>
+                  <Text style={styles.sourceText}>{speaker.source}</Text>
+                </View>
               </View>
-            </View>
+            </Pressable>
 
             {/* Play/Pause Button */}
             <Pressable
@@ -616,5 +624,11 @@ const styles = StyleSheet.create({
     height: "100%",
     backgroundColor: "#2563eb",
     borderRadius: 4,
+  },
+  mediaPressable: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
   },
 });
