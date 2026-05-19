@@ -34,9 +34,15 @@ export function useWifiProvisioning() {
     const s = state as { ssid: string };
     try {
       console.log(`[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`);
-      console.log(`[WiFi Connect] Connecting to hotspot: "${s.ssid}"`);
-      await WifiManager.connectToProtectedSSID(s.ssid, "", false, false);
-      console.log("[WiFi Connect] Connection initiated, probing speaker IP...");
+      console.log(`[WiFi Connect] Connecting to hotspot: "${s.ssid}" with 60s timeout`);
+      await WifiManager.connectToProtectedWifiSSID({
+        ssid: s.ssid,
+        password: "",
+        isWEP: false,
+        isHidden: false,
+        timeout: 60,
+      });
+      console.log("[WiFi Connect] Connected, probing speaker IP...");
       const ip = await findSpeakerIP();
       if (ip) {
         console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
