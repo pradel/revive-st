@@ -11,6 +11,7 @@ import { useProvisioning } from "../ProvisioningContext";
 import {
   findSpeakerIP,
   isSpeakerHotspot,
+  probeSpeakerIP,
   sendCredentials,
 } from "../utils/networkHelpers";
 
@@ -81,10 +82,6 @@ export function useWifiProvisioning() {
           console.log("[WiFi Connect] Using native BoseWifi module");
           const result = await connectToOpenNetwork(ssid, bssid);
           console.log(`[WiFi Connect] Native result: ${result.message}`);
-          console.log("[WiFi Connect] Locking WiFi usage (no internet)...");
-          await WifiManager.forceWifiUsageWithOptions(true, {
-            noInternet: true,
-          });
           dispatch({
             type: "HOTSPOT_CONNECTED",
             ssid,
@@ -164,9 +161,6 @@ export function useWifiProvisioning() {
     reconnectingRef.current = true;
     try {
       if (Platform.OS === "android") {
-        await WifiManager.forceWifiUsageWithOptions(false, {
-          noInternet: false,
-        });
         await disconnectBose();
       } else {
         await WifiManager.disconnectFromSSID("Bose ST");
@@ -221,6 +215,31 @@ export function useWifiProvisioning() {
       void reconnectPhone();
     }
   }, [state.step, reconnectPhone]);
+
+  useEffect(() => {
+    if (state.step !== "CONNECTED_TO_HOTSPOT") return;
+
+    const speakerIp = (state as { speakerIP?: string }).speakerIP;
+    if (!speakerIp) return;
+
+    console.log(`[WiFi Keep-Alive] Starting heartbeat loop to ${speakerIp}...`);
+
+    const intervalId = setInterval(async () => {
+      try {
+        const alive = await probeSpeakerIP(speakerIp, 2000);
+        console.log(
+          `[WiFi Keep-Alive] Heartbeat probe: ${alive ? "SUCCESS" : "FAILED"}`,
+        );
+      } catch (err) {
+        console.log("[WiFi Keep-Alive] Heartbeat probe threw error:", err);
+      }
+    }, 3000);
+
+    return () => {
+      console.log("[WiFi Keep-Alive] Stopping heartbeat loop");
+      clearInterval(intervalId);
+    };
+  }, [state.step, (state as { speakerIP?: string }).speakerIP]);
 
   return { state, dispatch };
 }
