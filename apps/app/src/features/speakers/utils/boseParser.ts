@@ -397,3 +397,38 @@ export async function sendLongKeyCommand(
     throw err;
   }
 }
+
+export async function playSpeakerUri(
+  ip: string,
+  uri: string,
+  name: string,
+  source = "INTERNET_RADIO",
+  timeout = 5000,
+): Promise<void> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const escapedName = name
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const escapedUri = uri
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const payload = `<ContentItem source="${source}" location="${escapedUri}" sourceAccount=""><itemName>${escapedName}</itemName></ContentItem>`;
+    const response = await fetch(`http://${ip}:${SPEAKER_PORT}/select`, {
+      method: "POST",
+      headers: { "Content-Type": "text/xml" },
+      body: payload,
+      signal: controller.signal,
+    });
+    clearTimeout(id);
+    if (!response.ok) {
+      throw new Error(`Failed to play URI ${uri} on ${ip}`);
+    }
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}

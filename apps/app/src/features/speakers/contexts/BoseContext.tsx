@@ -20,6 +20,7 @@ interface BoseContextType {
   loadBass: (deviceID: string) => Promise<void>;
   savePreset: (deviceID: string, presetId: number) => Promise<void>;
   setBass: (deviceID: string, value: number) => Promise<void>;
+  playStream: (deviceID: string, uri: string, name: string) => Promise<void>;
 }
 
 const BoseContext = createContext<BoseContextType | null>(null);

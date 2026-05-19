@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, afterEach } from "vitest";
 import {
   parseInfoResponse,
   parseNowPlayingResponse,
   parseVolumeResponse,
   parsePresetsResponse,
   parseBassResponse,
+  playSpeakerUri,
 } from "./boseParser";
 
 describe("boseParser", () => {
@@ -180,6 +181,45 @@ describe("boseParser", () => {
         targetBass: -4,
         actualBass: -4,
       });
+    });
+  });
+
+  describe("playSpeakerUri", () => {
+    const originalFetch = globalThis.fetch;
+
+    afterEach(() => {
+      globalThis.fetch = originalFetch;
+    });
+
+    it("sends correct XML payload for custom streams", async () => {
+      let capturedUrl = "";
+      let capturedOptions: any = null;
+
+      globalThis.fetch = vi.fn().mockImplementation((url, options) => {
+        capturedUrl = url;
+        capturedOptions = options;
+        return Promise.resolve({
+          ok: true,
+          text: () => Promise.resolve("<status>ok</status>"),
+        });
+      }) as any;
+
+      await playSpeakerUri(
+        "192.168.1.100",
+        "http://stream.url?a=1&b=2",
+        "Station & Co",
+      );
+
+      expect(capturedUrl).toBe("http://192.168.1.100:8090/select");
+      expect(capturedOptions.method).toBe("POST");
+      expect(capturedOptions.headers["Content-Type"]).toBe("text/xml");
+      expect(capturedOptions.body).toContain('source="INTERNET_RADIO"');
+      expect(capturedOptions.body).toContain(
+        'location="http://stream.url?a=1&amp;b=2"',
+      );
+      expect(capturedOptions.body).toContain(
+        "<itemName>Station &amp; Co</itemName>",
+      );
     });
   });
 });

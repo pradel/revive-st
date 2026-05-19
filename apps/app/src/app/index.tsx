@@ -45,6 +45,12 @@ export default function HomeIndex() {
           >
             <Text style={styles.iconButtonText}>🔄</Text>
           </Pressable>
+          <Pressable
+            style={styles.radioButton}
+            onPress={() => router.push("/radio" as any)}
+          >
+            <Text style={styles.radioButtonText}>📻 Radio</Text>
+          </Pressable>
           <Pressable style={styles.addButton} onPress={handleSetupNew}>
             <Text style={styles.addButtonText}>➕ Setup</Text>
           </Pressable>
@@ -325,6 +331,20 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: "#fff",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  radioButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#1e1b4b", // Dark indigo tint
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#4338ca",
+    justifyContent: "center",
+  },
+  radioButtonText: {
+    color: "#fafafa",
     fontSize: 14,
     fontWeight: "600",
   },

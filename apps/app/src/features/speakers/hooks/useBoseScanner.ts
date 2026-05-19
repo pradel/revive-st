@@ -13,6 +13,7 @@ import {
   fetchSpeakerBass,
   setSpeakerBass,
   sendLongKeyCommand,
+  playSpeakerUri,
 } from "../utils/boseParser";
 import { BoseWSClient } from "../utils/boseWebSocket";
 
@@ -542,6 +543,37 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }
   }, []);
 
+  const playStream = useCallback(
+    async (deviceID: string, uri: string, name: string) => {
+      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      if (!speaker) return;
+      try {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+          ),
+        );
+        await playSpeakerUri(speaker.host, uri, name);
+        setTimeout(() => {
+          void refreshSpeakerStatus(speaker);
+        }, 1000);
+      } catch (err) {
+        console.warn(
+          `[useBoseScanner] Failed to play stream on ${speaker.name}:`,
+          err,
+        );
+        throw err;
+      } finally {
+        setSpeakers((prev) =>
+          prev.map((s) =>
+            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          ),
+        );
+      }
+    },
+    [refreshSpeakerStatus],
+  );
+
   // Start initial scan and polling loop
   useEffect(() => {
     isMounted.current = true;
@@ -583,5 +615,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
     loadBass,
     savePreset,
     setBass,
+    playStream,
   };
 }
