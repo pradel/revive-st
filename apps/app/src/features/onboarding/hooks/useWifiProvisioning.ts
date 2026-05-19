@@ -5,6 +5,7 @@ import * as Location from "expo-location";
 import {
   connectToOpenNetwork,
   disconnect as disconnectBose,
+  isConnected,
 } from "expo-bose-wifi";
 import { useProvisioning } from "../ProvisioningContext";
 import {
@@ -133,11 +134,22 @@ export function useWifiProvisioning() {
     sendingRef.current = true;
     const s = state as {
       ssid: string;
+      bssid: string;
       speakerIP: string;
       homeSSID: string;
       homePassword: string;
     };
     try {
+      if (Platform.OS === "android") {
+        const connected = await isConnected();
+        console.log(`[Send Creds] isConnected: ${connected}`);
+        if (!connected) {
+          console.log(
+            "[Send Creds] Reconnecting to Bose network before sending...",
+          );
+          await connectToOpenNetwork(s.ssid, s.bssid);
+        }
+      }
       await sendCredentials(s.speakerIP, s.homeSSID, s.homePassword);
       dispatch({ type: "CREDENTIALS_SENT" });
     } catch {
