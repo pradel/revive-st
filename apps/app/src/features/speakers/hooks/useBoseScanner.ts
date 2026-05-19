@@ -8,6 +8,7 @@ import {
   setSpeakerVolume,
   BoseSpeakerInfo,
 } from "../utils/boseParser";
+import { BoseWSClient } from "../utils/boseWebSocket";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -39,6 +40,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
   // We keep a ref to speakers so our callbacks can reference the latest list without re-triggering effects
   const speakersRef = useRef<BoseSpeaker[]>([]);
   speakersRef.current = speakers;
+
+  const wsClientsRef = useRef<Map<string, BoseWSClient>>(new Map());
 
   const stopScan = useCallback(() => {
     if (scanTimeoutRef.current) {
@@ -91,6 +94,92 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
     }
   }, []);
+
+  // Manage WebSocket connections based on discovered speakers list
+  useEffect(() => {
+    const currentDeviceIds = new Set(speakers.map((s) => s.deviceID));
+
+    // Close and remove clients for speakers that are no longer present
+    wsClientsRef.current.forEach((client, deviceID) => {
+      if (!currentDeviceIds.has(deviceID)) {
+        console.log(
+          `[useBoseScanner] Stopping WebSocket client for lost device: ${deviceID}`,
+        );
+        client.close();
+        wsClientsRef.current.delete(deviceID);
+      }
+    });
+
+    // Create and connect clients for new speakers
+    speakers.forEach((speaker) => {
+      if (!wsClientsRef.current.has(speaker.deviceID)) {
+        const client = new BoseWSClient({
+          host: speaker.host,
+          deviceID: speaker.deviceID,
+          onUpdate: (update) => {
+            if (!isMounted.current) return;
+
+            console.log(
+              `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
+            );
+
+            if (update.volume || update.nowPlaying) {
+              setSpeakers((prev) =>
+                prev.map((s) => {
+                  if (s.deviceID === update.deviceID) {
+                    return {
+                      ...s,
+                      volume: update.volume
+                        ? update.volume.actualVolume
+                        : s.volume,
+                      muteEnabled: update.volume
+                        ? update.volume.muteEnabled
+                        : s.muteEnabled,
+                      playStatus: update.nowPlaying
+                        ? update.nowPlaying.playStatus
+                        : s.playStatus,
+                      source: update.nowPlaying
+                        ? update.nowPlaying.source
+                        : s.source,
+                      track: update.nowPlaying
+                        ? update.nowPlaying.track
+                        : s.track,
+                      artist: update.nowPlaying
+                        ? update.nowPlaying.artist
+                        : s.artist,
+                      album: update.nowPlaying
+                        ? update.nowPlaying.album
+                        : s.album,
+                      artUrl: update.nowPlaying
+                        ? update.nowPlaying.artUrl
+                        : s.artUrl,
+                    };
+                  }
+                  return s;
+                }),
+              );
+            } else {
+              // Notification signal with no payload, trigger REST API refresh
+              const latestSpeaker = speakersRef.current.find(
+                (s) => s.deviceID === update.deviceID,
+              );
+              if (latestSpeaker) {
+                void refreshSpeakerStatus(latestSpeaker);
+              }
+            }
+          },
+          onDisconnect: () => {
+            console.log(
+              `[useBoseScanner] WebSocket disconnected for ${speaker.deviceID}`,
+            );
+          },
+        });
+
+        wsClientsRef.current.set(speaker.deviceID, client);
+        client.connect();
+      }
+    });
+  }, [speakers, refreshSpeakerStatus]);
 
   const startScan = useCallback(() => {
     stopScan();
@@ -272,12 +361,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
     isMounted.current = true;
     startScan();
 
-    // Poll discovered speakers status every 4 seconds
+    // Poll discovered speakers status every 15 seconds as a fallback
     pollIntervalRef.current = setInterval(() => {
       speakersRef.current.forEach((speaker) => {
         void refreshSpeakerStatus(speaker);
       });
-    }, 4000);
+    }, 15000);
 
     return () => {
       isMounted.current = false;
@@ -285,6 +374,11 @@ export function useBoseScanner(scanDurationMs = 5000) {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
+      // Close all WebSocket clients on unmount
+      wsClientsRef.current.forEach((client) => {
+        client.close();
+      });
+      wsClientsRef.current.clear();
     };
   }, [startScan, stopScan, refreshSpeakerStatus]);
 
