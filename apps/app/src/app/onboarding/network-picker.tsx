@@ -16,7 +16,9 @@ import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 export default function NetworkPickerScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
-  const [networks, setNetworks] = useState<string[]>([]);
+  const [networks, setNetworks] = useState<
+    Array<{ ssid: string; bssid: string; level: number }>
+  >([]);
   const [selectedSSID, setSelectedSSID] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
@@ -40,9 +42,9 @@ export default function NetworkPickerScreen() {
       try {
         const list = await WifiManager.reScanAndLoadWifiList();
         const filtered = list
-          .map((n) => n.SSID)
-          .filter((ssid): ssid is string => !!ssid && !isSpeakerHotspot(ssid))
-          .sort();
+          .filter((n): n is typeof n => !!n.SSID && !isSpeakerHotspot(n.SSID))
+          .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
+          .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
         setNetworks(filtered);
       } catch {
         // show empty list, manual entry still possible
@@ -76,26 +78,52 @@ export default function NetworkPickerScreen() {
       ) : !manualEntry && networks.length > 0 ? (
         <FlatList
           data={networks}
-          keyExtractor={(item) => item}
+          keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
           style={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              style={[
-                styles.networkItem,
-                selectedSSID === item && styles.networkItemSelected,
-              ]}
-              onPress={() => setSelectedSSID(item)}
-            >
-              <Text
+          renderItem={({ item }) => {
+            const isSelected = selectedSSID === item.ssid;
+            const dbm = item.level;
+            const bars =
+              dbm >= -50
+                ? 4
+                : dbm >= -60
+                  ? 3
+                  : dbm >= -70
+                    ? 2
+                    : dbm >= -80
+                      ? 1
+                      : 0;
+            return (
+              <Pressable
                 style={[
-                  styles.networkText,
-                  selectedSSID === item && styles.networkTextSelected,
+                  styles.networkItem,
+                  isSelected && styles.networkItemSelected,
                 ]}
+                onPress={() => setSelectedSSID(item.ssid)}
               >
-                {item}
-              </Text>
-            </Pressable>
-          )}
+                <View style={styles.networkRow}>
+                  <Text
+                    style={[
+                      styles.networkText,
+                      isSelected && styles.networkTextSelected,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {item.ssid}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.signalText,
+                      isSelected && styles.networkTextSelected,
+                    ]}
+                  >
+                    {"●".repeat(bars)}
+                    {"○".repeat(Math.max(0, 4 - bars))}
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }}
         />
       ) : null}
 
@@ -178,9 +206,20 @@ const styles = StyleSheet.create({
   networkText: {
     fontSize: 16,
     color: "#333",
+    flex: 1,
   },
   networkTextSelected: {
     color: "#fff",
+  },
+  networkRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  signalText: {
+    fontSize: 11,
+    color: "#999",
+    marginLeft: 8,
   },
   input: {
     borderWidth: 1,
