@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useRef } from "react";
 import { Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 import * as Location from "expo-location";
@@ -11,8 +11,17 @@ import {
 
 export function useWifiProvisioning() {
   const { state, dispatch } = useProvisioning();
+  const scanningRef = useRef(false);
+  const connectingRef = useRef(false);
+  const sendingRef = useRef(false);
+  const reconnectingRef = useRef(false);
 
   const scanForHotspot = useCallback(async () => {
+    if (scanningRef.current) {
+      console.log("[WiFi Scan] Already scanning, skipping");
+      return;
+    }
+    scanningRef.current = true;
     try {
       console.log("[WiFi Scan] Starting active scan...");
       const networks = await WifiManager.reScanAndLoadWifiList();
@@ -21,12 +30,14 @@ export function useWifiProvisioning() {
       );
       networks.forEach((n) => {
         console.log(
-          `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level}`,
+          `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level} caps: ${n.capabilities}`,
         );
       });
       const speaker = networks.find((n) => isSpeakerHotspot(n.SSID));
       if (speaker) {
-        console.log(`[WiFi Scan] Speaker found: "${speaker.SSID}"`);
+        console.log(
+          `[WiFi Scan] Speaker found: "${speaker.SSID}" BSSID: ${speaker.BSSID} capabilities: "${speaker.capabilities}" level: ${speaker.level}`,
+        );
         dispatch({ type: "HOTSPOT_FOUND", ssid: speaker.SSID });
       } else {
         console.log(
@@ -37,53 +48,70 @@ export function useWifiProvisioning() {
     } catch (err) {
       console.log("[WiFi Scan] Error:", err);
       dispatch({ type: "HOTSPOT_TIMEOUT" });
+    } finally {
+      scanningRef.current = false;
     }
   }, [dispatch]);
 
-  const connectToHotspot = useCallback(async () => {
-    const s = state as { ssid: string };
-    try {
-      console.log(
-        `[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`,
-      );
-      console.log(
-        `[WiFi Connect] Connecting to hotspot: "${s.ssid}" with 60s timeout`,
-      );
-      await WifiManager.connectToProtectedWifiSSID({
-        ssid: s.ssid,
-        password: "",
-        isWEP: false,
-        isHidden: false,
-        timeout: 60,
-      });
-      console.log("[WiFi Connect] Connected, probing speaker IP...");
-      const ip = await findSpeakerIP();
-      if (ip) {
-        console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
-        dispatch({
-          type: "HOTSPOT_CONNECTED",
-          ssid: s.ssid,
-          speakerIP: ip,
-        });
-      } else {
+  const connectToHotspot = useCallback(
+    async (ssid: string) => {
+      if (connectingRef.current) {
         console.log(
-          "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",
+          "[WiFi Connect] Already connecting, skipping duplicate call",
+        );
+        return;
+      }
+      connectingRef.current = true;
+      try {
+        console.log(
+          `[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`,
+        );
+        console.log(
+          `[WiFi Connect] Connecting to: "${ssid}" with 180s timeout`,
+        );
+        await WifiManager.connectToProtectedWifiSSID({
+          ssid,
+          password: "",
+          isWEP: false,
+          isHidden: false,
+          timeout: 180,
+        });
+        console.log("[WiFi Connect] Connected, probing speaker IP...");
+        const ip = await findSpeakerIP();
+        if (ip) {
+          console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
+          dispatch({ type: "HOTSPOT_CONNECTED", ssid, speakerIP: ip });
+        } else {
+          console.log(
+            "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",
+          );
+          dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
+        }
+      } catch (err: unknown) {
+        const e = err as { code?: string; message?: string };
+        if (e.code === "timeoutOccurred") {
+          console.log(
+            "[WiFi Connect] TIMEOUT: Connection did not complete within 180s",
+          );
+        } else {
+          console.log("[WiFi Connect] ERROR (not timeout):", e.code);
+          console.log("[WiFi Connect] Error message:", e.message);
+        }
+        console.log(
+          "[WiFi Connect] Full error:",
+          JSON.stringify(err, Object.getOwnPropertyNames(err)),
         );
         dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
+      } finally {
+        connectingRef.current = false;
       }
-    } catch (err: unknown) {
-      const e = err as { code?: string; message?: string };
-      console.log("[WiFi Connect] Error code:", e.code);
-      console.log("[WiFi Connect] Error message:", e.message);
-      console.log(
-        "[WiFi Connect] Full error:",
-        JSON.stringify(err, Object.getOwnPropertyNames(err)),
-      );
-      dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
-    }
-  }, [dispatch, state]);
+    },
+    [dispatch],
+  );
 
   const sendCreds = useCallback(async () => {
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     const s = state as {
       ssid: string;
       speakerIP: string;
@@ -95,20 +123,25 @@ export function useWifiProvisioning() {
       dispatch({ type: "CREDENTIALS_SENT" });
     } catch {
       dispatch({ type: "CREDENTIALS_SEND_FAILED" });
+    } finally {
+      sendingRef.current = false;
     }
   }, [dispatch, state]);
 
   const reconnectPhone = useCallback(async () => {
+    if (reconnectingRef.current) return;
+    reconnectingRef.current = true;
     try {
       if (Platform.OS === "android") {
-        await WifiManager.disconnectFromSSID("Bose SoundTouch");
+        await WifiManager.disconnectFromSSID("Bose ST");
       } else {
-        await WifiManager.disconnectFromSSID("Bose SoundTouch");
+        await WifiManager.disconnectFromSSID("Bose ST");
       }
     } catch {
       // best-effort, OS will auto-reconnect
     }
     dispatch({ type: "NETWORK_RECONNECTED" });
+    reconnectingRef.current = false;
   }, [dispatch]);
 
   const requestPermissions = useCallback(async () => {
@@ -138,7 +171,8 @@ export function useWifiProvisioning() {
 
   useEffect(() => {
     if (state.step === "CONNECTING_TO_HOTSPOT") {
-      void connectToHotspot();
+      const s = state as { ssid: string };
+      void connectToHotspot(s.ssid);
     }
   }, [state.step, connectToHotspot]);
 
