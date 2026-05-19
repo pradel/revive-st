@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useCallback, useState } from "react";
 import {
   View,
   Text,
@@ -8,8 +8,9 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import WifiManager from "react-native-wifi-reborn";
 import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
+import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
 
 export default function ConnectingScreen() {
@@ -36,7 +37,10 @@ export default function ConnectingScreen() {
         s.bssid,
       );
       await connectToOpenNetwork(s.ssid, s.bssid);
-      console.log("[Manual Retry] Specifier succeeded, probing speaker IP...");
+      await WifiManager.forceWifiUsageWithOptions(true, { noInternet: true });
+      console.log(
+        "[Manual Retry] Specifier succeeded, WiFi locked, probing...",
+      );
     } catch {
       console.log(
         "[Manual Retry] Specifier also failed, trying IP probe anyway...",

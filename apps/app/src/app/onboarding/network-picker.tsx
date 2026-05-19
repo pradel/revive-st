@@ -7,11 +7,9 @@ import {
   Pressable,
   FlatList,
   ActivityIndicator,
-  Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
 import WifiManager from "react-native-wifi-reborn";
-import { connectToOpenNetwork } from "expo-bose-wifi";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 
@@ -61,24 +59,15 @@ export default function NetworkPickerScreen() {
     }
   }, [s.homeSSID]);
 
-  const handleSubmit = useCallback(async () => {
+  const handleSubmit = useCallback(() => {
     if (!selectedSSID || !password) return;
-
-    const s = state as { ssid?: string; bssid?: string };
-    if (Platform.OS === "android" && s.ssid && s.bssid) {
-      try {
-        await connectToOpenNetwork(s.ssid, s.bssid);
-      } catch {
-        // proceed anyway, the old binding might still be active
-      }
-    }
 
     dispatch({
       type: "NETWORK_SELECTED",
       homeSSID: selectedSSID,
       homePassword: password,
     });
-  }, [selectedSSID, password, state, dispatch]);
+  }, [selectedSSID, password, dispatch]);
 
   return (
     <View style={styles.container}>

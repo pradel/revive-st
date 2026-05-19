@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 import * as Location from "expo-location";
-import { connectToOpenNetwork } from "expo-bose-wifi";
+import {
+  connectToOpenNetwork,
+  disconnect as disconnectBose,
+} from "expo-bose-wifi";
 import { useProvisioning } from "../ProvisioningContext";
 import {
   findSpeakerIP,
@@ -77,6 +80,10 @@ export function useWifiProvisioning() {
           console.log("[WiFi Connect] Using native BoseWifi module");
           const result = await connectToOpenNetwork(ssid, bssid);
           console.log(`[WiFi Connect] Native result: ${result.message}`);
+          console.log("[WiFi Connect] Locking WiFi usage (no internet)...");
+          await WifiManager.forceWifiUsageWithOptions(true, {
+            noInternet: true,
+          });
           dispatch({
             type: "HOTSPOT_CONNECTED",
             ssid,
@@ -145,7 +152,10 @@ export function useWifiProvisioning() {
     reconnectingRef.current = true;
     try {
       if (Platform.OS === "android") {
-        await WifiManager.disconnectFromSSID("Bose ST");
+        await WifiManager.forceWifiUsageWithOptions(false, {
+          noInternet: false,
+        });
+        await disconnectBose();
       } else {
         await WifiManager.disconnectFromSSID("Bose ST");
       }
