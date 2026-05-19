@@ -44,14 +44,29 @@ export async function probeSpeakerIP(
   ip: string,
   timeout = PROBE_TIMEOUT_MS,
 ): Promise<boolean> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
   try {
     const response = await fetch(`http://${ip}:${SPEAKER_PORT}/info`, {
-      signal: AbortSignal.timeout(timeout),
+      signal: controller.signal,
     });
-    const ok = response.ok;
-    console.log(`[IP Probe] ${ip} → ${ok ? "OK" : `HTTP ${response.status}`}`);
-    return ok;
+    clearTimeout(id);
+    if (!response.ok) {
+      console.log(`[IP Probe] ${ip} → failed (HTTP ${response.status})`);
+      return false;
+    }
+    const text = await response.text();
+    const isBose = text.includes("<info") && text.includes("deviceID");
+    if (isBose) {
+      const nameMatch = text.match(/<name>(.*?)<\/name>/);
+      const name = nameMatch ? nameMatch[1] : "Bose Speaker";
+      console.log(`[IP Probe] ${ip} → OK (Verified Bose Device: ${name})`);
+      return true;
+    }
+    console.log(`[IP Probe] ${ip} → failed (not a Bose device)`);
+    return false;
   } catch (err) {
+    clearTimeout(id);
     console.log(`[IP Probe] ${ip} → failed (${(err as Error).message})`);
     return false;
   }
@@ -80,16 +95,27 @@ export async function sendCredentials(
   timeout = CREDENTIALS_TIMEOUT_MS,
 ): Promise<void> {
   const payload = buildCredentialsPayload(homeSSID, homePassword);
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
 
-  const response = await fetch(`http://${speakerIp}:${SPEAKER_PORT}/network`, {
-    method: "POST",
-    headers: { "Content-Type": "application/xml" },
-    body: payload,
-    signal: AbortSignal.timeout(timeout),
-  });
+  try {
+    const response = await fetch(
+      `http://${speakerIp}:${SPEAKER_PORT}/network`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/xml" },
+        body: payload,
+        signal: controller.signal,
+      },
+    );
+    clearTimeout(id);
 
-  if (!response.ok) {
-    throw new Error(`Speaker returned HTTP ${response.status}`);
+    if (!response.ok) {
+      throw new Error(`Speaker returned HTTP ${response.status}`);
+    }
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
   }
 }
 

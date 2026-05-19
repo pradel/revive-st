@@ -8,7 +8,6 @@ import {
   Platform,
 } from "react-native";
 import { useRouter } from "expo-router";
-import WifiManager from "react-native-wifi-reborn";
 import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
@@ -37,9 +36,8 @@ export default function ConnectingScreen() {
         s.bssid,
       );
       await connectToOpenNetwork(s.ssid, s.bssid);
-      await WifiManager.forceWifiUsageWithOptions(true, { noInternet: true });
       console.log(
-        "[Manual Retry] Specifier succeeded, WiFi locked, probing...",
+        "[Manual Retry] Specifier succeeded, traffic bound to Bose AP, probing...",
       );
     } catch {
       console.log(

@@ -226,9 +226,12 @@ export function useWifiProvisioning() {
 
     const intervalId = setInterval(async () => {
       try {
+        const ssid = await WifiManager.getCurrentWifiSSID();
         const alive = await probeSpeakerIP(speakerIp, 2000);
         console.log(
-          `[WiFi Keep-Alive] Heartbeat probe: ${alive ? "SUCCESS" : "FAILED"}`,
+          `[WiFi Keep-Alive] Current SSID: ${ssid || "unknown"}, Heartbeat probe: ${
+            alive ? "SUCCESS" : "FAILED"
+          }`,
         );
       } catch (err) {
         console.log("[WiFi Keep-Alive] Heartbeat probe threw error:", err);
