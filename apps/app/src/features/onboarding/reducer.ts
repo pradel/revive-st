@@ -53,7 +53,10 @@ export function provisioningReducer(
       return state;
 
     case "NETWORK_SELECTED":
-      if (state.step === "CONNECTED_TO_HOTSPOT" || state.step === "SELECTING_HOME_NETWORK") {
+      if (
+        state.step === "CONNECTED_TO_HOTSPOT" ||
+        state.step === "SELECTING_HOME_NETWORK"
+      ) {
         return {
           step: "SENDING_CREDENTIALS",
           ssid: state.ssid,
@@ -107,7 +110,10 @@ export function provisioningReducer(
       return state;
 
     case "ENTER_MANUAL_IP": {
-      if (state.step === "SCANNING_FOR_HOTSPOT" || state.step === "DISCOVERY_TIMEOUT") {
+      if (
+        state.step === "SCANNING_FOR_HOTSPOT" ||
+        state.step === "DISCOVERY_TIMEOUT"
+      ) {
         return { step: "MANUAL_IP_ENTRY" };
       }
       return state;

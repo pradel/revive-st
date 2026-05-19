@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 
@@ -20,8 +26,9 @@ export default function PermissionsScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Location Access</Text>
       <Text style={styles.description}>
-        To find your Bose SoundTouch speaker, this app needs access to your location. This is used
-        to scan for nearby WiFi networks and identify your speaker.
+        To find your Bose SoundTouch speaker, this app needs access to your
+        location. This is used to scan for nearby WiFi networks and identify
+        your speaker.
       </Text>
       {isLoading && <ActivityIndicator size="large" style={styles.spinner} />}
       {isDenied && (
@@ -29,7 +36,10 @@ export default function PermissionsScreen() {
           <Text style={styles.errorText}>
             Location access was denied. Enable it in Settings to continue.
           </Text>
-          <Pressable style={styles.button} onPress={() => dispatch({ type: "RETRY" })}>
+          <Pressable
+            style={styles.button}
+            onPress={() => dispatch({ type: "RETRY" })}
+          >
             <Text style={styles.buttonText}>Try Again</Text>
           </Pressable>
         </View>

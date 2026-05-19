@@ -9,9 +9,15 @@ interface ProvisioningContextValue {
   start: () => void;
 }
 
-const ProvisioningContext = createContext<ProvisioningContextValue | null>(null);
+const ProvisioningContext = createContext<ProvisioningContextValue | null>(
+  null,
+);
 
-export function ProvisioningProvider({ children }: { children: React.ReactNode }) {
+export function ProvisioningProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [state, dispatch] = useReducer(provisioningReducer, initialState);
   const start = useCallback(() => dispatch({ type: "START" }), []);
 
@@ -25,7 +31,9 @@ export function ProvisioningProvider({ children }: { children: React.ReactNode }
 export function useProvisioning() {
   const ctx = useContext(ProvisioningContext);
   if (!ctx) {
-    throw new Error("useProvisioning must be used within a ProvisioningProvider");
+    throw new Error(
+      "useProvisioning must be used within a ProvisioningProvider",
+    );
   }
   return ctx;
 }

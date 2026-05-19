@@ -3,9 +3,13 @@ import { provisioningReducer } from "./reducer";
 import type { ProvisioningState, ProvisioningAction } from "./types";
 
 const IDLE: ProvisioningState = { step: "IDLE" };
-const CHECKING_PERMISSIONS: ProvisioningState = { step: "CHECKING_PERMISSIONS" };
+const CHECKING_PERMISSIONS: ProvisioningState = {
+  step: "CHECKING_PERMISSIONS",
+};
 const PERMISSIONS_DENIED: ProvisioningState = { step: "PERMISSIONS_DENIED" };
-const SCANNING_FOR_HOTSPOT: ProvisioningState = { step: "SCANNING_FOR_HOTSPOT" };
+const SCANNING_FOR_HOTSPOT: ProvisioningState = {
+  step: "SCANNING_FOR_HOTSPOT",
+};
 const HOTSPOT_NOT_FOUND: ProvisioningState = { step: "HOTSPOT_NOT_FOUND" };
 const CONNECTION_FAILED: ProvisioningState = { step: "CONNECTION_FAILED" };
 const DISCOVERY_TIMEOUT: ProvisioningState = { step: "DISCOVERY_TIMEOUT" };
@@ -18,7 +22,9 @@ describe("provisioningReducer", () => {
     });
 
     it("ignores START from any other state", () => {
-      const result = provisioningReducer(CHECKING_PERMISSIONS, { type: "START" });
+      const result = provisioningReducer(CHECKING_PERMISSIONS, {
+        type: "START",
+      });
       expect(result).toBe(CHECKING_PERMISSIONS);
     });
   });
@@ -309,7 +315,10 @@ describe("provisioningReducer", () => {
     });
 
     it("returns current state when action does not match current step", () => {
-      const result = provisioningReducer(IDLE, { type: "HOTSPOT_FOUND", ssid: "x" });
+      const result = provisioningReducer(IDLE, {
+        type: "HOTSPOT_FOUND",
+        ssid: "x",
+      });
       expect(result).toBe(IDLE);
     });
   });

@@ -1,5 +1,12 @@
 import { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TextInput, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { probeSpeakerIP } from "@/features/onboarding/utils/networkHelpers";

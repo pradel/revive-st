@@ -3,7 +3,11 @@ import { Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 import * as Location from "expo-location";
 import { useProvisioning } from "../ProvisioningContext";
-import { findSpeakerIP, isSpeakerHotspot, sendCredentials } from "../utils/networkHelpers";
+import {
+  findSpeakerIP,
+  isSpeakerHotspot,
+  sendCredentials,
+} from "../utils/networkHelpers";
 
 export function useWifiProvisioning() {
   const { state, dispatch } = useProvisioning();
@@ -12,16 +16,22 @@ export function useWifiProvisioning() {
     try {
       console.log("[WiFi Scan] Starting active scan...");
       const networks = await WifiManager.reScanAndLoadWifiList();
-      console.log(`[WiFi Scan] Scan complete. Found ${networks.length} networks:`);
+      console.log(
+        `[WiFi Scan] Scan complete. Found ${networks.length} networks:`,
+      );
       networks.forEach((n) => {
-        console.log(`[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level}`);
+        console.log(
+          `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level}`,
+        );
       });
       const speaker = networks.find((n) => isSpeakerHotspot(n.SSID));
       if (speaker) {
         console.log(`[WiFi Scan] Speaker found: "${speaker.SSID}"`);
         dispatch({ type: "HOTSPOT_FOUND", ssid: speaker.SSID });
       } else {
-        console.log("[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern");
+        console.log(
+          "[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern",
+        );
         dispatch({ type: "HOTSPOT_TIMEOUT" });
       }
     } catch (err) {
@@ -33,8 +43,12 @@ export function useWifiProvisioning() {
   const connectToHotspot = useCallback(async () => {
     const s = state as { ssid: string };
     try {
-      console.log(`[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`);
-      console.log(`[WiFi Connect] Connecting to hotspot: "${s.ssid}" with 60s timeout`);
+      console.log(
+        `[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`,
+      );
+      console.log(
+        `[WiFi Connect] Connecting to hotspot: "${s.ssid}" with 60s timeout`,
+      );
       await WifiManager.connectToProtectedWifiSSID({
         ssid: s.ssid,
         password: "",
@@ -101,7 +115,9 @@ export function useWifiProvisioning() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       dispatch(
-        status === "granted" ? { type: "PERMISSIONS_GRANTED" } : { type: "PERMISSIONS_DENIED" },
+        status === "granted"
+          ? { type: "PERMISSIONS_GRANTED" }
+          : { type: "PERMISSIONS_DENIED" },
       );
     } catch {
       dispatch({ type: "PERMISSIONS_DENIED" });

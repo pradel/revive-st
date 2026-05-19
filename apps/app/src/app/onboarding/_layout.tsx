@@ -1,6 +1,9 @@
 import { useEffect } from "react";
 import { Stack } from "expo-router";
-import { ProvisioningProvider, useProvisioning } from "@/features/onboarding/ProvisioningContext";
+import {
+  ProvisioningProvider,
+  useProvisioning,
+} from "@/features/onboarding/ProvisioningContext";
 
 function OnboardingNavigator() {
   const { start } = useProvisioning();

@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 
@@ -27,10 +33,14 @@ export default function ConnectingScreen() {
       {isFailed && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>
-            Could not connect to the speaker. Make sure you are near it and try again. If you are on
-            iOS, your home and speaker networks may conflict — try on a different WiFi network.
+            Could not connect to the speaker. Make sure you are near it and try
+            again. If you are on iOS, your home and speaker networks may
+            conflict — try on a different WiFi network.
           </Text>
-          <Pressable style={styles.button} onPress={() => dispatch({ type: "RETRY" })}>
+          <Pressable
+            style={styles.button}
+            onPress={() => dispatch({ type: "RETRY" })}
+          >
             <Text style={styles.buttonText}>Try Again</Text>
           </Pressable>
         </View>

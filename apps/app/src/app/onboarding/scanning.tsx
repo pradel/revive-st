@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 
@@ -30,12 +36,16 @@ export default function ScanningScreen() {
       {isNotFound && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>
-            No Bose speaker found nearby. Make sure your speaker is in setup mode.
+            No Bose speaker found nearby. Make sure your speaker is in setup
+            mode.
           </Text>
           <Text style={styles.hintText}>
             Hold the power button for 5 seconds until the light pulses white.
           </Text>
-          <Pressable style={styles.button} onPress={() => dispatch({ type: "RETRY" })}>
+          <Pressable
+            style={styles.button}
+            onPress={() => dispatch({ type: "RETRY" })}
+          >
             <Text style={styles.buttonText}>Scan Again</Text>
           </Pressable>
           <Pressable

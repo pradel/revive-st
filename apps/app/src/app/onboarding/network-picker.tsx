@@ -80,11 +80,17 @@ export default function NetworkPickerScreen() {
           style={styles.list}
           renderItem={({ item }) => (
             <Pressable
-              style={[styles.networkItem, selectedSSID === item && styles.networkItemSelected]}
+              style={[
+                styles.networkItem,
+                selectedSSID === item && styles.networkItemSelected,
+              ]}
               onPress={() => setSelectedSSID(item)}
             >
               <Text
-                style={[styles.networkText, selectedSSID === item && styles.networkTextSelected]}
+                style={[
+                  styles.networkText,
+                  selectedSSID === item && styles.networkTextSelected,
+                ]}
               >
                 {item}
               </Text>
@@ -121,7 +127,10 @@ export default function NetworkPickerScreen() {
       />
 
       <Pressable
-        style={[styles.button, (!selectedSSID || !password) && styles.buttonDisabled]}
+        style={[
+          styles.button,
+          (!selectedSSID || !password) && styles.buttonDisabled,
+        ]}
         onPress={handleSubmit}
         disabled={!selectedSSID || !password}
       >
@@ -130,7 +139,8 @@ export default function NetworkPickerScreen() {
 
       {!loading && (
         <Text style={styles.note}>
-          Your password is only sent to your speaker locally and is never stored.
+          Your password is only sent to your speaker locally and is never
+          stored.
         </Text>
       )}
     </View>

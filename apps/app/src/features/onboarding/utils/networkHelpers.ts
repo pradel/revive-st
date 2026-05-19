@@ -1,6 +1,10 @@
 import { Platform } from "react-native";
 
-export const SPEAKER_HOTSPOT_CANDIDATES = ["192.168.1.1", "172.20.10.1", "192.168.0.1"];
+export const SPEAKER_HOTSPOT_CANDIDATES = [
+  "192.168.1.1",
+  "172.20.10.1",
+  "192.168.0.1",
+];
 
 export const SPEAKER_PORT = 8090;
 export const PROBE_TIMEOUT_MS = 2000;
@@ -27,11 +31,17 @@ export function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
-export function buildCredentialsPayload(ssid: string, password: string): string {
+export function buildCredentialsPayload(
+  ssid: string,
+  password: string,
+): string {
   return `<network><ssid>${escapeXml(ssid)}</ssid><password>${escapeXml(password)}</password></network>`;
 }
 
-export async function probeSpeakerIP(ip: string, timeout = PROBE_TIMEOUT_MS): Promise<boolean> {
+export async function probeSpeakerIP(
+  ip: string,
+  timeout = PROBE_TIMEOUT_MS,
+): Promise<boolean> {
   try {
     const response = await fetch(`http://${ip}:${SPEAKER_PORT}/info`, {
       signal: AbortSignal.timeout(timeout),
@@ -45,7 +55,9 @@ export async function probeSpeakerIP(ip: string, timeout = PROBE_TIMEOUT_MS): Pr
   }
 }
 
-export async function findSpeakerIP(timeout = PROBE_TIMEOUT_MS): Promise<string | null> {
+export async function findSpeakerIP(
+  timeout = PROBE_TIMEOUT_MS,
+): Promise<string | null> {
   for (const ip of SPEAKER_HOTSPOT_CANDIDATES) {
     const alive = await probeSpeakerIP(ip, timeout);
     if (alive) return ip;

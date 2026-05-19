@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { useSpeakerDiscovery } from "@/features/onboarding/hooks/useSpeakerDiscovery";
@@ -80,7 +86,10 @@ export default function ProgressScreen() {
       {isError && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{errorMessage}</Text>
-          <Pressable style={styles.button} onPress={() => dispatch({ type: "RETRY" })}>
+          <Pressable
+            style={styles.button}
+            onPress={() => dispatch({ type: "RETRY" })}
+          >
             <Text style={styles.buttonText}>Try Again</Text>
           </Pressable>
           {step === "DISCOVERY_TIMEOUT" && (
