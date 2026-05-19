@@ -4,7 +4,7 @@ export type ProvisioningState =
   | { step: "PERMISSIONS_DENIED" }
   | { step: "SCANNING_FOR_HOTSPOT" }
   | { step: "HOTSPOT_NOT_FOUND" }
-  | { step: "CONNECTING_TO_HOTSPOT"; ssid: string }
+  | { step: "CONNECTING_TO_HOTSPOT"; ssid: string; bssid: string }
   | { step: "CONNECTION_FAILED" }
   | {
       step: "CONNECTED_TO_HOTSPOT";
@@ -45,7 +45,7 @@ export type ProvisioningAction =
   | { type: "START" }
   | { type: "PERMISSIONS_GRANTED" }
   | { type: "PERMISSIONS_DENIED" }
-  | { type: "HOTSPOT_FOUND"; ssid: string }
+  | { type: "HOTSPOT_FOUND"; ssid: string; bssid: string }
   | { type: "HOTSPOT_TIMEOUT" }
   | { type: "HOTSPOT_CONNECTED"; ssid: string; speakerIP: string }
   | { type: "HOTSPOT_CONNECTION_FAILED" }

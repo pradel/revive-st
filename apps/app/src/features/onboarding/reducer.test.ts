@@ -55,14 +55,16 @@ describe("provisioningReducer", () => {
   });
 
   describe("HOTSPOT_FOUND", () => {
-    it("transitions to CONNECTING_TO_HOTSPOT with SSID", () => {
+    it("transitions to CONNECTING_TO_HOTSPOT with SSID and BSSID", () => {
       const result = provisioningReducer(SCANNING_FOR_HOTSPOT, {
         type: "HOTSPOT_FOUND",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
       expect(result).toEqual({
         step: "CONNECTING_TO_HOTSPOT",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
     });
   });
@@ -81,6 +83,7 @@ describe("provisioningReducer", () => {
       const connectingState: ProvisioningState = {
         step: "CONNECTING_TO_HOTSPOT",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
       };
       const result = provisioningReducer(connectingState, {
         type: "HOTSPOT_CONNECTED",
@@ -100,6 +103,7 @@ describe("provisioningReducer", () => {
       const connectingState: ProvisioningState = {
         step: "CONNECTING_TO_HOTSPOT",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
       };
       const result = provisioningReducer(connectingState, {
         type: "HOTSPOT_CONNECTION_FAILED",
@@ -318,6 +322,7 @@ describe("provisioningReducer", () => {
       const result = provisioningReducer(IDLE, {
         type: "HOTSPOT_FOUND",
         ssid: "x",
+        bssid: "00:00:00:00:00:00",
       });
       expect(result).toBe(IDLE);
     });
@@ -334,10 +339,12 @@ describe("provisioningReducer", () => {
       state = provisioningReducer(state, {
         type: "HOTSPOT_FOUND",
         ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
       expect(state).toEqual({
         step: "CONNECTING_TO_HOTSPOT",
         ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
 
       state = provisioningReducer(state, {
@@ -401,6 +408,7 @@ describe("provisioningReducer", () => {
       state = provisioningReducer(state, {
         type: "HOTSPOT_FOUND",
         ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
       state = provisioningReducer(state, {
         type: "HOTSPOT_CONNECTED",

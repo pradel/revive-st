@@ -1,7 +1,8 @@
-import { useEffect, useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 import * as Location from "expo-location";
+import { connectToOpenNetwork } from "expo-bose-wifi";
 import { useProvisioning } from "../ProvisioningContext";
 import {
   findSpeakerIP,
@@ -38,7 +39,11 @@ export function useWifiProvisioning() {
         console.log(
           `[WiFi Scan] Speaker found: "${speaker.SSID}" BSSID: ${speaker.BSSID} capabilities: "${speaker.capabilities}" level: ${speaker.level}`,
         );
-        dispatch({ type: "HOTSPOT_FOUND", ssid: speaker.SSID });
+        dispatch({
+          type: "HOTSPOT_FOUND",
+          ssid: speaker.SSID,
+          bssid: speaker.BSSID,
+        });
       } else {
         console.log(
           "[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern",
@@ -54,7 +59,7 @@ export function useWifiProvisioning() {
   }, [dispatch]);
 
   const connectToHotspot = useCallback(
-    async (ssid: string) => {
+    async (ssid: string, bssid: string) => {
       if (connectingRef.current) {
         console.log(
           "[WiFi Connect] Already connecting, skipping duplicate call",
@@ -66,16 +71,17 @@ export function useWifiProvisioning() {
         console.log(
           `[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`,
         );
-        console.log(
-          `[WiFi Connect] Connecting to: "${ssid}" with 180s timeout`,
-        );
-        await WifiManager.connectToProtectedWifiSSID({
-          ssid,
-          password: "",
-          isWEP: false,
-          isHidden: false,
-          timeout: 180,
-        });
+        console.log(`[WiFi Connect] Connecting to: "${ssid}" (${bssid})`);
+
+        if (Platform.OS === "android") {
+          console.log("[WiFi Connect] Using native BoseWifi module");
+          const result = await connectToOpenNetwork(ssid, bssid);
+          console.log(`[WiFi Connect] Native result: ${result}`);
+        } else {
+          console.log("[WiFi Connect] Using react-native-wifi-reborn (iOS)");
+          await WifiManager.connectToProtectedSSIDPrefix(ssid, "", false);
+        }
+
         console.log("[WiFi Connect] Connected, probing speaker IP...");
         const ip = await findSpeakerIP();
         if (ip) {
@@ -171,8 +177,8 @@ export function useWifiProvisioning() {
 
   useEffect(() => {
     if (state.step === "CONNECTING_TO_HOTSPOT") {
-      const s = state as { ssid: string };
-      void connectToHotspot(s.ssid);
+      const s = state as { ssid: string; bssid: string };
+      void connectToHotspot(s.ssid, s.bssid);
     }
   }, [state.step, connectToHotspot]);
 

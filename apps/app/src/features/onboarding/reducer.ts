@@ -26,7 +26,11 @@ export function provisioningReducer(
 
     case "HOTSPOT_FOUND":
       if (state.step === "SCANNING_FOR_HOTSPOT") {
-        return { step: "CONNECTING_TO_HOTSPOT", ssid: action.ssid };
+        return {
+          step: "CONNECTING_TO_HOTSPOT",
+          ssid: action.ssid,
+          bssid: action.bssid,
+        };
       }
       return state;
 
