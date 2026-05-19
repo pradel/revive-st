@@ -33,20 +33,32 @@ export function useWifiProvisioning() {
   const connectToHotspot = useCallback(async () => {
     const s = state as { ssid: string };
     try {
+      console.log(`[WiFi Connect] Platform: ${Platform.OS} ${Platform.Version}`);
       console.log(`[WiFi Connect] Connecting to hotspot: "${s.ssid}"`);
-      await WifiManager.connectToProtectedSSID(s.ssid, null, false, false);
+      await WifiManager.connectToProtectedSSID(s.ssid, "", false, false);
+      console.log("[WiFi Connect] Connection initiated, probing speaker IP...");
       const ip = await findSpeakerIP();
       if (ip) {
+        console.log(`[WiFi Connect] Speaker reachable at ${ip}`);
         dispatch({
           type: "HOTSPOT_CONNECTED",
           ssid: s.ssid,
           speakerIP: ip,
         });
       } else {
+        console.log(
+          "[WiFi Connect] Connected to hotspot but speaker not reachable on any candidate IP",
+        );
         dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
       }
-    } catch (err) {
-      console.log("[WiFi Connect] Error:", err);
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      console.log("[WiFi Connect] Error code:", e.code);
+      console.log("[WiFi Connect] Error message:", e.message);
+      console.log(
+        "[WiFi Connect] Full error:",
+        JSON.stringify(err, Object.getOwnPropertyNames(err)),
+      );
       dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
     }
   }, [dispatch, state]);

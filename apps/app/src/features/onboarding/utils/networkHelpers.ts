@@ -36,8 +36,11 @@ export async function probeSpeakerIP(ip: string, timeout = PROBE_TIMEOUT_MS): Pr
     const response = await fetch(`http://${ip}:${SPEAKER_PORT}/info`, {
       signal: AbortSignal.timeout(timeout),
     });
-    return response.ok;
-  } catch {
+    const ok = response.ok;
+    console.log(`[IP Probe] ${ip} → ${ok ? "OK" : `HTTP ${response.status}`}`);
+    return ok;
+  } catch (err) {
+    console.log(`[IP Probe] ${ip} → failed (${(err as Error).message})`);
     return false;
   }
 }
