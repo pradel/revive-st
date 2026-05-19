@@ -100,18 +100,12 @@ class BoseWifiModule : Module() {
         currentNetwork = network
         cm.bindProcessToNetwork(network)
 
-        val linkProps = cm.getLinkProperties(network)
-        val ip = linkProps?.routes
-          ?.firstOrNull { it.isDefaultRoute }
-          ?.gateway?.hostAddress
-          ?: "unknown"
-
-        Log.d("BoseWifi", "onAvailable: bound to network, resolved IP=$ip, resolving promise")
+        Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
         pendingPromise = null
         promise.resolve(
           mapOf(
             "success" to true,
-            "ip" to ip,
+            "ip" to "192.0.2.1",
             "telnetPort" to 17000,
             "apiPort" to 8090,
             "message" to "Connected — traffic bound to Bose AP",
