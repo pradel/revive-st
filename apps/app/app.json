@@ -63,7 +63,15 @@
           "fineLocationPermission": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 29
+          }
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
