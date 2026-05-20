@@ -1,6 +1,13 @@
 import { Err, Ok, type Result } from "better-result";
+
 import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
 import type { BoseApiError } from "./errors.ts";
+import type {
+  ArtImageStatus,
+  AudioMode,
+  PlayStatus,
+  SourceStatus,
+} from "./types/common.ts";
 import type {
   AudioDspControlsResponse,
   AudioProductLevelControlsResponse,
@@ -23,12 +30,6 @@ import type {
   ZoneMember,
   ZoneResponse,
 } from "./types/index.ts";
-import type {
-  ArtImageStatus,
-  AudioMode,
-  PlayStatus,
-  SourceStatus,
-} from "./types/common.ts";
 
 type XmlNode = {
   name: string;

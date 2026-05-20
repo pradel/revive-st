@@ -1,9 +1,9 @@
-import * as Network from "expo-network";
 import {
   onlineManager,
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
+import * as Network from "expo-network";
 import { useState, type PropsWithChildren } from "react";
 
 // Online status management

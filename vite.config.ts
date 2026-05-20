@@ -6,6 +6,7 @@ export default defineConfig({
   },
   fmt: {
     printWidth: 80,
+    sortImports: true,
   },
   lint: {
     options: { typeAware: true, typeCheck: true },
