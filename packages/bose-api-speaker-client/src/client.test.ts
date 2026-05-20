@@ -1,5 +1,5 @@
 import { Result } from "better-result";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vite-plus/test";
 
 import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
 import { boseSpeakerClient } from "./index.ts";
