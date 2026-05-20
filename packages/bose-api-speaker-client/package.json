@@ -6,13 +6,14 @@
   "main": "src/index.ts",
   "types": "src/index.ts",
   "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vp test run",
+    "test:watch": "vp test"
   },
   "dependencies": {
-    "better-result": "^2.9.2"
+    "better-result": "2.9.2"
   },
   "devDependencies": {
-    "vitest": "^3.2.4"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }
