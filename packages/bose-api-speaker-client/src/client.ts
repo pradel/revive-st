@@ -216,7 +216,17 @@ export class BoseSpeakerClient {
       );
     }
 
-    const body = await response.text();
+    let body: string;
+    try {
+      body = await response.text();
+    } catch (e) {
+      return new Err(
+        new NetworkError({
+          message: e instanceof Error ? e.message : String(e),
+          cause: e,
+        }),
+      );
+    }
 
     if (!response.ok) {
       const apiErrors = tryParseApiErrors(body);
@@ -260,7 +270,7 @@ export class BoseSpeakerClient {
   }
 
   async pressKey(params: KeyPressRequest): Promise<Result<void, BoseApiError>> {
-    const xml = `<key state="${params.state}" sender="${params.sender}">${params.key}</key>`;
+    const xml = `<key state="${escapeXml(params.state)}" sender="${escapeXml(params.sender)}">${escapeXml(params.key)}</key>`;
     return this.post("/key", xml);
   }
 
@@ -441,7 +451,10 @@ export class BoseSpeakerClient {
         name: getChildText(info, "name") ?? "",
         type: getChildText(info, "type") ?? "",
         margeAccountUUID: getChildText(info, "margeAccountUUID") ?? "",
-        components: getChildren(info, "component").map((c) => ({
+        components: getChildren(
+          getChild(info, "components") ?? info,
+          "component",
+        ).map((c) => ({
           componentCategory: getChildText(c, "componentCategory") ?? "",
           softwareVersion: getChildText(c, "softwareVersion") ?? "",
           serialNumber: getChildText(c, "serialNumber") ?? "",

@@ -383,6 +383,9 @@ describe("boseSpeakerClient", () => {
       const val = unwrapOk<InfoResponse>(await client.getInfo());
       expect(val.name).toBe("Living Room");
       expect(val.type).toBe("SoundTouch 30");
+      expect(val.components).toHaveLength(1);
+      expect(val.components[0].componentCategory).toBe("SCM");
+      expect(val.components[0].softwareVersion).toBe("27.0.1");
       expect(val.networkInfo.ipAddress).toBe(IP);
     });
   });
@@ -562,6 +565,22 @@ describe("boseSpeakerClient", () => {
       const err = (result as { error: unknown }).error;
       expect(err).toBeInstanceOf(ApiError);
       expect((err as ApiError).errors[0].name).toBe("CLIENT_XML_ERROR");
+    });
+
+    it("escapes XML special characters in pressKey", async () => {
+      const fetchMock = mockFetch(200, "<status>OK</status>");
+      const result = await client.pressKey({
+        key: "PLAY" as const,
+        state: "press" as const,
+        sender: "test & <script>",
+      });
+      expect(Result.isOk(result)).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/key`,
+        expect.objectContaining({
+          body: '<key state="press" sender="test &amp; &lt;script&gt;">PLAY</key>',
+        }),
+      );
     });
 
     it("returns XmlParseError on malformed XML", async () => {
