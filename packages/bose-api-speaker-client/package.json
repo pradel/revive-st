@@ -10,7 +10,7 @@
     "test:watch": "vp test"
   },
   "dependencies": {
-    "better-result": "^2.9.2"
+    "better-result": "2.9.2"
   },
   "devDependencies": {
     "vite-plus": "catalog:",

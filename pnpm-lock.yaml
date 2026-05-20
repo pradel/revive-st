@@ -112,7 +112,7 @@ importers:
   packages/bose-api-speaker-client:
     dependencies:
       better-result:
-        specifier: ^2.9.2
+        specifier: 2.9.2
         version: 2.9.2
     devDependencies:
       vite-plus:
