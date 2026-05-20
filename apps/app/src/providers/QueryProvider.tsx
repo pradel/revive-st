@@ -1,19 +1,37 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import * as Network from "expo-network";
+import {
+  onlineManager,
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
 import { useState, type PropsWithChildren } from "react";
 
-const DEFAULT_STALE_TIME = 10_000;
+// Online status management
+// https://tanstack.com/query/latest/docs/framework/react/react-native
+onlineManager.setEventListener((setOnline) => {
+  let initialised = false;
+
+  const eventSubscription = Network.addNetworkStateListener((state) => {
+    initialised = true;
+    setOnline(!!state.isConnected);
+  });
+
+  Network.getNetworkStateAsync()
+    .then((state) => {
+      if (!initialised) {
+        setOnline(!!state.isConnected);
+      }
+    })
+    .catch(() => {
+      // getNetworkStateAsync can reject on some platforms/SDK versions
+    });
+
+  // oxlint-disable-next-line typescript/unbound-method
+  return eventSubscription.remove;
+});
 
 export function QueryProvider({ children }: PropsWithChildren) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: DEFAULT_STALE_TIME,
-          },
-        },
-      }),
-  );
+  const [queryClient] = useState(() => new QueryClient({}));
 
   return (
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
