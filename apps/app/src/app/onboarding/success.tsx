@@ -1,7 +1,8 @@
 import { useRouter } from "expo-router";
-import { View, Text, StyleSheet, Pressable } from "react-native";
-import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import * as SecureStore from "expo-secure-store";
+import { View, Text, StyleSheet, Pressable } from "react-native";
+
+import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 
 export default function SuccessScreen() {
   const { state } = useWifiProvisioning();

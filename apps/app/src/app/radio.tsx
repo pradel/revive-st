@@ -1,3 +1,5 @@
+import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import React, { useState, useEffect } from "react";
 import {
   View,
@@ -13,8 +15,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
+
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 
 interface RadioStation {

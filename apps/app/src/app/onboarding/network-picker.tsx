@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect, useCallback, useState } from "react";
 import {
   View,
@@ -8,8 +9,8 @@ import {
   FlatList,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
 import WifiManager from "react-native-wifi-reborn";
+
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 

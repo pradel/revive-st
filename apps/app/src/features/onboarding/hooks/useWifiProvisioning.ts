@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useRef } from "react";
-import { Platform } from "react-native";
-import WifiManager from "react-native-wifi-reborn";
-import * as Location from "expo-location";
 import {
   connectToOpenNetwork,
   disconnect as disconnectBose,
   isConnected,
 } from "expo-bose-wifi";
+import * as Location from "expo-location";
+import { useCallback, useEffect, useRef } from "react";
+import { Platform } from "react-native";
+import WifiManager from "react-native-wifi-reborn";
+
 import { useProvisioning } from "../ProvisioningContext";
 import {
   findSpeakerIP,

@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { ZeroconfService } from "react-native-zeroconf";
+
 import {
   fetchSpeakerInfo,
   fetchNowPlaying,

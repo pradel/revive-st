@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
   View,
@@ -6,9 +7,9 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+
 import { useSpeakerDiscovery } from "@/features/onboarding/hooks/useSpeakerDiscovery";
+import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { MDNS_DISCOVERY_TIMEOUT_MS } from "@/features/onboarding/utils/networkHelpers";
 
 export default function ProgressScreen() {

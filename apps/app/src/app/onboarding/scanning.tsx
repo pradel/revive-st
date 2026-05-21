@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { useEffect } from "react";
 import {
   View,
@@ -6,7 +7,7 @@ import {
   Pressable,
   ActivityIndicator,
 } from "react-native";
-import { useRouter } from "expo-router";
+
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 
 export default function ScanningScreen() {

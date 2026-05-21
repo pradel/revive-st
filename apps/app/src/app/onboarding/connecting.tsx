@@ -1,3 +1,5 @@
+import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
+import { useRouter } from "expo-router";
 import { useEffect, useCallback, useState } from "react";
 import {
   View,
@@ -7,8 +9,7 @@ import {
   ActivityIndicator,
   Platform,
 } from "react-native";
-import { useRouter } from "expo-router";
-import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
+
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
 

@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   View,
@@ -10,9 +11,9 @@ import {
   GestureResponderEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
-import { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 
 export default function HomeIndex() {
   const router = useRouter();
