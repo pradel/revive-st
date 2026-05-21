@@ -67,7 +67,8 @@
             "minSdkVersion": 29
           }
         }
-      ]
+      ],
+      "expo-font"
     ],
     "experiments": {
       "typedRoutes": true,
