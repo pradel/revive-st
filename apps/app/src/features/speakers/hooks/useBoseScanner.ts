@@ -334,93 +334,97 @@ export function useBoseScanner(scanDurationMs = 5000) {
     const zeroconf = new Zeroconf();
     zeroconfRef.current = zeroconf;
 
-    zeroconf.on("resolved", async (service: ZeroconfService) => {
-      if (!isMounted.current) {
-        return;
-      }
-      if (!service.host) {
-        return;
-      }
-
-      try {
-        const client = createClient({ ip: service.host });
-        const infoResult = await client.getInfo();
-        if (!infoResult.isOk()) {
-          return;
-        }
-        const info = infoResult.value;
-        if (!info.deviceID) {
-          return;
-        }
-
-        const [
-          nowPlaying,
-          volumeInfo,
-          bassCaps,
-          capabilities,
-          dspControls,
-          toneControls,
-          levelControls,
-        ] = await Promise.all([
-          client.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
-          client.getVolume().then((res) => (res.isOk() ? res.value : null)),
-          client
-            .getBassCapabilities()
-            .then((res) => (res.isOk() ? res.value : null)),
-          client
-            .getCapabilities()
-            .then((res) => (res.isOk() ? res.value : null)),
-          client
-            .getAudioDspControls()
-            .then((res) => (res.isOk() ? res.value : null)),
-          client
-            .getAudioProductToneControls()
-            .then((res) => (res.isOk() ? res.value : null)),
-          client
-            .getAudioProductLevelControls()
-            .then((res) => (res.isOk() ? res.value : null)),
-        ]);
-
+    zeroconf.on("resolved", (service: ZeroconfService) => {
+      void (async () => {
         if (!isMounted.current) {
           return;
         }
+        if (!service.host) {
+          return;
+        }
 
-        setSpeakers((prev) => {
-          const exists = prev.some((item) => item.deviceID === info.deviceID);
-          const newSpeaker: BoseSpeaker = {
-            deviceID: info.deviceID,
-            host: service.host,
-            port: service.port || 8090,
-            name: info.name || service.name || "Bose Speaker",
-            type: info.type || "SoundTouch",
-            playStatus: nowPlaying?.playStatus,
-            source: nowPlaying?.source,
-            track: nowPlaying?.track,
-            artist: nowPlaying?.artist,
-            album: nowPlaying?.album,
-            artUrl: nowPlaying?.art?.url,
-            volume: volumeInfo?.actualvolume,
-            muteEnabled: volumeInfo?.muteenabled,
-            bassCapabilities: bassCaps,
-            capabilities,
-            audioDspControls: dspControls,
-            audioProductToneControls: toneControls,
-            audioProductLevelControls: levelControls,
-          };
-
-          if (exists) {
-            return prev.map((item) =>
-              item.deviceID === info.deviceID ? newSpeaker : item,
-            );
+        try {
+          const client = createClient({ ip: service.host });
+          const infoResult = await client.getInfo();
+          if (!infoResult.isOk()) {
+            return;
           }
-          return [...prev, newSpeaker];
-        });
-      } catch (err) {
-        logger.log(
-          `[BoseScanner] Device found at ${service.host} but failed info verification:`,
-          err,
-        );
-      }
+          const info = infoResult.value;
+          if (!info.deviceID) {
+            return;
+          }
+
+          const [
+            nowPlaying,
+            volumeInfo,
+            bassCaps,
+            capabilities,
+            dspControls,
+            toneControls,
+            levelControls,
+          ] = await Promise.all([
+            client
+              .getNowPlaying()
+              .then((res) => (res.isOk() ? res.value : null)),
+            client.getVolume().then((res) => (res.isOk() ? res.value : null)),
+            client
+              .getBassCapabilities()
+              .then((res) => (res.isOk() ? res.value : null)),
+            client
+              .getCapabilities()
+              .then((res) => (res.isOk() ? res.value : null)),
+            client
+              .getAudioDspControls()
+              .then((res) => (res.isOk() ? res.value : null)),
+            client
+              .getAudioProductToneControls()
+              .then((res) => (res.isOk() ? res.value : null)),
+            client
+              .getAudioProductLevelControls()
+              .then((res) => (res.isOk() ? res.value : null)),
+          ]);
+
+          if (!isMounted.current) {
+            return;
+          }
+
+          setSpeakers((prev) => {
+            const exists = prev.some((item) => item.deviceID === info.deviceID);
+            const newSpeaker: BoseSpeaker = {
+              deviceID: info.deviceID,
+              host: service.host,
+              port: service.port || 8090,
+              name: info.name || service.name || "Bose Speaker",
+              type: info.type || "SoundTouch",
+              playStatus: nowPlaying?.playStatus,
+              source: nowPlaying?.source,
+              track: nowPlaying?.track,
+              artist: nowPlaying?.artist,
+              album: nowPlaying?.album,
+              artUrl: nowPlaying?.art?.url,
+              volume: volumeInfo?.actualvolume,
+              muteEnabled: volumeInfo?.muteenabled,
+              bassCapabilities: bassCaps,
+              capabilities,
+              audioDspControls: dspControls,
+              audioProductToneControls: toneControls,
+              audioProductLevelControls: levelControls,
+            };
+
+            if (exists) {
+              return prev.map((item) =>
+                item.deviceID === info.deviceID ? newSpeaker : item,
+              );
+            }
+            return [...prev, newSpeaker];
+          });
+        } catch (err) {
+          logger.log(
+            `[BoseScanner] Device found at ${service.host} but failed info verification:`,
+            err,
+          );
+        }
+      })();
     });
 
     zeroconf.on("error", (err: unknown) => {

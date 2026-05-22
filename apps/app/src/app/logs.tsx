@@ -71,7 +71,9 @@ export default function LogsViewer() {
       <View style={$bottomBar}>
         <TouchableOpacity
           style={$bottomButton}
-          onPress={copyLogs}
+          onPress={() => {
+            void copyLogs();
+          }}
           activeOpacity={0.7}
         >
           <Text style={$bottomButtonText}>Copy All</Text>
