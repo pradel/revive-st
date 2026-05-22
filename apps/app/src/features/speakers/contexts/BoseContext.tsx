@@ -1,4 +1,4 @@
-import React, { createContext, useContext } from "react";
+import React, { createContext, useContext, useMemo } from "react";
 
 import { useBoseScanner, BoseSpeaker } from "../hooks/useBoseScanner";
 import {
@@ -77,26 +77,41 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
   const setAudioProductLevelControlsMutation =
     useSetAudioProductLevelControlsMutation();
 
+  const contextValue = useMemo(
+    () => ({
+      ...scanner,
+      volumeMutation,
+      powerToggleMutation,
+      playPauseMutation,
+      keyMutation,
+      selectSourceMutation,
+      setBassMutation,
+      savePresetMutation,
+      playStreamMutation,
+      setNameMutation,
+      setAudioDspControlsMutation,
+      setAudioProductToneControlsMutation,
+      setAudioProductLevelControlsMutation,
+    }),
+    [
+      scanner,
+      volumeMutation,
+      powerToggleMutation,
+      playPauseMutation,
+      keyMutation,
+      selectSourceMutation,
+      setBassMutation,
+      savePresetMutation,
+      playStreamMutation,
+      setNameMutation,
+      setAudioDspControlsMutation,
+      setAudioProductToneControlsMutation,
+      setAudioProductLevelControlsMutation,
+    ],
+  );
+
   return (
-    <BoseContext.Provider
-      value={{
-        ...scanner,
-        volumeMutation,
-        powerToggleMutation,
-        playPauseMutation,
-        keyMutation,
-        selectSourceMutation,
-        setBassMutation,
-        savePresetMutation,
-        playStreamMutation,
-        setNameMutation,
-        setAudioDspControlsMutation,
-        setAudioProductToneControlsMutation,
-        setAudioProductLevelControlsMutation,
-      }}
-    >
-      {children}
-    </BoseContext.Provider>
+    <BoseContext.Provider value={contextValue}>{children}</BoseContext.Provider>
   );
 };
 

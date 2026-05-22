@@ -22,6 +22,7 @@ export default defineConfig({
       restriction: "error",
       style: "error",
       pedantic: "error",
+      perf: "error",
     },
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
