@@ -1,16 +1,37 @@
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
+  Alert,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
+import { useLogger } from "@/lib/useLogger";
+
 const version = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AppSettings() {
+  const router = useRouter();
+  const { logs, clearLogs } = useLogger();
+
+  const handleClearLogs = () => {
+    Alert.alert("Clear Logs", "Are you sure you want to clear all logs?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear",
+        style: "destructive",
+        onPress: () => {
+          clearLogs();
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView
       style={$container}
@@ -45,6 +66,47 @@ export default function AppSettings() {
           <Text style={$infoLabel}>Version</Text>
           <Text style={$infoValue}>{version}</Text>
         </View>
+      </View>
+
+      {/* Developer */}
+      <Text style={$sectionLabel}>Developer</Text>
+      <View style={$card}>
+        <TouchableOpacity
+          style={$infoRow}
+          activeOpacity={0.7}
+          onPress={() => router.push("/logs" as any)}
+        >
+          <Text style={$infoLabel}>Logs</Text>
+          <View style={$infoRowRight}>
+            <Text style={$infoValue}>{logs.length} entries</Text>
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
+              }}
+              tintColor="#52525b"
+              size={14}
+            />
+          </View>
+        </TouchableOpacity>
+        <View style={$infoDivider} />
+        <TouchableOpacity
+          style={$infoRow}
+          activeOpacity={0.7}
+          onPress={handleClearLogs}
+        >
+          <Text style={$infoLabel}>Clear Logs</Text>
+          <SymbolView
+            name={{
+              ios: "trash",
+              android: "delete",
+              web: "delete",
+            }}
+            tintColor="#ef4444"
+            size={16}
+          />
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -127,4 +189,16 @@ const $infoValue: TextStyle = {
   fontSize: 14,
   color: "#a1a1aa",
   fontWeight: "500",
+};
+
+const $infoRowRight: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+};
+
+const $infoDivider: ViewStyle = {
+  height: 1,
+  backgroundColor: "#27272a",
+  marginVertical: 10,
 };
