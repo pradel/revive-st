@@ -13,13 +13,13 @@ onlineManager.setEventListener((setOnline) => {
 
   const eventSubscription = Network.addNetworkStateListener((state) => {
     initialised = true;
-    setOnline(!!state.isConnected);
+    setOnline(Boolean(state.isConnected));
   });
 
   Network.getNetworkStateAsync()
     .then((state) => {
       if (!initialised) {
-        setOnline(!!state.isConnected);
+        setOnline(Boolean(state.isConnected));
       }
     })
     .catch(() => {

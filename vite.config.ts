@@ -49,7 +49,6 @@ export default defineConfig({
 
       // TMP
       "init-declarations": "off",
-      "no-implicit-coercion": "off",
     },
     overrides: [
       {
