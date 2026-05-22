@@ -10,8 +10,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  type GestureResponderEvent,
-  type LayoutChangeEvent,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
@@ -240,33 +238,22 @@ export default function SpeakerSettings() {
         {bassFetchFailed ? (
           <CapabilityErrorRow label="Bass" />
         ) : hasBassCapability && bassCaps ? (
-          <View>
-            <View style={$sliderHeader}>
-              <Text style={$infoLabel}>Bass</Text>
-              <Text style={$infoValue}>{bassValue}</Text>
-            </View>
-            <Host style={{ height: 40 }}>
-              <Slider
-                value={bassValue}
-                onValueChange={(v) => {
-                  const rounded = Math.round(v);
-                  setBassSliderValue(rounded);
-                  setBassMutation.mutate({
-                    host: speaker.host,
-                    value: rounded,
-                  });
-                }}
-                min={bassCaps.bassMin}
-                max={bassCaps.bassMax}
-                step={1}
-                disabled={isSaving}
-              />
-            </Host>
-            <View style={$sliderLabels}>
-              <Text style={$sliderLabelText}>{bassCaps.bassMin}</Text>
-              <Text style={$sliderLabelText}>{bassCaps.bassMax}</Text>
-            </View>
-          </View>
+          <NativeSliderSetting
+            label="Bass"
+            value={bassValue}
+            min={bassCaps.bassMin}
+            max={bassCaps.bassMax}
+            step={1}
+            disabled={isSaving}
+            onValueChange={(v) => {
+              const rounded = Math.round(v);
+              setBassSliderValue(rounded);
+              setBassMutation.mutate({
+                host: speaker.host,
+                value: rounded,
+              });
+            }}
+          />
         ) : null}
 
         {/* Audio DSP Mode */}
@@ -293,7 +280,7 @@ export default function SpeakerSettings() {
         ) : hasToneCapability && toneControls ? (
           <>
             <View style={$infoDivider} />
-            <SliderSetting
+            <NativeSliderSetting
               label="Bass EQ"
               value={toneControls.bass.value}
               min={toneControls.bass.minValue}
@@ -308,7 +295,7 @@ export default function SpeakerSettings() {
               }}
             />
             <View style={$infoDivider} />
-            <SliderSetting
+            <NativeSliderSetting
               label="Treble EQ"
               value={toneControls.treble.value}
               min={toneControls.treble.minValue}
@@ -331,7 +318,7 @@ export default function SpeakerSettings() {
         ) : hasLevelCapability && levelControls ? (
           <>
             <View style={$infoDivider} />
-            <SliderSetting
+            <NativeSliderSetting
               label="Front Center"
               value={levelControls.frontCenterSpeakerLevel.value}
               min={levelControls.frontCenterSpeakerLevel.minValue}
@@ -346,7 +333,7 @@ export default function SpeakerSettings() {
               }}
             />
             <View style={$infoDivider} />
-            <SliderSetting
+            <NativeSliderSetting
               label="Rear Surround"
               value={levelControls.rearSurroundSpeakersLevel.value}
               min={levelControls.rearSurroundSpeakersLevel.minValue}
@@ -422,15 +409,14 @@ function CapabilityErrorRow({
   );
 }
 
-function SliderSetting({
+function NativeSliderSetting({
   label,
   value,
   min,
   max,
-  step: _step,
+  step,
   disabled,
   onValueChange,
-  withDivider,
 }: {
   label: string;
   value: number;
@@ -439,47 +425,28 @@ function SliderSetting({
   step: number;
   disabled?: boolean;
   onValueChange: (value: number) => void;
-  withDivider?: boolean;
 }) {
-  const [trackWidth, setTrackWidth] = useState(0);
-  const pct = max !== min ? ((value - min) / (max - min)) * 100 : 0;
-
-  const handleTap = (event: GestureResponderEvent) => {
-    if (disabled || !trackWidth) return;
-    const x = event.nativeEvent.locationX;
-    const ratio = Math.min(1, Math.max(0, x / trackWidth));
-    const stepped = min + Math.round((ratio * (max - min)) / _step) * _step;
-    onValueChange(stepped);
-  };
-
-  const handleLayout = (event: LayoutChangeEvent) => {
-    setTrackWidth(event.nativeEvent.layout.width);
-  };
-
   return (
-    <>
-      {withDivider && <View style={$infoDivider} />}
-      <View>
-        <View style={$sliderHeader}>
-          <Text style={$infoLabel}>{label}</Text>
-          <Text style={$infoValue}>{value}</Text>
-        </View>
-        <TouchableOpacity
-          style={$nativeSliderTrack}
-          activeOpacity={1}
-          onPress={handleTap}
-          onLayout={handleLayout}
-          disabled={disabled}
-        >
-          <View style={[$nativeSliderFill, { width: `${pct}%` }]} />
-          <View style={[$nativeSliderThumb, { left: `${pct}%` }]} />
-        </TouchableOpacity>
-        <View style={$sliderLabels}>
-          <Text style={$sliderLabelText}>{min}</Text>
-          <Text style={$sliderLabelText}>{max}</Text>
-        </View>
+    <View>
+      <View style={$sliderHeader}>
+        <Text style={$infoLabel}>{label}</Text>
+        <Text style={$infoValue}>{value}</Text>
       </View>
-    </>
+      <Host style={{ height: 40 }}>
+        <Slider
+          value={value}
+          onValueChange={onValueChange}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+        />
+      </Host>
+      <View style={$sliderLabels}>
+        <Text style={$sliderLabelText}>{min}</Text>
+        <Text style={$sliderLabelText}>{max}</Text>
+      </View>
+    </View>
   );
 }
 
@@ -703,30 +670,6 @@ const $sliderHeader: ViewStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 10,
-};
-
-const $nativeSliderTrack: ViewStyle = {
-  height: 6,
-  backgroundColor: "#27272a",
-  borderRadius: 3,
-  position: "relative",
-  overflow: "visible",
-};
-
-const $nativeSliderFill: ViewStyle = {
-  height: "100%",
-  backgroundColor: "#fafafa",
-  borderRadius: 3,
-};
-
-const $nativeSliderThumb: ViewStyle = {
-  position: "absolute",
-  top: -7,
-  width: 20,
-  height: 20,
-  borderRadius: 10,
-  backgroundColor: "#fafafa",
-  marginLeft: -10,
 };
 
 const $sliderLabels: ViewStyle = {
