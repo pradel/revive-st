@@ -57,6 +57,7 @@ export default defineConfig({
       "require-unicode-regexp": "off",
       "typescript/prefer-readonly-parameter-types": "off",
       "typescript/strict-boolean-expressions": "off",
+      "typescript/unified-signatures": "off",
 
       // TMP
       "typescript/promise-function-async": "off",
