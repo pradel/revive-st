@@ -32,7 +32,7 @@ export default function SpeakerDetail() {
     setBass,
   } = useBose();
 
-  const speaker = speakers.find((speaker) => speaker.deviceID === id);
+  const speaker = speakers.find((item) => item.deviceID === id);
   const [sliderWidth, setSliderWidth] = useState(0);
   const [bassSliderWidth, setBassSliderWidth] = useState(0);
   const [savingPresetId, setSavingPresetId] = useState<number | null>(null);

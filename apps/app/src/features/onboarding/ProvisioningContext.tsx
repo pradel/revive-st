@@ -1,8 +1,17 @@
-import { createContext, useContext, useReducer, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useReducer,
+  useCallback,
+  useMemo,
+} from "react";
 
 import { provisioningReducer } from "./reducer";
-import type { ProvisioningAction, ProvisioningState } from "./types";
-import { initialState } from "./types";
+import {
+  initialState,
+  type ProvisioningAction,
+  type ProvisioningState,
+} from "./types";
 
 interface ProvisioningContextValue {
   state: ProvisioningState;
@@ -24,8 +33,13 @@ export function ProvisioningProvider({
     dispatch({ type: "START" });
   }, []);
 
+  const value = useMemo(
+    () => ({ state, dispatch, start }),
+    [state, dispatch, start],
+  );
+
   return (
-    <ProvisioningContext.Provider value={{ state, dispatch, start }}>
+    <ProvisioningContext.Provider value={value}>
       {children}
     </ProvisioningContext.Provider>
   );

@@ -1,5 +1,8 @@
-import type { ProvisioningAction, ProvisioningState } from "./types";
-import { initialState } from "./types";
+import {
+  initialState,
+  type ProvisioningAction,
+  type ProvisioningState,
+} from "./types";
 
 export function provisioningReducer(
   state: ProvisioningState,

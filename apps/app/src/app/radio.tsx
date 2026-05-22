@@ -73,7 +73,7 @@ export default function RadioBrowser() {
     try {
       const stored = await SecureStore.getItemAsync(FAVORITES_KEY);
       if (stored) {
-        setFavorites(JSON.parse(stored));
+        setFavorites(JSON.parse(stored) as RadioStation[]);
       }
     } catch (err) {
       logger.warn("Failed to load radio favorites:", err);
