@@ -217,7 +217,7 @@ export class BoseWebSocketClient {
       };
 
       this.ws.onmessage = (event) => {
-        const data = event.data;
+        const data: unknown = event.data;
         if (typeof data === "string") {
           try {
             const update = parseWebSocketMessage(data);
