@@ -162,6 +162,12 @@ export class BoseWebSocketClient {
           try {
             const update = parseWebSocketMessage(data);
             if (update) {
+              if (update.type === "unknown") {
+                console.log(
+                  `[BoseWebSocketClient] Unknown notification (${this.options.deviceID}):`,
+                  data,
+                );
+              }
               this.options.onUpdate(update);
             }
           } catch (err) {
