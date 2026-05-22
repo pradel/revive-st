@@ -40,3 +40,4 @@ minimumReleaseAgeExclude:
   - expo@56.0.3
   - expo-location@56.0.12
   - expo-secure-store@56.0.4
+  - "@react-native-async-storage/async-storage@3.1.0"
