@@ -54,7 +54,6 @@ export default defineConfig({
       "capitalized-comments": "off",
       "func-names": "off",
       "no-duplicate-imports": "off",
-      "object-shorthand": "off",
       "react/hook-use-state": "off",
       "no-implicit-coercion": "off",
     },

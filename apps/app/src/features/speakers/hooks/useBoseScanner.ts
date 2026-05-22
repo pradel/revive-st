@@ -368,7 +368,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             volume: volumeInfo?.actualvolume,
             muteEnabled: volumeInfo?.muteenabled,
             bassCapabilities: bassCaps,
-            capabilities: capabilities,
+            capabilities,
             audioDspControls: dspControls,
             audioProductToneControls: toneControls,
             audioProductLevelControls: levelControls,
