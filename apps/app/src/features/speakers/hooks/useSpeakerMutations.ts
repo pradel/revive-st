@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   boseSpeakerClient as createClient,
+  escapeXml,
   KeyValue,
 } from "bose-api-speaker-client";
 
@@ -156,15 +157,7 @@ export function usePlayStreamMutation() {
       uri: string;
       name: string;
     }) => {
-      const escapedName = name
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      const escapedUri = uri
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-      const payload = `<ContentItem source="INTERNET_RADIO" location="${escapedUri}" sourceAccount=""><itemName>${escapedName}</itemName></ContentItem>`;
+      const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
       const response = await fetch(`http://${host}:8090/select`, {
         method: "POST",
         headers: { "Content-Type": "text/xml" },

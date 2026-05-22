@@ -2,6 +2,7 @@ import type { Preset } from "bose-api-speaker-client";
 import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
+  escapeXml,
   KeyValue,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
@@ -62,15 +63,7 @@ async function longPress(host: string, key: string, durationMs = 2000) {
 }
 
 function playUri(host: string, uri: string, name: string) {
-  const escapedName = name
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const escapedUri = uri
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  const payload = `<ContentItem source="INTERNET_RADIO" location="${escapedUri}" sourceAccount=""><itemName>${escapedName}</itemName></ContentItem>`;
+  const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
   return fetch(`http://${host}:8090/select`, {
     method: "POST",
     headers: { "Content-Type": "text/xml" },
