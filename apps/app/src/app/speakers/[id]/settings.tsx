@@ -3,9 +3,10 @@ import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
+  Keyboard,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   type GestureResponderEvent,
@@ -58,6 +59,8 @@ export default function SpeakerSettings() {
   } = useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
+
+  const [nameValue, setNameValue] = useState("");
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
 
   if (!speaker) {
@@ -151,51 +154,83 @@ export default function SpeakerSettings() {
 
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
-      <TouchableOpacity
-        style={$card}
-        activeOpacity={0.7}
-        onPress={() => {
-          Alert.prompt(
-            "Rename Speaker",
-            `Enter a new name for ${speaker.name}`,
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Save",
-                onPress: (newName?: string) => {
-                  const trimmed = (newName ?? "").trim();
-                  if (trimmed && trimmed !== speaker.name) {
-                    setNameMutation.mutate({
-                      host: speaker.host,
-                      name: trimmed,
-                    });
-                  }
-                },
-              },
-            ],
-            "plain-text",
-            speaker.name,
-          );
-        }}
-      >
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Name</Text>
-          <View style={$infoRowRight}>
-            <Text style={$infoValue} numberOfLines={1}>
-              {speaker.name}
-            </Text>
-            <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
+      {nameValue !== "" ? (
+        <View style={$card}>
+          <View style={$renameRow}>
+            <TextInput
+              style={$textInput}
+              value={nameValue}
+              onChangeText={setNameValue}
+              placeholder={speaker.name}
+              placeholderTextColor="#52525b"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const trimmed = nameValue.trim();
+                if (trimmed && trimmed !== speaker.name) {
+                  setNameMutation.mutate(
+                    { host: speaker.host, name: trimmed },
+                    { onError: () => setNameValue(speaker.name) },
+                  );
+                }
+                setNameValue("");
+                Keyboard.dismiss();
               }}
-              tintColor="#52525b"
-              size={14}
+              onBlur={() => {
+                const trimmed = nameValue.trim();
+                if (trimmed && trimmed !== speaker.name) {
+                  setNameMutation.mutate(
+                    { host: speaker.host, name: trimmed },
+                    { onError: () => setNameValue(speaker.name) },
+                  );
+                }
+                setNameValue("");
+              }}
             />
+            <TouchableOpacity
+              style={$saveButton}
+              onPress={() => {
+                const trimmed = nameValue.trim();
+                if (trimmed) {
+                  setNameMutation.mutate(
+                    { host: speaker.host, name: trimmed },
+                    { onError: () => setNameValue(speaker.name) },
+                  );
+                }
+                setNameValue("");
+                Keyboard.dismiss();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={$saveButtonText}>Save</Text>
+            </TouchableOpacity>
           </View>
         </View>
-      </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={$card}
+          activeOpacity={0.7}
+          onPress={() => setNameValue(speaker.name)}
+        >
+          <View style={$infoRow}>
+            <Text style={$infoLabel}>Name</Text>
+            <View style={$infoRowRight}>
+              <Text style={$infoValue} numberOfLines={1}>
+                {speaker.name}
+              </Text>
+              <SymbolView
+                name={{
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
+                }}
+                tintColor="#52525b"
+                size={14}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Audio */}
       <Text style={$sectionLabel}>Audio</Text>
@@ -566,6 +601,35 @@ const $sectionLabel: TextStyle = {
   marginTop: 24,
   marginBottom: 8,
   marginLeft: 4,
+};
+
+const $renameRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 10,
+};
+
+const $textInput: TextStyle = {
+  flex: 1,
+  backgroundColor: "#27272a",
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  fontSize: 15,
+  color: "#fafafa",
+};
+
+const $saveButton: ViewStyle = {
+  backgroundColor: "#fafafa",
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 10,
+};
+
+const $saveButtonText: TextStyle = {
+  fontSize: 14,
+  color: "#09090b",
+  fontWeight: "700",
 };
 
 const $infoDivider: ViewStyle = {
