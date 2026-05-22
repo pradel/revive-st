@@ -57,6 +57,7 @@ export default defineConfig({
       "require-unicode-regexp": "off",
       "typescript/prefer-readonly-parameter-types": "off",
       "typescript/strict-boolean-expressions": "off",
+      "typescript/strict-void-return": "off",
       "typescript/unified-signatures": "off",
 
       // TMP
@@ -68,7 +69,6 @@ export default defineConfig({
       "prefer-optional-chain": "off",
       "no-unsafe-member-access": "off",
       "no-unnecessary-type-parameters": "off",
-      "strict-void-return": "off",
       "no-unsafe-assignment": "off",
       "no-misused-promises": "off",
       "no-floating-promises": "off",
