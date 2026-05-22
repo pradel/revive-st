@@ -1,6 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { useCallback } from "react";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { clearLogs, getLogs, subscribe, type LogEntry } from "./logger";
 
@@ -17,7 +16,10 @@ export function useLogger(): {
 
   const handleCopyLogs = useCallback(async () => {
     const text = logs
-      .map((e) => `[${e.timestamp}] [${e.level.toUpperCase()}] ${e.message}`)
+      .map(
+        (entry) =>
+          `[${entry.timestamp}] [${entry.level.toUpperCase()}] ${entry.message}`,
+      )
       .join("\n");
     await Clipboard.setStringAsync(text);
   }, [logs]);

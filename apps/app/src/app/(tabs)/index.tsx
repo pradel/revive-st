@@ -24,10 +24,12 @@ export default function Index() {
   const handleVolumeTap = useCallback(
     (speaker: BoseSpeaker, event: GestureResponderEvent) => {
       const trackWidth = sliderLayoutsRef.current[speaker.deviceID];
-      if (!trackWidth) return;
-      const x = event.nativeEvent.locationX;
+      if (!trackWidth) {
+        return;
+      }
+      const locationX = event.nativeEvent.locationX;
       const volume = Math.round(
-        Math.min(100, Math.max(0, (x / trackWidth) * 100)),
+        Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
       void changeVolume(speaker.deviceID, volume);
     },
@@ -60,9 +62,7 @@ export default function Index() {
   };
 
   const navigateToSettings = (speaker: BoseSpeaker) => {
-    router.push(
-      `/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as any,
-    );
+    router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
   const showEmptyState = speakers.length === 0 && !isScanning;
@@ -147,7 +147,9 @@ export default function Index() {
             </TouchableOpacity>
             <TouchableOpacity
               style={$secondaryButton}
-              onPress={() => router.push("/onboarding/permissions" as any)}
+              onPress={() => {
+                router.push("/onboarding/permissions");
+              }}
               activeOpacity={0.8}
             >
               <SymbolView
@@ -211,7 +213,9 @@ export default function Index() {
                       </View>
                       <TouchableOpacity
                         style={$settingsButton}
-                        onPress={() => navigateToSettings(speaker)}
+                        onPress={() => {
+                          navigateToSettings(speaker);
+                        }}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
@@ -263,8 +267,12 @@ export default function Index() {
                     <TouchableOpacity
                       style={$sliderTrack}
                       activeOpacity={1}
-                      onPress={(e) => handleVolumeTap(speaker, e)}
-                      onLayout={(e) => handleSliderLayout(speaker.deviceID, e)}
+                      onPress={(event) => {
+                        handleVolumeTap(speaker, event);
+                      }}
+                      onLayout={(event) => {
+                        handleSliderLayout(speaker.deviceID, event);
+                      }}
                     >
                       <View style={[$sliderFill, { width: `${volume}%` }]} />
                       <View style={[$sliderThumb, { left: `${volume}%` }]} />
@@ -288,7 +296,9 @@ export default function Index() {
           {/* Add New Speaker Button */}
           <TouchableOpacity
             style={$addSpeakerButton}
-            onPress={() => router.push("/onboarding/permissions" as any)}
+            onPress={() => {
+              router.push("/onboarding/permissions");
+            }}
             activeOpacity={0.8}
           >
             <SymbolView

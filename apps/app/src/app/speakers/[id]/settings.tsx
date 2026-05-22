@@ -16,11 +16,11 @@ import {
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 
-type AudioModeDisplay = {
+interface AudioModeDisplay {
   value: string;
   label: string;
   description: string;
-};
+}
 
 const AUDIO_MODES: AudioModeDisplay[] = [
   {
@@ -57,7 +57,7 @@ export default function SpeakerSettings() {
     setAudioProductLevelControlsMutation,
   } = useBose();
 
-  const speaker = speakers.find((s) => s.deviceID === id);
+  const speaker = speakers.find((item) => item.deviceID === id);
 
   const [nameValue, setNameValue] = useState("");
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
@@ -78,7 +78,12 @@ export default function SpeakerSettings() {
         <View style={$centerState}>
           <ActivityIndicator size="small" color="#71717a" />
           <Text style={$notFoundText}>Speaker not found</Text>
-          <TouchableOpacity onPress={() => router.back()} style={$backButton}>
+          <TouchableOpacity
+            onPress={() => {
+              router.back();
+            }}
+            style={$backButton}
+          >
             <Text style={$backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -91,8 +96,7 @@ export default function SpeakerSettings() {
   const toneControls = speaker.audioProductToneControls;
   const levelControls = speaker.audioProductLevelControls;
 
-  const showBass =
-    bassCaps !== null && bassCaps !== undefined && bassCaps.bassAvailable;
+  const showBass = bassCaps?.bassAvailable;
   const showDsp = dspControls !== null && dspControls !== undefined;
   const showTone = toneControls !== null && toneControls !== undefined;
   const showLevels = levelControls !== null && levelControls !== undefined;
@@ -159,7 +163,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -176,7 +184,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -192,7 +204,9 @@ export default function SpeakerSettings() {
         <TouchableOpacity
           style={$card}
           activeOpacity={0.7}
-          onPress={() => setNameValue(speaker.name)}
+          onPress={() => {
+            setNameValue(speaker.name);
+          }}
         >
           <View style={$infoRow}>
             <Text style={$infoLabel}>Name</Text>
@@ -226,8 +240,8 @@ export default function SpeakerSettings() {
             max={bassCaps.bassMax}
             step={1}
             disabled={isSaving}
-            onValueChange={(v) => {
-              const rounded = Math.round(v);
+            onValueChange={(value) => {
+              const rounded = Math.round(value);
               setBassSliderValue(rounded);
               setBassMutation.mutate({
                 host: speaker.host,
@@ -264,10 +278,10 @@ export default function SpeakerSettings() {
               max={toneControls.bass.maxValue}
               step={toneControls.bass.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
-                  bass: { value: v },
+                  bass: { value: newValue },
                 });
               }}
             />
@@ -279,10 +293,10 @@ export default function SpeakerSettings() {
               max={toneControls.treble.maxValue}
               step={toneControls.treble.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
-                  treble: { value: v },
+                  treble: { value: newValue },
                 });
               }}
             />
@@ -300,10 +314,10 @@ export default function SpeakerSettings() {
               max={levelControls.frontCenterSpeakerLevel.maxValue}
               step={levelControls.frontCenterSpeakerLevel.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
-                  frontCenterSpeakerLevel: { value: v },
+                  frontCenterSpeakerLevel: { value: newValue },
                 });
               }}
             />
@@ -315,10 +329,10 @@ export default function SpeakerSettings() {
               max={levelControls.rearSurroundSpeakersLevel.maxValue}
               step={levelControls.rearSurroundSpeakersLevel.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
-                  rearSurroundSpeakersLevel: { value: v },
+                  rearSurroundSpeakersLevel: { value: newValue },
                 });
               }}
             />
@@ -421,7 +435,9 @@ function PickerSetting({
               <TouchableOpacity
                 key={opt.value}
                 style={[$pickerChip, isActive ? $pickerChipActive : undefined]}
-                onPress={() => onChange(opt.value)}
+                onPress={() => {
+                  onChange(opt.value);
+                }}
                 activeOpacity={0.7}
               >
                 <Text
@@ -437,7 +453,7 @@ function PickerSetting({
           })}
         </View>
         <Text style={$pickerDescription}>
-          {options.find((o) => o.value === value)?.description}
+          {options.find((option) => option.value === value)?.description}
         </Text>
       </View>
     </>

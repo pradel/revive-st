@@ -64,7 +64,9 @@ export type BoseWSUpdate =
     };
 
 function unescapeXml(val: string): string {
-  if (!val) return "";
+  if (!val) {
+    return "";
+  }
   return val
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -123,13 +125,15 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
 }
 
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
-  const deviceIDMatch = xml.match(/<updates[^>]+deviceID="([^"]+)"/);
-  if (!deviceIDMatch) return null;
+  const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
+  if (!deviceIDMatch) {
+    return null;
+  }
 
   const deviceID = deviceIDMatch[1];
 
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
-    const volumeBlock = xml.match(/<volume[\s\S]*?<\/volume>/);
+    const volumeBlock = /<volume[\s\S]*?<\/volume>/.exec(xml);
     if (volumeBlock) {
       const volume = parseVolumeResponse(volumeBlock[0]);
       volume.deviceID = deviceID;
@@ -139,7 +143,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   }
 
   if (xml.includes("<nowPlayingUpdated") || xml.includes("<nowPlaying>")) {
-    const nowPlayingBlock = xml.match(/<nowPlaying[\s\S]*?<\/nowPlaying>/);
+    const nowPlayingBlock = /<nowPlaying[\s\S]*?<\/nowPlaying>/.exec(xml);
     if (nowPlayingBlock) {
       const nowPlaying = parseNowPlayingResponse(nowPlayingBlock[0]);
       nowPlaying.deviceID = deviceID;
@@ -149,7 +153,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   }
 
   if (xml.includes("<connectionStateUpdated")) {
-    const block = xml.match(/<connectionStateUpdated[\s\S]*?\/>/);
+    const block = /<connectionStateUpdated[\s\S]*?\/>/.exec(xml);
     if (block) {
       const connectionState = parseConnectionStateUpdated(block[0]);
       connectionState.deviceID = deviceID;
@@ -183,11 +187,11 @@ export interface BoseWebSocketClientOptions {
 
 export class BoseWebSocketClient {
   private ws: WebSocket | null = null;
-  private options: BoseWebSocketClientOptions;
+  private readonly options: BoseWebSocketClientOptions;
   private isClosedIntentional = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private readonly maxReconnectAttempts = 5;
 
   constructor(options: BoseWebSocketClientOptions) {
     this.options = options;
@@ -213,7 +217,7 @@ export class BoseWebSocketClient {
       };
 
       this.ws.onmessage = (event) => {
-        const data = event.data;
+        const data: unknown = event.data;
         if (typeof data === "string") {
           try {
             const update = parseWebSocketMessage(data);
@@ -274,7 +278,7 @@ export class BoseWebSocketClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
     console.log(
       `[BoseWebSocketClient] Reconnecting to ${this.options.deviceID} in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );

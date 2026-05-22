@@ -1,21 +1,21 @@
 import { XmlParseError } from "./errors.ts";
 
-export type XmlNode = {
+export interface XmlNode {
   name: string;
   attributes: Record<string, string>;
   children: XmlNode[];
   text: string;
-};
+}
 
 export function parseXml(xml: string): XmlNode {
   const tagRegex =
     /<(\/?)([a-zA-Z0-9_-]+)((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*(\/?)>/g;
   const valueRegex = /<[^>]*>/;
-  const tokens: Array<{
+  const tokens: {
     type: "open" | "close" | "selfClose";
     name: string;
     attrs: Record<string, string>;
-  }> = [];
+  }[] = [];
 
   let match: RegExpExecArray | null;
   let lastIndex = 0;
@@ -61,8 +61,7 @@ export function parseXml(xml: string): XmlNode {
       .trim();
   }
 
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (const token of tokens) {
     const text = getNextText();
 
     if (token.type === "open") {
@@ -87,9 +86,12 @@ export function parseXml(xml: string): XmlNode {
       }
     } else if (token.type === "close") {
       const node = stack.pop();
-      if (!node) throw new Error(`Unexpected closing tag </${token.name}>`);
-      if (node.name !== token.name)
+      if (!node) {
+        throw new Error(`Unexpected closing tag </${token.name}>`);
+      }
+      if (node.name !== token.name) {
         throw new Error(`Mismatched tags: <${node.name}> and </${token.name}>`);
+      }
 
       node.text = cleanText(text);
 
@@ -102,13 +104,14 @@ export function parseXml(xml: string): XmlNode {
   }
 
   const root = stack[0];
-  if (!root)
+  if (!root) {
     throw new XmlParseError({ message: "Empty XML document", rawXml: xml });
+  }
   return root;
 }
 
 export function getChild(root: XmlNode, name: string): XmlNode | undefined {
-  return root.children.find((c) => c.name === name);
+  return root.children.find((child) => child.name === name);
 }
 
 export function getChildText(root: XmlNode, name: string): string | undefined {
@@ -116,13 +119,13 @@ export function getChildText(root: XmlNode, name: string): string | undefined {
 }
 
 export function getChildren(root: XmlNode, name: string): XmlNode[] {
-  return root.children.filter((c) => c.name === name);
+  return root.children.filter((child) => child.name === name);
 }
 
-export function parseBool(s: string): boolean {
-  return s.toLowerCase() === "true";
+export function parseBool(str: string): boolean {
+  return str.toLowerCase() === "true";
 }
 
-export function parseIntSafe(s: string): number {
-  return Number.parseInt(s, 10);
+export function parseIntSafe(str: string): number {
+  return Number.parseInt(str, 10);
 }
