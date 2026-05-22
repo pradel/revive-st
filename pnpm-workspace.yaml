@@ -8,36 +8,3 @@ catalog:
   vite: npm:@voidzero-dev/vite-plus-core@0.1.22
   vitest: npm:@voidzero-dev/vite-plus-test@0.1.22
   vite-plus: 0.1.22
-minimumReleaseAgeExclude:
-  - "@voidzero-dev/vite-plus-core@0.1.22"
-  - "@voidzero-dev/vite-plus-darwin-arm64@0.1.22"
-  - "@voidzero-dev/vite-plus-darwin-x64@0.1.22"
-  - "@voidzero-dev/vite-plus-linux-arm64-gnu@0.1.22"
-  - "@voidzero-dev/vite-plus-linux-arm64-musl@0.1.22"
-  - "@voidzero-dev/vite-plus-linux-x64-gnu@0.1.22"
-  - "@voidzero-dev/vite-plus-linux-x64-musl@0.1.22"
-  - "@voidzero-dev/vite-plus-test@0.1.22"
-  - "@voidzero-dev/vite-plus-win32-arm64-msvc@0.1.22"
-  - "@voidzero-dev/vite-plus-win32-x64-msvc@0.1.22"
-  - vite-plus@0.1.22
-  - "@expo/cli@56.1.10"
-  - "@expo/fingerprint@0.19.1"
-  - "@expo/metro-runtime@56.0.11"
-  - "@expo/prebuild-config@56.0.12"
-  - "@expo/router-server@56.0.11"
-  - "@expo/ui@56.0.12"
-  - babel-preset-expo@56.0.11
-  - expo-asset@56.0.13
-  - expo-build-properties@56.0.13
-  - expo-constants@56.0.14
-  - expo-image@56.0.8
-  - expo-linking@56.0.11
-  - expo-modules-autolinking@56.0.11
-  - expo-modules-core@56.0.12
-  - expo-router@56.2.5
-  - expo-system-ui@56.0.5
-  - expo-web-browser@56.0.5
-  - expo@56.0.3
-  - expo-location@56.0.12
-  - expo-secure-store@56.0.4
-  - "@react-native-async-storage/async-storage@3.1.0"
