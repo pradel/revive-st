@@ -60,7 +60,9 @@ export default function AppSettings() {
         <TouchableOpacity
           style={$infoRow}
           activeOpacity={0.7}
-          onPress={() => router.push("/logs" as any)}
+          onPress={() => {
+            router.push("/logs" as any);
+          }}
         >
           <Text style={$infoLabel}>Logs</Text>
           <View style={$infoRowRight}>

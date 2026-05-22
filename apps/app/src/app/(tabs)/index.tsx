@@ -149,7 +149,9 @@ export default function Index() {
             </TouchableOpacity>
             <TouchableOpacity
               style={$secondaryButton}
-              onPress={() => router.push("/onboarding/permissions" as any)}
+              onPress={() => {
+                router.push("/onboarding/permissions" as any);
+              }}
               activeOpacity={0.8}
             >
               <SymbolView
@@ -213,7 +215,9 @@ export default function Index() {
                       </View>
                       <TouchableOpacity
                         style={$settingsButton}
-                        onPress={() => navigateToSettings(speaker)}
+                        onPress={() => {
+                          navigateToSettings(speaker);
+                        }}
                         activeOpacity={0.7}
                         hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                       >
@@ -265,10 +269,12 @@ export default function Index() {
                     <TouchableOpacity
                       style={$sliderTrack}
                       activeOpacity={1}
-                      onPress={(event) => handleVolumeTap(speaker, event)}
-                      onLayout={(event) =>
-                        handleSliderLayout(speaker.deviceID, event)
-                      }
+                      onPress={(event) => {
+                        handleVolumeTap(speaker, event);
+                      }}
+                      onLayout={(event) => {
+                        handleSliderLayout(speaker.deviceID, event);
+                      }}
                     >
                       <View style={[$sliderFill, { width: `${volume}%` }]} />
                       <View style={[$sliderThumb, { left: `${volume}%` }]} />
@@ -292,7 +298,9 @@ export default function Index() {
           {/* Add New Speaker Button */}
           <TouchableOpacity
             style={$addSpeakerButton}
-            onPress={() => router.push("/onboarding/permissions" as any)}
+            onPress={() => {
+              router.push("/onboarding/permissions" as any);
+            }}
             activeOpacity={0.8}
           >
             <SymbolView

@@ -32,7 +32,12 @@ export default function LogsViewer() {
     <View style={$container}>
       <View style={$header}>
         <Text style={$headerTitle}>Logs</Text>
-        <TouchableOpacity onPress={() => router.back()} activeOpacity={0.7}>
+        <TouchableOpacity
+          onPress={() => {
+            router.back();
+          }}
+          activeOpacity={0.7}
+        >
           <Text style={$headerDone}>Done</Text>
         </TouchableOpacity>
       </View>

@@ -61,7 +61,6 @@ export default defineConfig({
       "typescript/unified-signatures": "off",
 
       // TMP
-      "typescript/no-confusing-void-expression": "off",
       "no-unnecessary-condition": "off",
       "no-unsafe-type-assertion": "off",
       "no-unsafe-argument": "off",

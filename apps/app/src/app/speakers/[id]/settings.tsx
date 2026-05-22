@@ -78,7 +78,12 @@ export default function SpeakerSettings() {
         <View style={$centerState}>
           <ActivityIndicator size="small" color="#71717a" />
           <Text style={$notFoundText}>Speaker not found</Text>
-          <TouchableOpacity onPress={() => router.back()} style={$backButton}>
+          <TouchableOpacity
+            onPress={() => {
+              router.back();
+            }}
+            style={$backButton}
+          >
             <Text style={$backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -158,7 +163,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -175,7 +184,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -191,7 +204,9 @@ export default function SpeakerSettings() {
         <TouchableOpacity
           style={$card}
           activeOpacity={0.7}
-          onPress={() => setNameValue(speaker.name)}
+          onPress={() => {
+            setNameValue(speaker.name);
+          }}
         >
           <View style={$infoRow}>
             <Text style={$infoLabel}>Name</Text>
@@ -420,7 +435,9 @@ function PickerSetting({
               <TouchableOpacity
                 key={opt.value}
                 style={[$pickerChip, isActive ? $pickerChipActive : undefined]}
-                onPress={() => onChange(opt.value)}
+                onPress={() => {
+                  onChange(opt.value);
+                }}
                 activeOpacity={0.7}
               >
                 <Text
