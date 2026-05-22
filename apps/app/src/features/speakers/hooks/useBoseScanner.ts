@@ -84,6 +84,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const speakersRef = useRef<BoseSpeaker[]>([]);
   speakersRef.current = speakers;
 
+  const prevDeviceIdsRef = useRef<Set<string>>(new Set());
+
   const wsClientsRef = useRef<Map<string, BoseWebSocketClient>>(new Map());
 
   const stopScan = useCallback(() => {
@@ -153,6 +155,14 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   useEffect(() => {
     const currentDeviceIds = new Set(speakers.map((s) => s.deviceID));
+
+    const hasDeviceChange =
+      currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
+      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id));
+
+    if (!hasDeviceChange) return;
+
+    prevDeviceIdsRef.current = currentDeviceIds;
 
     wsClientsRef.current.forEach((client, deviceID) => {
       if (!currentDeviceIds.has(deviceID)) {
