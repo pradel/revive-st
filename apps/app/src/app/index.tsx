@@ -43,12 +43,20 @@ export default function Index() {
 
   const getPlayingStatus = (speaker: BoseSpeaker) => {
     if (!speaker.playStatus || speaker.playStatus === "STANDBY") {
-      return { label: "Standby", playing: false };
+      return { label: "Standby", active: false };
     }
-    if (speaker.playStatus === "PLAY_STATE") {
-      return { label: "Playing", playing: true };
+    switch (speaker.playStatus) {
+      case "PLAY_STATE":
+        return { label: "Playing", active: true };
+      case "PAUSE_STATE":
+        return { label: "Paused", active: false };
+      case "STOP_STATE":
+        return { label: "Stopped", active: false };
+      case "BUFFERING_STATE":
+        return { label: "Buffering", active: true };
+      default:
+        return { label: speaker.playStatus, active: false };
     }
-    return { label: speaker.playStatus, playing: false };
   };
 
   const navigateToSettings = (speaker: BoseSpeaker) => {
@@ -228,14 +236,15 @@ export default function Index() {
                     <View
                       style={[
                         $playingDot,
-                        status.playing
-                          ? $playingDotActive
-                          : $playingDotInactive,
+                        status.active ? $playingDotActive : $playingDotInactive,
                       ]}
                     />
                     <Text style={$playingStatusText}>
-                      {status.playing && speaker.track
-                        ? `${status.label} · ${speaker.track}${speaker.artist ? ` — ${speaker.artist}` : ""}`
+                      {status.active || status.label === "Paused"
+                        ? status.label +
+                          (speaker.track
+                            ? ` · ${speaker.track}${speaker.artist ? ` — ${speaker.artist}` : ""}`
+                            : "")
                         : status.label}
                     </Text>
                   </View>
