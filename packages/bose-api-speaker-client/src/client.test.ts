@@ -26,12 +26,12 @@ function mockFetch(status: number, body: string) {
     .mockResolvedValue(new Response(body, { status }));
 }
 
-function unwrapOk<T>(result: unknown): T {
+function unwrapOk<TParsed>(result: unknown): TParsed {
   if (!Result.isOk(result as never)) {
     throw new Error("Expected Ok but got Err");
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (result as any).value as T;
+  return (result as any).value as TParsed;
 }
 
 describe("boseSpeakerClient", () => {
@@ -43,12 +43,12 @@ describe("boseSpeakerClient", () => {
   });
 
   it("uses custom port", () => {
-    const c = boseSpeakerClient({ ip: IP, port: 8080 });
+    const testClient = boseSpeakerClient({ ip: IP, port: 8080 });
     mockFetch(
       200,
       '<volume deviceID="D"><targetvolume>10</targetvolume><actualvolume>10</actualvolume><muteenabled>false</muteenabled></volume>',
     );
-    return c.getVolume();
+    return testClient.getVolume();
   });
 
   describe("/key", () => {

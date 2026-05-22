@@ -61,8 +61,8 @@ export function parseXml(xml: string): XmlNode {
       .trim();
   }
 
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i];
+  for (let index = 0; index < tokens.length; index++) {
+    const token = tokens[index];
     const text = getNextText();
 
     if (token.type === "open") {
@@ -112,7 +112,7 @@ export function parseXml(xml: string): XmlNode {
 }
 
 export function getChild(root: XmlNode, name: string): XmlNode | undefined {
-  return root.children.find((c) => c.name === name);
+  return root.children.find((child) => child.name === name);
 }
 
 export function getChildText(root: XmlNode, name: string): string | undefined {
@@ -120,13 +120,13 @@ export function getChildText(root: XmlNode, name: string): string | undefined {
 }
 
 export function getChildren(root: XmlNode, name: string): XmlNode[] {
-  return root.children.filter((c) => c.name === name);
+  return root.children.filter((child) => child.name === name);
 }
 
-export function parseBool(s: string): boolean {
-  return s.toLowerCase() === "true";
+export function parseBool(str: string): boolean {
+  return str.toLowerCase() === "true";
 }
 
-export function parseIntSafe(s: string): number {
-  return Number.parseInt(s, 10);
+export function parseIntSafe(str: string): number {
+  return Number.parseInt(str, 10);
 }

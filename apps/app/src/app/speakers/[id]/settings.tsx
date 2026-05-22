@@ -57,7 +57,7 @@ export default function SpeakerSettings() {
     setAudioProductLevelControlsMutation,
   } = useBose();
 
-  const speaker = speakers.find((s) => s.deviceID === id);
+  const speaker = speakers.find((item) => item.deviceID === id);
 
   const [nameValue, setNameValue] = useState("");
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
@@ -226,8 +226,8 @@ export default function SpeakerSettings() {
             max={bassCaps.bassMax}
             step={1}
             disabled={isSaving}
-            onValueChange={(v) => {
-              const rounded = Math.round(v);
+            onValueChange={(value) => {
+              const rounded = Math.round(value);
               setBassSliderValue(rounded);
               setBassMutation.mutate({
                 host: speaker.host,
@@ -264,10 +264,10 @@ export default function SpeakerSettings() {
               max={toneControls.bass.maxValue}
               step={toneControls.bass.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
-                  bass: { value: v },
+                  bass: { value: newValue },
                 });
               }}
             />
@@ -279,10 +279,10 @@ export default function SpeakerSettings() {
               max={toneControls.treble.maxValue}
               step={toneControls.treble.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
-                  treble: { value: v },
+                  treble: { value: newValue },
                 });
               }}
             />
@@ -300,10 +300,10 @@ export default function SpeakerSettings() {
               max={levelControls.frontCenterSpeakerLevel.maxValue}
               step={levelControls.frontCenterSpeakerLevel.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
-                  frontCenterSpeakerLevel: { value: v },
+                  frontCenterSpeakerLevel: { value: newValue },
                 });
               }}
             />
@@ -315,10 +315,10 @@ export default function SpeakerSettings() {
               max={levelControls.rearSurroundSpeakersLevel.maxValue}
               step={levelControls.rearSurroundSpeakersLevel.step}
               disabled={isSaving}
-              onValueChange={(v) => {
+              onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
-                  rearSurroundSpeakersLevel: { value: v },
+                  rearSurroundSpeakersLevel: { value: newValue },
                 });
               }}
             />
@@ -437,7 +437,7 @@ function PickerSetting({
           })}
         </View>
         <Text style={$pickerDescription}>
-          {options.find((o) => o.value === value)?.description}
+          {options.find((option) => option.value === value)?.description}
         </Text>
       </View>
     </>

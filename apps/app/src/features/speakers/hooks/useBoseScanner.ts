@@ -40,10 +40,10 @@ export interface BoseSpeaker {
 }
 
 async function pressAndRelease(host: string, key: string) {
-  const k = key as (typeof KeyValue)[keyof typeof KeyValue];
+  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
   const client = createClient({ ip: host });
   let result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "press",
     sender: "Gabbo",
   });
@@ -51,7 +51,7 @@ async function pressAndRelease(host: string, key: string) {
     throw result.error;
   }
   result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "release",
     sender: "Gabbo",
   });
@@ -61,10 +61,10 @@ async function pressAndRelease(host: string, key: string) {
 }
 
 async function longPress(host: string, key: string, durationMs = 2000) {
-  const k = key as (typeof KeyValue)[keyof typeof KeyValue];
+  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
   const client = createClient({ ip: host });
   let result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "press",
     sender: "Gabbo",
   });
@@ -73,7 +73,7 @@ async function longPress(host: string, key: string, durationMs = 2000) {
   }
   await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
   result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "release",
     sender: "Gabbo",
   });
@@ -117,8 +117,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
       try {
         zeroconfRef.current.stop();
         zeroconfRef.current.removeDeviceListeners();
-      } catch (e) {
-        logger.warn("[BoseScanner] Error stopping zeroconf:", e);
+      } catch (err) {
+        logger.warn("[BoseScanner] Error stopping zeroconf:", err);
       }
       zeroconfRef.current = null;
     }
@@ -145,37 +145,39 @@ export function useBoseScanner(scanDurationMs = 5000) {
         toneControls,
         levelControls,
       ] = await Promise.all([
-        client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
-        client.getVolume().then((r) => (r.isOk() ? r.value : null)),
+        client.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
+        client.getVolume().then((res) => (res.isOk() ? res.value : null)),
         hasPresetsLoaded
-          ? client.getPresets().then((r) => (r.isOk() ? r.value : null))
+          ? client.getPresets().then((res) => (res.isOk() ? res.value : null))
           : Promise.resolve(null),
         hasBassLoaded
-          ? client.getBass().then((r) => (r.isOk() ? r.value : null))
+          ? client.getBass().then((res) => (res.isOk() ? res.value : null))
           : Promise.resolve(null),
         hasCapsLoaded
           ? Promise.resolve(null)
           : client
               .getBassCapabilities()
-              .then((r) => (r.isOk() ? r.value : null)),
+              .then((res) => (res.isOk() ? res.value : null)),
         hasCapsLoaded
           ? Promise.resolve(null)
-          : client.getCapabilities().then((r) => (r.isOk() ? r.value : null)),
+          : client
+              .getCapabilities()
+              .then((res) => (res.isOk() ? res.value : null)),
         hasCapsLoaded
           ? Promise.resolve(null)
           : client
               .getAudioDspControls()
-              .then((r) => (r.isOk() ? r.value : null)),
+              .then((res) => (res.isOk() ? res.value : null)),
         hasCapsLoaded
           ? Promise.resolve(null)
           : client
               .getAudioProductToneControls()
-              .then((r) => (r.isOk() ? r.value : null)),
+              .then((res) => (res.isOk() ? res.value : null)),
         hasCapsLoaded
           ? Promise.resolve(null)
           : client
               .getAudioProductLevelControls()
-              .then((r) => (r.isOk() ? r.value : null)),
+              .then((res) => (res.isOk() ? res.value : null)),
       ]);
 
       if (!isMounted.current) {
@@ -183,30 +185,30 @@ export function useBoseScanner(scanDurationMs = 5000) {
       }
 
       setSpeakers((prev) =>
-        prev.map((s) => {
-          if (s.deviceID === speaker.deviceID) {
+        prev.map((item) => {
+          if (item.deviceID === speaker.deviceID) {
             return {
-              ...s,
-              playStatus: nowPlaying?.playStatus ?? s.playStatus,
-              source: nowPlaying?.source ?? s.source,
-              track: nowPlaying?.track ?? s.track,
-              artist: nowPlaying?.artist ?? s.artist,
-              album: nowPlaying?.album ?? s.album,
-              artUrl: nowPlaying?.art?.url ?? s.artUrl,
-              volume: volumeInfo?.actualvolume ?? s.volume,
-              muteEnabled: volumeInfo?.muteenabled ?? s.muteEnabled,
-              presets: presetsResult ? presetsResult.presets : s.presets,
-              bass: bassResult ? bassResult.actualbass : s.bass,
-              bassCapabilities: bassCaps ?? s.bassCapabilities,
-              capabilities: capabilities ?? s.capabilities,
-              audioDspControls: dspControls ?? s.audioDspControls,
+              ...item,
+              playStatus: nowPlaying?.playStatus ?? item.playStatus,
+              source: nowPlaying?.source ?? item.source,
+              track: nowPlaying?.track ?? item.track,
+              artist: nowPlaying?.artist ?? item.artist,
+              album: nowPlaying?.album ?? item.album,
+              artUrl: nowPlaying?.art?.url ?? item.artUrl,
+              volume: volumeInfo?.actualvolume ?? item.volume,
+              muteEnabled: volumeInfo?.muteenabled ?? item.muteEnabled,
+              presets: presetsResult ? presetsResult.presets : item.presets,
+              bass: bassResult ? bassResult.actualbass : item.bass,
+              bassCapabilities: bassCaps ?? item.bassCapabilities,
+              capabilities: capabilities ?? item.capabilities,
+              audioDspControls: dspControls ?? item.audioDspControls,
               audioProductToneControls:
-                toneControls ?? s.audioProductToneControls,
+                toneControls ?? item.audioProductToneControls,
               audioProductLevelControls:
-                levelControls ?? s.audioProductLevelControls,
+                levelControls ?? item.audioProductLevelControls,
             };
           }
-          return s;
+          return item;
         }),
       );
     } catch (err) {
@@ -218,7 +220,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   useEffect(() => {
-    const currentDeviceIds = new Set(speakers.map((s) => s.deviceID));
+    const currentDeviceIds = new Set(speakers.map((item) => item.deviceID));
 
     const hasDeviceChange =
       currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
@@ -256,7 +258,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
             const refreshIfAvailable = () => {
               const latest = speakersRef.current.find(
-                (s) => s.deviceID === update.deviceID,
+                (item) => item.deviceID === update.deviceID,
               );
               if (latest) {
                 void refreshSpeakerStatus(latest);
@@ -266,15 +268,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
             if (update.type === "volume") {
               if (update.volume) {
                 setSpeakers((prev) =>
-                  prev.map((s) => {
-                    if (s.deviceID === update.deviceID) {
+                  prev.map((item) => {
+                    if (item.deviceID === update.deviceID) {
                       return {
-                        ...s,
+                        ...item,
                         volume: update.volume!.actualVolume,
                         muteEnabled: update.volume!.muteEnabled,
                       };
                     }
-                    return s;
+                    return item;
                   }),
                 );
               } else {
@@ -283,10 +285,10 @@ export function useBoseScanner(scanDurationMs = 5000) {
             } else if (update.type === "nowPlaying") {
               if (update.nowPlaying) {
                 setSpeakers((prev) =>
-                  prev.map((s) => {
-                    if (s.deviceID === update.deviceID) {
+                  prev.map((item) => {
+                    if (item.deviceID === update.deviceID) {
                       return {
-                        ...s,
+                        ...item,
                         playStatus: update.nowPlaying!.playStatus,
                         source: update.nowPlaying!.source,
                         track: update.nowPlaying!.track,
@@ -295,7 +297,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
                         artUrl: update.nowPlaying!.artUrl,
                       };
                     }
-                    return s;
+                    return item;
                   }),
                 );
               } else {
@@ -360,17 +362,23 @@ export function useBoseScanner(scanDurationMs = 5000) {
           toneControls,
           levelControls,
         ] = await Promise.all([
-          client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
-          client.getVolume().then((r) => (r.isOk() ? r.value : null)),
-          client.getBassCapabilities().then((r) => (r.isOk() ? r.value : null)),
-          client.getCapabilities().then((r) => (r.isOk() ? r.value : null)),
-          client.getAudioDspControls().then((r) => (r.isOk() ? r.value : null)),
+          client.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
+          client.getVolume().then((res) => (res.isOk() ? res.value : null)),
+          client
+            .getBassCapabilities()
+            .then((res) => (res.isOk() ? res.value : null)),
+          client
+            .getCapabilities()
+            .then((res) => (res.isOk() ? res.value : null)),
+          client
+            .getAudioDspControls()
+            .then((res) => (res.isOk() ? res.value : null)),
           client
             .getAudioProductToneControls()
-            .then((r) => (r.isOk() ? r.value : null)),
+            .then((res) => (res.isOk() ? res.value : null)),
           client
             .getAudioProductLevelControls()
-            .then((r) => (r.isOk() ? r.value : null)),
+            .then((res) => (res.isOk() ? res.value : null)),
         ]);
 
         if (!isMounted.current) {
@@ -378,7 +386,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         }
 
         setSpeakers((prev) => {
-          const exists = prev.some((s) => s.deviceID === info.deviceID);
+          const exists = prev.some((item) => item.deviceID === info.deviceID);
           const newSpeaker: BoseSpeaker = {
             deviceID: info.deviceID,
             host: service.host,
@@ -401,8 +409,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
           };
 
           if (exists) {
-            return prev.map((s) =>
-              s.deviceID === info.deviceID ? newSpeaker : s,
+            return prev.map((item) =>
+              item.deviceID === info.deviceID ? newSpeaker : item,
             );
           } else {
             return [...prev, newSpeaker];
@@ -426,9 +434,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     try {
       zeroconf.scan("soundtouch", "tcp", "local.");
-    } catch (e) {
-      logger.error("[BoseScanner] Scan exception:", e);
-      setError(e instanceof Error ? e.message : String(e));
+    } catch (err) {
+      logger.error("[BoseScanner] Scan exception:", err);
+      setError(err instanceof Error ? err.message : String(err));
       setIsScanning(false);
     }
 
@@ -439,14 +447,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const togglePower = useCallback(
     async (deviceID: string) => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
 
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
 
@@ -462,8 +472,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
         );
       } finally {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -473,13 +483,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const changeVolume = useCallback(
     async (deviceID: string, vol: number) => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
 
       setSpeakers((prev) =>
-        prev.map((s) => (s.deviceID === deviceID ? { ...s, volume: vol } : s)),
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, volume: vol } : item,
+        ),
       );
 
       try {
@@ -501,14 +515,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const playPause = useCallback(
     async (deviceID: string) => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
 
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
 
@@ -524,8 +540,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
         );
       } finally {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -535,14 +551,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const triggerKey = useCallback(
     async (deviceID: string, key: string) => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
 
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
 
@@ -558,8 +576,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
         );
       } finally {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -569,14 +587,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const selectSource = useCallback(
     async (deviceID: string, source: string, sourceAccount = "") => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
 
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
 
@@ -599,8 +619,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
         );
       } finally {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -609,7 +629,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   );
 
   const loadPresets = useCallback(async (deviceID: string) => {
-    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    const speaker = speakersRef.current.find(
+      (item) => item.deviceID === deviceID,
+    );
     if (!speaker) {
       return;
     }
@@ -620,8 +642,10 @@ export function useBoseScanner(scanDurationMs = 5000) {
         return;
       }
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, presets: result.value.presets } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID
+            ? { ...item, presets: result.value.presets }
+            : item,
         ),
       );
     } catch (err) {
@@ -633,7 +657,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   const loadBass = useCallback(async (deviceID: string) => {
-    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    const speaker = speakersRef.current.find(
+      (item) => item.deviceID === deviceID,
+    );
     if (!speaker) {
       return;
     }
@@ -644,8 +670,10 @@ export function useBoseScanner(scanDurationMs = 5000) {
         return;
       }
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, bass: result.value.actualbass } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID
+            ? { ...item, bass: result.value.actualbass }
+            : item,
         ),
       );
     } catch (err) {
@@ -657,14 +685,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   const savePreset = useCallback(async (deviceID: string, presetId: number) => {
-    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    const speaker = speakersRef.current.find(
+      (item) => item.deviceID === deviceID,
+    );
     if (!speaker) {
       return;
     }
     try {
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
       await longPress(speaker.host, `PRESET_${presetId}`);
@@ -674,21 +704,21 @@ export function useBoseScanner(scanDurationMs = 5000) {
         return;
       }
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID
+        prev.map((item) =>
+          item.deviceID === deviceID
             ? {
-                ...s,
-                presets: result.isOk() ? result.value.presets : s.presets,
+                ...item,
+                presets: result.isOk() ? result.value.presets : item.presets,
                 isUpdating: false,
               }
-            : s,
+            : item,
         ),
       );
     } catch (err) {
       if (isMounted.current) {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -701,14 +731,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   const setBass = useCallback(async (deviceID: string, value: number) => {
-    const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+    const speaker = speakersRef.current.find(
+      (item) => item.deviceID === deviceID,
+    );
     if (!speaker) {
       return;
     }
     try {
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+        prev.map((item) =>
+          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
         ),
       );
       const client = createClient({ ip: speaker.host });
@@ -720,17 +752,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
         return;
       }
       setSpeakers((prev) =>
-        prev.map((s) =>
-          s.deviceID === deviceID
-            ? { ...s, bass: value, isUpdating: false }
-            : s,
+        prev.map((item) =>
+          item.deviceID === deviceID
+            ? { ...item, bass: value, isUpdating: false }
+            : item,
         ),
       );
     } catch (err) {
       if (isMounted.current) {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }
@@ -744,14 +776,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const playStream = useCallback(
     async (deviceID: string, uri: string, name: string) => {
-      const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
+      const speaker = speakersRef.current.find(
+        (item) => item.deviceID === deviceID,
+      );
       if (!speaker) {
         return;
       }
       try {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
           ),
         );
         await playUri(speaker.host, uri, name);
@@ -766,8 +800,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
         throw err;
       } finally {
         setSpeakers((prev) =>
-          prev.map((s) =>
-            s.deviceID === deviceID ? { ...s, isUpdating: false } : s,
+          prev.map((item) =>
+            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
           ),
         );
       }

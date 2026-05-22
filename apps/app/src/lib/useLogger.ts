@@ -16,7 +16,10 @@ export function useLogger(): {
 
   const handleCopyLogs = useCallback(async () => {
     const text = logs
-      .map((e) => `[${e.timestamp}] [${e.level.toUpperCase()}] ${e.message}`)
+      .map(
+        (entry) =>
+          `[${entry.timestamp}] [${entry.level.toUpperCase()}] ${entry.message}`,
+      )
       .join("\n");
     await Clipboard.setStringAsync(text);
   }, [logs]);

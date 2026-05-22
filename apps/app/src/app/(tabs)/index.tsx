@@ -27,9 +27,9 @@ export default function Index() {
       if (!trackWidth) {
         return;
       }
-      const x = event.nativeEvent.locationX;
+      const locationX = event.nativeEvent.locationX;
       const volume = Math.round(
-        Math.min(100, Math.max(0, (x / trackWidth) * 100)),
+        Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
       void changeVolume(speaker.deviceID, volume);
     },
@@ -265,8 +265,10 @@ export default function Index() {
                     <TouchableOpacity
                       style={$sliderTrack}
                       activeOpacity={1}
-                      onPress={(e) => handleVolumeTap(speaker, e)}
-                      onLayout={(e) => handleSliderLayout(speaker.deviceID, e)}
+                      onPress={(event) => handleVolumeTap(speaker, event)}
+                      onLayout={(event) =>
+                        handleSliderLayout(speaker.deviceID, event)
+                      }
                     >
                       <View style={[$sliderFill, { width: `${volume}%` }]} />
                       <View style={[$sliderThumb, { left: `${volume}%` }]} />

@@ -49,7 +49,6 @@ export default defineConfig({
 
       // TMP
       "init-declarations": "off",
-      "id-length": "off",
       "react/hook-use-state": "off",
       "no-implicit-coercion": "off",
     },

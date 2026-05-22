@@ -6,10 +6,10 @@ import {
 } from "bose-api-speaker-client";
 
 async function pressAndRelease(host: string, key: string) {
-  const k = key as (typeof KeyValue)[keyof typeof KeyValue];
+  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
   const client = createClient({ ip: host });
   let result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "press",
     sender: "Gabbo",
   });
@@ -17,7 +17,7 @@ async function pressAndRelease(host: string, key: string) {
     throw result.error;
   }
   result = await client.pressKey({
-    key: k,
+    key: keyValue,
     state: "release",
     sender: "Gabbo",
   });
@@ -131,11 +131,11 @@ export function useSavePresetMutation() {
       host: string;
       presetId: number;
     }) => {
-      const k =
+      const keyValue =
         `PRESET_${presetId}` as (typeof KeyValue)[keyof typeof KeyValue];
       const client = createClient({ ip: host });
       let result = await client.pressKey({
-        key: k,
+        key: keyValue,
         state: "press",
         sender: "Gabbo",
       });
@@ -144,7 +144,7 @@ export function useSavePresetMutation() {
       }
       await new Promise<void>((resolve) => setTimeout(resolve, 2000));
       result = await client.pressKey({
-        key: k,
+        key: keyValue,
         state: "release",
         sender: "Gabbo",
       });
