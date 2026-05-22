@@ -61,7 +61,7 @@ export default function AppSettings() {
           style={$infoRow}
           activeOpacity={0.7}
           onPress={() => {
-            router.push("/logs" as any);
+            router.push("/logs");
           }}
         >
           <Text style={$infoLabel}>Logs</Text>

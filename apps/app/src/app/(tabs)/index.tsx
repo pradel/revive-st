@@ -62,9 +62,7 @@ export default function Index() {
   };
 
   const navigateToSettings = (speaker: BoseSpeaker) => {
-    router.push(
-      `/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as any,
-    );
+    router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
   const showEmptyState = speakers.length === 0 && !isScanning;
@@ -150,7 +148,7 @@ export default function Index() {
             <TouchableOpacity
               style={$secondaryButton}
               onPress={() => {
-                router.push("/onboarding/permissions" as any);
+                router.push("/onboarding/permissions");
               }}
               activeOpacity={0.8}
             >
@@ -299,7 +297,7 @@ export default function Index() {
           <TouchableOpacity
             style={$addSpeakerButton}
             onPress={() => {
-              router.push("/onboarding/permissions" as any);
+              router.push("/onboarding/permissions");
             }}
             activeOpacity={0.8}
           >

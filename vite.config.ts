@@ -63,7 +63,6 @@ export default defineConfig({
 
       // TMP
       "no-unsafe-type-assertion": "off",
-      "no-unsafe-argument": "off",
       "no-unsafe-member-access": "off",
       "no-unnecessary-type-parameters": "off",
       "no-unsafe-assignment": "off",
