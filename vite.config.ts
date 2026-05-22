@@ -12,9 +12,13 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
     plugins: ["react"],
+    env: {
+      browser: true,
+    },
     categories: {
       correctness: "error",
       suspicious: "error",
+      nursery: "error",
     },
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
