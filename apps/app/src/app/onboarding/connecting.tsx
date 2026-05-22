@@ -12,6 +12,7 @@ import {
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
+import { logger } from "@/lib/logger";
 
 export default function ConnectingScreen() {
   const { state, dispatch } = useWifiProvisioning();
@@ -31,17 +32,17 @@ export default function ConnectingScreen() {
     const s = state as { ssid: string; bssid: string };
     try {
       // Call specifier to bind process to the Bose network
-      console.log(
+      logger.log(
         "[Manual Retry] Calling connectToOpenNetwork with",
         s.ssid,
         s.bssid,
       );
       await connectToOpenNetwork(s.ssid, s.bssid);
-      console.log(
+      logger.log(
         "[Manual Retry] Specifier succeeded, traffic bound to Bose AP, probing...",
       );
     } catch {
-      console.log(
+      logger.log(
         "[Manual Retry] Specifier also failed, trying IP probe anyway...",
       );
     }
@@ -58,7 +59,7 @@ export default function ConnectingScreen() {
       }
       await new Promise((r) => setTimeout(r, 1000));
     }
-    console.log("[Manual Retry] Speaker not reachable after 30s polling");
+    logger.log("[Manual Retry] Speaker not reachable after 30s polling");
     setManualPolling(false);
   }, [state, dispatch]);
 

@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { logger } from "@/lib/logger";
 
 interface RadioStation {
   changeid: string;
@@ -75,7 +76,7 @@ export default function RadioBrowser() {
         setFavorites(JSON.parse(stored));
       }
     } catch (err) {
-      console.warn("Failed to load radio favorites:", err);
+      logger.warn("Failed to load radio favorites:", err);
     }
   };
 
@@ -84,7 +85,7 @@ export default function RadioBrowser() {
       await SecureStore.setItemAsync(FAVORITES_KEY, JSON.stringify(list));
       setFavorites(list);
     } catch (err) {
-      console.warn("Failed to save radio favorites:", err);
+      logger.warn("Failed to save radio favorites:", err);
       Alert.alert("Error", "Could not save favorite station.");
     }
   };
@@ -129,7 +130,7 @@ export default function RadioBrowser() {
       const data = (await res.json()) as RadioStation[];
       setStations(data);
     } catch (err) {
-      console.warn("Failed to fetch radio stations:", err);
+      logger.warn("Failed to fetch radio stations:", err);
       Alert.alert(
         "Search Error",
         "Could not retrieve radio stations. Please check your internet connection.",
@@ -160,7 +161,7 @@ export default function RadioBrowser() {
         `Now streaming "${castingStation.name}" to ${speaker.name}.`,
       );
     } catch (err) {
-      console.error(err);
+      logger.error(err);
       Alert.alert(
         "Casting Failed",
         `Failed to play this stream on ${speaker.name}. Note: SoundTouch speakers prefer direct HTTP MP3/AAC streams.`,

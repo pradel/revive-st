@@ -1,5 +1,7 @@
 import { Platform } from "react-native";
 
+import { logger } from "@/lib/logger";
+
 export const SPEAKER_HOTSPOT_CANDIDATES = [
   "192.0.2.1",
   "192.0.2.50",
@@ -55,7 +57,7 @@ export async function probeSpeakerIP(
     });
     clearTimeout(id);
     if (!response.ok) {
-      console.log(`[IP Probe] ${ip} → failed (HTTP ${response.status})`);
+      logger.log(`[IP Probe] ${ip} → failed (HTTP ${response.status})`);
       return false;
     }
     const text = await response.text();
@@ -63,14 +65,14 @@ export async function probeSpeakerIP(
     if (isBose) {
       const nameMatch = text.match(/<name>(.*?)<\/name>/);
       const name = nameMatch ? nameMatch[1] : "Bose Speaker";
-      console.log(`[IP Probe] ${ip} → OK (Verified Bose Device: ${name})`);
+      logger.log(`[IP Probe] ${ip} → OK (Verified Bose Device: ${name})`);
       return true;
     }
-    console.log(`[IP Probe] ${ip} → failed (not a Bose device)`);
+    logger.log(`[IP Probe] ${ip} → failed (not a Bose device)`);
     return false;
   } catch (err) {
     clearTimeout(id);
-    console.log(`[IP Probe] ${ip} → failed (${(err as Error).message})`);
+    logger.log(`[IP Probe] ${ip} → failed (${(err as Error).message})`);
     return false;
   }
 }
@@ -80,12 +82,7 @@ export async function findSpeakerIP(
 ): Promise<string | null> {
   for (const ip of SPEAKER_HOTSPOT_CANDIDATES) {
     const alive = await probeSpeakerIP(ip, timeout);
-    console.log(
-      "Probe result for",
-      ip,
-      ":",
-      alive ? "alive" : "not responding",
-    );
+    logger.log("Probe result for", ip, ":", alive ? "alive" : "not responding");
     if (alive) return ip;
   }
   return null;
@@ -99,9 +96,9 @@ export async function sendCredentials(
 ): Promise<void> {
   const payload = buildCredentialsPayload(homeSSID, homePassword);
   const url = `http://${speakerIp}:${SPEAKER_PORT}/addWirelessProfile`;
-  console.log(`[Send Creds] Sending POST to ${url}`);
-  console.log(`[Send Creds] Headers: { "Content-Type": "application/xml" }`);
-  console.log(`[Send Creds] Payload: ${payload}`);
+  logger.log(`[Send Creds] Sending POST to ${url}`);
+  logger.log(`[Send Creds] Headers: { "Content-Type": "application/xml" }`);
+  logger.log(`[Send Creds] Payload: ${payload}`);
 
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeout);
@@ -115,11 +112,11 @@ export async function sendCredentials(
     });
     clearTimeout(id);
 
-    console.log(
+    logger.log(
       `[Send Creds] Response status: ${response.status} (${response.statusText || "unknown"})`,
     );
     const text = await response.text();
-    console.log(`[Send Creds] Response body: ${text}`);
+    logger.log(`[Send Creds] Response body: ${text}`);
 
     if (!response.ok) {
       throw new Error(`Speaker returned HTTP ${response.status}: ${text}`);
@@ -128,7 +125,7 @@ export async function sendCredentials(
     clearTimeout(id);
     const errMsg = (err as Error).message || "";
     const errName = (err as Error).name || "";
-    console.log(`[Send Creds] Exception thrown: ${errName} - ${errMsg}`);
+    logger.log(`[Send Creds] Exception thrown: ${errName} - ${errMsg}`);
 
     const isAbortOrNetworkError =
       errName === "AbortError" ||
@@ -139,7 +136,7 @@ export async function sendCredentials(
       errMsg.toLowerCase().includes("timeout");
 
     if (isAbortOrNetworkError) {
-      console.log(
+      logger.log(
         `[Send Creds] Treating abort/network error as success (AP likely shut down by speaker)`,
       );
       return;

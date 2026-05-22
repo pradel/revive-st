@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { logger } from "@/lib/logger";
 
 export default function SpeakerDetail() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function SpeakerDetail() {
       void loadPresets(speaker.deviceID);
       void loadBass(speaker.deviceID);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (!speaker) {
@@ -129,7 +131,7 @@ export default function SpeakerDetail() {
               setSavingPresetId(presetId);
               await savePreset(speaker.deviceID, presetId);
             } catch (err) {
-              console.warn("[SpeakerDetail] Failed to save preset:", err);
+              logger.warn("[SpeakerDetail] Failed to save preset:", err);
               Alert.alert(
                 "Error",
                 "Failed to assign preset. Please try again.",
