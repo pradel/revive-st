@@ -75,7 +75,6 @@ export default defineConfig({
       "explicit-module-boundary-types": "off",
       "explicit-member-accessibility": "off",
       "explicit-function-return-type": "off",
-      "array-type": "off",
       "consistent-type-definitions": "off",
       "no-explicit-any": "off",
       "no-non-null-assertion": "off",

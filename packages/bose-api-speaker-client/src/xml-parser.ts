@@ -11,11 +11,11 @@ export function parseXml(xml: string): XmlNode {
   const tagRegex =
     /<(\/?)([a-zA-Z0-9_-]+)((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*(\/?)>/g;
   const valueRegex = /<[^>]*>/;
-  const tokens: Array<{
+  const tokens: {
     type: "open" | "close" | "selfClose";
     name: string;
     attrs: Record<string, string>;
-  }> = [];
+  }[] = [];
 
   let match: RegExpExecArray | null;
   let lastIndex = 0;

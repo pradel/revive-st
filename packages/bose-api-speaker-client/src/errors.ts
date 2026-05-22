@@ -18,12 +18,12 @@ export class XmlParseError extends TaggedError("XmlParseError")<{
 
 export class ApiError extends TaggedError("ApiError")<{
   deviceID: string;
-  errors: Array<{
+  errors: {
     value: number;
     name: string;
     severity: string;
     message: string;
-  }>;
+  }[];
 }>() {}
 
 export type BoseApiError = NetworkError | HttpError | XmlParseError | ApiError;
