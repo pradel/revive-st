@@ -31,7 +31,7 @@ function unwrapOk<TParsed>(result: unknown): TParsed {
   if (!Result.isOk(result as never)) {
     throw new Error("Expected Ok but got Err");
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-unsafe-member-access, typescript/no-explicit-any
   return (result as any).value as TParsed;
 }
 
