@@ -70,8 +70,8 @@ export default function SpeakerSettings() {
             <SymbolView
               name={{
                 ios: "speaker.wave.2.fill",
-                android: "volume_up",
-                web: "volume_up",
+                android: "speaker",
+                web: "speaker",
               }}
               tintColor="#a1a1aa"
               size={24}

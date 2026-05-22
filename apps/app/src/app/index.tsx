@@ -105,8 +105,6 @@ export default function Index() {
             <SymbolView
               name={{
                 ios: "speaker.wave.2",
-                android: "volume_off",
-                web: "volume_off",
               }}
               tintColor="#52525b"
               size={48}
@@ -176,8 +174,8 @@ export default function Index() {
                         <SymbolView
                           name={{
                             ios: "speaker.wave.2.fill",
-                            android: "volume_up",
-                            web: "volume_up",
+                            android: "speaker",
+                            web: "speaker",
                           }}
                           tintColor="#a1a1aa"
                           size={20}
@@ -242,8 +240,8 @@ export default function Index() {
                     <SymbolView
                       name={{
                         ios: "speaker.fill",
-                        android: "volume_down",
-                        web: "volume_mute",
+                        android: "speaker",
+                        web: "speaker",
                       }}
                       tintColor="#52525b"
                       size={14}
@@ -260,8 +258,8 @@ export default function Index() {
                     <SymbolView
                       name={{
                         ios: "speaker.wave.3.fill",
-                        android: "volume_up",
-                        web: "volume_up",
+                        android: "speaker",
+                        web: "speaker",
                       }}
                       tintColor="#a1a1aa"
                       size={14}
