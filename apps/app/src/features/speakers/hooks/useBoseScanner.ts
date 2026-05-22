@@ -32,11 +32,11 @@ export interface BoseSpeaker {
   isUpdating?: boolean;
   presets?: Preset[];
   bass?: number;
-  bassCapabilities?: BassCapabilitiesResponse;
-  capabilities?: CapabilitiesResponse;
-  audioDspControls?: AudioDspControlsResponse;
-  audioProductToneControls?: AudioProductToneControlsResponse;
-  audioProductLevelControls?: AudioProductLevelControlsResponse;
+  bassCapabilities?: BassCapabilitiesResponse | null;
+  capabilities?: CapabilitiesResponse | null;
+  audioDspControls?: AudioDspControlsResponse | null;
+  audioProductToneControls?: AudioProductToneControlsResponse | null;
+  audioProductLevelControls?: AudioProductLevelControlsResponse | null;
 }
 
 async function pressAndRelease(host: string, key: string) {
@@ -359,11 +359,11 @@ export function useBoseScanner(scanDurationMs = 5000) {
             artUrl: nowPlaying?.art?.url,
             volume: volumeInfo?.actualvolume,
             muteEnabled: volumeInfo?.muteenabled,
-            bassCapabilities: bassCaps ?? undefined,
-            capabilities: capabilities ?? undefined,
-            audioDspControls: dspControls ?? undefined,
-            audioProductToneControls: toneControls ?? undefined,
-            audioProductLevelControls: levelControls ?? undefined,
+            bassCapabilities: bassCaps,
+            capabilities: capabilities,
+            audioDspControls: dspControls,
+            audioProductToneControls: toneControls,
+            audioProductLevelControls: levelControls,
           };
 
           if (exists) {

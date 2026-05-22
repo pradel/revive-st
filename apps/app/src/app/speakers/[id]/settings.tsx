@@ -176,13 +176,6 @@ export default function SpeakerSettings() {
                 Keyboard.dismiss();
               }}
               onBlur={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed && trimmed !== speaker.name) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
-                  );
-                }
                 setNameValue("");
               }}
             />
@@ -190,7 +183,7 @@ export default function SpeakerSettings() {
               style={$saveButton}
               onPress={() => {
                 const trimmed = nameValue.trim();
-                if (trimmed) {
+                if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
                     { onError: () => setNameValue(speaker.name) },
