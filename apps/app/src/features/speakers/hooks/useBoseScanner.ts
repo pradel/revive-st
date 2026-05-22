@@ -1,22 +1,11 @@
-import { BoseWebSocketClient } from "bose-api-speaker-client";
+import type { Preset } from "bose-api-speaker-client";
+import {
+  BoseWebSocketClient,
+  boseSpeakerClient as createClient,
+  KeyValue,
+} from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { ZeroconfService } from "react-native-zeroconf";
-
-import {
-  fetchSpeakerInfo,
-  fetchNowPlaying,
-  fetchVolume,
-  sendKeyCommand,
-  setSpeakerVolume,
-  BoseSpeakerInfo,
-  selectSpeakerSource,
-  BosePreset,
-  fetchPresets,
-  fetchSpeakerBass,
-  setSpeakerBass,
-  sendLongKeyCommand,
-  playSpeakerUri,
-} from "../utils/boseParser";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -33,8 +22,60 @@ export interface BoseSpeaker {
   volume?: number;
   muteEnabled?: boolean;
   isUpdating?: boolean;
-  presets?: BosePreset[];
+  presets?: Preset[];
   bass?: number;
+}
+
+async function pressAndRelease(host: string, key: string) {
+  const k = key as (typeof KeyValue)[keyof typeof KeyValue];
+  const client = createClient({ ip: host });
+  let result = await client.pressKey({
+    key: k,
+    state: "press",
+    sender: "Gabbo",
+  });
+  if (!result.isOk()) throw result.error;
+  result = await client.pressKey({
+    key: k,
+    state: "release",
+    sender: "Gabbo",
+  });
+  if (!result.isOk()) throw result.error;
+}
+
+async function longPress(host: string, key: string, durationMs = 2000) {
+  const k = key as (typeof KeyValue)[keyof typeof KeyValue];
+  const client = createClient({ ip: host });
+  let result = await client.pressKey({
+    key: k,
+    state: "press",
+    sender: "Gabbo",
+  });
+  if (!result.isOk()) throw result.error;
+  await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
+  result = await client.pressKey({
+    key: k,
+    state: "release",
+    sender: "Gabbo",
+  });
+  if (!result.isOk()) throw result.error;
+}
+
+function playUri(host: string, uri: string, name: string) {
+  const escapedName = name
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const escapedUri = uri
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  const payload = `<ContentItem source="INTERNET_RADIO" location="${escapedUri}" sourceAccount=""><itemName>${escapedName}</itemName></ContentItem>`;
+  return fetch(`http://${host}:8090/select`, {
+    method: "POST",
+    headers: { "Content-Type": "text/xml" },
+    body: payload,
+  });
 }
 
 export function useBoseScanner(scanDurationMs = 5000) {
@@ -47,7 +88,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
 
-  // We keep a ref to speakers so our callbacks can reference the latest list without re-triggering effects
   const speakersRef = useRef<BoseSpeaker[]>([]);
   speakersRef.current = speakers;
 
@@ -74,17 +114,19 @@ export function useBoseScanner(scanDurationMs = 5000) {
     try {
       const hasPresetsLoaded = speaker.presets !== undefined;
       const hasBassLoaded = speaker.bass !== undefined;
+      const client = createClient({ ip: speaker.host });
 
-      const [nowPlaying, volumeInfo, presets, bassInfo] = await Promise.all([
-        fetchNowPlaying(speaker.host).catch(() => null),
-        fetchVolume(speaker.host).catch(() => null),
-        hasPresetsLoaded
-          ? fetchPresets(speaker.host).catch(() => null)
-          : Promise.resolve(null),
-        hasBassLoaded
-          ? fetchSpeakerBass(speaker.host).catch(() => null)
-          : Promise.resolve(null),
-      ]);
+      const [nowPlaying, volumeInfo, presetsResult, bassResult] =
+        await Promise.all([
+          client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
+          client.getVolume().then((r) => (r.isOk() ? r.value : null)),
+          hasPresetsLoaded
+            ? client.getPresets().then((r) => (r.isOk() ? r.value : null))
+            : Promise.resolve(null),
+          hasBassLoaded
+            ? client.getBass().then((r) => (r.isOk() ? r.value : null))
+            : Promise.resolve(null),
+        ]);
 
       if (!isMounted.current) return;
 
@@ -98,11 +140,11 @@ export function useBoseScanner(scanDurationMs = 5000) {
               track: nowPlaying?.track ?? s.track,
               artist: nowPlaying?.artist ?? s.artist,
               album: nowPlaying?.album ?? s.album,
-              artUrl: nowPlaying?.artUrl ?? s.artUrl,
-              volume: volumeInfo?.actualVolume ?? s.volume,
-              muteEnabled: volumeInfo?.muteEnabled ?? s.muteEnabled,
-              presets: presets ?? s.presets,
-              bass: bassInfo ? bassInfo.actualBass : s.bass,
+              artUrl: nowPlaying?.art?.url ?? s.artUrl,
+              volume: volumeInfo?.actualvolume ?? s.volume,
+              muteEnabled: volumeInfo?.muteenabled ?? s.muteEnabled,
+              presets: presetsResult ? presetsResult.presets : s.presets,
+              bass: bassResult ? bassResult.actualbass : s.bass,
             };
           }
           return s;
@@ -116,11 +158,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }
   }, []);
 
-  // Manage WebSocket connections based on discovered speakers list
   useEffect(() => {
     const currentDeviceIds = new Set(speakers.map((s) => s.deviceID));
 
-    // Close and remove clients for speakers that are no longer present
     wsClientsRef.current.forEach((client, deviceID) => {
       if (!currentDeviceIds.has(deviceID)) {
         console.log(
@@ -131,7 +171,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
       }
     });
 
-    // Create and connect clients for new speakers
     speakers.forEach((speaker) => {
       if (!wsClientsRef.current.has(speaker.deviceID)) {
         const client = new BoseWebSocketClient({
@@ -180,7 +219,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
                 }),
               );
             } else {
-              // Notification signal with no payload, trigger REST API refresh
               const latestSpeaker = speakersRef.current.find(
                 (s) => s.deviceID === update.deviceID,
               );
@@ -214,21 +252,18 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     zeroconf.on("resolved", async (service: ZeroconfService) => {
       if (!isMounted.current) return;
-
-      // Ensure we only process services that belong to SoundTouch
       if (!service.host) return;
 
       try {
-        // Query /info to confirm it's a Bose speaker and get its details
-        const info: BoseSpeakerInfo = await fetchSpeakerInfo(service.host);
-
-        if (!isMounted.current) return;
+        const client = createClient({ ip: service.host });
+        const infoResult = await client.getInfo();
+        if (!infoResult.isOk()) return;
+        const info = infoResult.value;
         if (!info.deviceID) return;
 
-        // Fetch initial status
         const [nowPlaying, volumeInfo] = await Promise.all([
-          fetchNowPlaying(service.host).catch(() => null),
-          fetchVolume(service.host).catch(() => null),
+          client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
+          client.getVolume().then((r) => (r.isOk() ? r.value : null)),
         ]);
 
         if (!isMounted.current) return;
@@ -246,9 +281,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
             track: nowPlaying?.track,
             artist: nowPlaying?.artist,
             album: nowPlaying?.album,
-            artUrl: nowPlaying?.artUrl,
-            volume: volumeInfo?.actualVolume,
-            muteEnabled: volumeInfo?.muteEnabled,
+            artUrl: nowPlaying?.art?.url,
+            volume: volumeInfo?.actualvolume,
+            muteEnabled: volumeInfo?.muteenabled,
           };
 
           if (exists) {
@@ -300,8 +335,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
 
       try {
-        await sendKeyCommand(speaker.host, "POWER");
-        // Wait a short time for speaker state to transition, then refresh status
+        await pressAndRelease(speaker.host, "POWER");
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 800);
@@ -326,19 +360,19 @@ export function useBoseScanner(scanDurationMs = 5000) {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
       if (!speaker) return;
 
-      // Optimistically update volume in UI
       setSpeakers((prev) =>
         prev.map((s) => (s.deviceID === deviceID ? { ...s, volume: vol } : s)),
       );
 
       try {
-        await setSpeakerVolume(speaker.host, vol);
+        const client = createClient({ ip: speaker.host });
+        const result = await client.setVolume({ volume: vol });
+        if (!result.isOk()) throw result.error;
       } catch (err) {
         console.error(
           `[BoseScanner] Failed to set volume on ${speaker.name}:`,
           err,
         );
-        // Revert/refresh
         void refreshSpeakerStatus(speaker);
       }
     },
@@ -357,7 +391,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
 
       try {
-        await sendKeyCommand(speaker.host, "PLAY_PAUSE");
+        await pressAndRelease(speaker.host, "PLAY_PAUSE");
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 500);
@@ -389,7 +423,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
 
       try {
-        await sendKeyCommand(speaker.host, key);
+        await pressAndRelease(speaker.host, key);
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 500);
@@ -421,7 +455,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
 
       try {
-        await selectSpeakerSource(speaker.host, source, sourceAccount);
+        const client = createClient({ ip: speaker.host });
+        const result = await client.selectSource({
+          source,
+          sourceAccount: sourceAccount || undefined,
+        });
+        if (!result.isOk()) throw result.error;
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 500);
@@ -445,10 +484,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
     if (!speaker) return;
     try {
-      const presets = await fetchPresets(speaker.host);
-      if (!isMounted.current) return;
+      const client = createClient({ ip: speaker.host });
+      const result = await client.getPresets();
+      if (!result.isOk() || !isMounted.current) return;
       setSpeakers((prev) =>
-        prev.map((s) => (s.deviceID === deviceID ? { ...s, presets } : s)),
+        prev.map((s) =>
+          s.deviceID === deviceID ? { ...s, presets: result.value.presets } : s,
+        ),
       );
     } catch (err) {
       console.warn(
@@ -462,11 +504,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
     if (!speaker) return;
     try {
-      const bassInfo = await fetchSpeakerBass(speaker.host);
-      if (!isMounted.current) return;
+      const client = createClient({ ip: speaker.host });
+      const result = await client.getBass();
+      if (!result.isOk() || !isMounted.current) return;
       setSpeakers((prev) =>
         prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, bass: bassInfo.actualBass } : s,
+          s.deviceID === deviceID ? { ...s, bass: result.value.actualbass } : s,
         ),
       );
     } catch (err) {
@@ -486,12 +529,19 @@ export function useBoseScanner(scanDurationMs = 5000) {
           s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
         ),
       );
-      await sendLongKeyCommand(speaker.host, `PRESET_${presetId}`);
-      const presets = await fetchPresets(speaker.host);
+      await longPress(speaker.host, `PRESET_${presetId}`);
+      const client = createClient({ ip: speaker.host });
+      const result = await client.getPresets();
       if (!isMounted.current) return;
       setSpeakers((prev) =>
         prev.map((s) =>
-          s.deviceID === deviceID ? { ...s, presets, isUpdating: false } : s,
+          s.deviceID === deviceID
+            ? {
+                ...s,
+                presets: result.isOk() ? result.value.presets : s.presets,
+                isUpdating: false,
+              }
+            : s,
         ),
       );
     } catch (err) {
@@ -519,7 +569,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
           s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
         ),
       );
-      await setSpeakerBass(speaker.host, value);
+      const client = createClient({ ip: speaker.host });
+      const result = await client.setBass(value);
+      if (!result.isOk()) throw result.error;
       if (!isMounted.current) return;
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -554,7 +606,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             s.deviceID === deviceID ? { ...s, isUpdating: true } : s,
           ),
         );
-        await playSpeakerUri(speaker.host, uri, name);
+        await playUri(speaker.host, uri, name);
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 1000);
@@ -575,12 +627,10 @@ export function useBoseScanner(scanDurationMs = 5000) {
     [refreshSpeakerStatus],
   );
 
-  // Start initial scan and polling loop
   useEffect(() => {
     isMounted.current = true;
     startScan();
 
-    // Poll discovered speakers status every 15 seconds as a fallback
     pollIntervalRef.current = setInterval(() => {
       speakersRef.current.forEach((speaker) => {
         void refreshSpeakerStatus(speaker);
@@ -593,7 +643,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
-      // Close all WebSocket clients on unmount
       wsClientsRef.current.forEach((client) => {
         client.close();
       });
