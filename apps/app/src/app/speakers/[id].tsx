@@ -8,8 +8,8 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
-  GestureResponderEvent,
   Alert,
+  type GestureResponderEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -32,7 +32,7 @@ export default function SpeakerDetail() {
     setBass,
   } = useBose();
 
-  const speaker = speakers.find((s) => s.deviceID === id);
+  const speaker = speakers.find((speaker) => speaker.deviceID === id);
   const [sliderWidth, setSliderWidth] = useState(0);
   const [bassSliderWidth, setBassSliderWidth] = useState(0);
   const [savingPresetId, setSavingPresetId] = useState<number | null>(null);
@@ -54,7 +54,12 @@ export default function SpeakerDetail() {
           <Text style={styles.errorText}>
             This speaker is no longer detected on your local network.
           </Text>
-          <Pressable style={styles.backButton} onPress={() => router.back()}>
+          <Pressable
+            style={styles.backButton}
+            onPress={() => {
+              router.back();
+            }}
+          >
             <Text style={styles.backButtonText}>Return to Dashboard</Text>
           </Pressable>
         </View>
@@ -65,9 +70,11 @@ export default function SpeakerDetail() {
   const isStandby =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 
-  const handleSliderPress = (e: GestureResponderEvent) => {
-    if (sliderWidth <= 0) return;
-    const touchX = e.nativeEvent.locationX;
+  const handleSliderPress = (event: GestureResponderEvent) => {
+    if (sliderWidth <= 0) {
+      return;
+    }
+    const touchX = event.nativeEvent.locationX;
     const percentage = Math.max(0, Math.min(1, touchX / sliderWidth));
     const newVolume = Math.round(percentage * 100);
     void changeVolume(speaker.deviceID, newVolume);
@@ -79,9 +86,11 @@ export default function SpeakerDetail() {
     void changeVolume(speaker.deviceID, newVol);
   };
 
-  const handleBassSliderPress = (e: GestureResponderEvent) => {
-    if (bassSliderWidth <= 0) return;
-    const touchX = e.nativeEvent.locationX;
+  const handleBassSliderPress = (event: GestureResponderEvent) => {
+    if (bassSliderWidth <= 0) {
+      return;
+    }
+    const touchX = event.nativeEvent.locationX;
     const percentage = Math.max(0, Math.min(1, touchX / bassSliderWidth));
     // Bass goes from -9 to 0
     const newBass = -9 + Math.round(percentage * 9);
@@ -126,6 +135,7 @@ export default function SpeakerDetail() {
         { text: "Cancel", style: "cancel" },
         {
           text: "Save",
+          // oxlint-disable-next-line typescript/no-misused-promises
           onPress: async () => {
             try {
               setSavingPresetId(presetId);
@@ -173,20 +183,25 @@ export default function SpeakerDetail() {
   const getSourceBadgeColor = (src: string) => {
     switch (src) {
       case "BLUETOOTH":
-        return "#2563eb"; // Blue
+        // Blue
+        return "#2563eb";
       case "AUX":
-        return "#d97706"; // Amber
+        // Amber
+        return "#d97706";
       case "STANDBY":
-        return "#4b5563"; // Gray
+        // Gray
+        return "#4b5563";
       case "INTERNET_RADIO":
       case "SPOTIFY":
-        return "#16a34a"; // Green
+        // Green
+        return "#16a34a";
       default:
-        return "#8b5cf6"; // Purple
+        // Purple
+        return "#8b5cf6";
     }
   };
 
-  const activeSource = speaker.source || "STANDBY";
+  const activeSource = speaker.source ?? "STANDBY";
 
   return (
     <SafeAreaView style={styles.container}>
@@ -194,7 +209,9 @@ export default function SpeakerDetail() {
       <View style={styles.header}>
         <Pressable
           style={styles.headerIconButton}
-          onPress={() => router.back()}
+          onPress={() => {
+            router.back();
+          }}
         >
           <Text style={styles.headerIconText}>←</Text>
         </Pressable>
@@ -213,7 +230,9 @@ export default function SpeakerDetail() {
             styles.headerPowerButton,
             isStandby ? styles.powerOff : styles.powerOn,
           ]}
-          onPress={() => togglePower(speaker.deviceID)}
+          onPress={() => {
+            void togglePower(speaker.deviceID);
+          }}
           disabled={speaker.isUpdating}
         >
           {speaker.isUpdating ? (
@@ -241,7 +260,9 @@ export default function SpeakerDetail() {
             </Text>
             <Pressable
               style={styles.wakeButton}
-              onPress={() => togglePower(speaker.deviceID)}
+              onPress={() => {
+                void togglePower(speaker.deviceID);
+              }}
               disabled={speaker.isUpdating}
             >
               {speaker.isUpdating ? (
@@ -273,10 +294,10 @@ export default function SpeakerDetail() {
             {/* Track Info */}
             <View style={styles.trackInfoContainer}>
               <Text style={styles.trackName} numberOfLines={2}>
-                {speaker.track || "Nothing Playing"}
+                {speaker.track ?? "Nothing Playing"}
               </Text>
               <Text style={styles.artistName} numberOfLines={1}>
-                {speaker.artist || "Unknown Artist"}
+                {speaker.artist ?? "Unknown Artist"}
               </Text>
               {speaker.album ? (
                 <Text style={styles.albumName} numberOfLines={1}>
@@ -310,7 +331,9 @@ export default function SpeakerDetail() {
                 {/* Play/Pause */}
                 <Pressable
                   style={styles.mainPlayButton}
-                  onPress={() => playPause(speaker.deviceID)}
+                  onPress={() => {
+                    void playPause(speaker.deviceID);
+                  }}
                   disabled={speaker.isUpdating}
                 >
                   {speaker.isUpdating ? (
@@ -359,7 +382,9 @@ export default function SpeakerDetail() {
                 <View style={styles.sliderContainer}>
                   <Pressable
                     style={styles.volTrack}
-                    onLayout={(e) => setSliderWidth(e.nativeEvent.layout.width)}
+                    onLayout={(event) => {
+                      setSliderWidth(event.nativeEvent.layout.width);
+                    }}
                     onPress={handleSliderPress}
                   >
                     <View
@@ -377,13 +402,17 @@ export default function SpeakerDetail() {
                 <View style={styles.steppersContainer}>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => adjustVolumeStep(-5)}
+                    onPress={() => {
+                      adjustVolumeStep(-5);
+                    }}
                   >
                     <Text style={styles.stepButtonText}>-</Text>
                   </Pressable>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => adjustVolumeStep(5)}
+                    onPress={() => {
+                      adjustVolumeStep(5);
+                    }}
                   >
                     <Text style={styles.stepButtonText}>+</Text>
                   </Pressable>
@@ -395,25 +424,24 @@ export default function SpeakerDetail() {
             <View style={styles.panel}>
               <View style={styles.panelHeader}>
                 <Text style={styles.panelTitle}>Bass Tuning</Text>
-                <Text style={styles.panelValue}>
-                  {speaker.bass !== undefined ? speaker.bass : "..."}
-                </Text>
+                <Text style={styles.panelValue}>{speaker.bass ?? "..."}</Text>
               </View>
 
               <View style={styles.volumeRow}>
                 <View style={styles.sliderContainer}>
                   <Pressable
                     style={styles.volTrack}
-                    onLayout={(e) =>
-                      setBassSliderWidth(e.nativeEvent.layout.width)
-                    }
+                    onLayout={(event) => {
+                      setBassSliderWidth(event.nativeEvent.layout.width);
+                    }}
                     onPress={handleBassSliderPress}
                   >
                     <View
                       style={[
                         styles.volFill,
                         {
-                          backgroundColor: "#f59e0b", // Amber accent color for bass tuning
+                          // Amber accent color for bass tuning
+                          backgroundColor: "#f59e0b",
                           // Bass range is -9 to 0. Mapped to percentage.
                           width: `${
                             speaker.bass !== undefined
@@ -430,13 +458,17 @@ export default function SpeakerDetail() {
                 <View style={styles.steppersContainer}>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => adjustBassStep(-1)}
+                    onPress={() => {
+                      adjustBassStep(-1);
+                    }}
                   >
                     <Text style={styles.stepButtonText}>-</Text>
                   </Pressable>
                   <Pressable
                     style={styles.stepButton}
-                    onPress={() => adjustBassStep(1)}
+                    onPress={() => {
+                      adjustBassStep(1);
+                    }}
                   >
                     <Text style={styles.stepButtonText}>+</Text>
                   </Pressable>
@@ -449,7 +481,9 @@ export default function SpeakerDetail() {
               <Text style={styles.panelTitle}>Quick Presets (1-6)</Text>
               <View style={styles.presetGrid}>
                 {[1, 2, 3, 4, 5, 6].map((num) => {
-                  const preset = speaker.presets?.find((p) => p.id === num);
+                  const preset = speaker.presets?.find(
+                    (sPreset) => sPreset.id === num,
+                  );
                   const isSaving = savingPresetId === num;
 
                   return (
@@ -459,8 +493,12 @@ export default function SpeakerDetail() {
                         styles.presetCard,
                         preset && styles.presetCardActive,
                       ]}
-                      onPress={() => handlePresetPress(num)}
-                      onLongPress={() => handlePresetLongPress(num)}
+                      onPress={() => {
+                        handlePresetPress(num);
+                      }}
+                      onLongPress={() => {
+                        handlePresetLongPress(num);
+                      }}
                       delayLongPress={600}
                     >
                       <View style={styles.presetHeader}>
@@ -530,7 +568,9 @@ export default function SpeakerDetail() {
                     styles.sourceCard,
                     speaker.source === "BLUETOOTH" && styles.sourceCardActive,
                   ]}
-                  onPress={() => selectSource(speaker.deviceID, "BLUETOOTH")}
+                  onPress={() =>
+                    void selectSource(speaker.deviceID, "BLUETOOTH")
+                  }
                 >
                   <Text style={styles.sourceCardEmoji}>📱</Text>
                   <Text style={styles.sourceCardText}>Bluetooth</Text>
@@ -542,7 +582,9 @@ export default function SpeakerDetail() {
                     styles.sourceCard,
                     speaker.source === "AUX" && styles.sourceCardActive,
                   ]}
-                  onPress={() => selectSource(speaker.deviceID, "AUX", "AUX")}
+                  onPress={() =>
+                    void selectSource(speaker.deviceID, "AUX", "AUX")
+                  }
                 >
                   <Text style={styles.sourceCardEmoji}>🔌</Text>
                   <Text style={styles.sourceCardText}>Auxiliary</Text>
@@ -556,7 +598,9 @@ export default function SpeakerDetail() {
                       speaker.source !== "AUX" &&
                       styles.sourceCardActive,
                   ]}
-                  onPress={() => selectSource(speaker.deviceID, "TUNEIN")}
+                  onPress={() => {
+                    void selectSource(speaker.deviceID, "TUNEIN");
+                  }}
                 >
                   <Text style={styles.sourceCardEmoji}>🌐</Text>
                   <Text style={styles.sourceCardText}>Wi-Fi Audio</Text>
@@ -573,7 +617,8 @@ export default function SpeakerDetail() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#09090b", // Deep zinc black background
+    // Deep zinc black background
+    backgroundColor: "#09090b",
   },
   errorContainer: {
     flex: 1,
@@ -878,7 +923,8 @@ const styles = StyleSheet.create({
   mainPlayButtonText: {
     color: "#09090b",
     fontSize: 28,
-    marginLeft: 4, // Slight adjustment to center triangle visually
+    // Slight adjustment to center triangle visually
+    marginLeft: 4,
   },
   volumeRow: {
     flexDirection: "row",
@@ -944,7 +990,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   presetCard: {
-    width: "48%", // Grid layout
+    // Grid layout
+    width: "48%",
     aspectRatio: 1.3,
     backgroundColor: "#18181b",
     borderWidth: 1,
@@ -954,7 +1001,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   presetCardActive: {
-    borderColor: "rgba(245, 158, 11, 0.4)", // Amber highlight for assigned presets
+    // Amber highlight for assigned presets
+    borderColor: "rgba(245, 158, 11, 0.4)",
     backgroundColor: "rgba(245, 158, 11, 0.03)",
   },
   presetHeader: {
@@ -971,7 +1019,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   presetBadgeActive: {
-    backgroundColor: "#f59e0b", // Amber glowing badge for presets
+    // Amber glowing badge for presets
+    backgroundColor: "#f59e0b",
   },
   presetBadgeText: {
     color: "#fafafa",

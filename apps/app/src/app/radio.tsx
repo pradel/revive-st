@@ -126,7 +126,9 @@ export default function RadioBrowser() {
       const res = await fetch(url, {
         headers: { "User-Agent": "ReviveST/1.0" },
       });
-      if (!res.ok) throw new Error("API request failed");
+      if (!res.ok) {
+        throw new Error("API request failed");
+      }
       const data = (await res.json()) as RadioStation[];
       setStations(data);
     } catch (err) {
@@ -146,9 +148,13 @@ export default function RadioBrowser() {
   };
 
   const handleCastToSpeaker = async (speakerId: string) => {
-    if (!castingStation) return;
+    if (!castingStation) {
+      return;
+    }
     const speaker = speakers.find((s) => s.deviceID === speakerId);
-    if (!speaker) return;
+    if (!speaker) {
+      return;
+    }
 
     setCastingToSpeakerId(speakerId);
     try {
@@ -177,7 +183,9 @@ export default function RadioBrowser() {
     return (
       <Pressable
         style={styles.stationCard}
-        onPress={() => handleStationPress(item)}
+        onPress={() => {
+          handleStationPress(item);
+        }}
       >
         {/* Favicon / logo */}
         <View style={styles.stationLogoContainer}>
@@ -200,7 +208,9 @@ export default function RadioBrowser() {
 
         <Pressable
           style={styles.favoriteButton}
-          onPress={() => toggleFavorite(item)}
+          onPress={() => {
+            toggleFavorite(item);
+          }}
         >
           <Text style={styles.favoriteIconText}>{isFav ? "★" : "☆"}</Text>
         </Pressable>
@@ -212,7 +222,12 @@ export default function RadioBrowser() {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => {
+            router.back();
+          }}
+        >
           <Text style={styles.backButtonText}>←</Text>
         </Pressable>
         <Text style={styles.headerTitle}>Internet Radio</Text>
@@ -223,7 +238,9 @@ export default function RadioBrowser() {
       <View style={styles.tabsContainer}>
         <Pressable
           style={[styles.tab, activeTab === "search" && styles.activeTab]}
-          onPress={() => setActiveTab("search")}
+          onPress={() => {
+            setActiveTab("search");
+          }}
         >
           <Text
             style={[
@@ -236,7 +253,9 @@ export default function RadioBrowser() {
         </Pressable>
         <Pressable
           style={[styles.tab, activeTab === "favorites" && styles.activeTab]}
-          onPress={() => setActiveTab("favorites")}
+          onPress={() => {
+            setActiveTab("favorites");
+          }}
         >
           <Text
             style={[
@@ -263,7 +282,7 @@ export default function RadioBrowser() {
                 setQuery(text);
                 setSelectedTag(null);
               }}
-              onSubmitEditing={() => handleSearch(query, null)}
+              onSubmitEditing={async () => handleSearch(query, null)}
               returnKeyType="search"
             />
             {query.trim().length > 0 && (
@@ -326,7 +345,7 @@ export default function RadioBrowser() {
               </Text>
               <Pressable
                 style={styles.exploreButton}
-                onPress={() => handleSearch("", null)}
+                onPress={async () => handleSearch("", null)}
               >
                 <Text style={styles.exploreButtonText}>
                   Browse Top Stations
@@ -354,7 +373,9 @@ export default function RadioBrowser() {
               </Text>
               <Pressable
                 style={styles.exploreButton}
-                onPress={() => setActiveTab("search")}
+                onPress={() => {
+                  setActiveTab("search");
+                }}
               >
                 <Text style={styles.exploreButtonText}>Find Stations</Text>
               </Pressable>
@@ -373,9 +394,11 @@ export default function RadioBrowser() {
       {/* Speaker Selector Casting Modal */}
       <Modal
         animationType="slide"
-        transparent={true}
+        transparent
         visible={castModalVisible}
-        onRequestClose={() => setCastModalVisible(false)}
+        onRequestClose={() => {
+          setCastModalVisible(false);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
@@ -383,7 +406,9 @@ export default function RadioBrowser() {
               <Text style={styles.modalTitle}>Select Speaker</Text>
               <Pressable
                 style={styles.modalCloseButton}
-                onPress={() => setCastModalVisible(false)}
+                onPress={() => {
+                  setCastModalVisible(false);
+                }}
               >
                 <Text style={styles.modalCloseText}>✕</Text>
               </Pressable>
@@ -417,7 +442,9 @@ export default function RadioBrowser() {
                     <Pressable
                       key={speaker.deviceID}
                       style={styles.speakerItem}
-                      onPress={() => handleCastToSpeaker(speaker.deviceID)}
+                      onPress={async () =>
+                        handleCastToSpeaker(speaker.deviceID)
+                      }
                       disabled={isCasting}
                     >
                       <View style={styles.speakerItemLeft}>

@@ -39,7 +39,9 @@ export default function PermissionsScreen() {
           </Text>
           <Pressable
             style={styles.button}
-            onPress={() => dispatch({ type: "RETRY" })}
+            onPress={() => {
+              dispatch({ type: "RETRY" });
+            }}
           >
             <Text style={styles.buttonText}>Try Again</Text>
           </Pressable>

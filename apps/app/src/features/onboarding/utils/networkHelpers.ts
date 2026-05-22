@@ -50,7 +50,9 @@ export async function probeSpeakerIP(
   timeout = PROBE_TIMEOUT_MS,
 ): Promise<boolean> {
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  const id = setTimeout(() => {
+    controller.abort();
+  }, timeout);
   try {
     const response = await fetch(`http://${ip}:${SPEAKER_PORT}/info`, {
       signal: controller.signal,
@@ -63,7 +65,7 @@ export async function probeSpeakerIP(
     const text = await response.text();
     const isBose = text.includes("<info") && text.includes("deviceID");
     if (isBose) {
-      const nameMatch = text.match(/<name>(.*?)<\/name>/);
+      const nameMatch = /<name>(.*?)<\/name>/.exec(text);
       const name = nameMatch ? nameMatch[1] : "Bose Speaker";
       logger.log(`[IP Probe] ${ip} → OK (Verified Bose Device: ${name})`);
       return true;
@@ -83,7 +85,9 @@ export async function findSpeakerIP(
   for (const ip of SPEAKER_HOTSPOT_CANDIDATES) {
     const alive = await probeSpeakerIP(ip, timeout);
     logger.log("Probe result for", ip, ":", alive ? "alive" : "not responding");
-    if (alive) return ip;
+    if (alive) {
+      return ip;
+    }
   }
   return null;
 }
@@ -101,7 +105,9 @@ export async function sendCredentials(
   logger.log(`[Send Creds] Payload: ${payload}`);
 
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  const id = setTimeout(() => {
+    controller.abort();
+  }, timeout);
 
   try {
     const response = await fetch(url, {

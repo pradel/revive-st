@@ -130,7 +130,9 @@ export function useWifiProvisioning() {
   );
 
   const sendCreds = useCallback(async () => {
-    if (sendingRef.current) return;
+    if (sendingRef.current) {
+      return;
+    }
     sendingRef.current = true;
     const s = state as {
       ssid: string;
@@ -161,7 +163,9 @@ export function useWifiProvisioning() {
   }, [dispatch, state]);
 
   const reconnectPhone = useCallback(async () => {
-    if (reconnectingRef.current) return;
+    if (reconnectingRef.current) {
+      return;
+    }
     reconnectingRef.current = true;
     try {
       if (Platform.OS === "android") {
@@ -222,10 +226,14 @@ export function useWifiProvisioning() {
   }, [state.step, reconnectPhone]);
 
   useEffect(() => {
-    if (state.step !== "CONNECTED_TO_HOTSPOT") return;
+    if (state.step !== "CONNECTED_TO_HOTSPOT") {
+      return;
+    }
 
     const speakerIp = (state as { speakerIP?: string }).speakerIP;
-    if (!speakerIp) return;
+    if (!speakerIp) {
+      return;
+    }
 
     logger.log(`[WiFi Keep-Alive] Starting heartbeat loop to ${speakerIp}...`);
 

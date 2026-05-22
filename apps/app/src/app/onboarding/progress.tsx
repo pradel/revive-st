@@ -89,14 +89,18 @@ export default function ProgressScreen() {
           <Text style={styles.errorText}>{errorMessage}</Text>
           <Pressable
             style={styles.button}
-            onPress={() => dispatch({ type: "RETRY" })}
+            onPress={() => {
+              dispatch({ type: "RETRY" });
+            }}
           >
             <Text style={styles.buttonText}>Try Again</Text>
           </Pressable>
           {step === "DISCOVERY_TIMEOUT" && (
             <Pressable
               style={styles.secondaryButton}
-              onPress={() => dispatch({ type: "ENTER_MANUAL_IP" })}
+              onPress={() => {
+                dispatch({ type: "ENTER_MANUAL_IP" });
+              }}
             >
               <Text style={styles.secondaryButtonText}>Enter IP Manually</Text>
             </Pressable>

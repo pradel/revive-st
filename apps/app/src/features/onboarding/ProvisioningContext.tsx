@@ -20,7 +20,9 @@ export function ProvisioningProvider({
   children: React.ReactNode;
 }) {
   const [state, dispatch] = useReducer(provisioningReducer, initialState);
-  const start = useCallback(() => dispatch({ type: "START" }), []);
+  const start = useCallback(() => {
+    dispatch({ type: "START" });
+  }, []);
 
   return (
     <ProvisioningContext.Provider value={{ state, dispatch, start }}>

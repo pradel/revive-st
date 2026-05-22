@@ -18,7 +18,7 @@ export default function NetworkPickerScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
   const [networks, setNetworks] = useState<
-    Array<{ ssid: string; bssid: string; level: number }>
+    { ssid: string; bssid: string; level: number }[]
   >([]);
   const [selectedSSID, setSelectedSSID] = useState("");
   const [password, setPassword] = useState("");
@@ -43,7 +43,9 @@ export default function NetworkPickerScreen() {
       try {
         const list = await WifiManager.reScanAndLoadWifiList();
         const filtered = list
-          .filter((n): n is typeof n => !!n.SSID && !isSpeakerHotspot(n.SSID))
+          .filter(
+            (n): n is typeof n => Boolean(n.SSID) && !isSpeakerHotspot(n.SSID),
+          )
           .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
           .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
         setNetworks(filtered);
@@ -61,7 +63,9 @@ export default function NetworkPickerScreen() {
   }, [s.homeSSID]);
 
   const handleSubmit = useCallback(() => {
-    if (!selectedSSID || !password) return;
+    if (!selectedSSID || !password) {
+      return;
+    }
 
     dispatch({
       type: "NETWORK_SELECTED",
@@ -100,7 +104,9 @@ export default function NetworkPickerScreen() {
                   styles.networkItem,
                   isSelected && styles.networkItemSelected,
                 ]}
-                onPress={() => setSelectedSSID(item.ssid)}
+                onPress={() => {
+                  setSelectedSSID(item.ssid);
+                }}
               >
                 <View style={styles.networkRow}>
                   <Text
@@ -140,7 +146,11 @@ export default function NetworkPickerScreen() {
       )}
 
       {!manualEntry && networks.length > 0 && (
-        <Pressable onPress={() => setManualEntry(true)}>
+        <Pressable
+          onPress={() => {
+            setManualEntry(true);
+          }}
+        >
           <Text style={styles.manualLink}>Enter SSID manually</Text>
         </Pressable>
       )}

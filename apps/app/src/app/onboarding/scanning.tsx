@@ -45,13 +45,17 @@ export default function ScanningScreen() {
           </Text>
           <Pressable
             style={styles.button}
-            onPress={() => dispatch({ type: "RETRY" })}
+            onPress={() => {
+              dispatch({ type: "RETRY" });
+            }}
           >
             <Text style={styles.buttonText}>Scan Again</Text>
           </Pressable>
           <Pressable
             style={styles.secondaryButton}
-            onPress={() => dispatch({ type: "ENTER_MANUAL_IP" })}
+            onPress={() => {
+              dispatch({ type: "ENTER_MANUAL_IP" });
+            }}
           >
             <Text style={styles.secondaryButtonText}>Enter IP Manually</Text>
           </Pressable>
@@ -60,7 +64,9 @@ export default function ScanningScreen() {
       {isScanning && (
         <Pressable
           style={styles.secondaryButton}
-          onPress={() => dispatch({ type: "ENTER_MANUAL_IP" })}
+          onPress={() => {
+            dispatch({ type: "ENTER_MANUAL_IP" });
+          }}
         >
           <Text style={styles.secondaryButtonText}>Enter IP Manually</Text>
         </Pressable>

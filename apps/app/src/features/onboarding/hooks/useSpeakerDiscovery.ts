@@ -71,9 +71,7 @@ export function useSpeakerDiscovery({
     zeroconf.scan("soundtouch", "tcp", "local.");
   }, [timeoutMs, onDiscovered, onTimeout, onError, stop]);
 
-  useEffect(() => {
-    return stop;
-  }, [stop]);
+  useEffect(() => stop, [stop]);
 
   return { start, stop };
 }
