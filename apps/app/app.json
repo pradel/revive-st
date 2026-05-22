@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "app",
-    "slug": "app",
+    "slug": "revive-st",
     "version": "0.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -64,15 +64,24 @@
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 29
+            "minSdkVersion": 30,
+            "usePrecompiledHeaders": true
           }
         }
       ],
-      "expo-font"
+      "expo-font",
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "3d477700-2459-41df-8db2-f3c0e6f7ee52"
+      }
+    },
+    "owner": "incognito-labs"
   }
 }
