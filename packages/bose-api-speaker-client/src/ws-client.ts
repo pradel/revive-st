@@ -125,7 +125,7 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
 }
 
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
-  const deviceIDMatch = xml.match(/<updates[^>]+deviceID="([^"]+)"/);
+  const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
   if (!deviceIDMatch) {
     return null;
   }
@@ -133,7 +133,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceID = deviceIDMatch[1];
 
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
-    const volumeBlock = xml.match(/<volume[\s\S]*?<\/volume>/);
+    const volumeBlock = /<volume[\s\S]*?<\/volume>/.exec(xml);
     if (volumeBlock) {
       const volume = parseVolumeResponse(volumeBlock[0]);
       volume.deviceID = deviceID;
@@ -143,7 +143,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   }
 
   if (xml.includes("<nowPlayingUpdated") || xml.includes("<nowPlaying>")) {
-    const nowPlayingBlock = xml.match(/<nowPlaying[\s\S]*?<\/nowPlaying>/);
+    const nowPlayingBlock = /<nowPlaying[\s\S]*?<\/nowPlaying>/.exec(xml);
     if (nowPlayingBlock) {
       const nowPlaying = parseNowPlayingResponse(nowPlayingBlock[0]);
       nowPlaying.deviceID = deviceID;
@@ -153,7 +153,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   }
 
   if (xml.includes("<connectionStateUpdated")) {
-    const block = xml.match(/<connectionStateUpdated[\s\S]*?\/>/);
+    const block = /<connectionStateUpdated[\s\S]*?\/>/.exec(xml);
     if (block) {
       const connectionState = parseConnectionStateUpdated(block[0]);
       connectionState.deviceID = deviceID;
