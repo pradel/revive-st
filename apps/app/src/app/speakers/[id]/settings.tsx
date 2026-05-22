@@ -1,9 +1,13 @@
+import { Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   type TextStyle,
@@ -12,12 +16,51 @@ import {
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 
+type AudioModeDisplay = {
+  value: string;
+  label: string;
+  description: string;
+};
+
+const AUDIO_MODES: AudioModeDisplay[] = [
+  {
+    value: "AUDIO_MODE_NORMAL",
+    label: "Normal",
+    description: "Standard audio processing",
+  },
+  {
+    value: "AUDIO_MODE_DIRECT",
+    label: "Direct",
+    description: "Bypasses DSP processing",
+  },
+  {
+    value: "AUDIO_MODE_DIALOG",
+    label: "Dialog",
+    description: "Enhances speech clarity",
+  },
+  {
+    value: "AUDIO_MODE_NIGHT",
+    label: "Night",
+    description: "Reduces dynamic range",
+  },
+];
+
 export default function SpeakerSettings() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { speakers } = useBose();
+  const {
+    speakers,
+    setBassMutation,
+    setNameMutation,
+    setAudioDspControlsMutation,
+    setAudioProductToneControlsMutation,
+    setAudioProductLevelControlsMutation,
+  } = useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
+
+  const [nameValue, setNameValue] = useState("");
+  const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
 
   if (!speaker) {
     return (
@@ -43,14 +86,28 @@ export default function SpeakerSettings() {
     );
   }
 
-  const isPlaying = speaker.playStatus === "PLAY_STATE";
-  const isStandby = !speaker.playStatus || speaker.playStatus === "STANDBY";
+  const bassCaps = speaker.bassCapabilities;
+  const dspControls = speaker.audioDspControls;
+  const toneControls = speaker.audioProductToneControls;
+  const levelControls = speaker.audioProductLevelControls;
+
+  const showBass =
+    bassCaps !== null && bassCaps !== undefined && bassCaps.bassAvailable;
+  const showDsp = dspControls !== null && dspControls !== undefined;
+  const showTone = toneControls !== null && toneControls !== undefined;
+  const showLevels = levelControls !== null && levelControls !== undefined;
+
+  const bassValue =
+    bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
+
+  const isSaving = setBassMutation.isPending;
 
   return (
     <ScrollView
       style={$container}
       contentContainerStyle={$content}
       showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
     >
       <Stack.Screen
         options={{
@@ -84,6 +141,191 @@ export default function SpeakerSettings() {
         </View>
       </View>
 
+      {/* Name */}
+      <Text style={$sectionLabel}>Name</Text>
+      {nameValue !== "" ? (
+        <View style={$card}>
+          <View style={$renameRow}>
+            <TextInput
+              style={$textInput}
+              value={nameValue}
+              onChangeText={setNameValue}
+              placeholder={speaker.name}
+              placeholderTextColor="#52525b"
+              autoFocus
+              returnKeyType="done"
+              onSubmitEditing={() => {
+                const trimmed = nameValue.trim();
+                if (trimmed && trimmed !== speaker.name) {
+                  setNameMutation.mutate(
+                    { host: speaker.host, name: trimmed },
+                    { onError: () => setNameValue(speaker.name) },
+                  );
+                }
+                setNameValue("");
+                Keyboard.dismiss();
+              }}
+              onBlur={() => {
+                setNameValue("");
+              }}
+            />
+            <TouchableOpacity
+              style={$saveButton}
+              onPress={() => {
+                const trimmed = nameValue.trim();
+                if (trimmed && trimmed !== speaker.name) {
+                  setNameMutation.mutate(
+                    { host: speaker.host, name: trimmed },
+                    { onError: () => setNameValue(speaker.name) },
+                  );
+                }
+                setNameValue("");
+                Keyboard.dismiss();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={$saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <TouchableOpacity
+          style={$card}
+          activeOpacity={0.7}
+          onPress={() => setNameValue(speaker.name)}
+        >
+          <View style={$infoRow}>
+            <Text style={$infoLabel}>Name</Text>
+            <View style={$infoRowRight}>
+              <Text style={$infoValue} numberOfLines={1}>
+                {speaker.name}
+              </Text>
+              <SymbolView
+                name={{
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
+                }}
+                tintColor="#52525b"
+                size={14}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+      )}
+
+      {/* Audio */}
+      <Text style={$sectionLabel}>Audio</Text>
+      <View style={$card}>
+        {/* Bass */}
+        {showBass && bassCaps ? (
+          <NativeSliderSetting
+            label="Bass"
+            value={bassValue}
+            min={bassCaps.bassMin}
+            max={bassCaps.bassMax}
+            step={1}
+            disabled={isSaving}
+            onValueChange={(v) => {
+              const rounded = Math.round(v);
+              setBassSliderValue(rounded);
+              setBassMutation.mutate({
+                host: speaker.host,
+                value: rounded,
+              });
+            }}
+          />
+        ) : null}
+
+        {/* Audio DSP Mode */}
+        {showDsp && dspControls ? (
+          <PickerSetting
+            label="Audio Mode"
+            withDivider
+            value={dspControls.audiomode}
+            options={AUDIO_MODES}
+            onChange={(mode) => {
+              setAudioDspControlsMutation.mutate({
+                host: speaker.host,
+                audiomode: mode,
+              });
+            }}
+          />
+        ) : null}
+
+        {/* Tone Controls */}
+        {showTone && toneControls ? (
+          <>
+            <View style={$infoDivider} />
+            <NativeSliderSetting
+              label="Bass EQ"
+              value={toneControls.bass.value}
+              min={toneControls.bass.minValue}
+              max={toneControls.bass.maxValue}
+              step={toneControls.bass.step}
+              disabled={isSaving}
+              onValueChange={(v) => {
+                setAudioProductToneControlsMutation.mutate({
+                  host: speaker.host,
+                  bass: { value: v },
+                });
+              }}
+            />
+            <View style={$infoDivider} />
+            <NativeSliderSetting
+              label="Treble EQ"
+              value={toneControls.treble.value}
+              min={toneControls.treble.minValue}
+              max={toneControls.treble.maxValue}
+              step={toneControls.treble.step}
+              disabled={isSaving}
+              onValueChange={(v) => {
+                setAudioProductToneControlsMutation.mutate({
+                  host: speaker.host,
+                  treble: { value: v },
+                });
+              }}
+            />
+          </>
+        ) : null}
+
+        {/* Speaker Levels */}
+        {showLevels && levelControls ? (
+          <>
+            <View style={$infoDivider} />
+            <NativeSliderSetting
+              label="Front Center"
+              value={levelControls.frontCenterSpeakerLevel.value}
+              min={levelControls.frontCenterSpeakerLevel.minValue}
+              max={levelControls.frontCenterSpeakerLevel.maxValue}
+              step={levelControls.frontCenterSpeakerLevel.step}
+              disabled={isSaving}
+              onValueChange={(v) => {
+                setAudioProductLevelControlsMutation.mutate({
+                  host: speaker.host,
+                  frontCenterSpeakerLevel: { value: v },
+                });
+              }}
+            />
+            <View style={$infoDivider} />
+            <NativeSliderSetting
+              label="Rear Surround"
+              value={levelControls.rearSurroundSpeakersLevel.value}
+              min={levelControls.rearSurroundSpeakersLevel.minValue}
+              max={levelControls.rearSurroundSpeakersLevel.maxValue}
+              step={levelControls.rearSurroundSpeakersLevel.step}
+              disabled={isSaving}
+              onValueChange={(v) => {
+                setAudioProductLevelControlsMutation.mutate({
+                  host: speaker.host,
+                  rearSurroundSpeakersLevel: { value: v },
+                });
+              }}
+            />
+          </>
+        ) : null}
+      </View>
+
       {/* Device Info */}
       <Text style={$sectionLabel}>Device Info</Text>
       <View style={$card}>
@@ -109,124 +351,96 @@ export default function SpeakerSettings() {
           <Text style={$infoValue}>{speaker.type}</Text>
         </View>
       </View>
-
-      {/* Status */}
-      <Text style={$sectionLabel}>Status</Text>
-      <View style={$card}>
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Connection</Text>
-          <View style={$statusBadge}>
-            <View style={$onlineDot} />
-            <Text style={$statusText}>Online</Text>
-          </View>
-        </View>
-        <View style={$infoDivider} />
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Playback</Text>
-          <View
-            style={[
-              $statusBadge,
-              isPlaying
-                ? $statusPlaying
-                : isStandby
-                  ? $statusStandby
-                  : undefined,
-            ]}
-          >
-            <View
-              style={[
-                $statusDot,
-                isPlaying ? $dotPlaying : isStandby ? $dotStandby : undefined,
-              ]}
-            />
-            <Text
-              style={[
-                $statusText,
-                isPlaying
-                  ? $statusTextPlaying
-                  : isStandby
-                    ? $statusTextStandby
-                    : undefined,
-              ]}
-            >
-              {isPlaying
-                ? "Playing"
-                : isStandby
-                  ? "Standby"
-                  : speaker.playStatus}
-            </Text>
-          </View>
-        </View>
-        {speaker.source && (
-          <>
-            <View style={$infoDivider} />
-            <View style={$infoRow}>
-              <Text style={$infoLabel}>Source</Text>
-              <Text style={$infoValue}>{speaker.source}</Text>
-            </View>
-          </>
-        )}
-        {speaker.volume !== undefined && (
-          <>
-            <View style={$infoDivider} />
-            <View style={$infoRow}>
-              <Text style={$infoLabel}>Volume</Text>
-              <Text style={$infoValue}>{speaker.volume}%</Text>
-            </View>
-          </>
-        )}
-        {speaker.muteEnabled !== undefined && (
-          <>
-            <View style={$infoDivider} />
-            <View style={$infoRow}>
-              <Text style={$infoLabel}>Muted</Text>
-              <Text style={$infoValue}>
-                {speaker.muteEnabled ? "Yes" : "No"}
-              </Text>
-            </View>
-          </>
-        )}
-      </View>
-
-      {/* Now Playing */}
-      {isPlaying && (speaker.track || speaker.artist || speaker.album) && (
-        <>
-          <Text style={$sectionLabel}>Now Playing</Text>
-          <View style={$card}>
-            {speaker.track && (
-              <View style={$infoRow}>
-                <Text style={$infoLabel}>Track</Text>
-                <Text style={$infoValue} numberOfLines={2}>
-                  {speaker.track}
-                </Text>
-              </View>
-            )}
-            {speaker.artist && (
-              <>
-                <View style={$infoDivider} />
-                <View style={$infoRow}>
-                  <Text style={$infoLabel}>Artist</Text>
-                  <Text style={$infoValue} numberOfLines={1}>
-                    {speaker.artist}
-                  </Text>
-                </View>
-              </>
-            )}
-            {speaker.album && (
-              <>
-                <View style={$infoDivider} />
-                <View style={$infoRow}>
-                  <Text style={$infoLabel}>Album</Text>
-                  <Text style={$infoValue} numberOfLines={1}>
-                    {speaker.album}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
-        </>
-      )}
     </ScrollView>
+  );
+}
+
+function NativeSliderSetting({
+  label,
+  value,
+  min,
+  max,
+  step,
+  disabled,
+  onValueChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step: number;
+  disabled?: boolean;
+  onValueChange: (value: number) => void;
+}) {
+  return (
+    <View>
+      <View style={$sliderHeader}>
+        <Text style={$infoLabel}>{label}</Text>
+        <Text style={$infoValue}>{value}</Text>
+      </View>
+      <Host style={{ height: 40 }}>
+        <Slider
+          value={value}
+          onValueChange={onValueChange}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+        />
+      </Host>
+      <View style={$sliderLabels}>
+        <Text style={$sliderLabelText}>{min}</Text>
+        <Text style={$sliderLabelText}>{max}</Text>
+      </View>
+    </View>
+  );
+}
+
+function PickerSetting({
+  label,
+  value,
+  options,
+  onChange,
+  withDivider,
+}: {
+  label: string;
+  value: string;
+  options: AudioModeDisplay[];
+  onChange: (value: string) => void;
+  withDivider?: boolean;
+}) {
+  return (
+    <>
+      {withDivider && <View style={$infoDivider} />}
+      <View>
+        <Text style={$infoLabel}>{label}</Text>
+        <View style={$pickerOptions}>
+          {options.map((opt) => {
+            const isActive = opt.value === value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[$pickerChip, isActive ? $pickerChipActive : undefined]}
+                onPress={() => onChange(opt.value)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    $pickerChipText,
+                    isActive ? $pickerChipTextActive : undefined,
+                  ]}
+                >
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        <Text style={$pickerDescription}>
+          {options.find((o) => o.value === value)?.description}
+        </Text>
+      </View>
+    </>
   );
 }
 
@@ -318,6 +532,41 @@ const $sectionLabel: TextStyle = {
   marginLeft: 4,
 };
 
+const $renameRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 10,
+};
+
+const $textInput: TextStyle = {
+  flex: 1,
+  backgroundColor: "#27272a",
+  borderRadius: 10,
+  paddingHorizontal: 12,
+  paddingVertical: 10,
+  fontSize: 15,
+  color: "#fafafa",
+};
+
+const $saveButton: ViewStyle = {
+  backgroundColor: "#fafafa",
+  paddingHorizontal: 16,
+  paddingVertical: 10,
+  borderRadius: 10,
+};
+
+const $saveButtonText: TextStyle = {
+  fontSize: 14,
+  color: "#09090b",
+  fontWeight: "700",
+};
+
+const $infoDivider: ViewStyle = {
+  height: 1,
+  backgroundColor: "#27272a",
+  marginVertical: 10,
+};
+
 const $infoRow: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
@@ -334,67 +583,68 @@ const $infoValue: TextStyle = {
   fontSize: 14,
   color: "#a1a1aa",
   fontWeight: "500",
-  maxWidth: "55%",
   textAlign: "right",
+  flexShrink: 1,
 };
 
-const $infoDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: "#27272a",
-  marginVertical: 10,
-};
-
-const $statusBadge: ViewStyle = {
+const $infoRowRight: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  gap: 5,
-  backgroundColor: "#052e16",
-  paddingHorizontal: 8,
-  paddingVertical: 3,
-  borderRadius: 6,
+  gap: 4,
+  flexShrink: 1,
+  justifyContent: "flex-end",
 };
 
-const $statusDot: ViewStyle = {
-  width: 6,
-  height: 6,
-  borderRadius: 3,
-  backgroundColor: "#22c55e",
+const $sliderHeader: ViewStyle = {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 10,
 };
 
-const $onlineDot: ViewStyle = {
-  width: 6,
-  height: 6,
-  borderRadius: 3,
-  backgroundColor: "#22c55e",
+const $sliderLabels: ViewStyle = {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginTop: 4,
 };
 
-const $statusText: TextStyle = {
+const $sliderLabelText: TextStyle = {
   fontSize: 11,
-  color: "#4ade80",
-  fontWeight: "700",
-  letterSpacing: 0.3,
+  color: "#52525b",
 };
 
-const $statusPlaying: ViewStyle = {
-  backgroundColor: "#052e16",
+const $pickerOptions: ViewStyle = {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 6,
+  marginTop: 10,
 };
 
-const $statusStandby: ViewStyle = {
-  backgroundColor: "#422006",
+const $pickerChip: ViewStyle = {
+  paddingHorizontal: 12,
+  paddingVertical: 6,
+  borderRadius: 8,
+  backgroundColor: "#27272a",
+  borderWidth: 1,
+  borderColor: "transparent",
 };
 
-const $dotPlaying: ViewStyle = {
-  backgroundColor: "#22c55e",
+const $pickerChipActive: ViewStyle = {
+  backgroundColor: "#fafafa",
 };
 
-const $dotStandby: ViewStyle = {
-  backgroundColor: "#f59e0b",
+const $pickerChipText: TextStyle = {
+  fontSize: 13,
+  color: "#a1a1aa",
+  fontWeight: "600",
 };
 
-const $statusTextPlaying: TextStyle = {
-  color: "#4ade80",
+const $pickerChipTextActive: TextStyle = {
+  color: "#09090b",
 };
 
-const $statusTextStandby: TextStyle = {
-  color: "#fbbf24",
+const $pickerDescription: TextStyle = {
+  fontSize: 12,
+  color: "#52525b",
+  marginTop: 8,
 };

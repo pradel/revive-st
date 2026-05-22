@@ -172,3 +172,94 @@ export function usePlayStreamMutation() {
     },
   });
 }
+
+export function useSetNameMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ host, name }: { host: string; name: string }) => {
+      const result = await createClient({ ip: host }).setName(name);
+      if (!result.isOk()) throw result.error;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["speakers"] });
+    },
+  });
+}
+
+export function useSetAudioDspControlsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      host,
+      audiomode,
+    }: {
+      host: string;
+      audiomode: string;
+    }) => {
+      const result = await createClient({ ip: host }).setAudioDspControls({
+        audiomode: audiomode as
+          | "AUDIO_MODE_DIRECT"
+          | "AUDIO_MODE_NORMAL"
+          | "AUDIO_MODE_DIALOG"
+          | "AUDIO_MODE_NIGHT",
+      });
+      if (!result.isOk()) throw result.error;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["speakers"] });
+    },
+  });
+}
+
+export function useSetAudioProductToneControlsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      host,
+      bass,
+      treble,
+    }: {
+      host: string;
+      bass?: { value: number };
+      treble?: { value: number };
+    }) => {
+      const result = await createClient({
+        ip: host,
+      }).setAudioProductToneControls({ bass, treble });
+      if (!result.isOk()) throw result.error;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["speakers"] });
+    },
+  });
+}
+
+export function useSetAudioProductLevelControlsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      host,
+      frontCenterSpeakerLevel,
+      rearSurroundSpeakersLevel,
+    }: {
+      host: string;
+      frontCenterSpeakerLevel?: { value: number };
+      rearSurroundSpeakersLevel?: { value: number };
+    }) => {
+      const result = await createClient({
+        ip: host,
+      }).setAudioProductLevelControls({
+        frontCenterSpeakerLevel,
+        rearSurroundSpeakersLevel,
+      });
+      if (!result.isOk()) throw result.error;
+    },
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["speakers"] });
+    },
+  });
+}
