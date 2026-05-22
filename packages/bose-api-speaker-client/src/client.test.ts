@@ -2,18 +2,18 @@ import { Result } from "better-result";
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
 
 import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
-import { boseSpeakerClient } from "./index.ts";
-import type {
-  BassCapabilitiesResponse,
-  BassResponse,
-  BoseSpeakerClient,
-  CapabilitiesResponse,
-  InfoResponse,
-  NowPlayingResponse,
-  PresetsResponse,
-  SourcesResponse,
-  VolumeResponse,
-  ZoneResponse,
+import {
+  boseSpeakerClient,
+  type BassCapabilitiesResponse,
+  type BassResponse,
+  type BoseSpeakerClient,
+  type CapabilitiesResponse,
+  type InfoResponse,
+  type NowPlayingResponse,
+  type PresetsResponse,
+  type SourcesResponse,
+  type VolumeResponse,
+  type ZoneResponse,
 } from "./index.ts";
 
 const IP = "192.168.1.100";
