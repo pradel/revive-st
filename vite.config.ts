@@ -38,6 +38,7 @@ export default defineConfig({
       // Style rules
       "capitalized-comments": "off",
       "func-style": "off",
+      "init-declarations": "off",
       "max-statements": "off",
       "new-cap": "off",
       "no-magic-numbers": "off",
@@ -46,9 +47,6 @@ export default defineConfig({
       "sort-keys": "off",
       "sort-imports": "off",
       "react/jsx-max-depth": "off",
-
-      // TMP
-      "init-declarations": "off",
     },
     overrides: [
       {
