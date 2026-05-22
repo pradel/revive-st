@@ -91,8 +91,7 @@ export default function SpeakerSettings() {
   const toneControls = speaker.audioProductToneControls;
   const levelControls = speaker.audioProductLevelControls;
 
-  const showBass =
-    bassCaps !== null && bassCaps !== undefined && bassCaps.bassAvailable;
+  const showBass = bassCaps?.bassAvailable;
   const showDsp = dspControls !== null && dspControls !== undefined;
   const showTone = toneControls !== null && toneControls !== undefined;
   const showLevels = levelControls !== null && levelControls !== undefined;

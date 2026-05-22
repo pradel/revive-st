@@ -66,7 +66,6 @@ export default defineConfig({
       "no-unnecessary-condition": "off",
       "no-unsafe-type-assertion": "off",
       "no-unsafe-argument": "off",
-      "prefer-optional-chain": "off",
       "no-unsafe-member-access": "off",
       "no-unnecessary-type-parameters": "off",
       "no-unsafe-assignment": "off",
