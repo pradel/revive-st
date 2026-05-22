@@ -91,21 +91,11 @@ export default function SpeakerSettings() {
   const toneControls = speaker.audioProductToneControls;
   const levelControls = speaker.audioProductLevelControls;
 
-  const hasBassCaps = bassCaps !== undefined;
-  const bassFetchFailed = hasBassCaps && bassCaps === null;
-  const hasBassCapability = bassCaps !== null && bassCaps?.bassAvailable;
-
-  const hasDspCaps = dspControls !== undefined;
-  const dspFetchFailed = hasDspCaps && dspControls === null;
-  const hasDspCapability = dspControls !== null;
-
-  const hasToneCaps = toneControls !== undefined;
-  const toneFetchFailed = hasToneCaps && toneControls === null;
-  const hasToneCapability = toneControls !== null;
-
-  const hasLevelCaps = levelControls !== undefined;
-  const levelFetchFailed = hasLevelCaps && levelControls === null;
-  const hasLevelCapability = levelControls !== null;
+  const showBass =
+    bassCaps !== null && bassCaps !== undefined && bassCaps.bassAvailable;
+  const showDsp = dspControls !== null && dspControls !== undefined;
+  const showTone = toneControls !== null && toneControls !== undefined;
+  const showLevels = levelControls !== null && levelControls !== undefined;
 
   const bassValue =
     bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
@@ -228,9 +218,7 @@ export default function SpeakerSettings() {
       <Text style={$sectionLabel}>Audio</Text>
       <View style={$card}>
         {/* Bass */}
-        {bassFetchFailed ? (
-          <CapabilityErrorRow label="Bass" />
-        ) : hasBassCapability && bassCaps ? (
+        {showBass && bassCaps ? (
           <NativeSliderSetting
             label="Bass"
             value={bassValue}
@@ -250,9 +238,7 @@ export default function SpeakerSettings() {
         ) : null}
 
         {/* Audio DSP Mode */}
-        {dspFetchFailed ? (
-          <CapabilityErrorRow label="Audio Mode" withDivider />
-        ) : hasDspCapability && dspControls ? (
+        {showDsp && dspControls ? (
           <PickerSetting
             label="Audio Mode"
             withDivider
@@ -268,9 +254,7 @@ export default function SpeakerSettings() {
         ) : null}
 
         {/* Tone Controls */}
-        {toneFetchFailed ? (
-          <CapabilityErrorRow label="Tone EQ" withDivider />
-        ) : hasToneCapability && toneControls ? (
+        {showTone && toneControls ? (
           <>
             <View style={$infoDivider} />
             <NativeSliderSetting
@@ -306,9 +290,7 @@ export default function SpeakerSettings() {
         ) : null}
 
         {/* Speaker Levels */}
-        {levelFetchFailed ? (
-          <CapabilityErrorRow label="Speaker Levels" withDivider />
-        ) : hasLevelCapability && levelControls ? (
+        {showLevels && levelControls ? (
           <>
             <View style={$infoDivider} />
             <NativeSliderSetting
@@ -370,35 +352,6 @@ export default function SpeakerSettings() {
         </View>
       </View>
     </ScrollView>
-  );
-}
-
-function CapabilityErrorRow({
-  label,
-  withDivider,
-}: {
-  label: string;
-  withDivider?: boolean;
-}) {
-  return (
-    <>
-      {withDivider && <View style={$infoDivider} />}
-      <View style={$capErrorRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={$infoLabelDisabled}>{label}</Text>
-          <Text style={$infoCapErrorText}>Could not load — tap to retry</Text>
-        </View>
-        <SymbolView
-          name={{
-            ios: "arrow.clockwise",
-            android: "refresh",
-            web: "refresh",
-          }}
-          tintColor="#52525b"
-          size={14}
-        />
-      </View>
-    </>
   );
 }
 
@@ -626,11 +579,6 @@ const $infoLabel: TextStyle = {
   color: "#71717a",
 };
 
-const $infoLabelDisabled: TextStyle = {
-  fontSize: 14,
-  color: "#3f3f46",
-};
-
 const $infoValue: TextStyle = {
   fontSize: 14,
   color: "#a1a1aa",
@@ -645,17 +593,6 @@ const $infoRowRight: ViewStyle = {
   gap: 4,
   flexShrink: 1,
   justifyContent: "flex-end",
-};
-
-const $capErrorRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-};
-
-const $infoCapErrorText: TextStyle = {
-  fontSize: 11,
-  color: "#52525b",
-  marginTop: 2,
 };
 
 const $sliderHeader: ViewStyle = {
