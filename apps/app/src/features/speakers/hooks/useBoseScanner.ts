@@ -243,39 +243,43 @@ export function useBoseScanner(scanDurationMs = 5000) {
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
             );
 
-            if (update.volume || update.nowPlaying || update.connectionState) {
+            if (update.type === "volume") {
               setSpeakers((prev) =>
                 prev.map((s) => {
                   if (s.deviceID === update.deviceID) {
                     return {
                       ...s,
-                      volume: update.volume
-                        ? update.volume.actualVolume
-                        : s.volume,
-                      muteEnabled: update.volume
-                        ? update.volume.muteEnabled
-                        : s.muteEnabled,
-                      playStatus: update.nowPlaying
-                        ? update.nowPlaying.playStatus
-                        : s.playStatus,
-                      source: update.nowPlaying
-                        ? update.nowPlaying.source
-                        : s.source,
-                      track: update.nowPlaying
-                        ? update.nowPlaying.track
-                        : s.track,
-                      artist: update.nowPlaying
-                        ? update.nowPlaying.artist
-                        : s.artist,
-                      album: update.nowPlaying
-                        ? update.nowPlaying.album
-                        : s.album,
-                      artUrl: update.nowPlaying
-                        ? update.nowPlaying.artUrl
-                        : s.artUrl,
-                      connectionState: update.connectionState
-                        ? update.connectionState
-                        : s.connectionState,
+                      volume: update.volume.actualVolume,
+                      muteEnabled: update.volume.muteEnabled,
+                    };
+                  }
+                  return s;
+                }),
+              );
+            } else if (update.type === "nowPlaying") {
+              setSpeakers((prev) =>
+                prev.map((s) => {
+                  if (s.deviceID === update.deviceID) {
+                    return {
+                      ...s,
+                      playStatus: update.nowPlaying.playStatus,
+                      source: update.nowPlaying.source,
+                      track: update.nowPlaying.track,
+                      artist: update.nowPlaying.artist,
+                      album: update.nowPlaying.album,
+                      artUrl: update.nowPlaying.artUrl,
+                    };
+                  }
+                  return s;
+                }),
+              );
+            } else if (update.type === "connectionState") {
+              setSpeakers((prev) =>
+                prev.map((s) => {
+                  if (s.deviceID === update.deviceID) {
+                    return {
+                      ...s,
+                      connectionState: update.connectionState,
                     };
                   }
                   return s;
