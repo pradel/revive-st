@@ -240,8 +240,8 @@ export default function Index() {
                     <SymbolView
                       name={{
                         ios: "speaker.fill",
-                        android: "speaker",
-                        web: "speaker",
+                        android: "volume_down",
+                        web: "volume_down",
                       }}
                       tintColor="#52525b"
                       size={14}
@@ -258,8 +258,8 @@ export default function Index() {
                     <SymbolView
                       name={{
                         ios: "speaker.wave.3.fill",
-                        android: "speaker",
-                        web: "speaker",
+                        android: "volume_up",
+                        web: "volume_up",
                       }}
                       tintColor="#a1a1aa"
                       size={14}
