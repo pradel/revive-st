@@ -36,6 +36,7 @@ export default defineConfig({
       "no-use-before-define": "off",
       "no-void": "off",
       // Style rules
+      "capitalized-comments": "off",
       "func-style": "off",
       "max-statements": "off",
       "new-cap": "off",
@@ -50,7 +51,6 @@ export default defineConfig({
       "init-declarations": "off",
       "id-length": "off",
       "prefer-exponentiation-operator": "off",
-      "capitalized-comments": "off",
       "func-names": "off",
       "no-duplicate-imports": "off",
       "react/hook-use-state": "off",
