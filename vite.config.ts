@@ -67,7 +67,6 @@ export default defineConfig({
       // TMP
       "no-unsafe-type-assertion": "off",
       "no-unsafe-member-access": "off",
-      "no-explicit-any": "off",
       "no-non-null-assertion": "off",
     },
     overrides: [
