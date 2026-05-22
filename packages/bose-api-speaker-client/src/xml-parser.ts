@@ -61,8 +61,7 @@ export function parseXml(xml: string): XmlNode {
       .trim();
   }
 
-  for (let index = 0; index < tokens.length; index++) {
-    const token = tokens[index];
+  for (const token of tokens) {
     const text = getNextText();
 
     if (token.type === "open") {
