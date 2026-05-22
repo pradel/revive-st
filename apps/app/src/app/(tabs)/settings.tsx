@@ -70,27 +70,6 @@ export default function AppSettings() {
         </TouchableOpacity>
       </View>
 
-      {/* App Identity */}
-      <View style={$card}>
-        <View style={$cardHeader}>
-          <View style={$appIcon}>
-            <SymbolView
-              name={{
-                ios: "speaker.wave.2.fill",
-                android: "speaker",
-                web: "speaker",
-              }}
-              tintColor="#a1a1aa"
-              size={24}
-            />
-          </View>
-          <View style={$cardMeta}>
-            <Text style={$appName}>Revive SoundTouch</Text>
-            <Text style={$appType}>Bose Speaker Controller</Text>
-          </View>
-        </View>
-      </View>
-
       {/* About */}
       <Text style={$sectionLabel}>About</Text>
       <View style={$card}>
@@ -144,37 +123,6 @@ const $card: ViewStyle = {
   padding: 16,
   borderWidth: 1,
   borderColor: "#27272a",
-};
-
-const $cardHeader: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-};
-
-const $appIcon: ViewStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: 14,
-  backgroundColor: "#27272a",
-  alignItems: "center",
-  justifyContent: "center",
-  marginRight: 14,
-};
-
-const $cardMeta: ViewStyle = {
-  flex: 1,
-};
-
-const $appName: TextStyle = {
-  fontSize: 17,
-  fontWeight: "700",
-  color: "#fafafa",
-};
-
-const $appType: TextStyle = {
-  fontSize: 13,
-  color: "#52525b",
-  marginTop: 2,
 };
 
 const $sectionLabel: TextStyle = {
