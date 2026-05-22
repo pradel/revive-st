@@ -233,6 +233,10 @@ export class BoseWebSocketClient {
       this.reconnectTimeout = null;
     }
     if (this.ws) {
+      this.ws.onopen = null;
+      this.ws.onmessage = null;
+      this.ws.onerror = null;
+      this.ws.onclose = null;
       try {
         this.ws.close();
       } catch {

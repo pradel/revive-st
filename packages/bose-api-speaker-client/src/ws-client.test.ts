@@ -244,8 +244,9 @@ describe("BoseWebSocketClient", () => {
 
     it("does not reconnect when closed intentionally", () => {
       client.connect();
+      const savedOnClose = wsMock.onclose;
       client.close();
-      wsMock.onclose!({ code: 1000 });
+      savedOnClose!({ code: 1000 });
       vi.advanceTimersByTime(2000);
       expect(wsCtor).toHaveBeenCalledTimes(1);
     });
@@ -295,6 +296,16 @@ describe("BoseWebSocketClient", () => {
       client.close();
       vi.advanceTimersByTime(2000);
       expect(wsCtor).toHaveBeenCalledTimes(1);
+    });
+
+    it("nulls event handlers before closing to prevent stale onclose from reconnecting", () => {
+      client.connect();
+      client.close();
+
+      expect(wsMock.onopen).toBeNull();
+      expect(wsMock.onmessage).toBeNull();
+      expect(wsMock.onerror).toBeNull();
+      expect(wsMock.onclose).toBeNull();
     });
   });
 });
