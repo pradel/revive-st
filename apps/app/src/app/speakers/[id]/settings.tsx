@@ -3,9 +3,9 @@ import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
   type GestureResponderEvent,
@@ -58,8 +58,6 @@ export default function SpeakerSettings() {
   } = useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
-
-  const [nameValue, setNameValue] = useState("");
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
 
   if (!speaker) {
@@ -153,46 +151,51 @@ export default function SpeakerSettings() {
 
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
-      <View style={$card}>
-        <View style={$renameRow}>
-          <TextInput
-            style={$textInput}
-            value={nameValue || speaker.name}
-            onChangeText={setNameValue}
-            placeholder="Speaker name"
-            placeholderTextColor="#52525b"
-            returnKeyType="done"
-            onSubmitEditing={() => {
-              const trimmed = (nameValue || speaker.name).trim();
-              if (trimmed && trimmed !== speaker.name) {
-                setNameMutation.mutate(
-                  { host: speaker.host, name: trimmed },
-                  {
-                    onError: () => setNameValue(speaker.name),
-                  },
-                );
-              }
-            }}
-          />
-          {nameValue && nameValue.trim() !== speaker.name ? (
-            <TouchableOpacity
-              style={$saveButton}
-              onPress={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
-                  );
-                }
+      <TouchableOpacity
+        style={$card}
+        activeOpacity={0.7}
+        onPress={() => {
+          Alert.prompt(
+            "Rename Speaker",
+            `Enter a new name for ${speaker.name}`,
+            [
+              { text: "Cancel", style: "cancel" },
+              {
+                text: "Save",
+                onPress: (newName?: string) => {
+                  const trimmed = (newName ?? "").trim();
+                  if (trimmed && trimmed !== speaker.name) {
+                    setNameMutation.mutate({
+                      host: speaker.host,
+                      name: trimmed,
+                    });
+                  }
+                },
+              },
+            ],
+            "plain-text",
+            speaker.name,
+          );
+        }}
+      >
+        <View style={$infoRow}>
+          <Text style={$infoLabel}>Name</Text>
+          <View style={$infoRowRight}>
+            <Text style={$infoValue} numberOfLines={1}>
+              {speaker.name}
+            </Text>
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
               }}
-              activeOpacity={0.8}
-            >
-              <Text style={$saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          ) : null}
+              tintColor="#52525b"
+              size={14}
+            />
+          </View>
         </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Audio */}
       <Text style={$sectionLabel}>Audio</Text>
@@ -565,33 +568,10 @@ const $sectionLabel: TextStyle = {
   marginLeft: 4,
 };
 
-const $renameRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 10,
-};
-
-const $textInput: TextStyle = {
-  flex: 1,
+const $infoDivider: ViewStyle = {
+  height: 1,
   backgroundColor: "#27272a",
-  borderRadius: 10,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  fontSize: 15,
-  color: "#fafafa",
-};
-
-const $saveButton: ViewStyle = {
-  backgroundColor: "#fafafa",
-  paddingHorizontal: 16,
-  paddingVertical: 10,
-  borderRadius: 10,
-};
-
-const $saveButtonText: TextStyle = {
-  fontSize: 14,
-  color: "#09090b",
-  fontWeight: "700",
+  marginVertical: 10,
 };
 
 const $infoRow: ViewStyle = {
@@ -619,10 +599,11 @@ const $infoValue: TextStyle = {
   textAlign: "right",
 };
 
-const $infoDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: "#27272a",
-  marginVertical: 10,
+const $infoRowRight: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
+  maxWidth: "60%",
 };
 
 const $capErrorRow: ViewStyle = {
