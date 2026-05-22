@@ -20,6 +20,7 @@ export default defineConfig({
       suspicious: "error",
       nursery: "error",
       restriction: "error",
+      style: "error",
     },
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
@@ -34,6 +35,28 @@ export default defineConfig({
       "no-undefined": "off",
       "no-use-before-define": "off",
       "no-void": "off",
+      // Style rules
+      "func-style": "off",
+      "max-statements": "off",
+      "new-cap": "off",
+      "no-magic-numbers": "off",
+      "no-ternary": "off",
+      "prefer-destructuring": "off",
+      "sort-keys": "off",
+      "sort-imports": "off",
+      "react/jsx-max-depth": "off",
+
+      // TMP
+      "init-declarations": "off",
+      curly: "off",
+      "id-length": "off",
+      "prefer-exponentiation-operator": "off",
+      "capitalized-comments": "off",
+      "func-names": "off",
+      "no-duplicate-imports": "off",
+      "object-shorthand": "off",
+      "react/hook-use-state": "off",
+      "no-implicit-coercion": "off",
     },
     overrides: [
       {
