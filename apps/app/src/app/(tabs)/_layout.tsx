@@ -10,6 +10,13 @@ export default function TabLayout() {
         />
         <NativeTabs.Trigger.Label>Home</NativeTabs.Trigger.Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="radio">
+        <NativeTabs.Trigger.Icon
+          sf={{ default: "radio", selected: "radio.fill" }}
+          md="radio"
+        />
+        <NativeTabs.Trigger.Label>Radio</NativeTabs.Trigger.Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="settings">
         <NativeTabs.Trigger.Icon sf="gearshape.fill" md="settings" />
         <NativeTabs.Trigger.Label>Settings</NativeTabs.Trigger.Label>
