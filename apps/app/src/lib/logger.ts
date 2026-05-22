@@ -105,6 +105,7 @@ export async function initLogger(): Promise<void> {
     buffer = [];
   }
   cachedSnapshot = [...buffer];
+  notifySubscribers();
   interceptConsole();
 }
 
