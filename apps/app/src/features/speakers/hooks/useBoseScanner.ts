@@ -241,6 +241,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
             );
 
+            const refreshIfAvailable = () => {
+              const latest = speakersRef.current.find(
+                (s) => s.deviceID === update.deviceID,
+              );
+              if (latest) void refreshSpeakerStatus(latest);
+            };
+
             if (update.type === "volume") {
               if (update.volume) {
                 setSpeakers((prev) =>
@@ -255,6 +262,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
                     return s;
                   }),
                 );
+              } else {
+                refreshIfAvailable();
               }
             } else if (update.type === "nowPlaying") {
               if (update.nowPlaying) {
@@ -274,16 +283,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
                     return s;
                   }),
                 );
+              } else {
+                refreshIfAvailable();
               }
             } else if (update.type === "connectionState") {
               // handled by the parser, no state update needed
             } else {
-              const latestSpeaker = speakersRef.current.find(
-                (s) => s.deviceID === update.deviceID,
-              );
-              if (latestSpeaker) {
-                void refreshSpeakerStatus(latestSpeaker);
-              }
+              refreshIfAvailable();
             }
           },
           onDisconnect: () => {
