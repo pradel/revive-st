@@ -53,7 +53,6 @@ describe("parseWebSocketMessage", () => {
         actualVolume: 45,
         muteEnabled: false,
       },
-      nowPlaying: undefined,
     });
   });
 
@@ -85,7 +84,6 @@ describe("parseWebSocketMessage", () => {
         album: "Super Album",
         artUrl: undefined,
       },
-      volume: undefined,
     });
   });
 
@@ -98,8 +96,6 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "volume",
-      volume: undefined,
-      nowPlaying: undefined,
     });
   });
 
@@ -112,8 +108,6 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "nowPlaying",
-      volume: undefined,
-      nowPlaying: undefined,
     });
   });
 
@@ -126,8 +120,6 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "presets",
-      volume: undefined,
-      nowPlaying: undefined,
     });
   });
 
@@ -140,8 +132,6 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "zone",
-      volume: undefined,
-      nowPlaying: undefined,
     });
   });
 
@@ -154,8 +144,42 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "unknown",
-      volume: undefined,
-      nowPlaying: undefined,
+    });
+  });
+
+  it("parses connectionState updates", () => {
+    const xml = `
+      <updates deviceID="000C8A123456">
+        <connectionStateUpdated state="NETWORK_WIFI_CONNECTED" up="true" signal="GOOD_SIGNAL" />
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "000C8A123456",
+      type: "connectionState",
+      connectionState: {
+        deviceID: "000C8A123456",
+        state: "NETWORK_WIFI_CONNECTED",
+        up: true,
+        signal: "GOOD_SIGNAL",
+      },
+    });
+  });
+
+  it("parses connectionState updates with poor signal", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <connectionStateUpdated state="NETWORK_WIFI_CONNECTED" up="true" signal="POOR_SIGNAL" />
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "connectionState",
+      connectionState: {
+        deviceID: "EC1127C25A50",
+        state: "NETWORK_WIFI_CONNECTED",
+        up: true,
+        signal: "POOR_SIGNAL",
+      },
     });
   });
 });
@@ -212,8 +236,6 @@ describe("BoseWebSocketClient", () => {
       expect(onUpdate).toHaveBeenCalledWith({
         deviceID: "DEV001",
         type: "volume",
-        volume: undefined,
-        nowPlaying: undefined,
       });
     });
 

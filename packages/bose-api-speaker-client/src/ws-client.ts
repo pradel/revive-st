@@ -34,17 +34,17 @@ export type BoseWSUpdate =
   | {
       type: "volume";
       deviceID: string;
-      volume: BoseVolume;
+      volume?: BoseVolume;
     }
   | {
       type: "nowPlaying";
       deviceID: string;
-      nowPlaying: BoseNowPlaying;
+      nowPlaying?: BoseNowPlaying;
     }
   | {
       type: "connectionState";
       deviceID: string;
-      connectionState: BoseConnectionState;
+      connectionState?: BoseConnectionState;
     }
   | {
       type: "presets";
@@ -94,6 +94,20 @@ function parseVolumeResponse(xml: string): BoseVolume {
   };
 }
 
+function parseConnectionStateUpdated(xml: string): BoseConnectionState {
+  const root = parseXml(xml);
+  const node =
+    root.name === "connectionStateUpdated"
+      ? root
+      : getChild(root, "connectionStateUpdated");
+  return {
+    deviceID: "",
+    state: node?.attributes.state ?? "",
+    up: parseBool(node?.attributes.up ?? "false"),
+    signal: node?.attributes.signal ?? "",
+  };
+}
+
 function parseNowPlayingResponse(xml: string): BoseNowPlaying {
   const root = parseXml(xml);
   const np = root.name === "nowPlaying" ? root : getChild(root, "nowPlaying");
@@ -121,6 +135,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
       volume.deviceID = deviceID;
       return { type: "volume", deviceID, volume };
     }
+    return { type: "volume", deviceID };
   }
 
   if (xml.includes("<nowPlayingUpdated") || xml.includes("<nowPlaying>")) {
@@ -130,24 +145,17 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
       nowPlaying.deviceID = deviceID;
       return { type: "nowPlaying", deviceID, nowPlaying };
     }
+    return { type: "nowPlaying", deviceID };
   }
 
   if (xml.includes("<connectionStateUpdated")) {
-    const attrs = xml.match(
-      /<connectionStateUpdated[^>]+state="([^"]*)"[^>]+up="([^"]*)"[^>]+signal="([^"]*)"/,
-    );
-    if (attrs) {
-      return {
-        type: "connectionState",
-        deviceID,
-        connectionState: {
-          deviceID,
-          state: attrs[1] ?? "",
-          up: attrs[2] === "true",
-          signal: attrs[3] ?? "",
-        },
-      };
+    const block = xml.match(/<connectionStateUpdated[\s\S]*?\/>/);
+    if (block) {
+      const connectionState = parseConnectionStateUpdated(block[0]);
+      connectionState.deviceID = deviceID;
+      return { type: "connectionState", deviceID, connectionState };
     }
+    return { type: "connectionState", deviceID };
   }
 
   if (xml.includes("<presetsUpdated") || xml.includes("<presets>")) {

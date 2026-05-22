@@ -244,47 +244,53 @@ export function useBoseScanner(scanDurationMs = 5000) {
             );
 
             if (update.type === "volume") {
-              setSpeakers((prev) =>
-                prev.map((s) => {
-                  if (s.deviceID === update.deviceID) {
-                    return {
-                      ...s,
-                      volume: update.volume.actualVolume,
-                      muteEnabled: update.volume.muteEnabled,
-                    };
-                  }
-                  return s;
-                }),
-              );
+              if (update.volume) {
+                setSpeakers((prev) =>
+                  prev.map((s) => {
+                    if (s.deviceID === update.deviceID) {
+                      return {
+                        ...s,
+                        volume: update.volume!.actualVolume,
+                        muteEnabled: update.volume!.muteEnabled,
+                      };
+                    }
+                    return s;
+                  }),
+                );
+              }
             } else if (update.type === "nowPlaying") {
-              setSpeakers((prev) =>
-                prev.map((s) => {
-                  if (s.deviceID === update.deviceID) {
-                    return {
-                      ...s,
-                      playStatus: update.nowPlaying.playStatus,
-                      source: update.nowPlaying.source,
-                      track: update.nowPlaying.track,
-                      artist: update.nowPlaying.artist,
-                      album: update.nowPlaying.album,
-                      artUrl: update.nowPlaying.artUrl,
-                    };
-                  }
-                  return s;
-                }),
-              );
+              if (update.nowPlaying) {
+                setSpeakers((prev) =>
+                  prev.map((s) => {
+                    if (s.deviceID === update.deviceID) {
+                      return {
+                        ...s,
+                        playStatus: update.nowPlaying!.playStatus,
+                        source: update.nowPlaying!.source,
+                        track: update.nowPlaying!.track,
+                        artist: update.nowPlaying!.artist,
+                        album: update.nowPlaying!.album,
+                        artUrl: update.nowPlaying!.artUrl,
+                      };
+                    }
+                    return s;
+                  }),
+                );
+              }
             } else if (update.type === "connectionState") {
-              setSpeakers((prev) =>
-                prev.map((s) => {
-                  if (s.deviceID === update.deviceID) {
-                    return {
-                      ...s,
-                      connectionState: update.connectionState,
-                    };
-                  }
-                  return s;
-                }),
-              );
+              if (update.connectionState) {
+                setSpeakers((prev) =>
+                  prev.map((s) => {
+                    if (s.deviceID === update.deviceID) {
+                      return {
+                        ...s,
+                        connectionState: update.connectionState,
+                      };
+                    }
+                    return s;
+                  }),
+                );
+              }
             } else {
               const latestSpeaker = speakersRef.current.find(
                 (s) => s.deviceID === update.deviceID,
