@@ -51,7 +51,8 @@
             "minSdkVersion": 30
           }
         }
-      ]
+      ],
+      "expo-dev-client"
     ],
     "experiments": {
       "typedRoutes": true,
