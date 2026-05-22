@@ -53,7 +53,7 @@ export class BoseSpeakerClient {
   ): Promise<Result<T, BoseApiError>> {
     const result = await this.fetchResult(path, { method: "GET" });
     if (!result.isOk()) return new Err(result.error);
-    return this.parseBody(result.value, parse);
+    return BoseSpeakerClient.parseBody(result.value, parse);
   }
 
   private async post(
@@ -80,7 +80,7 @@ export class BoseSpeakerClient {
       body,
     });
     if (!result.isOk()) return new Err(result.error);
-    return this.parseBody(result.value, parse);
+    return BoseSpeakerClient.parseBody(result.value, parse);
   }
 
   private async fetchResult(
@@ -128,7 +128,7 @@ export class BoseSpeakerClient {
     return new Ok(body);
   }
 
-  private parseBody<T>(
+  private static parseBody<T>(
     body: string,
     parse: (root: XmlNode) => T,
   ): Result<T, BoseApiError> {

@@ -19,11 +19,21 @@ export default defineConfig({
       correctness: "error",
       suspicious: "error",
       nursery: "error",
+      restriction: "error",
     },
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
+      "react/forbid-component-props": "off",
+      "react/jsx-filename-extension": "off",
+      "react/no-multi-comp": "off",
+      "react/only-export-components": "off",
       "react/react-in-jsx-scope": "off",
+      complexity: "off",
       "no-console": "error",
+      "no-plusplus": "off",
+      "no-undefined": "off",
+      "no-use-before-define": "off",
+      "no-void": "off",
     },
     overrides: [
       {
