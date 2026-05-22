@@ -1,5 +1,6 @@
 import { useRouter } from "expo-router";
 import {
+  Alert,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -13,6 +14,19 @@ import { useLogger } from "@/lib/useLogger";
 export default function LogsViewer() {
   const router = useRouter();
   const { logs, clearLogs, copyLogs } = useLogger();
+
+  const handleClearLogs = () => {
+    Alert.alert("Clear All Logs", "This cannot be undone.", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Clear All",
+        style: "destructive",
+        onPress: () => {
+          clearLogs();
+        },
+      },
+    ]);
+  };
 
   return (
     <View style={$container}>
@@ -59,7 +73,7 @@ export default function LogsViewer() {
         </TouchableOpacity>
         <TouchableOpacity
           style={$clearButton}
-          onPress={clearLogs}
+          onPress={handleClearLogs}
           activeOpacity={0.7}
         >
           <Text style={$clearButtonText}>Clear</Text>
