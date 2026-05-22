@@ -55,13 +55,13 @@ export default defineConfig({
       "no-promise-executor-return": "off",
       "require-await": "off",
       "require-unicode-regexp": "off",
+      "typescript/no-unnecessary-condition": "off",
       "typescript/prefer-readonly-parameter-types": "off",
       "typescript/strict-boolean-expressions": "off",
       "typescript/strict-void-return": "off",
       "typescript/unified-signatures": "off",
 
       // TMP
-      "no-unnecessary-condition": "off",
       "no-unsafe-type-assertion": "off",
       "no-unsafe-argument": "off",
       "no-unsafe-member-access": "off",
