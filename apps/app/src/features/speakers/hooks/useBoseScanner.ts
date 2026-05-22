@@ -732,16 +732,18 @@ export function useBoseScanner(scanDurationMs = 5000) {
       });
     }, 15000);
 
+    const wsClients = wsClientsRef.current;
+
     return () => {
       isMounted.current = false;
       stopScan();
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
-      wsClientsRef.current.forEach((client) => {
+      wsClients.forEach((client) => {
         client.close();
       });
-      wsClientsRef.current.clear();
+      wsClients.clear();
     };
   }, [startScan, stopScan, refreshSpeakerStatus]);
 
