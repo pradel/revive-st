@@ -1,16 +1,14 @@
-import type {
-  AudioDspControlsResponse,
-  AudioProductLevelControlsResponse,
-  AudioProductToneControlsResponse,
-  BassCapabilitiesResponse,
-  CapabilitiesResponse,
-  Preset,
-} from "bose-api-speaker-client";
 import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
   escapeXml,
   KeyValue,
+  type AudioDspControlsResponse,
+  type AudioProductLevelControlsResponse,
+  type AudioProductToneControlsResponse,
+  type BassCapabilitiesResponse,
+  type CapabilitiesResponse,
+  type Preset,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { ZeroconfService } from "react-native-zeroconf";

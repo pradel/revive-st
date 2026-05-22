@@ -1,6 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { useCallback } from "react";
-import { useSyncExternalStore } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { clearLogs, getLogs, subscribe, type LogEntry } from "./logger";
 

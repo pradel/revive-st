@@ -1,7 +1,12 @@
 import { Err, Ok, type Result } from "better-result";
 
-import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
-import type { BoseApiError } from "./errors.ts";
+import {
+  ApiError,
+  HttpError,
+  NetworkError,
+  XmlParseError,
+  type BoseApiError,
+} from "./errors.ts";
 import type {
   ArtImageStatus,
   AudioMode,
