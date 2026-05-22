@@ -1,3 +1,4 @@
+import { Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -239,18 +240,33 @@ export default function SpeakerSettings() {
         {bassFetchFailed ? (
           <CapabilityErrorRow label="Bass" />
         ) : hasBassCapability && bassCaps ? (
-          <SliderSetting
-            label="Bass"
-            value={bassValue}
-            min={bassCaps.bassMin}
-            max={bassCaps.bassMax}
-            step={1}
-            disabled={isSaving}
-            onValueChange={(v) => {
-              setBassSliderValue(v);
-              setBassMutation.mutate({ host: speaker.host, value: v });
-            }}
-          />
+          <View>
+            <View style={$sliderHeader}>
+              <Text style={$infoLabel}>Bass</Text>
+              <Text style={$infoValue}>{bassValue}</Text>
+            </View>
+            <Host style={{ height: 40 }}>
+              <Slider
+                value={bassValue}
+                onValueChange={(v) => {
+                  const rounded = Math.round(v);
+                  setBassSliderValue(rounded);
+                  setBassMutation.mutate({
+                    host: speaker.host,
+                    value: rounded,
+                  });
+                }}
+                min={bassCaps.bassMin}
+                max={bassCaps.bassMax}
+                step={1}
+                disabled={isSaving}
+              />
+            </Host>
+            <View style={$sliderLabels}>
+              <Text style={$sliderLabelText}>{bassCaps.bassMin}</Text>
+              <Text style={$sliderLabelText}>{bassCaps.bassMax}</Text>
+            </View>
+          </View>
         ) : null}
 
         {/* Audio DSP Mode */}
