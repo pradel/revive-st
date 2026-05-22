@@ -28,3 +28,11 @@ The five canonical triage labels (`needs-triage`, `needs-info`, `ready-for-agent
 ### Domain docs
 
 Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md` files. System-wide ADRs at `docs/adr/`, context-scoped at `src/<context>/docs/adr/`. See `docs/agents/domain.md`.
+
+## Repository Structure
+
+- `apps/app/` — Expo React Native mobile app for controlling Bose SoundTouch speakers.
+- `packages/bose-api-speaker-client/` — Typed HTTP client library covering all 19 Bose SoundTouch Web API endpoints with `better-result` railway-oriented error handling.
+- `packages/bose-wifi/` — Expo native module providing WiFi connectivity for Bose speaker setup.
+- `docs/` — Project documentation including Bose API reference, agent skills guides.
+- `.github/workflows/` — CI/CD pipeline definitions.
