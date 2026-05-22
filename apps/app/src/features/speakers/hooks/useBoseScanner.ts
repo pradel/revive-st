@@ -412,9 +412,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
             return prev.map((item) =>
               item.deviceID === info.deviceID ? newSpeaker : item,
             );
-          } else {
-            return [...prev, newSpeaker];
           }
+          return [...prev, newSpeaker];
         });
       } catch (err) {
         logger.log(

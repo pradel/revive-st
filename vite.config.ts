@@ -21,6 +21,7 @@ export default defineConfig({
       nursery: "error",
       restriction: "error",
       style: "error",
+      pedantic: "error",
     },
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
@@ -35,7 +36,7 @@ export default defineConfig({
       "no-undefined": "off",
       "no-use-before-define": "off",
       "no-void": "off",
-      // Style rules
+      // style
       "capitalized-comments": "off",
       "func-style": "off",
       "init-declarations": "off",
@@ -47,6 +48,14 @@ export default defineConfig({
       "sort-keys": "off",
       "sort-imports": "off",
       "react/jsx-max-depth": "off",
+      // pedantic
+      "no-negated-condition": "off",
+      "max-classes-per-file": "off",
+      "max-lines": "off",
+      "max-lines-per-function": "off",
+      "no-promise-executor-return": "off",
+      "require-await": "off",
+      "require-unicode-regexp": "off",
     },
     overrides: [
       {
