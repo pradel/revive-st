@@ -3,6 +3,7 @@ import type {
   AudioProductLevelControlsResponse,
   AudioProductToneControlsResponse,
   BassCapabilitiesResponse,
+  BoseConnectionState,
   CapabilitiesResponse,
   Preset,
 } from "bose-api-speaker-client";
@@ -37,6 +38,7 @@ export interface BoseSpeaker {
   audioDspControls?: AudioDspControlsResponse | null;
   audioProductToneControls?: AudioProductToneControlsResponse | null;
   audioProductLevelControls?: AudioProductLevelControlsResponse | null;
+  connectionState?: BoseConnectionState;
 }
 
 async function pressAndRelease(host: string, key: string) {
@@ -241,7 +243,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
             );
 
-            if (update.volume || update.nowPlaying) {
+            if (update.volume || update.nowPlaying || update.connectionState) {
               setSpeakers((prev) =>
                 prev.map((s) => {
                   if (s.deviceID === update.deviceID) {
@@ -271,6 +273,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
                       artUrl: update.nowPlaying
                         ? update.nowPlaying.artUrl
                         : s.artUrl,
+                      connectionState: update.connectionState
+                        ? update.connectionState
+                        : s.connectionState,
                     };
                   }
                   return s;

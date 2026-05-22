@@ -23,11 +23,26 @@ export interface BoseVolume {
   muteEnabled: boolean;
 }
 
+export interface BoseConnectionState {
+  deviceID: string;
+  state: string;
+  up: boolean;
+  signal: string;
+}
+
 export interface BoseWSUpdate {
   deviceID: string;
-  type: "volume" | "nowPlaying" | "presets" | "zone" | "info" | "unknown";
+  type:
+    | "volume"
+    | "nowPlaying"
+    | "presets"
+    | "zone"
+    | "info"
+    | "connectionState"
+    | "unknown";
   volume?: BoseVolume;
   nowPlaying?: BoseNowPlaying;
+  connectionState?: BoseConnectionState;
 }
 
 function unescapeXml(val: string): string {
@@ -83,6 +98,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   let type: BoseWSUpdate["type"] = "unknown";
   let volume: BoseVolume | undefined;
   let nowPlaying: BoseNowPlaying | undefined;
+  let connectionState: BoseConnectionState | undefined;
 
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
     type = "volume";
@@ -107,6 +123,19 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     type = "zone";
   } else if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
     type = "info";
+  } else if (xml.includes("<connectionStateUpdated")) {
+    type = "connectionState";
+    const attrs = xml.match(
+      /<connectionStateUpdated[^>]+state="([^"]*)"[^>]+up="([^"]*)"[^>]+signal="([^"]*)"/,
+    );
+    if (attrs) {
+      connectionState = {
+        deviceID,
+        state: attrs[1] ?? "",
+        up: attrs[2] === "true",
+        signal: attrs[3] ?? "",
+      };
+    }
   }
 
   return {
@@ -114,6 +143,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     type,
     volume,
     nowPlaying,
+    connectionState,
   };
 }
 
