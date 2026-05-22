@@ -59,13 +59,11 @@ export default defineConfig({
       "typescript/explicit-member-accessibility": "off",
       "typescript/explicit-module-boundary-types": "off",
       "typescript/no-unnecessary-condition": "off",
+      "typescript/no-unsafe-type-assertion": "off",
       "typescript/prefer-readonly-parameter-types": "off",
       "typescript/strict-boolean-expressions": "off",
       "typescript/strict-void-return": "off",
       "typescript/unified-signatures": "off",
-
-      // TMP
-      "no-unsafe-type-assertion": "off",
     },
     overrides: [
       {
