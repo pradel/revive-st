@@ -240,48 +240,55 @@ export function useBoseScanner(scanDurationMs = 5000) {
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
             );
 
-            if (update.volume || update.nowPlaying) {
-              setSpeakers((prev) =>
-                prev.map((s) => {
-                  if (s.deviceID === update.deviceID) {
-                    return {
-                      ...s,
-                      volume: update.volume
-                        ? update.volume.actualVolume
-                        : s.volume,
-                      muteEnabled: update.volume
-                        ? update.volume.muteEnabled
-                        : s.muteEnabled,
-                      playStatus: update.nowPlaying
-                        ? update.nowPlaying.playStatus
-                        : s.playStatus,
-                      source: update.nowPlaying
-                        ? update.nowPlaying.source
-                        : s.source,
-                      track: update.nowPlaying
-                        ? update.nowPlaying.track
-                        : s.track,
-                      artist: update.nowPlaying
-                        ? update.nowPlaying.artist
-                        : s.artist,
-                      album: update.nowPlaying
-                        ? update.nowPlaying.album
-                        : s.album,
-                      artUrl: update.nowPlaying
-                        ? update.nowPlaying.artUrl
-                        : s.artUrl,
-                    };
-                  }
-                  return s;
-                }),
-              );
-            } else {
-              const latestSpeaker = speakersRef.current.find(
+            const refreshIfAvailable = () => {
+              const latest = speakersRef.current.find(
                 (s) => s.deviceID === update.deviceID,
               );
-              if (latestSpeaker) {
-                void refreshSpeakerStatus(latestSpeaker);
+              if (latest) void refreshSpeakerStatus(latest);
+            };
+
+            if (update.type === "volume") {
+              if (update.volume) {
+                setSpeakers((prev) =>
+                  prev.map((s) => {
+                    if (s.deviceID === update.deviceID) {
+                      return {
+                        ...s,
+                        volume: update.volume!.actualVolume,
+                        muteEnabled: update.volume!.muteEnabled,
+                      };
+                    }
+                    return s;
+                  }),
+                );
+              } else {
+                refreshIfAvailable();
               }
+            } else if (update.type === "nowPlaying") {
+              if (update.nowPlaying) {
+                setSpeakers((prev) =>
+                  prev.map((s) => {
+                    if (s.deviceID === update.deviceID) {
+                      return {
+                        ...s,
+                        playStatus: update.nowPlaying!.playStatus,
+                        source: update.nowPlaying!.source,
+                        track: update.nowPlaying!.track,
+                        artist: update.nowPlaying!.artist,
+                        album: update.nowPlaying!.album,
+                        artUrl: update.nowPlaying!.artUrl,
+                      };
+                    }
+                    return s;
+                  }),
+                );
+              } else {
+                refreshIfAvailable();
+              }
+            } else if (update.type === "connectionState") {
+              // handled by the parser, no state update needed
+            } else {
+              refreshIfAvailable();
             }
           },
           onDisconnect: () => {
@@ -716,16 +723,18 @@ export function useBoseScanner(scanDurationMs = 5000) {
       });
     }, 15000);
 
+    const wsClients = wsClientsRef.current;
+
     return () => {
       isMounted.current = false;
       stopScan();
       if (pollIntervalRef.current) {
         clearInterval(pollIntervalRef.current);
       }
-      wsClientsRef.current.forEach((client) => {
+      wsClients.forEach((client) => {
         client.close();
       });
-      wsClientsRef.current.clear();
+      wsClients.clear();
     };
   }, [startScan, stopScan, refreshSpeakerStatus]);
 

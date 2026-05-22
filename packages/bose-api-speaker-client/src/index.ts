@@ -11,7 +11,11 @@ export type { BoseSpeakerClient } from "./client.ts";
 export { escapeXml } from "./client.ts";
 
 export { BoseWebSocketClient } from "./ws-client.ts";
-export type { BoseWebSocketClientOptions, BoseWSUpdate } from "./ws-client.ts";
+export type {
+  BoseWebSocketClientOptions,
+  BoseWSUpdate,
+  BoseConnectionState,
+} from "./ws-client.ts";
 
 export type { BoseApiError } from "./errors.ts";
 export { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
