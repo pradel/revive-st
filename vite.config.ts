@@ -65,7 +65,6 @@ export default defineConfig({
       "no-unsafe-type-assertion": "off",
       "no-unsafe-member-access": "off",
       "no-unsafe-assignment": "off",
-      "no-floating-promises": "off",
       "prefer-regexp-exec": "off",
       "explicit-module-boundary-types": "off",
       "explicit-member-accessibility": "off",

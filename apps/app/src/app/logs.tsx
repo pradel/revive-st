@@ -22,7 +22,7 @@ export default function LogsViewer() {
         text: "Clear All",
         style: "destructive",
         onPress: () => {
-          clearLogs();
+          void clearLogs();
         },
       },
     ]);
