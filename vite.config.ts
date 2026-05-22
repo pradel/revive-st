@@ -14,8 +14,12 @@ export default defineConfig({
     plugins: ["react"],
     categories: {
       correctness: "error",
+      suspicious: "error",
     },
-    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
+    rules: {
+      "vite-plus/prefer-vite-plus-imports": "error",
+      "react/react-in-jsx-scope": "off",
+    },
   },
   run: {
     cache: true,
