@@ -87,9 +87,12 @@ export function parseXml(xml: string): XmlNode {
       }
     } else if (token.type === "close") {
       const node = stack.pop();
-      if (!node) throw new Error(`Unexpected closing tag </${token.name}>`);
-      if (node.name !== token.name)
+      if (!node) {
+        throw new Error(`Unexpected closing tag </${token.name}>`);
+      }
+      if (node.name !== token.name) {
         throw new Error(`Mismatched tags: <${node.name}> and </${token.name}>`);
+      }
 
       node.text = cleanText(text);
 
@@ -102,8 +105,9 @@ export function parseXml(xml: string): XmlNode {
   }
 
   const root = stack[0];
-  if (!root)
+  if (!root) {
     throw new XmlParseError({ message: "Empty XML document", rawXml: xml });
+  }
   return root;
 }
 

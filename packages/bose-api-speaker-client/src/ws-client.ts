@@ -64,7 +64,9 @@ export type BoseWSUpdate =
     };
 
 function unescapeXml(val: string): string {
-  if (!val) return "";
+  if (!val) {
+    return "";
+  }
   return val
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -124,7 +126,9 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
 
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceIDMatch = xml.match(/<updates[^>]+deviceID="([^"]+)"/);
-  if (!deviceIDMatch) return null;
+  if (!deviceIDMatch) {
+    return null;
+  }
 
   const deviceID = deviceIDMatch[1];
 

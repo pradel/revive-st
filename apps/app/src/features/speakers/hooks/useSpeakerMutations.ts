@@ -13,13 +13,17 @@ async function pressAndRelease(host: string, key: string) {
     state: "press",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
   result = await client.pressKey({
     key: k,
     state: "release",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
 }
 
 export function useVolumeMutation() {
@@ -28,7 +32,9 @@ export function useVolumeMutation() {
   return useMutation({
     mutationFn: async ({ host, volume }: { host: string; volume: number }) => {
       const result = await createClient({ ip: host }).setVolume({ volume });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -88,7 +94,9 @@ export function useSelectSourceMutation() {
         source,
         sourceAccount,
       });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -102,7 +110,9 @@ export function useSetBassMutation() {
   return useMutation({
     mutationFn: async ({ host, value }: { host: string; value: number }) => {
       const result = await createClient({ ip: host }).setBass(value);
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -129,14 +139,18 @@ export function useSavePresetMutation() {
         state: "press",
         sender: "Gabbo",
       });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
       await new Promise<void>((resolve) => setTimeout(resolve, 2000));
       result = await client.pressKey({
         key: k,
         state: "release",
         sender: "Gabbo",
       });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -179,7 +193,9 @@ export function useSetNameMutation() {
   return useMutation({
     mutationFn: async ({ host, name }: { host: string; name: string }) => {
       const result = await createClient({ ip: host }).setName(name);
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -205,7 +221,9 @@ export function useSetAudioDspControlsMutation() {
           | "AUDIO_MODE_DIALOG"
           | "AUDIO_MODE_NIGHT",
       });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -229,7 +247,9 @@ export function useSetAudioProductToneControlsMutation() {
       const result = await createClient({
         ip: host,
       }).setAudioProductToneControls({ bass, treble });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -256,7 +276,9 @@ export function useSetAudioProductLevelControlsMutation() {
         frontCenterSpeakerLevel,
         rearSurroundSpeakersLevel,
       });
-      if (!result.isOk()) throw result.error;
+      if (!result.isOk()) {
+        throw result.error;
+      }
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });

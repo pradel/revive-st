@@ -24,7 +24,9 @@ export default function Index() {
   const handleVolumeTap = useCallback(
     (speaker: BoseSpeaker, event: GestureResponderEvent) => {
       const trackWidth = sliderLayoutsRef.current[speaker.deviceID];
-      if (!trackWidth) return;
+      if (!trackWidth) {
+        return;
+      }
       const x = event.nativeEvent.locationX;
       const volume = Math.round(
         Math.min(100, Math.max(0, (x / trackWidth) * 100)),

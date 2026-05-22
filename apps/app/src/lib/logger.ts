@@ -37,7 +37,9 @@ function safeStringify(args: unknown[]): string {
         if (arg instanceof Error) {
           return `${arg.message}\n${arg.stack ?? ""}`;
         }
-        if (typeof arg === "string") return arg;
+        if (typeof arg === "string") {
+          return arg;
+        }
         return JSON.stringify(arg);
       } catch {
         return String(arg);
@@ -63,7 +65,9 @@ function addToBuffer(level: LogLevel, message: string): void {
 }
 
 function schedulePersist(): void {
-  if (persistTimer) clearTimeout(persistTimer);
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+  }
   persistTimer = setTimeout(persist, PERSIST_DEBOUNCE_MS);
 }
 

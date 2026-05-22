@@ -49,13 +49,17 @@ async function pressAndRelease(host: string, key: string) {
     state: "press",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
   result = await client.pressKey({
     key: k,
     state: "release",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
 }
 
 async function longPress(host: string, key: string, durationMs = 2000) {
@@ -66,14 +70,18 @@ async function longPress(host: string, key: string, durationMs = 2000) {
     state: "press",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
   await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
   result = await client.pressKey({
     key: k,
     state: "release",
     sender: "Gabbo",
   });
-  if (!result.isOk()) throw result.error;
+  if (!result.isOk()) {
+    throw result.error;
+  }
 }
 
 function playUri(host: string, uri: string, name: string) {
@@ -172,7 +180,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
               .then((r) => (r.isOk() ? r.value : null)),
       ]);
 
-      if (!isMounted.current) return;
+      if (!isMounted.current) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) => {
@@ -216,7 +226,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
       currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
       ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id));
 
-    if (!hasDeviceChange) return;
+    if (!hasDeviceChange) {
+      return;
+    }
 
     prevDeviceIdsRef.current = currentDeviceIds;
 
@@ -236,7 +248,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
           host: speaker.host,
           deviceID: speaker.deviceID,
           onUpdate: (update) => {
-            if (!isMounted.current) return;
+            if (!isMounted.current) {
+              return;
+            }
 
             logger.log(
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
@@ -246,7 +260,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
               const latest = speakersRef.current.find(
                 (s) => s.deviceID === update.deviceID,
               );
-              if (latest) void refreshSpeakerStatus(latest);
+              if (latest) {
+                void refreshSpeakerStatus(latest);
+              }
             };
 
             if (update.type === "volume") {
@@ -308,7 +324,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const startScan = useCallback(() => {
     stopScan();
-    if (!isMounted.current) return;
+    if (!isMounted.current) {
+      return;
+    }
 
     setIsScanning(true);
     setError(null);
@@ -317,15 +335,23 @@ export function useBoseScanner(scanDurationMs = 5000) {
     zeroconfRef.current = zeroconf;
 
     zeroconf.on("resolved", async (service: ZeroconfService) => {
-      if (!isMounted.current) return;
-      if (!service.host) return;
+      if (!isMounted.current) {
+        return;
+      }
+      if (!service.host) {
+        return;
+      }
 
       try {
         const client = createClient({ ip: service.host });
         const infoResult = await client.getInfo();
-        if (!infoResult.isOk()) return;
+        if (!infoResult.isOk()) {
+          return;
+        }
         const info = infoResult.value;
-        if (!info.deviceID) return;
+        if (!info.deviceID) {
+          return;
+        }
 
         const [
           nowPlaying,
@@ -349,7 +375,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
             .then((r) => (r.isOk() ? r.value : null)),
         ]);
 
-        if (!isMounted.current) return;
+        if (!isMounted.current) {
+          return;
+        }
 
         setSpeakers((prev) => {
           const exists = prev.some((s) => s.deviceID === info.deviceID);
@@ -414,7 +442,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const togglePower = useCallback(
     async (deviceID: string) => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -446,7 +476,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const changeVolume = useCallback(
     async (deviceID: string, vol: number) => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) => (s.deviceID === deviceID ? { ...s, volume: vol } : s)),
@@ -455,7 +487,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
       try {
         const client = createClient({ ip: speaker.host });
         const result = await client.setVolume({ volume: vol });
-        if (!result.isOk()) throw result.error;
+        if (!result.isOk()) {
+          throw result.error;
+        }
       } catch (err) {
         logger.error(
           `[BoseScanner] Failed to set volume on ${speaker.name}:`,
@@ -470,7 +504,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const playPause = useCallback(
     async (deviceID: string) => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -502,7 +538,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const triggerKey = useCallback(
     async (deviceID: string, key: string) => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -534,7 +572,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const selectSource = useCallback(
     async (deviceID: string, source: string, sourceAccount = "") => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
 
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -548,7 +588,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
           source,
           sourceAccount: sourceAccount || undefined,
         });
-        if (!result.isOk()) throw result.error;
+        if (!result.isOk()) {
+          throw result.error;
+        }
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 500);
@@ -570,11 +612,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const loadPresets = useCallback(async (deviceID: string) => {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-    if (!speaker) return;
+    if (!speaker) {
+      return;
+    }
     try {
       const client = createClient({ ip: speaker.host });
       const result = await client.getPresets();
-      if (!result.isOk() || !isMounted.current) return;
+      if (!result.isOk() || !isMounted.current) {
+        return;
+      }
       setSpeakers((prev) =>
         prev.map((s) =>
           s.deviceID === deviceID ? { ...s, presets: result.value.presets } : s,
@@ -590,11 +636,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const loadBass = useCallback(async (deviceID: string) => {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-    if (!speaker) return;
+    if (!speaker) {
+      return;
+    }
     try {
       const client = createClient({ ip: speaker.host });
       const result = await client.getBass();
-      if (!result.isOk() || !isMounted.current) return;
+      if (!result.isOk() || !isMounted.current) {
+        return;
+      }
       setSpeakers((prev) =>
         prev.map((s) =>
           s.deviceID === deviceID ? { ...s, bass: result.value.actualbass } : s,
@@ -610,7 +660,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const savePreset = useCallback(async (deviceID: string, presetId: number) => {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-    if (!speaker) return;
+    if (!speaker) {
+      return;
+    }
     try {
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -620,7 +672,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
       await longPress(speaker.host, `PRESET_${presetId}`);
       const client = createClient({ ip: speaker.host });
       const result = await client.getPresets();
-      if (!isMounted.current) return;
+      if (!isMounted.current) {
+        return;
+      }
       setSpeakers((prev) =>
         prev.map((s) =>
           s.deviceID === deviceID
@@ -650,7 +704,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
   const setBass = useCallback(async (deviceID: string, value: number) => {
     const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-    if (!speaker) return;
+    if (!speaker) {
+      return;
+    }
     try {
       setSpeakers((prev) =>
         prev.map((s) =>
@@ -659,8 +715,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
       );
       const client = createClient({ ip: speaker.host });
       const result = await client.setBass(value);
-      if (!result.isOk()) throw result.error;
-      if (!isMounted.current) return;
+      if (!result.isOk()) {
+        throw result.error;
+      }
+      if (!isMounted.current) {
+        return;
+      }
       setSpeakers((prev) =>
         prev.map((s) =>
           s.deviceID === deviceID
@@ -687,7 +747,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const playStream = useCallback(
     async (deviceID: string, uri: string, name: string) => {
       const speaker = speakersRef.current.find((s) => s.deviceID === deviceID);
-      if (!speaker) return;
+      if (!speaker) {
+        return;
+      }
       try {
         setSpeakers((prev) =>
           prev.map((s) =>

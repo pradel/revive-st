@@ -52,7 +52,9 @@ export class BoseSpeakerClient {
     parse: (root: XmlNode) => T,
   ): Promise<Result<T, BoseApiError>> {
     const result = await this.fetchResult(path, { method: "GET" });
-    if (!result.isOk()) return new Err(result.error);
+    if (!result.isOk()) {
+      return new Err(result.error);
+    }
     return BoseSpeakerClient.parseBody(result.value, parse);
   }
 
@@ -65,7 +67,9 @@ export class BoseSpeakerClient {
       headers: { "Content-Type": "application/xml" },
       body,
     });
-    if (!result.isOk()) return new Err(result.error);
+    if (!result.isOk()) {
+      return new Err(result.error);
+    }
     return new Ok(undefined);
   }
 
@@ -79,7 +83,9 @@ export class BoseSpeakerClient {
       headers: { "Content-Type": "application/xml" },
       body,
     });
-    if (!result.isOk()) return new Err(result.error);
+    if (!result.isOk()) {
+      return new Err(result.error);
+    }
     return BoseSpeakerClient.parseBody(result.value, parse);
   }
 
@@ -147,7 +153,9 @@ export class BoseSpeakerClient {
     }
 
     const apiErrors = tryParseApiErrorsFromNode(root);
-    if (apiErrors) return new Err(apiErrors);
+    if (apiErrors) {
+      return new Err(apiErrors);
+    }
 
     return new Ok(parse(root));
   }
@@ -171,7 +179,9 @@ export class BoseSpeakerClient {
     return this.get("/sources", (root) => {
       const sources =
         root.name === "sources" ? root : getChild(root, "sources");
-      if (!sources) throw new Error("Missing <sources> element");
+      if (!sources) {
+        throw new Error("Missing <sources> element");
+      }
       return {
         deviceID: sources.attributes.deviceID ?? "",
         sourceItems: getChildren(sources, "sourceItem").map((si) => ({
@@ -192,7 +202,9 @@ export class BoseSpeakerClient {
         root.name === "bassCapabilities"
           ? root
           : getChild(root, "bassCapabilities");
-      if (!bc) throw new Error("Missing <bassCapabilities> element");
+      if (!bc) {
+        throw new Error("Missing <bassCapabilities> element");
+      }
       return {
         deviceID: bc.attributes.deviceID ?? "",
         bassAvailable: parseBool(getChildText(bc, "bassAvailable") ?? "false"),
@@ -206,7 +218,9 @@ export class BoseSpeakerClient {
   async getBass(): Promise<Result<BassResponse, BoseApiError>> {
     return this.get("/bass", (root) => {
       const b = root.name === "bass" ? root : getChild(root, "bass");
-      if (!b) throw new Error("Missing <bass> element");
+      if (!b) {
+        throw new Error("Missing <bass> element");
+      }
       return {
         deviceID: b.attributes.deviceID ?? "",
         targetbass: parseIntSafe(getChildText(b, "targetbass") ?? "0"),
@@ -222,7 +236,9 @@ export class BoseSpeakerClient {
   async getZone(): Promise<Result<ZoneResponse, BoseApiError>> {
     return this.get("/getZone", (root) => {
       const zone = root.name === "zone" ? root : getChild(root, "zone");
-      if (!zone) throw new Error("Missing <zone> element");
+      if (!zone) {
+        throw new Error("Missing <zone> element");
+      }
       return {
         master: zone.attributes.master ?? "",
         members: getChildren(zone, "member").map((m) => ({
@@ -295,7 +311,9 @@ export class BoseSpeakerClient {
   async getVolume(): Promise<Result<VolumeResponse, BoseApiError>> {
     return this.get("/volume", (root) => {
       const v = root.name === "volume" ? root : getChild(root, "volume");
-      if (!v) throw new Error("Missing <volume> element");
+      if (!v) {
+        throw new Error("Missing <volume> element");
+      }
       return {
         deviceID: v.attributes.deviceID ?? "",
         targetvolume: parseIntSafe(getChildText(v, "targetvolume") ?? "0"),
@@ -320,7 +338,9 @@ export class BoseSpeakerClient {
     return this.get("/presets", (root) => {
       const presets =
         root.name === "presets" ? root : getChild(root, "presets");
-      if (!presets) throw new Error("Missing <presets> element");
+      if (!presets) {
+        throw new Error("Missing <presets> element");
+      }
       return {
         presets: getChildren(presets, "preset").map((pr) => ({
           id: parseIntSafe(pr.attributes.id ?? "0"),
@@ -339,7 +359,9 @@ export class BoseSpeakerClient {
   async getInfo(): Promise<Result<InfoResponse, BoseApiError>> {
     return this.get("/info", (root) => {
       const info = root.name === "info" ? root : getChild(root, "info");
-      if (!info) throw new Error("Missing <info> element");
+      if (!info) {
+        throw new Error("Missing <info> element");
+      }
       const netInfo = getChild(info, "networkInfo");
       return {
         deviceID: info.attributes.deviceID ?? "",
@@ -372,7 +394,9 @@ export class BoseSpeakerClient {
     return this.get("/capabilities", (root) => {
       const caps =
         root.name === "capabilities" ? root : getChild(root, "capabilities");
-      if (!caps) throw new Error("Missing <capabilities> element");
+      if (!caps) {
+        throw new Error("Missing <capabilities> element");
+      }
       return {
         deviceID: caps.attributes.deviceID ?? "",
         capabilities: getChildren(caps, "capability").map((c) => ({
@@ -392,7 +416,9 @@ export class BoseSpeakerClient {
         root.name === "audiodspcontrols"
           ? root
           : getChild(root, "audiodspcontrols");
-      if (!adc) throw new Error("Missing <audiodspcontrols> element");
+      if (!adc) {
+        throw new Error("Missing <audiodspcontrols> element");
+      }
       return {
         audiomode: (adc.attributes.audiomode ?? "") as AudioMode,
         videosyncaudiodelay: parseIntSafe(
@@ -409,10 +435,12 @@ export class BoseSpeakerClient {
     params: SetAudioDspControlsRequest,
   ): Promise<Result<void, BoseApiError>> {
     const attrs: string[] = [];
-    if (params.audiomode !== undefined)
+    if (params.audiomode !== undefined) {
       attrs.push(`audiomode="${params.audiomode}"`);
-    if (params.videosyncaudiodelay !== undefined)
+    }
+    if (params.videosyncaudiodelay !== undefined) {
       attrs.push(`videosyncaudiodelay="${params.videosyncaudiodelay}"`);
+    }
     const xml = `<audiodspcontrols ${attrs.join(" ")}/>`;
     return this.post("/audiodspcontrols", xml);
   }
@@ -425,7 +453,9 @@ export class BoseSpeakerClient {
         root.name === "audioproducttonecontrols"
           ? root
           : getChild(root, "audioproducttonecontrols");
-      if (!aptc) throw new Error("Missing <audioproducttonecontrols> element");
+      if (!aptc) {
+        throw new Error("Missing <audioproducttonecontrols> element");
+      }
       return {
         bass: parseToneControl(getChild(aptc, "bass")),
         treble: parseToneControl(getChild(aptc, "treble")),
@@ -437,8 +467,12 @@ export class BoseSpeakerClient {
     params: SetToneControlsRequest,
   ): Promise<Result<void, BoseApiError>> {
     const parts: string[] = [];
-    if (params.bass) parts.push(`<bass value="${params.bass.value}" />`);
-    if (params.treble) parts.push(`<treble value="${params.treble.value}" />`);
+    if (params.bass) {
+      parts.push(`<bass value="${params.bass.value}" />`);
+    }
+    if (params.treble) {
+      parts.push(`<treble value="${params.treble.value}" />`);
+    }
     const xml = `<audioproducttonecontrols>${parts.join("")}</audioproducttonecontrols>`;
     return this.post("/audioproducttonecontrols", xml);
   }
@@ -451,7 +485,9 @@ export class BoseSpeakerClient {
         root.name === "audioproductlevelcontrols"
           ? root
           : getChild(root, "audioproductlevelcontrols");
-      if (!aplc) throw new Error("Missing <audioproductlevelcontrols> element");
+      if (!aplc) {
+        throw new Error("Missing <audioproductlevelcontrols> element");
+      }
       return {
         frontCenterSpeakerLevel: parseLevelControl(
           getChild(aplc, "frontCenterSpeakerLevel"),
@@ -467,14 +503,16 @@ export class BoseSpeakerClient {
     params: SetLevelControlsRequest,
   ): Promise<Result<void, BoseApiError>> {
     const parts: string[] = [];
-    if (params.frontCenterSpeakerLevel)
+    if (params.frontCenterSpeakerLevel) {
       parts.push(
         `<frontCenterSpeakerLevel value="${params.frontCenterSpeakerLevel.value}" />`,
       );
-    if (params.rearSurroundSpeakersLevel)
+    }
+    if (params.rearSurroundSpeakersLevel) {
       parts.push(
         `<rearSurroundSpeakersLevel value="${params.rearSurroundSpeakersLevel.value}" />`,
       );
+    }
     const xml = `<audioproductlevelcontrols>${parts.join("")}</audioproductlevelcontrols>`;
     return this.post("/audioproductlevelcontrols", xml);
   }
@@ -482,7 +520,9 @@ export class BoseSpeakerClient {
 
 function parseNowPlaying(root: XmlNode): NowPlayingResponse {
   const np = root.name === "nowPlaying" ? root : getChild(root, "nowPlaying");
-  if (!np) throw new Error("Missing <nowPlaying> element");
+  if (!np) {
+    throw new Error("Missing <nowPlaying> element");
+  }
   const art = getChild(np, "art");
   return {
     deviceID: np.attributes.deviceID ?? "",
@@ -513,7 +553,9 @@ function parseContentItem(node: XmlNode) {
 }
 
 function parseToneControl(node: XmlNode | undefined) {
-  if (!node) return { value: 0, minValue: 0, maxValue: 0, step: 0 };
+  if (!node) {
+    return { value: 0, minValue: 0, maxValue: 0, step: 0 };
+  }
   return {
     value: parseIntSafe(node.attributes.value ?? "0"),
     minValue: parseIntSafe(node.attributes.minValue ?? "0"),
@@ -523,7 +565,9 @@ function parseToneControl(node: XmlNode | undefined) {
 }
 
 function parseLevelControl(node: XmlNode | undefined) {
-  if (!node) return { value: 0, minValue: 0, maxValue: 0, step: 0 };
+  if (!node) {
+    return { value: 0, minValue: 0, maxValue: 0, step: 0 };
+  }
   return {
     value: parseIntSafe(node.attributes.value ?? "0"),
     minValue: parseIntSafe(node.attributes.minValue ?? "0"),
@@ -543,7 +587,9 @@ function tryParseApiErrors(body: string): ApiError | null {
 
 function tryParseApiErrorsFromNode(root: XmlNode): ApiError | null {
   const errorsRoot = root.name === "errors" ? root : getChild(root, "errors");
-  if (!errorsRoot) return null;
+  if (!errorsRoot) {
+    return null;
+  }
   return new ApiError({
     deviceID: errorsRoot.attributes.deviceID ?? "",
     errors: getChildren(errorsRoot, "error").map((e) => ({

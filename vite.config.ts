@@ -48,7 +48,6 @@ export default defineConfig({
 
       // TMP
       "init-declarations": "off",
-      curly: "off",
       "id-length": "off",
       "prefer-exponentiation-operator": "off",
       "capitalized-comments": "off",
