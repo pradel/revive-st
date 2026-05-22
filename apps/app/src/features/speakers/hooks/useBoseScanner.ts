@@ -2,16 +2,16 @@ import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
   escapeXml,
-  KeyValue,
   type AudioDspControlsResponse,
   type AudioProductLevelControlsResponse,
   type AudioProductToneControlsResponse,
   type BassCapabilitiesResponse,
   type CapabilitiesResponse,
+  type KeyValue,
   type Preset,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
-import Zeroconf, { ZeroconfService } from "react-native-zeroconf";
+import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
 

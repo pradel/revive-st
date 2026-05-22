@@ -79,7 +79,6 @@ export default defineConfig({
       "consistent-type-definitions": "off",
       "no-explicit-any": "off",
       "no-non-null-assertion": "off",
-      "consistent-type-imports": "off",
     },
     overrides: [
       {

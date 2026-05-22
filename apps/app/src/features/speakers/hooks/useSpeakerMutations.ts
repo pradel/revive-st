@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
+  type KeyValue,
   boseSpeakerClient as createClient,
   escapeXml,
-  KeyValue,
 } from "bose-api-speaker-client";
 
 async function pressAndRelease(host: string, key: string) {
