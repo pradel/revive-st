@@ -294,7 +294,7 @@ describe("BoseWebSocketClient", () => {
 
       for (let i = 1; i <= 5; i++) {
         wsMock.onclose!({ code: 1006 });
-        vi.advanceTimersByTime(Math.min(1000 * Math.pow(2, i), 10000));
+        vi.advanceTimersByTime(Math.min(1000 * 2 ** i, 10000));
       }
 
       expect(wsCtor).toHaveBeenCalledTimes(6);

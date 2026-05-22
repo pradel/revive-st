@@ -50,7 +50,6 @@ export default defineConfig({
       // TMP
       "init-declarations": "off",
       "id-length": "off",
-      "prefer-exponentiation-operator": "off",
       "react/hook-use-state": "off",
       "no-implicit-coercion": "off",
     },
