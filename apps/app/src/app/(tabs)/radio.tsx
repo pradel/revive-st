@@ -459,7 +459,6 @@ const $container: ViewStyle = {
 
 const $header: ViewStyle = {
   paddingHorizontal: 20,
-  paddingTop: 60,
   paddingBottom: 8,
 };
 
