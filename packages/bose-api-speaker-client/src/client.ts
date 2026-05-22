@@ -46,7 +46,7 @@ import {
 } from "./xml-parser.ts";
 
 export class BoseSpeakerClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(opts: { ip: string; port?: number }) {
     this.baseUrl = `http://${opts.ip}:${opts.port ?? 8090}`;
@@ -369,7 +369,7 @@ export class BoseSpeakerClient {
           updatedOn: pr.attributes.updatedOn
             ? parseIntSafe(pr.attributes.updatedOn)
             : undefined,
-          contentItem: parseContentItem(getChild(pr, "ContentItem")!),
+          contentItem: parseContentItem(getChild(pr, "ContentItem")),
         })),
       };
     });
@@ -396,11 +396,13 @@ export class BoseSpeakerClient {
           serialNumber: getChildText(component, "serialNumber") ?? "",
         })),
         margeURL: getChildText(info, "margeURL") ?? "",
-        networkInfo: {
-          type: netInfo?.attributes.type ?? "",
-          macAddress: getChildText(netInfo!, "macAddress") ?? "",
-          ipAddress: getChildText(netInfo!, "ipAddress") ?? "",
-        },
+        networkInfo: netInfo
+          ? {
+              type: netInfo.attributes.type ?? "",
+              macAddress: getChildText(netInfo, "macAddress") ?? "",
+              ipAddress: getChildText(netInfo, "ipAddress") ?? "",
+            }
+          : { type: "", macAddress: "", ipAddress: "" },
       };
     });
   }
@@ -546,7 +548,7 @@ function parseNowPlaying(root: XmlNode): NowPlayingResponse {
   return {
     deviceID: np.attributes.deviceID ?? "",
     source: np.attributes.source ?? "",
-    contentItem: parseContentItem(getChild(np, "ContentItem")!),
+    contentItem: parseContentItem(getChild(np, "ContentItem")),
     track: getChildText(np, "track") ?? "",
     artist: getChildText(np, "artist") ?? "",
     album: getChildText(np, "album") ?? "",
@@ -561,7 +563,16 @@ function parseNowPlaying(root: XmlNode): NowPlayingResponse {
   };
 }
 
-function parseContentItem(node: XmlNode) {
+function parseContentItem(node: XmlNode | undefined) {
+  if (!node) {
+    return {
+      source: "",
+      location: "",
+      sourceAccount: "",
+      isPresetable: false,
+      itemName: "",
+    };
+  }
   return {
     source: node.attributes.source ?? "",
     location: node.attributes.location ?? "",

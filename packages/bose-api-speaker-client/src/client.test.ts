@@ -26,11 +26,12 @@ function mockFetch(status: number, body: string) {
     .mockResolvedValue(new Response(body, { status }));
 }
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 function unwrapOk<TParsed>(result: unknown): TParsed {
   if (!Result.isOk(result as never)) {
     throw new Error("Expected Ok but got Err");
   }
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // oxlint-disable-next-line typescript/no-unsafe-member-access, typescript/no-explicit-any
   return (result as any).value as TParsed;
 }
 
@@ -42,7 +43,7 @@ describe("boseSpeakerClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses custom port", () => {
+  it("uses custom port", async () => {
     const testClient = boseSpeakerClient({ ip: IP, port: 8080 });
     mockFetch(
       200,

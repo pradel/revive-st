@@ -7,7 +7,7 @@ import { QueryProvider } from "@/providers/QueryProvider";
 
 export default function RootLayout() {
   useEffect(() => {
-    initLogger();
+    void initLogger();
   }, []);
 
   return (

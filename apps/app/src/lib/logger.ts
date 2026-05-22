@@ -68,7 +68,9 @@ function schedulePersist(): void {
   if (persistTimer) {
     clearTimeout(persistTimer);
   }
-  persistTimer = setTimeout(persist, PERSIST_DEBOUNCE_MS);
+  persistTimer = setTimeout(() => {
+    void persist();
+  }, PERSIST_DEBOUNCE_MS);
 }
 
 async function persist(): Promise<void> {

@@ -11,7 +11,7 @@ export default defineConfig({
   lint: {
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    plugins: ["react"],
+    plugins: ["react", "typescript"],
     env: {
       browser: true,
     },
@@ -37,7 +37,6 @@ export default defineConfig({
       "no-undefined": "off",
       "no-use-before-define": "off",
       "no-void": "off",
-      // style
       "capitalized-comments": "off",
       "func-style": "off",
       "init-declarations": "off",
@@ -49,7 +48,6 @@ export default defineConfig({
       "sort-keys": "off",
       "sort-imports": "off",
       "react/jsx-max-depth": "off",
-      // pedantic
       "no-negated-condition": "off",
       "max-classes-per-file": "off",
       "max-lines": "off",
@@ -57,6 +55,15 @@ export default defineConfig({
       "no-promise-executor-return": "off",
       "require-await": "off",
       "require-unicode-regexp": "off",
+      "typescript/explicit-function-return-type": "off",
+      "typescript/explicit-member-accessibility": "off",
+      "typescript/explicit-module-boundary-types": "off",
+      "typescript/no-unnecessary-condition": "off",
+      "typescript/no-unsafe-type-assertion": "off",
+      "typescript/prefer-readonly-parameter-types": "off",
+      "typescript/strict-boolean-expressions": "off",
+      "typescript/strict-void-return": "off",
+      "typescript/unified-signatures": "off",
     },
     overrides: [
       {

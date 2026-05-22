@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useMemo } from "react";
 
-import { useBoseScanner, BoseSpeaker } from "../hooks/useBoseScanner";
+import { useBoseScanner, type BoseSpeaker } from "../hooks/useBoseScanner";
 import {
   useVolumeMutation,
   usePowerToggleMutation,

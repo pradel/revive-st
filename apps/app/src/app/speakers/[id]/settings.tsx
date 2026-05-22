@@ -16,11 +16,11 @@ import {
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 
-type AudioModeDisplay = {
+interface AudioModeDisplay {
   value: string;
   label: string;
   description: string;
-};
+}
 
 const AUDIO_MODES: AudioModeDisplay[] = [
   {
@@ -78,7 +78,12 @@ export default function SpeakerSettings() {
         <View style={$centerState}>
           <ActivityIndicator size="small" color="#71717a" />
           <Text style={$notFoundText}>Speaker not found</Text>
-          <TouchableOpacity onPress={() => router.back()} style={$backButton}>
+          <TouchableOpacity
+            onPress={() => {
+              router.back();
+            }}
+            style={$backButton}
+          >
             <Text style={$backButtonText}>Go Back</Text>
           </TouchableOpacity>
         </View>
@@ -91,8 +96,7 @@ export default function SpeakerSettings() {
   const toneControls = speaker.audioProductToneControls;
   const levelControls = speaker.audioProductLevelControls;
 
-  const showBass =
-    bassCaps !== null && bassCaps !== undefined && bassCaps.bassAvailable;
+  const showBass = bassCaps?.bassAvailable;
   const showDsp = dspControls !== null && dspControls !== undefined;
   const showTone = toneControls !== null && toneControls !== undefined;
   const showLevels = levelControls !== null && levelControls !== undefined;
@@ -159,7 +163,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -176,7 +184,11 @@ export default function SpeakerSettings() {
                 if (trimmed && trimmed !== speaker.name) {
                   setNameMutation.mutate(
                     { host: speaker.host, name: trimmed },
-                    { onError: () => setNameValue(speaker.name) },
+                    {
+                      onError: () => {
+                        setNameValue(speaker.name);
+                      },
+                    },
                   );
                 }
                 setNameValue("");
@@ -192,7 +204,9 @@ export default function SpeakerSettings() {
         <TouchableOpacity
           style={$card}
           activeOpacity={0.7}
-          onPress={() => setNameValue(speaker.name)}
+          onPress={() => {
+            setNameValue(speaker.name);
+          }}
         >
           <View style={$infoRow}>
             <Text style={$infoLabel}>Name</Text>
@@ -421,7 +435,9 @@ function PickerSetting({
               <TouchableOpacity
                 key={opt.value}
                 style={[$pickerChip, isActive ? $pickerChipActive : undefined]}
-                onPress={() => onChange(opt.value)}
+                onPress={() => {
+                  onChange(opt.value);
+                }}
                 activeOpacity={0.7}
               >
                 <Text

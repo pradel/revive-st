@@ -1,21 +1,21 @@
 import { XmlParseError } from "./errors.ts";
 
-export type XmlNode = {
+export interface XmlNode {
   name: string;
   attributes: Record<string, string>;
   children: XmlNode[];
   text: string;
-};
+}
 
 export function parseXml(xml: string): XmlNode {
   const tagRegex =
     /<(\/?)([a-zA-Z0-9_-]+)((?:\s+[a-zA-Z0-9_-]+="[^"]*")*)\s*(\/?)>/g;
   const valueRegex = /<[^>]*>/;
-  const tokens: Array<{
+  const tokens: {
     type: "open" | "close" | "selfClose";
     name: string;
     attrs: Record<string, string>;
-  }> = [];
+  }[] = [];
 
   let match: RegExpExecArray | null;
   let lastIndex = 0;
@@ -61,8 +61,7 @@ export function parseXml(xml: string): XmlNode {
       .trim();
   }
 
-  for (let index = 0; index < tokens.length; index++) {
-    const token = tokens[index];
+  for (const token of tokens) {
     const text = getNextText();
 
     if (token.type === "open") {
