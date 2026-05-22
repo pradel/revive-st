@@ -1,5 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -17,23 +16,17 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import {
+  useRadioFavorites,
+  useRadioToggleFavorite,
+} from "@/features/radio/hooks/useRadioFavorites";
+import {
+  useRadioStations,
+  type RadioStation,
+} from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
 
-interface RadioStation {
-  changeid: string;
-  stationuuid: string;
-  name: string;
-  url: string;
-  url_resolved: string;
-  favicon: string;
-  tags: string;
-  country: string;
-  codec: string;
-  bitrate: number;
-}
-
-const FAVORITES_KEY = "radio_favorites";
 const GENRE_TAGS = [
   "Jazz",
   "Classical",
@@ -46,14 +39,22 @@ const GENRE_TAGS = [
 ];
 
 export default function RadioBrowser() {
-  const { speakers, playStream } = useBose();
+  const { speakers, playStreamMutation } = useBose();
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
-  const [stations, setStations] = useState<RadioStation[]>([]);
-  const [favorites, setFavorites] = useState<RadioStation[]>([]);
-  const [loading, setLoading] = useState(false);
+
+  const { data: favorites = [] } = useRadioFavorites();
+  const { mutate: toggleFavorite } = useRadioToggleFavorite();
+
+  const {
+    data: stations,
+    isLoading,
+    isError,
+    error,
+    refetch: searchStations,
+  } = useRadioStations(query, selectedTag);
 
   const [castingStation, setCastingStation] = useState<RadioStation | null>(
     null,
@@ -63,84 +64,11 @@ export default function RadioBrowser() {
     null,
   );
 
-  useEffect(() => {
-    void loadFavorites();
-  }, []);
-
-  const loadFavorites = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(FAVORITES_KEY);
-      if (stored) {
-        setFavorites(JSON.parse(stored) as RadioStation[]);
-      }
-    } catch (err) {
-      logger.warn("Failed to load radio favorites:", err);
-    }
-  };
-
-  const saveFavorites = async (list: RadioStation[]) => {
-    try {
-      await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
-      setFavorites(list);
-    } catch (err) {
-      logger.warn("Failed to save radio favorites:", err);
-      Alert.alert("Error", "Could not save favorite station.");
-    }
-  };
-
-  const toggleFavorite = (station: RadioStation) => {
-    const isFav = favorites.some(
-      (fav) => fav.stationuuid === station.stationuuid,
-    );
-    let newList: RadioStation[];
-    if (isFav) {
-      newList = favorites.filter(
-        (fav) => fav.stationuuid !== station.stationuuid,
-      );
-    } else {
-      newList = [...favorites, station];
-    }
-    void saveFavorites(newList);
-  };
-
-  const handleSearch = async (searchQuery = query, tag = selectedTag) => {
-    setLoading(true);
+  const handleSearch = (searchQuery = query, tag = selectedTag) => {
     setQuery(searchQuery);
     setSelectedTag(tag);
     setActiveTab("search");
-
-    try {
-      let url = "";
-      if (tag) {
-        url = `https://de1.api.radio-browser.info/json/stations/search?tag=${encodeURIComponent(
-          tag.toLowerCase(),
-        )}&limit=30&hidebroken=true&order=votes&reverse=true`;
-      } else if (searchQuery.trim()) {
-        url = `https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(
-          searchQuery.trim(),
-        )}&limit=30&hidebroken=true&order=votes&reverse=true`;
-      } else {
-        url =
-          "https://de1.api.radio-browser.info/json/stations/search?limit=30&hidebroken=true&order=votes&reverse=true";
-      }
-
-      const res = await fetch(url, {
-        headers: { "User-Agent": "ReviveST/1.0" },
-      });
-      if (!res.ok) {
-        throw new Error("API request failed");
-      }
-      const data = (await res.json()) as RadioStation[];
-      setStations(data);
-    } catch (err) {
-      logger.warn("Failed to fetch radio stations:", err);
-      Alert.alert(
-        "Search Error",
-        "Could not retrieve radio stations. Please check your internet connection.",
-      );
-    } finally {
-      setLoading(false);
-    }
+    void searchStations();
   };
 
   const handleStationPress = (station: RadioStation) => {
@@ -160,7 +88,11 @@ export default function RadioBrowser() {
     setCastingToSpeakerId(speakerId);
     try {
       const streamUrl = castingStation.url_resolved || castingStation.url;
-      await playStream(speaker.deviceID, streamUrl, castingStation.name);
+      await playStreamMutation.mutateAsync({
+        host: speaker.host,
+        uri: streamUrl,
+        name: castingStation.name,
+      });
       setCastModalVisible(false);
       Alert.alert(
         "Casting Started",
@@ -179,6 +111,10 @@ export default function RadioBrowser() {
 
   const renderStationCard = ({ item }: { item: RadioStation }) => {
     const isFav = favorites.some((fav) => fav.stationuuid === item.stationuuid);
+
+    const handleToggle = () => {
+      toggleFavorite({ station: item, isFavorite: isFav });
+    };
 
     return (
       <Pressable
@@ -205,12 +141,7 @@ export default function RadioBrowser() {
           </Text>
         </View>
 
-        <Pressable
-          style={$favoriteButton}
-          onPress={() => {
-            toggleFavorite(item);
-          }}
-        >
+        <Pressable style={$favoriteButton} onPress={handleToggle}>
           <Text style={$favoriteIconText}>{isFav ? "★" : "☆"}</Text>
         </Pressable>
       </Pressable>
@@ -218,7 +149,7 @@ export default function RadioBrowser() {
   };
 
   const renderSearchResults = () => {
-    if (loading) {
+    if (isLoading) {
       return (
         <View style={$centerState}>
           <ActivityIndicator size="large" color="#3b82f6" />
@@ -226,7 +157,28 @@ export default function RadioBrowser() {
         </View>
       );
     }
-    if (stations.length === 0) {
+    if (isError) {
+      return (
+        <View style={$infoContainer}>
+          <Text style={$infoIcon}>⚠</Text>
+          <Text style={$infoTitle}>Search Failed</Text>
+          <Text style={$infoText}>
+            {error instanceof Error
+              ? error.message
+              : "Could not retrieve radio stations. Please check your internet connection."}
+          </Text>
+          <Pressable
+            style={$exploreButton}
+            onPress={() => {
+              void searchStations();
+            }}
+          >
+            <Text style={$exploreButtonText}>Retry</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    if (!stations || stations.length === 0) {
       return (
         <View style={$infoContainer}>
           <Text style={$infoIcon}>📻</Text>
@@ -238,7 +190,7 @@ export default function RadioBrowser() {
           <Pressable
             style={$exploreButton}
             onPress={() => {
-              void handleSearch("", null);
+              handleSearch("", null);
             }}
           >
             <Text style={$exploreButtonText}>Browse Top Stations</Text>
@@ -298,7 +250,7 @@ export default function RadioBrowser() {
                 setSelectedTag(null);
               }}
               onSubmitEditing={() => {
-                void handleSearch(query, null);
+                handleSearch(query, null);
               }}
               returnKeyType="search"
             />
@@ -306,7 +258,6 @@ export default function RadioBrowser() {
               <Pressable
                 onPress={() => {
                   setQuery("");
-                  setStations([]);
                 }}
                 style={$clearSearchButton}
               >
@@ -327,7 +278,7 @@ export default function RadioBrowser() {
                   style={[$tagPill, selectedTag === item && $tagPillActive]}
                   onPress={() => {
                     const nextTag = selectedTag === item ? null : item;
-                    void handleSearch("", nextTag);
+                    handleSearch("", nextTag);
                   }}
                 >
                   <Text
