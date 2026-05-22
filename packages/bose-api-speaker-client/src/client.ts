@@ -390,6 +390,18 @@ export class BoseSpeakerClient {
     return this.post("/removeZoneSlave", xml);
   }
 
+  // The speaker shuts down its access point after receiving credentials, which
+  // may cause a NetworkError on this call. Callers should treat NetworkError
+  // as a successful delivery.
+  async sendCredentials(
+    ssid: string,
+    password: string,
+  ): Promise<Result<void, BoseApiError>> {
+    const securityType = password ? "wpa_or_wpa2" : "none";
+    const xml = `<AddWirelessProfile timeout="30"><profile ssid="${escapeXml(ssid)}" password="${escapeXml(password)}" securityType="${securityType}"></profile></AddWirelessProfile>`;
+    return this.post("/addWirelessProfile", xml);
+  }
+
   async getNowPlaying(): Promise<Result<NowPlayingResponse, BoseApiError>> {
     return this.get("/nowPlaying", parseNowPlaying);
   }
