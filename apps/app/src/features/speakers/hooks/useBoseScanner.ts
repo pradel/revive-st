@@ -266,14 +266,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
             };
 
             if (update.type === "volume") {
-              if (update.volume) {
+              const vol = update.volume;
+              if (vol) {
                 setSpeakers((prev) =>
                   prev.map((item) => {
                     if (item.deviceID === update.deviceID) {
                       return {
                         ...item,
-                        volume: update.volume!.actualVolume,
-                        muteEnabled: update.volume!.muteEnabled,
+                        volume: vol.actualVolume,
+                        muteEnabled: vol.muteEnabled,
                       };
                     }
                     return item;
@@ -283,18 +284,19 @@ export function useBoseScanner(scanDurationMs = 5000) {
                 refreshIfAvailable();
               }
             } else if (update.type === "nowPlaying") {
-              if (update.nowPlaying) {
+              const np = update.nowPlaying;
+              if (np) {
                 setSpeakers((prev) =>
                   prev.map((item) => {
                     if (item.deviceID === update.deviceID) {
                       return {
                         ...item,
-                        playStatus: update.nowPlaying!.playStatus,
-                        source: update.nowPlaying!.source,
-                        track: update.nowPlaying!.track,
-                        artist: update.nowPlaying!.artist,
-                        album: update.nowPlaying!.album,
-                        artUrl: update.nowPlaying!.artUrl,
+                        playStatus: np.playStatus,
+                        source: np.source,
+                        track: np.track,
+                        artist: np.artist,
+                        album: np.album,
+                        artUrl: np.artUrl,
                       };
                     }
                     return item;
