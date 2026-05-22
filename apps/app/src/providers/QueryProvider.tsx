@@ -31,6 +31,7 @@ onlineManager.setEventListener((setOnline) => {
 });
 
 export function QueryProvider({ children }: PropsWithChildren) {
+  // oxlint-disable-next-line react/hook-use-state
   const [queryClient] = useState(() => new QueryClient({}));
 
   return (

@@ -49,7 +49,6 @@ export default defineConfig({
 
       // TMP
       "init-declarations": "off",
-      "react/hook-use-state": "off",
       "no-implicit-coercion": "off",
     },
     overrides: [
