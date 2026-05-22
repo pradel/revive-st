@@ -20,7 +20,7 @@ function createMockWS() {
 }
 
 function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
-  const ctor = vi.fn(function () {
+  const ctor = vi.fn(function ctor() {
     return ws;
   });
   vi.stubGlobal("WebSocket", ctor);

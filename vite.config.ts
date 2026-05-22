@@ -51,7 +51,6 @@ export default defineConfig({
       "init-declarations": "off",
       "id-length": "off",
       "prefer-exponentiation-operator": "off",
-      "func-names": "off",
       "react/hook-use-state": "off",
       "no-implicit-coercion": "off",
     },
