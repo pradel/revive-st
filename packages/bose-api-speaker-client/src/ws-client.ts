@@ -64,7 +64,9 @@ export type BoseWSUpdate =
     };
 
 function unescapeXml(val: string): string {
-  if (!val) return "";
+  if (!val) {
+    return "";
+  }
   return val
     .replace(/&amp;/g, "&")
     .replace(/&lt;/g, "<")
@@ -124,7 +126,9 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
 
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceIDMatch = xml.match(/<updates[^>]+deviceID="([^"]+)"/);
-  if (!deviceIDMatch) return null;
+  if (!deviceIDMatch) {
+    return null;
+  }
 
   const deviceID = deviceIDMatch[1];
 
@@ -274,7 +278,7 @@ export class BoseWebSocketClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 10000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
     console.log(
       `[BoseWebSocketClient] Reconnecting to ${this.options.deviceID} in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );

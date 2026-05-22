@@ -13,13 +13,13 @@ onlineManager.setEventListener((setOnline) => {
 
   const eventSubscription = Network.addNetworkStateListener((state) => {
     initialised = true;
-    setOnline(!!state.isConnected);
+    setOnline(Boolean(state.isConnected));
   });
 
   Network.getNetworkStateAsync()
     .then((state) => {
       if (!initialised) {
-        setOnline(!!state.isConnected);
+        setOnline(Boolean(state.isConnected));
       }
     })
     .catch(() => {
@@ -31,6 +31,7 @@ onlineManager.setEventListener((setOnline) => {
 });
 
 export function QueryProvider({ children }: PropsWithChildren) {
+  // oxlint-disable-next-line react/hook-use-state
   const [queryClient] = useState(() => new QueryClient({}));
 
   return (

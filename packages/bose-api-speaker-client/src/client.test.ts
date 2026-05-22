@@ -2,18 +2,18 @@ import { Result } from "better-result";
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
 
 import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
-import { boseSpeakerClient } from "./index.ts";
-import type {
-  BassCapabilitiesResponse,
-  BassResponse,
-  BoseSpeakerClient,
-  CapabilitiesResponse,
-  InfoResponse,
-  NowPlayingResponse,
-  PresetsResponse,
-  SourcesResponse,
-  VolumeResponse,
-  ZoneResponse,
+import {
+  boseSpeakerClient,
+  type BassCapabilitiesResponse,
+  type BassResponse,
+  type BoseSpeakerClient,
+  type CapabilitiesResponse,
+  type InfoResponse,
+  type NowPlayingResponse,
+  type PresetsResponse,
+  type SourcesResponse,
+  type VolumeResponse,
+  type ZoneResponse,
 } from "./index.ts";
 
 const IP = "192.168.1.100";
@@ -26,12 +26,12 @@ function mockFetch(status: number, body: string) {
     .mockResolvedValue(new Response(body, { status }));
 }
 
-function unwrapOk<T>(result: unknown): T {
+function unwrapOk<TParsed>(result: unknown): TParsed {
   if (!Result.isOk(result as never)) {
     throw new Error("Expected Ok but got Err");
   }
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (result as any).value as T;
+  return (result as any).value as TParsed;
 }
 
 describe("boseSpeakerClient", () => {
@@ -43,12 +43,12 @@ describe("boseSpeakerClient", () => {
   });
 
   it("uses custom port", () => {
-    const c = boseSpeakerClient({ ip: IP, port: 8080 });
+    const testClient = boseSpeakerClient({ ip: IP, port: 8080 });
     mockFetch(
       200,
       '<volume deviceID="D"><targetvolume>10</targetvolume><actualvolume>10</actualvolume><muteenabled>false</muteenabled></volume>',
     );
-    return c.getVolume();
+    return testClient.getVolume();
   });
 
   describe("/key", () => {
