@@ -46,7 +46,7 @@ import {
 } from "./xml-parser.ts";
 
 export class BoseSpeakerClient {
-  private baseUrl: string;
+  private readonly baseUrl: string;
 
   constructor(opts: { ip: string; port?: number }) {
     this.baseUrl = `http://${opts.ip}:${opts.port ?? 8090}`;

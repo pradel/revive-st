@@ -187,11 +187,11 @@ export interface BoseWebSocketClientOptions {
 
 export class BoseWebSocketClient {
   private ws: WebSocket | null = null;
-  private options: BoseWebSocketClientOptions;
+  private readonly options: BoseWebSocketClientOptions;
   private isClosedIntentional = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private readonly maxReconnectAttempts = 5;
 
   constructor(options: BoseWebSocketClientOptions) {
     this.options = options;

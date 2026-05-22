@@ -68,7 +68,6 @@ export default defineConfig({
       "no-unsafe-member-access": "off",
       "no-unnecessary-type-parameters": "off",
       "strict-void-return": "off",
-      "prefer-readonly": "off",
       "no-unsafe-assignment": "off",
       "no-misused-promises": "off",
       "no-floating-promises": "off",
