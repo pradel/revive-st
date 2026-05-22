@@ -398,6 +398,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
       }
     });
 
+    logger.log("[BoseScanner] Scan started");
+
     try {
       zeroconf.scan("soundtouch", "tcp", "local.");
     } catch (e) {
@@ -407,6 +409,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }
 
     scanTimeoutRef.current = setTimeout(() => {
+      logger.log("[BoseScanner] Scan completed");
       stopScan();
     }, scanDurationMs);
   }, [scanDurationMs, stopScan]);

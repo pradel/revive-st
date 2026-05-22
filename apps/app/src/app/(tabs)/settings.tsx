@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
+  ActivityIndicator,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -10,12 +11,14 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AppSettings() {
   const router = useRouter();
+  const { isScanning, rescan } = useBose();
   const { logs } = useLogger();
 
   return (
@@ -24,6 +27,49 @@ export default function AppSettings() {
       contentContainerStyle={$content}
       showsVerticalScrollIndicator={false}
     >
+      {/* Network */}
+      <Text style={$sectionLabel}>Network</Text>
+      <View style={$card}>
+        <TouchableOpacity
+          style={$infoRow}
+          activeOpacity={0.7}
+          disabled={isScanning}
+          onPress={rescan}
+        >
+          <Text style={$infoLabel}>Rescan Network</Text>
+          {isScanning ? (
+            <ActivityIndicator size="small" color="#71717a" />
+          ) : (
+            <SymbolView
+              name={{
+                ios: "arrow.clockwise",
+                android: "refresh",
+                web: "refresh",
+              }}
+              tintColor="#71717a"
+              size={16}
+            />
+          )}
+        </TouchableOpacity>
+        <View style={$infoDivider} />
+        <TouchableOpacity
+          style={$infoRow}
+          activeOpacity={0.7}
+          onPress={() => router.push("/onboarding/permissions" as any)}
+        >
+          <Text style={$infoLabel}>Add Speaker</Text>
+          <SymbolView
+            name={{
+              ios: "plus",
+              android: "add",
+              web: "add",
+            }}
+            tintColor="#71717a"
+            size={18}
+          />
+        </TouchableOpacity>
+      </View>
+
       {/* App Identity */}
       <View style={$card}>
         <View style={$cardHeader}>
@@ -164,4 +210,10 @@ const $infoRowRight: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   gap: 4,
+};
+
+const $infoDivider: ViewStyle = {
+  height: 1,
+  backgroundColor: "#27272a",
+  marginVertical: 10,
 };
