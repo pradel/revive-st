@@ -10,6 +10,10 @@ import {
   useSetBassMutation,
   useSavePresetMutation,
   usePlayStreamMutation,
+  useSetNameMutation,
+  useSetAudioDspControlsMutation,
+  useSetAudioProductToneControlsMutation,
+  useSetAudioProductLevelControlsMutation,
 } from "../hooks/useSpeakerMutations";
 
 interface BoseContextType {
@@ -40,6 +44,16 @@ interface BoseContextType {
   setBassMutation: ReturnType<typeof useSetBassMutation>;
   savePresetMutation: ReturnType<typeof useSavePresetMutation>;
   playStreamMutation: ReturnType<typeof usePlayStreamMutation>;
+  setNameMutation: ReturnType<typeof useSetNameMutation>;
+  setAudioDspControlsMutation: ReturnType<
+    typeof useSetAudioDspControlsMutation
+  >;
+  setAudioProductToneControlsMutation: ReturnType<
+    typeof useSetAudioProductToneControlsMutation
+  >;
+  setAudioProductLevelControlsMutation: ReturnType<
+    typeof useSetAudioProductLevelControlsMutation
+  >;
 }
 
 const BoseContext = createContext<BoseContextType | null>(null);
@@ -56,6 +70,12 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
   const setBassMutation = useSetBassMutation();
   const savePresetMutation = useSavePresetMutation();
   const playStreamMutation = usePlayStreamMutation();
+  const setNameMutation = useSetNameMutation();
+  const setAudioDspControlsMutation = useSetAudioDspControlsMutation();
+  const setAudioProductToneControlsMutation =
+    useSetAudioProductToneControlsMutation();
+  const setAudioProductLevelControlsMutation =
+    useSetAudioProductLevelControlsMutation();
 
   return (
     <BoseContext.Provider
@@ -69,6 +89,10 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
         setBassMutation,
         savePresetMutation,
         playStreamMutation,
+        setNameMutation,
+        setAudioDspControlsMutation,
+        setAudioProductToneControlsMutation,
+        setAudioProductLevelControlsMutation,
       }}
     >
       {children}

@@ -1,4 +1,11 @@
-import type { Preset } from "bose-api-speaker-client";
+import type {
+  AudioDspControlsResponse,
+  AudioProductLevelControlsResponse,
+  AudioProductToneControlsResponse,
+  BassCapabilitiesResponse,
+  CapabilitiesResponse,
+  Preset,
+} from "bose-api-speaker-client";
 import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
@@ -25,6 +32,11 @@ export interface BoseSpeaker {
   isUpdating?: boolean;
   presets?: Preset[];
   bass?: number;
+  bassCapabilities?: BassCapabilitiesResponse;
+  capabilities?: CapabilitiesResponse;
+  audioDspControls?: AudioDspControlsResponse;
+  audioProductToneControls?: AudioProductToneControlsResponse;
+  audioProductLevelControls?: AudioProductLevelControlsResponse;
 }
 
 async function pressAndRelease(host: string, key: string) {
@@ -112,19 +124,52 @@ export function useBoseScanner(scanDurationMs = 5000) {
     try {
       const hasPresetsLoaded = speaker.presets !== undefined;
       const hasBassLoaded = speaker.bass !== undefined;
+      const hasCapsLoaded = speaker.capabilities !== undefined;
       const client = createClient({ ip: speaker.host });
 
-      const [nowPlaying, volumeInfo, presetsResult, bassResult] =
-        await Promise.all([
-          client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
-          client.getVolume().then((r) => (r.isOk() ? r.value : null)),
-          hasPresetsLoaded
-            ? client.getPresets().then((r) => (r.isOk() ? r.value : null))
-            : Promise.resolve(null),
-          hasBassLoaded
-            ? client.getBass().then((r) => (r.isOk() ? r.value : null))
-            : Promise.resolve(null),
-        ]);
+      const [
+        nowPlaying,
+        volumeInfo,
+        presetsResult,
+        bassResult,
+        bassCaps,
+        capabilities,
+        dspControls,
+        toneControls,
+        levelControls,
+      ] = await Promise.all([
+        client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
+        client.getVolume().then((r) => (r.isOk() ? r.value : null)),
+        hasPresetsLoaded
+          ? client.getPresets().then((r) => (r.isOk() ? r.value : null))
+          : Promise.resolve(null),
+        hasBassLoaded
+          ? client.getBass().then((r) => (r.isOk() ? r.value : null))
+          : Promise.resolve(null),
+        hasCapsLoaded
+          ? Promise.resolve(null)
+          : client
+              .getBassCapabilities()
+              .then((r) => (r.isOk() ? r.value : null)),
+        hasCapsLoaded
+          ? Promise.resolve(null)
+          : client.getCapabilities().then((r) => (r.isOk() ? r.value : null)),
+        hasCapsLoaded
+          ? Promise.resolve(null)
+          : client
+              .getAudioDspControls()
+              .then((r) => (r.isOk() ? r.value : null)),
+        hasCapsLoaded
+          ? Promise.resolve(null)
+          : client
+              .getAudioProductToneControls()
+              .then((r) => (r.isOk() ? r.value : null)),
+        hasCapsLoaded
+          ? Promise.resolve(null)
+          : client
+              .getAudioProductLevelControls()
+              .then((r) => (r.isOk() ? r.value : null)),
+      ]);
 
       if (!isMounted.current) return;
 
@@ -143,6 +188,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
               muteEnabled: volumeInfo?.muteenabled ?? s.muteEnabled,
               presets: presetsResult ? presetsResult.presets : s.presets,
               bass: bassResult ? bassResult.actualbass : s.bass,
+              bassCapabilities: bassCaps ?? s.bassCapabilities,
+              capabilities: capabilities ?? s.capabilities,
+              audioDspControls: dspControls ?? s.audioDspControls,
+              audioProductToneControls:
+                toneControls ?? s.audioProductToneControls,
+              audioProductLevelControls:
+                levelControls ?? s.audioProductLevelControls,
             };
           }
           return s;
@@ -267,9 +319,26 @@ export function useBoseScanner(scanDurationMs = 5000) {
         const info = infoResult.value;
         if (!info.deviceID) return;
 
-        const [nowPlaying, volumeInfo] = await Promise.all([
+        const [
+          nowPlaying,
+          volumeInfo,
+          bassCaps,
+          capabilities,
+          dspControls,
+          toneControls,
+          levelControls,
+        ] = await Promise.all([
           client.getNowPlaying().then((r) => (r.isOk() ? r.value : null)),
           client.getVolume().then((r) => (r.isOk() ? r.value : null)),
+          client.getBassCapabilities().then((r) => (r.isOk() ? r.value : null)),
+          client.getCapabilities().then((r) => (r.isOk() ? r.value : null)),
+          client.getAudioDspControls().then((r) => (r.isOk() ? r.value : null)),
+          client
+            .getAudioProductToneControls()
+            .then((r) => (r.isOk() ? r.value : null)),
+          client
+            .getAudioProductLevelControls()
+            .then((r) => (r.isOk() ? r.value : null)),
         ]);
 
         if (!isMounted.current) return;
@@ -290,6 +359,11 @@ export function useBoseScanner(scanDurationMs = 5000) {
             artUrl: nowPlaying?.art?.url,
             volume: volumeInfo?.actualvolume,
             muteEnabled: volumeInfo?.muteenabled,
+            bassCapabilities: bassCaps ?? undefined,
+            capabilities: capabilities ?? undefined,
+            audioDspControls: dspControls ?? undefined,
+            audioProductToneControls: toneControls ?? undefined,
+            audioProductLevelControls: levelControls ?? undefined,
           };
 
           if (exists) {
