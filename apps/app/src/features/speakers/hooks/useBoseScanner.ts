@@ -82,7 +82,7 @@ async function longPress(host: string, key: string, durationMs = 2000) {
   }
 }
 
-function playUri(host: string, uri: string, name: string) {
+async function playUri(host: string, uri: string, name: string) {
   const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
   return fetch(`http://${host}:8090/select`, {
     method: "POST",

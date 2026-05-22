@@ -42,7 +42,7 @@ describe("boseSpeakerClient", () => {
     vi.restoreAllMocks();
   });
 
-  it("uses custom port", () => {
+  it("uses custom port", async () => {
     const testClient = boseSpeakerClient({ ip: IP, port: 8080 });
     mockFetch(
       200,

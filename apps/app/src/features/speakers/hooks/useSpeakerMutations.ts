@@ -46,7 +46,8 @@ export function usePowerToggleMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ host }: { host: string }) => pressAndRelease(host, "POWER"),
+    mutationFn: async ({ host }: { host: string }) =>
+      pressAndRelease(host, "POWER"),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
     },
@@ -57,7 +58,7 @@ export function usePlayPauseMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ host }: { host: string }) =>
+    mutationFn: async ({ host }: { host: string }) =>
       pressAndRelease(host, "PLAY_PAUSE"),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
@@ -69,7 +70,7 @@ export function useKeyMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ host, key }: { host: string; key: string }) =>
+    mutationFn: async ({ host, key }: { host: string; key: string }) =>
       pressAndRelease(host, key),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
