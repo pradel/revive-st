@@ -14,6 +14,7 @@ export interface LogEntry {
 }
 
 let buffer: LogEntry[] = [];
+let cachedSnapshot: LogEntry[] = [];
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 const subscribers = new Set<(logs: LogEntry[]) => void>();
 
@@ -56,6 +57,7 @@ function addToBuffer(level: LogLevel, message: string): void {
   if (buffer.length > MAX_LOGS) {
     buffer = buffer.slice(-MAX_LOGS);
   }
+  cachedSnapshot = [...buffer];
   schedulePersist();
   notifySubscribers();
 }
@@ -74,9 +76,8 @@ async function persist(): Promise<void> {
 }
 
 function notifySubscribers(): void {
-  const snapshot = [...buffer];
   for (const cb of subscribers) {
-    cb(snapshot);
+    cb(cachedSnapshot);
   }
 }
 
@@ -103,15 +104,17 @@ export async function initLogger(): Promise<void> {
   } catch {
     buffer = [];
   }
+  cachedSnapshot = [...buffer];
   interceptConsole();
 }
 
 export function getLogs(): LogEntry[] {
-  return [...buffer];
+  return cachedSnapshot;
 }
 
 export async function clearLogs(): Promise<void> {
   buffer = [];
+  cachedSnapshot = [];
   try {
     await AsyncStorage.removeItem(STORAGE_KEY);
   } catch {
