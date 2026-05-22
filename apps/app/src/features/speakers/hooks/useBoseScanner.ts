@@ -1,3 +1,4 @@
+import { BoseWebSocketClient } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { ZeroconfService } from "react-native-zeroconf";
 
@@ -16,7 +17,6 @@ import {
   sendLongKeyCommand,
   playSpeakerUri,
 } from "../utils/boseParser";
-import { BoseWSClient } from "../utils/boseWebSocket";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -51,7 +51,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
   const speakersRef = useRef<BoseSpeaker[]>([]);
   speakersRef.current = speakers;
 
-  const wsClientsRef = useRef<Map<string, BoseWSClient>>(new Map());
+  const wsClientsRef = useRef<Map<string, BoseWebSocketClient>>(new Map());
 
   const stopScan = useCallback(() => {
     if (scanTimeoutRef.current) {
@@ -134,7 +134,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
     // Create and connect clients for new speakers
     speakers.forEach((speaker) => {
       if (!wsClientsRef.current.has(speaker.deviceID)) {
-        const client = new BoseWSClient({
+        const client = new BoseWebSocketClient({
           host: speaker.host,
           deviceID: speaker.deviceID,
           onUpdate: (update) => {
