@@ -96,9 +96,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
     if (zeroconfRef.current) {
       try {
         zeroconfRef.current.stop();
+        zeroconfRef.current.removeDeviceListeners();
+        zeroconfRef.current.removeListeners();
       } catch (e) {
         console.warn("[BoseScanner] Error stopping zeroconf:", e);
       }
+      zeroconfRef.current = null;
     }
     if (isMounted.current) {
       setIsScanning(false);
