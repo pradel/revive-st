@@ -26,6 +26,7 @@ function mockFetch(status: number, body: string) {
     .mockResolvedValue(new Response(body, { status }));
 }
 
+// oxlint-disable-next-line typescript/no-unnecessary-type-parameters
 function unwrapOk<TParsed>(result: unknown): TParsed {
   if (!Result.isOk(result as never)) {
     throw new Error("Expected Ok but got Err");
