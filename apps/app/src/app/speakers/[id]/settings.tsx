@@ -659,15 +659,16 @@ const $infoValue: TextStyle = {
   fontSize: 14,
   color: "#a1a1aa",
   fontWeight: "500",
-  maxWidth: "55%",
   textAlign: "right",
+  flexShrink: 1,
 };
 
 const $infoRowRight: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   gap: 4,
-  maxWidth: "60%",
+  flexShrink: 1,
+  justifyContent: "flex-end",
 };
 
 const $capErrorRow: ViewStyle = {
