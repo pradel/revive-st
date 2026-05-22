@@ -1,11 +1,11 @@
 import { XmlParseError } from "./errors.ts";
 
-export type XmlNode = {
+export interface XmlNode {
   name: string;
   attributes: Record<string, string>;
   children: XmlNode[];
   text: string;
-};
+}
 
 export function parseXml(xml: string): XmlNode {
   const tagRegex =

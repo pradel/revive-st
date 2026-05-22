@@ -68,7 +68,6 @@ export default defineConfig({
       "no-unsafe-assignment": "off",
       "explicit-module-boundary-types": "off",
       "explicit-member-accessibility": "off",
-      "consistent-type-definitions": "off",
       "no-explicit-any": "off",
       "no-non-null-assertion": "off",
     },

@@ -16,11 +16,11 @@ import {
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 
-type AudioModeDisplay = {
+interface AudioModeDisplay {
   value: string;
   label: string;
   description: string;
-};
+}
 
 const AUDIO_MODES: AudioModeDisplay[] = [
   {
