@@ -447,9 +447,7 @@ export default function SpeakerDetail() {
               <Text style={styles.panelTitle}>Quick Presets (1-6)</Text>
               <View style={styles.presetGrid}>
                 {[1, 2, 3, 4, 5, 6].map((num) => {
-                  const preset = speaker.presets?.find(
-                    (p) => p.id === String(num),
-                  );
+                  const preset = speaker.presets?.find((p) => p.id === num);
                   const isSaving = savingPresetId === num;
 
                   return (
@@ -479,15 +477,15 @@ export default function SpeakerDetail() {
                               styles.presetSourceBadge,
                               {
                                 backgroundColor: getSourceBadgeColor(
-                                  preset.source,
+                                  preset.contentItem.source,
                                 ),
                               },
                             ]}
                           >
                             <Text style={styles.presetSourceText}>
-                              {preset.source === "INTERNET_RADIO"
+                              {preset.contentItem.source === "INTERNET_RADIO"
                                 ? "Radio"
-                                : preset.source}
+                                : preset.contentItem.source}
                             </Text>
                           </View>
                         )}
@@ -509,7 +507,9 @@ export default function SpeakerDetail() {
                           ]}
                           numberOfLines={2}
                         >
-                          {preset ? preset.name : "Hold to Assign"}
+                          {preset
+                            ? preset.contentItem.itemName
+                            : "Hold to Assign"}
                         </Text>
                       )}
                     </Pressable>

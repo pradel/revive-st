@@ -11,7 +11,26 @@ export default defineConfig({
   lint: {
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    rules: { "vite-plus/prefer-vite-plus-imports": "error" },
+    plugins: ["react"],
+    categories: {
+      correctness: "error",
+      suspicious: "error",
+    },
+    rules: {
+      "vite-plus/prefer-vite-plus-imports": "error",
+      "react/react-in-jsx-scope": "off",
+      "no-console": "error",
+    },
+    overrides: [
+      {
+        files: ["apps/app/src/lib/logger.ts"],
+        rules: { "no-console": "off" },
+      },
+      {
+        files: ["packages/**/*.ts"],
+        rules: { "no-console": "off" },
+      },
+    ],
   },
   run: {
     cache: true,

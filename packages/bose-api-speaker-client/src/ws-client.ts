@@ -23,12 +23,45 @@ export interface BoseVolume {
   muteEnabled: boolean;
 }
 
-export interface BoseWSUpdate {
+export interface BoseConnectionState {
   deviceID: string;
-  type: "volume" | "nowPlaying" | "presets" | "zone" | "info" | "unknown";
-  volume?: BoseVolume;
-  nowPlaying?: BoseNowPlaying;
+  state: string;
+  up: boolean;
+  signal: string;
 }
+
+export type BoseWSUpdate =
+  | {
+      type: "volume";
+      deviceID: string;
+      volume?: BoseVolume;
+    }
+  | {
+      type: "nowPlaying";
+      deviceID: string;
+      nowPlaying?: BoseNowPlaying;
+    }
+  | {
+      type: "connectionState";
+      deviceID: string;
+      connectionState?: BoseConnectionState;
+    }
+  | {
+      type: "presets";
+      deviceID: string;
+    }
+  | {
+      type: "zone";
+      deviceID: string;
+    }
+  | {
+      type: "info";
+      deviceID: string;
+    }
+  | {
+      type: "unknown";
+      deviceID: string;
+    };
 
 function unescapeXml(val: string): string {
   if (!val) return "";
@@ -61,6 +94,20 @@ function parseVolumeResponse(xml: string): BoseVolume {
   };
 }
 
+function parseConnectionStateUpdated(xml: string): BoseConnectionState {
+  const root = parseXml(xml);
+  const node =
+    root.name === "connectionStateUpdated"
+      ? root
+      : getChild(root, "connectionStateUpdated");
+  return {
+    deviceID: "",
+    state: node?.attributes.state ?? "",
+    up: parseBool(node?.attributes.up ?? "false"),
+    signal: node?.attributes.signal ?? "",
+  };
+}
+
 function parseNowPlayingResponse(xml: string): BoseNowPlaying {
   const root = parseXml(xml);
   const np = root.name === "nowPlaying" ? root : getChild(root, "nowPlaying");
@@ -80,41 +127,50 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   if (!deviceIDMatch) return null;
 
   const deviceID = deviceIDMatch[1];
-  let type: BoseWSUpdate["type"] = "unknown";
-  let volume: BoseVolume | undefined;
-  let nowPlaying: BoseNowPlaying | undefined;
 
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
-    type = "volume";
     const volumeBlock = xml.match(/<volume[\s\S]*?<\/volume>/);
     if (volumeBlock) {
-      volume = parseVolumeResponse(volumeBlock[0]);
+      const volume = parseVolumeResponse(volumeBlock[0]);
       volume.deviceID = deviceID;
+      return { type: "volume", deviceID, volume };
     }
-  } else if (
-    xml.includes("<nowPlayingUpdated") ||
-    xml.includes("<nowPlaying>")
-  ) {
-    type = "nowPlaying";
-    const nowPlayingBlock = xml.match(/<nowPlaying[\s\S]*?<\/nowPlaying>/);
-    if (nowPlayingBlock) {
-      nowPlaying = parseNowPlayingResponse(nowPlayingBlock[0]);
-      nowPlaying.deviceID = deviceID;
-    }
-  } else if (xml.includes("<presetsUpdated") || xml.includes("<presets>")) {
-    type = "presets";
-  } else if (xml.includes("<zoneUpdated") || xml.includes("<zone>")) {
-    type = "zone";
-  } else if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
-    type = "info";
+    return { type: "volume", deviceID };
   }
 
-  return {
-    deviceID,
-    type,
-    volume,
-    nowPlaying,
-  };
+  if (xml.includes("<nowPlayingUpdated") || xml.includes("<nowPlaying>")) {
+    const nowPlayingBlock = xml.match(/<nowPlaying[\s\S]*?<\/nowPlaying>/);
+    if (nowPlayingBlock) {
+      const nowPlaying = parseNowPlayingResponse(nowPlayingBlock[0]);
+      nowPlaying.deviceID = deviceID;
+      return { type: "nowPlaying", deviceID, nowPlaying };
+    }
+    return { type: "nowPlaying", deviceID };
+  }
+
+  if (xml.includes("<connectionStateUpdated")) {
+    const block = xml.match(/<connectionStateUpdated[\s\S]*?\/>/);
+    if (block) {
+      const connectionState = parseConnectionStateUpdated(block[0]);
+      connectionState.deviceID = deviceID;
+      return { type: "connectionState", deviceID, connectionState };
+    }
+    return { type: "connectionState", deviceID };
+  }
+
+  if (xml.includes("<presetsUpdated") || xml.includes("<presets>")) {
+    return { type: "presets", deviceID };
+  }
+
+  if (xml.includes("<zoneUpdated") || xml.includes("<zone>")) {
+    return { type: "zone", deviceID };
+  }
+
+  if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
+    return { type: "info", deviceID };
+  }
+
+  return { type: "unknown", deviceID };
 }
 
 export interface BoseWebSocketClientOptions {
@@ -162,6 +218,12 @@ export class BoseWebSocketClient {
           try {
             const update = parseWebSocketMessage(data);
             if (update) {
+              if (update.type === "unknown") {
+                console.log(
+                  `[BoseWebSocketClient] Unknown notification (${this.options.deviceID}):`,
+                  data,
+                );
+              }
               this.options.onUpdate(update);
             }
           } catch (err) {
