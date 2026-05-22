@@ -614,4 +614,59 @@ describe("boseSpeakerClient", () => {
       expect((result as { error: unknown }).error).toBeInstanceOf(NetworkError);
     });
   });
+
+  describe("/addWirelessProfile", () => {
+    it("sends credentials POST", async () => {
+      const fetchMock = mockFetch(200, "");
+      const result = await client.sendCredentials("MyWiFi", "secret");
+      expect(Result.isOk(result)).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/addWirelessProfile`,
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/xml" },
+          body: '<AddWirelessProfile timeout="30"><profile ssid="MyWiFi" password="secret" securityType="wpa_or_wpa2"></profile></AddWirelessProfile>',
+        }),
+      );
+    });
+
+    it("sets securityType to none when password is empty", async () => {
+      const fetchMock = mockFetch(200, "");
+      await client.sendCredentials("OpenWiFi", "");
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/addWirelessProfile`,
+        expect.objectContaining({
+          body: '<AddWirelessProfile timeout="30"><profile ssid="OpenWiFi" password="" securityType="none"></profile></AddWirelessProfile>',
+        }),
+      );
+    });
+
+    it("escapes XML special characters in SSID and password", async () => {
+      const fetchMock = mockFetch(200, "");
+      await client.sendCredentials('Net"work & Home', "pass<word>'s");
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/addWirelessProfile`,
+        expect.objectContaining({
+          body: '<AddWirelessProfile timeout="30"><profile ssid="Net&quot;work &amp; Home" password="pass&lt;word&gt;&apos;s" securityType="wpa_or_wpa2"></profile></AddWirelessProfile>',
+        }),
+      );
+    });
+
+    it("returns NetworkError on network failure (speaker AP may shut down)", async () => {
+      vi.spyOn(globalThis, "fetch").mockRejectedValue(
+        new DOMException("The operation was aborted", "AbortError"),
+      );
+      const result = await client.sendCredentials("MyWiFi", "secret");
+      expect(Result.isError(result)).toBe(true);
+      expect((result as { error: unknown }).error).toBeInstanceOf(NetworkError);
+    });
+
+    it("returns HttpError on HTTP error response", async () => {
+      mockFetch(400, "<errors><error>Invalid</error></errors>");
+      const result = await client.sendCredentials("MyWiFi", "secret");
+      expect(Result.isError(result)).toBe(true);
+      const err = (result as { error: unknown }).error;
+      expect(err instanceof HttpError || err instanceof ApiError).toBe(true);
+    });
+  });
 });
