@@ -19,7 +19,18 @@ export default defineConfig({
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
       "react/react-in-jsx-scope": "off",
+      "no-console": "error",
     },
+    overrides: [
+      {
+        files: ["apps/app/src/lib/logger.ts"],
+        rules: { "no-console": "off" },
+      },
+      {
+        files: ["packages/**/*.ts"],
+        rules: { "no-console": "off" },
+      },
+    ],
   },
   run: {
     cache: true,

@@ -1,16 +1,23 @@
 import Constants from "expo-constants";
+import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
+import { useLogger } from "@/lib/useLogger";
+
 const version = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AppSettings() {
+  const router = useRouter();
+  const { logs } = useLogger();
+
   return (
     <ScrollView
       style={$container}
@@ -45,6 +52,30 @@ export default function AppSettings() {
           <Text style={$infoLabel}>Version</Text>
           <Text style={$infoValue}>{version}</Text>
         </View>
+      </View>
+
+      {/* Developer */}
+      <Text style={$sectionLabel}>Developer</Text>
+      <View style={$card}>
+        <TouchableOpacity
+          style={$infoRow}
+          activeOpacity={0.7}
+          onPress={() => router.push("/logs" as any)}
+        >
+          <Text style={$infoLabel}>Logs</Text>
+          <View style={$infoRowRight}>
+            <Text style={$infoValue}>{logs.length} entries</Text>
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
+              }}
+              tintColor="#52525b"
+              size={14}
+            />
+          </View>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -127,4 +158,10 @@ const $infoValue: TextStyle = {
   fontSize: 14,
   color: "#a1a1aa",
   fontWeight: "500",
+};
+
+const $infoRowRight: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 4,
 };

@@ -15,6 +15,8 @@ import {
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { ZeroconfService } from "react-native-zeroconf";
 
+import { logger } from "@/lib/logger";
+
 export interface BoseSpeaker {
   deviceID: string;
   host: string;
@@ -110,7 +112,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         zeroconfRef.current.stop();
         zeroconfRef.current.removeDeviceListeners();
       } catch (e) {
-        console.warn("[BoseScanner] Error stopping zeroconf:", e);
+        logger.warn("[BoseScanner] Error stopping zeroconf:", e);
       }
       zeroconfRef.current = null;
     }
@@ -200,7 +202,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         }),
       );
     } catch (err) {
-      console.warn(
+      logger.warn(
         `[BoseScanner] Failed to refresh speaker ${speaker.name}:`,
         err,
       );
@@ -220,7 +222,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     wsClientsRef.current.forEach((client, deviceID) => {
       if (!currentDeviceIds.has(deviceID)) {
-        console.log(
+        logger.log(
           `[useBoseScanner] Stopping WebSocket client for lost device: ${deviceID}`,
         );
         client.close();
@@ -236,7 +238,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           onUpdate: (update) => {
             if (!isMounted.current) return;
 
-            console.log(
+            logger.log(
               `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
             );
 
@@ -292,7 +294,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             }
           },
           onDisconnect: () => {
-            console.log(
+            logger.log(
               `[useBoseScanner] WebSocket disconnected for ${speaker.deviceID}`,
             );
           },
@@ -381,7 +383,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           }
         });
       } catch (err) {
-        console.log(
+        logger.log(
           `[BoseScanner] Device found at ${service.host} but failed info verification:`,
           err,
         );
@@ -389,7 +391,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
     });
 
     zeroconf.on("error", (err: unknown) => {
-      console.error("[BoseScanner] Zeroconf error:", err);
+      logger.error("[BoseScanner] Zeroconf error:", err);
       if (isMounted.current) {
         setError(err instanceof Error ? err.message : String(err));
         setIsScanning(false);
@@ -399,7 +401,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
     try {
       zeroconf.scan("soundtouch", "tcp", "local.");
     } catch (e) {
-      console.error("[BoseScanner] Scan exception:", e);
+      logger.error("[BoseScanner] Scan exception:", e);
       setError(e instanceof Error ? e.message : String(e));
       setIsScanning(false);
     }
@@ -426,7 +428,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           void refreshSpeakerStatus(speaker);
         }, 800);
       } catch (err) {
-        console.error(
+        logger.error(
           `[BoseScanner] Failed to toggle power on ${speaker.name}:`,
           err,
         );
@@ -455,7 +457,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         const result = await client.setVolume({ volume: vol });
         if (!result.isOk()) throw result.error;
       } catch (err) {
-        console.error(
+        logger.error(
           `[BoseScanner] Failed to set volume on ${speaker.name}:`,
           err,
         );
@@ -482,7 +484,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           void refreshSpeakerStatus(speaker);
         }, 500);
       } catch (err) {
-        console.error(
+        logger.error(
           `[BoseScanner] Failed to send play/pause to ${speaker.name}:`,
           err,
         );
@@ -514,7 +516,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           void refreshSpeakerStatus(speaker);
         }, 500);
       } catch (err) {
-        console.error(
+        logger.error(
           `[BoseScanner] Failed to send key ${key} to ${speaker.name}:`,
           err,
         );
@@ -551,7 +553,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           void refreshSpeakerStatus(speaker);
         }, 500);
       } catch (err) {
-        console.error(
+        logger.error(
           `[BoseScanner] Failed to select source ${source} on ${speaker.name}:`,
           err,
         );
@@ -579,7 +581,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         ),
       );
     } catch (err) {
-      console.warn(
+      logger.warn(
         `[useBoseScanner] Failed to load presets for ${speaker.name}:`,
         err,
       );
@@ -599,7 +601,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         ),
       );
     } catch (err) {
-      console.warn(
+      logger.warn(
         `[useBoseScanner] Failed to load bass for ${speaker.name}:`,
         err,
       );
@@ -638,7 +640,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           ),
         );
       }
-      console.warn(
+      logger.warn(
         `[useBoseScanner] Failed to save preset for ${speaker.name}:`,
         err,
       );
@@ -674,7 +676,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           ),
         );
       }
-      console.warn(
+      logger.warn(
         `[useBoseScanner] Failed to set bass for ${speaker.name}:`,
         err,
       );
@@ -697,7 +699,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
           void refreshSpeakerStatus(speaker);
         }, 1000);
       } catch (err) {
-        console.warn(
+        logger.warn(
           `[useBoseScanner] Failed to play stream on ${speaker.name}:`,
           err,
         );
