@@ -11,7 +11,7 @@ export default defineConfig({
   lint: {
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    plugins: ["react"],
+    plugins: ["react", "typescript"],
     env: {
       browser: true,
     },
@@ -37,7 +37,6 @@ export default defineConfig({
       "no-undefined": "off",
       "no-use-before-define": "off",
       "no-void": "off",
-      // style
       "capitalized-comments": "off",
       "func-style": "off",
       "init-declarations": "off",
@@ -49,7 +48,6 @@ export default defineConfig({
       "sort-keys": "off",
       "sort-imports": "off",
       "react/jsx-max-depth": "off",
-      // pedantic
       "no-negated-condition": "off",
       "max-classes-per-file": "off",
       "max-lines": "off",
@@ -57,6 +55,34 @@ export default defineConfig({
       "no-promise-executor-return": "off",
       "require-await": "off",
       "require-unicode-regexp": "off",
+      "typescript/prefer-readonly-parameter-types": "off",
+      "typescript/strict-boolean-expressions": "off",
+
+      // TMP
+      "typescript/promise-function-async": "off",
+      "typescript/no-confusing-void-expression": "off",
+      "no-unnecessary-condition": "off",
+      "no-unsafe-type-assertion": "off",
+      "no-unsafe-argument": "off",
+      "prefer-optional-chain": "off",
+      "no-unsafe-member-access": "off",
+      "no-unnecessary-type-parameters": "off",
+      "strict-void-return": "off",
+      "prefer-readonly": "off",
+      "no-unsafe-assignment": "off",
+      "no-misused-promises": "off",
+      "no-floating-promises": "off",
+      "prefer-regexp-exec": "off",
+      "explicit-module-boundary-types": "off",
+      "explicit-member-accessibility": "off",
+      "explicit-function-return-type": "off",
+      "array-type": "off",
+      "consistent-type-definitions": "off",
+      "no-explicit-any": "off",
+      "no-non-null-assertion": "off",
+      "prefer-for-of": "off",
+      "unified-signatures": "off",
+      "consistent-type-imports": "off",
     },
     overrides: [
       {
