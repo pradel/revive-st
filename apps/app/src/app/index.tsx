@@ -77,16 +77,21 @@ export default function Index() {
           style={$rescanButton}
           onPress={rescan}
           activeOpacity={0.7}
+          disabled={isScanning}
         >
-          <SymbolView
-            name={{
-              ios: "arrow.clockwise",
-              android: "refresh",
-              web: "refresh",
-            }}
-            tintColor="#a1a1aa"
-            size={18}
-          />
+          {isScanning ? (
+            <ActivityIndicator size="small" color="#a1a1aa" />
+          ) : (
+            <SymbolView
+              name={{
+                ios: "arrow.clockwise",
+                android: "refresh",
+                web: "refresh",
+              }}
+              tintColor="#a1a1aa"
+              size={18}
+            />
+          )}
         </TouchableOpacity>
       </View>
 
