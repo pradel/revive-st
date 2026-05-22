@@ -17,7 +17,6 @@ declare module "react-native-zeroconf" {
     on(event: "found", callback: (name: string) => void): void;
     on(event: "remove", callback: (name: string) => void): void;
     removeDeviceListeners(): void;
-    removeListeners(): void;
   }
 
   export default Zeroconf;
