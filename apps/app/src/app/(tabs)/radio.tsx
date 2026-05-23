@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -44,8 +44,18 @@ export default function RadioBrowser() {
   const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 300);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [query]);
 
   const { data: favorites = [] } = useRadioFavorites();
   const { mutate: toggleFavorite } = useRadioToggleFavorite();
@@ -55,7 +65,7 @@ export default function RadioBrowser() {
     isLoading,
     isError,
     error,
-  } = useRadioStations(query, selectedTag);
+  } = useRadioStations(debouncedQuery, selectedTag);
 
   const [castingStation, setCastingStation] = useState<RadioStation | null>(
     null,
@@ -67,6 +77,7 @@ export default function RadioBrowser() {
 
   const handleSearch = (searchQuery = query, tag = selectedTag) => {
     setQuery(searchQuery);
+    setDebouncedQuery(searchQuery);
     setSelectedTag(tag);
     setActiveTab("search");
   };
