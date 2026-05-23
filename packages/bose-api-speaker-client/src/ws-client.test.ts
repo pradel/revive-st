@@ -137,6 +137,32 @@ describe("parseWebSocketMessage", () => {
     });
   });
 
+  it("parses nameUpdated events", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <nameUpdated>Bose SoundTouch 10</nameUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "nameUpdated",
+      name: "Bose SoundTouch 10",
+    });
+  });
+
+  it("unescapes XML entities in nameUpdated events", () => {
+    const xml = `
+      <updates deviceID="DEV001">
+        <nameUpdated>Living &amp; Room</nameUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "DEV001",
+      type: "nameUpdated",
+      name: "Living & Room",
+    });
+  });
+
   it("returns unknown for unrecognized event types", () => {
     const xml = `
       <updates deviceID="000C8A123456">
