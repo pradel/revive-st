@@ -41,6 +41,5 @@ export function useRadioStations(query: string, tag: string | null) {
   return useQuery({
     queryKey: ["radio-stations", query, tag],
     queryFn: async () => fetchStations(query, tag),
-    enabled: false,
   });
 }

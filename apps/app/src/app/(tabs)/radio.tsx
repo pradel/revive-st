@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   View,
@@ -40,6 +41,7 @@ const GENRE_TAGS = [
 
 export default function RadioBrowser() {
   const { speakers, playStreamMutation } = useBose();
+  const queryClient = useQueryClient();
 
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
@@ -53,7 +55,6 @@ export default function RadioBrowser() {
     isLoading,
     isError,
     error,
-    refetch: searchStations,
   } = useRadioStations(query, selectedTag);
 
   const [castingStation, setCastingStation] = useState<RadioStation | null>(
@@ -68,7 +69,6 @@ export default function RadioBrowser() {
     setQuery(searchQuery);
     setSelectedTag(tag);
     setActiveTab("search");
-    void searchStations();
   };
 
   const handleStationPress = (station: RadioStation) => {
@@ -87,7 +87,7 @@ export default function RadioBrowser() {
 
     setCastingToSpeakerId(speakerId);
     try {
-      const streamUrl = castingStation.url_resolved || castingStation.url;
+      const streamUrl = castingStation.url_resolved ?? castingStation.url;
       await playStreamMutation.mutateAsync({
         host: speaker.host,
         uri: streamUrl,
@@ -136,7 +136,7 @@ export default function RadioBrowser() {
             {item.name}
           </Text>
           <Text style={$stationSubText} numberOfLines={1}>
-            {item.country || "Unknown Country"} • {item.codec || "MP3"}
+            {item.country ?? "Unknown Country"} • {item.codec ?? "MP3"}
             {item.bitrate ? ` • ${item.bitrate} kbps` : ""}
           </Text>
         </View>
@@ -170,7 +170,9 @@ export default function RadioBrowser() {
           <Pressable
             style={$exploreButton}
             onPress={() => {
-              void searchStations();
+              void queryClient.refetchQueries({
+                queryKey: ["radio-stations"],
+              });
             }}
           >
             <Text style={$exploreButtonText}>Retry</Text>
@@ -182,19 +184,10 @@ export default function RadioBrowser() {
       return (
         <View style={$infoContainer}>
           <Text style={$infoIcon}>📻</Text>
-          <Text style={$infoTitle}>Explore Radio Stations</Text>
+          <Text style={$infoTitle}>No Stations Found</Text>
           <Text style={$infoText}>
-            Type in the search bar above or select a genre tag to start browsing
-            online streams.
+            Try a different search term or genre tag.
           </Text>
-          <Pressable
-            style={$exploreButton}
-            onPress={() => {
-              handleSearch("", null);
-            }}
-          >
-            <Text style={$exploreButtonText}>Browse Top Stations</Text>
-          </Pressable>
         </View>
       );
     }
