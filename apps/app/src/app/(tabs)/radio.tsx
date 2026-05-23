@@ -11,6 +11,7 @@ import {
   Image,
   Alert,
   ScrollView,
+  StyleSheet,
   type ImageStyle,
   type TextStyle,
   type ViewStyle,
@@ -326,72 +327,70 @@ export default function RadioBrowser() {
         </View>
       )}
 
-      {castModalVisible && (
-        <Host>
-          <BottomSheet
-            isPresented
-            onDismiss={() => {
-              setCastModalVisible(false);
-            }}
-          >
-            <View style={$sheetContent}>
-              <Text style={$sheetTitle}>Select Speaker</Text>
-              <Text style={$sheetSubtitle}>
-                Which speaker would you like to stream{" "}
-                {`"${castingStation?.name}"`} to?
-              </Text>
+      <Host style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <BottomSheet
+          isPresented={castModalVisible}
+          onDismiss={() => {
+            setCastModalVisible(false);
+          }}
+        >
+          <View style={$sheetContent}>
+            <Text style={$sheetTitle}>Select Speaker</Text>
+            <Text style={$sheetSubtitle}>
+              Which speaker would you like to stream{" "}
+              {`"${castingStation?.name}"`} to?
+            </Text>
 
-              {speakers.length === 0 ? (
-                <View style={$sheetEmpty}>
-                  <Text style={$sheetEmptyIcon}>📡</Text>
-                  <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-                  <Text style={$sheetEmptyText}>
-                    Please ensure your SoundTouch speaker is online and
-                    connected to the same Wi-Fi.
-                  </Text>
-                </View>
-              ) : (
-                <ScrollView style={$speakerList}>
-                  {speakers.map((speaker) => {
-                    const isPowerOff =
-                      speaker.source === "STANDBY" ||
-                      speaker.playStatus === "STANDBY";
-                    const isCasting = castingToSpeakerId === speaker.deviceID;
+            {speakers.length === 0 ? (
+              <View style={$sheetEmpty}>
+                <Text style={$sheetEmptyIcon}>📡</Text>
+                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+                <Text style={$sheetEmptyText}>
+                  Please ensure your SoundTouch speaker is online and connected
+                  to the same Wi-Fi.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView style={$speakerList}>
+                {speakers.map((speaker) => {
+                  const isPowerOff =
+                    speaker.source === "STANDBY" ||
+                    speaker.playStatus === "STANDBY";
+                  const isCasting = castingToSpeakerId === speaker.deviceID;
 
-                    return (
-                      <Pressable
-                        key={speaker.deviceID}
-                        style={$speakerItem}
-                        onPress={() => {
-                          void handleCastToSpeaker(speaker.deviceID);
-                        }}
-                        disabled={isCasting}
-                      >
-                        <View style={$speakerItemLeft}>
-                          <Text style={$speakerEmoji}>🔊</Text>
-                          <View>
-                            <Text style={$speakerName}>{speaker.name}</Text>
-                            <Text style={$speakerStatus}>
-                              {isPowerOff
-                                ? "Standby"
-                                : `Playing • Vol ${speaker.volume}%`}
-                            </Text>
-                          </View>
+                  return (
+                    <Pressable
+                      key={speaker.deviceID}
+                      style={$speakerItem}
+                      onPress={() => {
+                        void handleCastToSpeaker(speaker.deviceID);
+                      }}
+                      disabled={isCasting}
+                    >
+                      <View style={$speakerItemLeft}>
+                        <Text style={$speakerEmoji}>🔊</Text>
+                        <View>
+                          <Text style={$speakerName}>{speaker.name}</Text>
+                          <Text style={$speakerStatus}>
+                            {isPowerOff
+                              ? "Standby"
+                              : `Playing • Vol ${speaker.volume}%`}
+                          </Text>
                         </View>
-                        {isCasting ? (
-                          <ActivityIndicator size="small" color="#3b82f6" />
-                        ) : (
-                          <Text style={$castPlayIcon}>▶</Text>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </ScrollView>
-              )}
-            </View>
-          </BottomSheet>
-        </Host>
-      )}
+                      </View>
+                      {isCasting ? (
+                        <ActivityIndicator size="small" color="#3b82f6" />
+                      ) : (
+                        <Text style={$castPlayIcon}>▶</Text>
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        </BottomSheet>
+      </Host>
     </SafeAreaView>
   );
 }
