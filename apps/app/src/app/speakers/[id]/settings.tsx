@@ -84,14 +84,16 @@ export default function SpeakerSettings() {
     setNameMutation.mutate(
       { host: speaker.host, name: trimmed },
       {
+        onSuccess: () => {
+          setNameValue("");
+          setNameError(null);
+          Keyboard.dismiss();
+        },
         onError: () => {
           setNameValue(speaker.name);
         },
       },
     );
-    setNameValue("");
-    setNameError(null);
-    Keyboard.dismiss();
   };
 
   if (!speaker) {
