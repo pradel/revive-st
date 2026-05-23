@@ -51,7 +51,7 @@ export default function RadioBrowser() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedQuery(query);
-    }, 300);
+    }, 200);
     return () => {
       clearTimeout(timer);
     };
