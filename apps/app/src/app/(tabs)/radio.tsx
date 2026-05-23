@@ -1,3 +1,4 @@
+import { BottomSheet, Host } from "@expo/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useEffect, useState } from "react";
 import {
@@ -7,7 +8,6 @@ import {
   ActivityIndicator,
   TextInput,
   FlatList,
-  Modal,
   Image,
   Alert,
   ScrollView,
@@ -214,150 +214,140 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <View style={$header}>
-        <Text style={$appTitle}>Radio</Text>
-      </View>
+      <Host style={{ flex: 1 }}>
+        <View style={$header}>
+          <Text style={$appTitle}>Radio</Text>
+        </View>
 
-      <View style={$tabsContainer}>
-        <Pressable
-          style={[$tab, activeTab === "search" && $activeTab]}
-          onPress={() => {
-            setActiveTab("search");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
-            Browse
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[$tab, activeTab === "favorites" && $activeTab]}
-          onPress={() => {
-            setActiveTab("favorites");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "favorites" && $activeTabText]}>
-            Favorites ({favorites.length})
-          </Text>
-        </Pressable>
-      </View>
+        <View style={$tabsContainer}>
+          <Pressable
+            style={[$tab, activeTab === "search" && $activeTab]}
+            onPress={() => {
+              setActiveTab("search");
+            }}
+          >
+            <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
+              Browse
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[$tab, activeTab === "favorites" && $activeTab]}
+            onPress={() => {
+              setActiveTab("favorites");
+            }}
+          >
+            <Text
+              style={[$tabText, activeTab === "favorites" && $activeTabText]}
+            >
+              Favorites ({favorites.length})
+            </Text>
+          </Pressable>
+        </View>
 
-      {activeTab === "search" ? (
-        <View style={{ flex: 1 }}>
-          <View style={$searchBox}>
-            <TextInput
-              style={$searchInput}
-              placeholder="Search by station name..."
-              placeholderTextColor="#71717a"
-              value={query}
-              onChangeText={(text) => {
-                setQuery(text);
-                setSelectedTag(null);
-              }}
-              onSubmitEditing={() => {
-                handleSearch(query, null);
-              }}
-              returnKeyType="search"
-            />
-            {query.trim().length > 0 && (
-              <Pressable
-                onPress={() => {
-                  setQuery("");
+        {activeTab === "search" ? (
+          <View style={{ flex: 1 }}>
+            <View style={$searchBox}>
+              <TextInput
+                style={$searchInput}
+                placeholder="Search by station name..."
+                placeholderTextColor="#71717a"
+                value={query}
+                onChangeText={(text) => {
+                  setQuery(text);
+                  setSelectedTag(null);
                 }}
-                style={$clearSearchButton}
-              >
-                <Text style={$clearSearchText}>✕</Text>
-              </Pressable>
-            )}
-          </View>
-
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-            <FlatList
-              data={GENRE_TAGS}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item}
-              contentContainerStyle={$tagsContent}
-              renderItem={({ item }) => (
+                onSubmitEditing={() => {
+                  handleSearch(query, null);
+                }}
+                returnKeyType="search"
+              />
+              {query.trim().length > 0 && (
                 <Pressable
-                  style={[$tagPill, selectedTag === item && $tagPillActive]}
                   onPress={() => {
-                    const nextTag = selectedTag === item ? null : item;
-                    handleSearch("", nextTag);
+                    setQuery("");
                   }}
+                  style={$clearSearchButton}
                 >
-                  <Text
-                    style={[$tagText, selectedTag === item && $tagTextActive]}
-                  >
-                    {item}
-                  </Text>
+                  <Text style={$clearSearchText}>✕</Text>
                 </Pressable>
               )}
-            />
+            </View>
+
+            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+              <FlatList
+                data={GENRE_TAGS}
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item) => item}
+                contentContainerStyle={$tagsContent}
+                renderItem={({ item }) => (
+                  <Pressable
+                    style={[$tagPill, selectedTag === item && $tagPillActive]}
+                    onPress={() => {
+                      const nextTag = selectedTag === item ? null : item;
+                      handleSearch("", nextTag);
+                    }}
+                  >
+                    <Text
+                      style={[$tagText, selectedTag === item && $tagTextActive]}
+                    >
+                      {item}
+                    </Text>
+                  </Pressable>
+                )}
+              />
+            </View>
+
+            {renderSearchResults()}
           </View>
+        ) : (
+          <View style={{ flex: 1 }}>
+            {favorites.length === 0 ? (
+              <View style={$infoContainer}>
+                <Text style={$infoIcon}>★</Text>
+                <Text style={$infoTitle}>No Favorites Yet</Text>
+                <Text style={$infoText}>
+                  Stations you mark with a star will appear here for fast
+                  access.
+                </Text>
+                <Pressable
+                  style={$exploreButton}
+                  onPress={() => {
+                    setActiveTab("search");
+                  }}
+                >
+                  <Text style={$exploreButtonText}>Find Stations</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <FlatList
+                data={favorites}
+                keyExtractor={(item) => item.stationuuid}
+                renderItem={renderStationCard}
+                contentContainerStyle={$listContent}
+              />
+            )}
+          </View>
+        )}
 
-          {renderSearchResults()}
-        </View>
-      ) : (
-        <View style={{ flex: 1 }}>
-          {favorites.length === 0 ? (
-            <View style={$infoContainer}>
-              <Text style={$infoIcon}>★</Text>
-              <Text style={$infoTitle}>No Favorites Yet</Text>
-              <Text style={$infoText}>
-                Stations you mark with a star will appear here for fast access.
-              </Text>
-              <Pressable
-                style={$exploreButton}
-                onPress={() => {
-                  setActiveTab("search");
-                }}
-              >
-                <Text style={$exploreButtonText}>Find Stations</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <FlatList
-              data={favorites}
-              keyExtractor={(item) => item.stationuuid}
-              renderItem={renderStationCard}
-              contentContainerStyle={$listContent}
-            />
-          )}
-        </View>
-      )}
-
-      <Modal
-        animationType="slide"
-        transparent
-        visible={castModalVisible}
-        onRequestClose={() => {
-          setCastModalVisible(false);
-        }}
-      >
-        <View style={$modalOverlay}>
-          <View style={$modalContent}>
-            <View style={$modalHeader}>
-              <Text style={$modalTitle}>Select Speaker</Text>
-              <Pressable
-                style={$modalCloseButton}
-                onPress={() => {
-                  setCastModalVisible(false);
-                }}
-              >
-                <Text style={$modalCloseText}>✕</Text>
-              </Pressable>
-            </View>
-
-            <Text style={$modalSubtitle}>
+        <BottomSheet
+          isPresented={castModalVisible}
+          onDismiss={() => {
+            setCastModalVisible(false);
+          }}
+        >
+          <View style={$sheetContent}>
+            <Text style={$sheetTitle}>Select Speaker</Text>
+            <Text style={$sheetSubtitle}>
               Which speaker would you like to stream{" "}
               {`"${castingStation?.name}"`} to?
             </Text>
 
             {speakers.length === 0 ? (
-              <View style={$modalEmpty}>
-                <Text style={$modalEmptyEmoji}>📡</Text>
-                <Text style={$modalEmptyTitle}>No Speakers Discovered</Text>
-                <Text style={$modalEmptyText}>
+              <View style={$sheetEmpty}>
+                <Text style={$sheetEmptyIcon}>📡</Text>
+                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+                <Text style={$sheetEmptyText}>
                   Please ensure your SoundTouch speaker is online and connected
                   to the same Wi-Fi.
                 </Text>
@@ -401,8 +391,8 @@ export default function RadioBrowser() {
               </ScrollView>
             )}
           </View>
-        </View>
-      </Modal>
+        </BottomSheet>
+      </Host>
     </SafeAreaView>
   );
 }
@@ -633,50 +623,20 @@ const $exploreButtonText: TextStyle = {
   fontSize: 14,
 };
 
-const $modalOverlay: ViewStyle = {
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-  justifyContent: "flex-end",
+const $sheetContent: ViewStyle = {
+  paddingHorizontal: 24,
+  paddingTop: 8,
+  paddingBottom: 24,
 };
 
-const $modalContent: ViewStyle = {
-  backgroundColor: "#09090b",
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  borderWidth: 1,
-  borderColor: "#27272a",
-  padding: 24,
-  maxHeight: "80%",
-};
-
-const $modalHeader: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 12,
-};
-
-const $modalTitle: TextStyle = {
+const $sheetTitle: TextStyle = {
   color: "#fafafa",
   fontSize: 18,
   fontWeight: "bold",
+  marginBottom: 8,
 };
 
-const $modalCloseButton: ViewStyle = {
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  backgroundColor: "#18181b",
-  justifyContent: "center",
-  alignItems: "center",
-};
-
-const $modalCloseText: TextStyle = {
-  color: "#a1a1aa",
-  fontSize: 14,
-};
-
-const $modalSubtitle: TextStyle = {
+const $sheetSubtitle: TextStyle = {
   color: "#a1a1aa",
   fontSize: 14,
   lineHeight: 20,
@@ -727,24 +687,24 @@ const $castPlayIcon: TextStyle = {
   fontWeight: "bold",
 };
 
-const $modalEmpty: ViewStyle = {
+const $sheetEmpty: ViewStyle = {
   alignItems: "center",
   paddingVertical: 40,
 };
 
-const $modalEmptyEmoji: TextStyle = {
+const $sheetEmptyIcon: TextStyle = {
   fontSize: 48,
   marginBottom: 12,
 };
 
-const $modalEmptyTitle: TextStyle = {
+const $sheetEmptyTitle: TextStyle = {
   color: "#fafafa",
   fontSize: 16,
   fontWeight: "bold",
   marginBottom: 6,
 };
 
-const $modalEmptyText: TextStyle = {
+const $sheetEmptyText: TextStyle = {
   color: "#71717a",
   fontSize: 12,
   textAlign: "center",
