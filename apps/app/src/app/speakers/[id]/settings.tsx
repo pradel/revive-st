@@ -60,7 +60,41 @@ export default function SpeakerSettings() {
   const speaker = speakers.find((item) => item.deviceID === id);
 
   const [nameValue, setNameValue] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
+
+  const handleSaveName = () => {
+    if (!speaker) {
+      return;
+    }
+    const trimmed = nameValue.trim();
+    if (trimmed.length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setNameError("Name must be at most 50 characters");
+      return;
+    }
+    if (trimmed === speaker.name) {
+      setNameValue("");
+      Keyboard.dismiss();
+      return;
+    }
+    setNameMutation.mutate(
+      { host: speaker.host, name: trimmed },
+      {
+        onSuccess: () => {
+          setNameValue("");
+          setNameError(null);
+          Keyboard.dismiss();
+        },
+        onError: () => {
+          setNameValue(speaker.name);
+        },
+      },
+    );
+  };
 
   if (!speaker) {
     return (
@@ -124,81 +158,45 @@ export default function SpeakerSettings() {
         }}
       />
 
-      {/* Speaker Identity */}
-      <View style={$card}>
-        <View style={$cardHeader}>
-          <View style={$speakerIcon}>
-            <SymbolView
-              name={{
-                ios: "speaker.wave.2.fill",
-                android: "speaker",
-                web: "speaker",
-              }}
-              tintColor="#a1a1aa"
-              size={24}
-            />
-          </View>
-          <View style={$cardMeta}>
-            <Text style={$speakerName}>{speaker.name}</Text>
-            <Text style={$speakerType}>{speaker.type}</Text>
-          </View>
-        </View>
-      </View>
-
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
       {nameValue !== "" ? (
         <View style={$card}>
           <View style={$renameRow}>
             <TextInput
-              style={$textInput}
+              style={[$textInput, nameError ? $textInputError : undefined]}
               value={nameValue}
-              onChangeText={setNameValue}
+              onChangeText={(text) => {
+                setNameValue(text);
+                setNameError(null);
+              }}
               placeholder={speaker.name}
               placeholderTextColor="#52525b"
+              maxLength={50}
+              editable={!setNameMutation.isPending}
               autoFocus
               returnKeyType="done"
-              onSubmitEditing={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed && trimmed !== speaker.name) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    {
-                      onError: () => {
-                        setNameValue(speaker.name);
-                      },
-                    },
-                  );
-                }
-                setNameValue("");
-                Keyboard.dismiss();
-              }}
+              onSubmitEditing={handleSaveName}
               onBlur={() => {
-                setNameValue("");
+                if (!setNameMutation.isPending) {
+                  setNameValue("");
+                  setNameError(null);
+                }
               }}
             />
-            <TouchableOpacity
-              style={$saveButton}
-              onPress={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed && trimmed !== speaker.name) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    {
-                      onError: () => {
-                        setNameValue(speaker.name);
-                      },
-                    },
-                  );
-                }
-                setNameValue("");
-                Keyboard.dismiss();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={$saveButtonText}>Save</Text>
-            </TouchableOpacity>
+            {setNameMutation.isPending ? (
+              <ActivityIndicator size="small" color="#fafafa" />
+            ) : (
+              <TouchableOpacity
+                style={$saveButton}
+                onPress={handleSaveName}
+                activeOpacity={0.8}
+              >
+                <Text style={$saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            )}
           </View>
+          {nameError ? <Text style={$nameErrorText}>{nameError}</Text> : null}
         </View>
       ) : (
         <TouchableOpacity
@@ -214,15 +212,19 @@ export default function SpeakerSettings() {
               <Text style={$infoValue} numberOfLines={1}>
                 {speaker.name}
               </Text>
-              <SymbolView
-                name={{
-                  ios: "chevron.right",
-                  android: "chevron_right",
-                  web: "chevron_right",
-                }}
-                tintColor="#52525b"
-                size={14}
-              />
+              {setNameMutation.isPending ? (
+                <ActivityIndicator size="small" color="#a1a1aa" />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "chevron.right",
+                    android: "chevron_right",
+                    web: "chevron_right",
+                  }}
+                  tintColor="#52525b"
+                  size={14}
+                />
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -359,12 +361,39 @@ export default function SpeakerSettings() {
           <Text style={$infoLabel}>Port</Text>
           <Text style={$infoValue}>{speaker.port}</Text>
         </View>
+        {speaker.macAddress ? (
+          <>
+            <View style={$infoDivider} />
+            <View style={$infoRow}>
+              <Text style={$infoLabel}>MAC Address</Text>
+              <Text style={$infoValue}>{speaker.macAddress}</Text>
+            </View>
+          </>
+        ) : null}
         <View style={$infoDivider} />
         <View style={$infoRow}>
           <Text style={$infoLabel}>Type</Text>
           <Text style={$infoValue}>{speaker.type}</Text>
         </View>
       </View>
+
+      {/* Software Versions */}
+      {speaker.components && speaker.components.length > 0 ? (
+        <>
+          <Text style={$sectionLabel}>Software</Text>
+          <View style={$card}>
+            {speaker.components.map((comp, index) => (
+              <View key={comp.serialNumber || index}>
+                {index > 0 && <View style={$infoDivider} />}
+                <Text style={$versionLabel}>
+                  {comp.componentCategory || "Component"}
+                </Text>
+                <Text style={$versionValue}>{comp.softwareVersion}</Text>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
   );
 }
@@ -506,37 +535,6 @@ const $card: ViewStyle = {
   borderColor: "#27272a",
 };
 
-const $cardHeader: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-};
-
-const $speakerIcon: ViewStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: 14,
-  backgroundColor: "#27272a",
-  alignItems: "center",
-  justifyContent: "center",
-  marginRight: 14,
-};
-
-const $cardMeta: ViewStyle = {
-  flex: 1,
-};
-
-const $speakerName: TextStyle = {
-  fontSize: 17,
-  fontWeight: "700",
-  color: "#fafafa",
-};
-
-const $speakerType: TextStyle = {
-  fontSize: 13,
-  color: "#52525b",
-  marginTop: 2,
-};
-
 const $sectionLabel: TextStyle = {
   fontSize: 12,
   fontWeight: "700",
@@ -562,6 +560,17 @@ const $textInput: TextStyle = {
   paddingVertical: 10,
   fontSize: 15,
   color: "#fafafa",
+};
+
+const $textInputError: TextStyle = {
+  borderWidth: 1,
+  borderColor: "#ef4444",
+};
+
+const $nameErrorText: TextStyle = {
+  fontSize: 12,
+  color: "#ef4444",
+  marginTop: 4,
 };
 
 const $saveButton: ViewStyle = {
@@ -663,4 +672,18 @@ const $pickerDescription: TextStyle = {
   fontSize: 12,
   color: "#52525b",
   marginTop: 8,
+};
+
+const $versionLabel: TextStyle = {
+  fontSize: 13,
+  color: "#71717a",
+  fontWeight: "600",
+  marginBottom: 4,
+};
+
+const $versionValue: TextStyle = {
+  fontSize: 14,
+  color: "#a1a1aa",
+  fontWeight: "400",
+  lineHeight: 20,
 };
