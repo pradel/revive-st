@@ -308,6 +308,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
               } else {
                 refreshIfAvailable();
               }
+            } else if (update.type === "nameUpdated") {
+              setSpeakers((prev) =>
+                prev.map((item) => {
+                  if (item.deviceID === update.deviceID) {
+                    return { ...item, name: update.name };
+                  }
+                  return item;
+                }),
+              );
             } else if (update.type === "connectionState") {
               // handled by the parser, no state update needed
             } else {

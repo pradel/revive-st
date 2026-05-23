@@ -59,6 +59,11 @@ export type BoseWSUpdate =
       deviceID: string;
     }
   | {
+      type: "nameUpdated";
+      deviceID: string;
+      name: string;
+    }
+  | {
       type: "unknown";
       deviceID: string;
     };
@@ -168,6 +173,15 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
 
   if (xml.includes("<zoneUpdated") || xml.includes("<zone>")) {
     return { type: "zone", deviceID };
+  }
+
+  if (xml.includes("<nameUpdated>")) {
+    const match = /<nameUpdated>([\s\S]*?)<\/nameUpdated>/.exec(xml);
+    return {
+      type: "nameUpdated",
+      deviceID,
+      name: match ? unescapeXml(match[1]) : "",
+    };
   }
 
   if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
