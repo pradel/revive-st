@@ -60,7 +60,39 @@ export default function SpeakerSettings() {
   const speaker = speakers.find((item) => item.deviceID === id);
 
   const [nameValue, setNameValue] = useState("");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
+
+  const handleSaveName = () => {
+    if (!speaker) {
+      return;
+    }
+    const trimmed = nameValue.trim();
+    if (trimmed.length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return;
+    }
+    if (trimmed.length > 50) {
+      setNameError("Name must be at most 50 characters");
+      return;
+    }
+    if (trimmed === speaker.name) {
+      setNameValue("");
+      Keyboard.dismiss();
+      return;
+    }
+    setNameMutation.mutate(
+      { host: speaker.host, name: trimmed },
+      {
+        onError: () => {
+          setNameValue(speaker.name);
+        },
+      },
+    );
+    setNameValue("");
+    setNameError(null);
+    Keyboard.dismiss();
+  };
 
   if (!speaker) {
     return (
@@ -130,54 +162,39 @@ export default function SpeakerSettings() {
         <View style={$card}>
           <View style={$renameRow}>
             <TextInput
-              style={$textInput}
+              style={[$textInput, nameError ? $textInputError : undefined]}
               value={nameValue}
-              onChangeText={setNameValue}
+              onChangeText={(text) => {
+                setNameValue(text);
+                setNameError(null);
+              }}
               placeholder={speaker.name}
               placeholderTextColor="#52525b"
+              maxLength={50}
+              editable={!setNameMutation.isPending}
               autoFocus
               returnKeyType="done"
-              onSubmitEditing={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed && trimmed !== speaker.name) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    {
-                      onError: () => {
-                        setNameValue(speaker.name);
-                      },
-                    },
-                  );
-                }
-                setNameValue("");
-                Keyboard.dismiss();
-              }}
+              onSubmitEditing={handleSaveName}
               onBlur={() => {
-                setNameValue("");
+                if (!setNameMutation.isPending) {
+                  setNameValue("");
+                  setNameError(null);
+                }
               }}
             />
-            <TouchableOpacity
-              style={$saveButton}
-              onPress={() => {
-                const trimmed = nameValue.trim();
-                if (trimmed && trimmed !== speaker.name) {
-                  setNameMutation.mutate(
-                    { host: speaker.host, name: trimmed },
-                    {
-                      onError: () => {
-                        setNameValue(speaker.name);
-                      },
-                    },
-                  );
-                }
-                setNameValue("");
-                Keyboard.dismiss();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={$saveButtonText}>Save</Text>
-            </TouchableOpacity>
+            {setNameMutation.isPending ? (
+              <ActivityIndicator size="small" color="#fafafa" />
+            ) : (
+              <TouchableOpacity
+                style={$saveButton}
+                onPress={handleSaveName}
+                activeOpacity={0.8}
+              >
+                <Text style={$saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            )}
           </View>
+          {nameError ? <Text style={$nameErrorText}>{nameError}</Text> : null}
         </View>
       ) : (
         <TouchableOpacity
@@ -193,15 +210,19 @@ export default function SpeakerSettings() {
               <Text style={$infoValue} numberOfLines={1}>
                 {speaker.name}
               </Text>
-              <SymbolView
-                name={{
-                  ios: "chevron.right",
-                  android: "chevron_right",
-                  web: "chevron_right",
-                }}
-                tintColor="#52525b"
-                size={14}
-              />
+              {setNameMutation.isPending ? (
+                <ActivityIndicator size="small" color="#a1a1aa" />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "chevron.right",
+                    android: "chevron_right",
+                    web: "chevron_right",
+                  }}
+                  tintColor="#52525b"
+                  size={14}
+                />
+              )}
             </View>
           </View>
         </TouchableOpacity>
@@ -537,6 +558,17 @@ const $textInput: TextStyle = {
   paddingVertical: 10,
   fontSize: 15,
   color: "#fafafa",
+};
+
+const $textInputError: TextStyle = {
+  borderWidth: 1,
+  borderColor: "#ef4444",
+};
+
+const $nameErrorText: TextStyle = {
+  fontSize: 12,
+  color: "#ef4444",
+  marginTop: 4,
 };
 
 const $saveButton: ViewStyle = {
