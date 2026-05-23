@@ -21,7 +21,7 @@ class BoseWifiModule : Module() {
   private var networkCallback: ConnectivityManager.NetworkCallback? = null
   private var currentNetwork: Network? = null
   private var connectivityManager: ConnectivityManager? = null
-  private var isConnecting = false
+  private var pendingPromise: Promise? = null
 
   override fun definition() = ModuleDefinition {
     Name("BoseWifi")
@@ -67,6 +67,12 @@ class BoseWifiModule : Module() {
     val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
     connectivityManager = cm
 
+    pendingPromise?.let {
+      Log.d("BoseWifi", "connectWithSpecifier: cancelling previous pending promise")
+      it.reject("CONNECTION_CANCELLED", "Superseded by a new connection request", null)
+    }
+    pendingPromise = promise
+
     releaseNetwork()
 
     Log.d("BoseWifi", "Building WifiNetworkSpecifier...")
@@ -93,7 +99,9 @@ class BoseWifiModule : Module() {
         settled = true
         currentNetwork = network
         cm.bindProcessToNetwork(network)
+
         Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
+        pendingPromise = null
         promise.resolve(
           mapOf(
             "success" to true,
@@ -110,6 +118,7 @@ class BoseWifiModule : Module() {
         if (settled) return
         settled = true
         currentNetwork = null
+        pendingPromise = null
         Log.d("BoseWifi", "onUnavailable: rejecting promise with CONNECTION_FAILED")
         promise.reject(
           "CONNECTION_FAILED",
@@ -135,6 +144,7 @@ class BoseWifiModule : Module() {
     } catch (e: Exception) {
       Log.e("BoseWifi", "requestNetwork threw: ${e.message}", e)
       settled = true
+      pendingPromise = null
       promise.reject("REQUEST_FAILED", e.message ?: "Unknown error", e)
     }
   }
@@ -149,5 +159,6 @@ class BoseWifiModule : Module() {
     cm.bindProcessToNetwork(null)
     networkCallback = null
     currentNetwork = null
+    pendingPromise = null
   }
 }
