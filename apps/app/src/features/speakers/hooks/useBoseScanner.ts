@@ -7,6 +7,7 @@ import {
   type AudioProductToneControlsResponse,
   type BassCapabilitiesResponse,
   type CapabilitiesResponse,
+  type DeviceComponent,
   type KeyValue,
   type Preset,
 } from "bose-api-speaker-client";
@@ -37,6 +38,8 @@ export interface BoseSpeaker {
   audioDspControls?: AudioDspControlsResponse | null;
   audioProductToneControls?: AudioProductToneControlsResponse | null;
   audioProductLevelControls?: AudioProductLevelControlsResponse | null;
+  components?: DeviceComponent[];
+  macAddress?: string;
 }
 
 async function pressAndRelease(host: string, key: string) {
@@ -411,6 +414,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
               audioDspControls: dspControls,
               audioProductToneControls: toneControls,
               audioProductLevelControls: levelControls,
+              components: info.components,
+              macAddress: info.networkInfo?.macAddress,
             };
 
             if (exists) {

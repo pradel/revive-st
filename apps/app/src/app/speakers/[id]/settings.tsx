@@ -359,12 +359,41 @@ export default function SpeakerSettings() {
           <Text style={$infoLabel}>Port</Text>
           <Text style={$infoValue}>{speaker.port}</Text>
         </View>
+        {speaker.macAddress ? (
+          <>
+            <View style={$infoDivider} />
+            <View style={$infoRow}>
+              <Text style={$infoLabel}>MAC Address</Text>
+              <Text style={$infoValue}>{speaker.macAddress}</Text>
+            </View>
+          </>
+        ) : null}
         <View style={$infoDivider} />
         <View style={$infoRow}>
           <Text style={$infoLabel}>Type</Text>
           <Text style={$infoValue}>{speaker.type}</Text>
         </View>
       </View>
+
+      {/* Software Versions */}
+      {speaker.components && speaker.components.length > 0 ? (
+        <>
+          <Text style={$sectionLabel}>Software</Text>
+          <View style={$card}>
+            {speaker.components.map((comp, index) => (
+              <View key={comp.serialNumber || index}>
+                {index > 0 && <View style={$infoDivider} />}
+                <View style={$infoRow}>
+                  <Text style={$infoLabel}>
+                    {comp.componentCategory || "Component"}
+                  </Text>
+                  <Text style={$infoValue}>{comp.softwareVersion}</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
     </ScrollView>
   );
 }
