@@ -383,12 +383,10 @@ export default function SpeakerSettings() {
             {speaker.components.map((comp, index) => (
               <View key={comp.serialNumber || index}>
                 {index > 0 && <View style={$infoDivider} />}
-                <View style={$infoRow}>
-                  <Text style={$infoLabel}>
-                    {comp.componentCategory || "Component"}
-                  </Text>
-                  <Text style={$infoValue}>{comp.softwareVersion}</Text>
-                </View>
+                <Text style={$versionLabel}>
+                  {comp.componentCategory || "Component"}
+                </Text>
+                <Text style={$versionValue}>{comp.softwareVersion}</Text>
               </View>
             ))}
           </View>
@@ -692,4 +690,18 @@ const $pickerDescription: TextStyle = {
   fontSize: 12,
   color: "#52525b",
   marginTop: 8,
+};
+
+const $versionLabel: TextStyle = {
+  fontSize: 13,
+  color: "#71717a",
+  fontWeight: "600",
+  marginBottom: 4,
+};
+
+const $versionValue: TextStyle = {
+  fontSize: 14,
+  color: "#a1a1aa",
+  fontWeight: "400",
+  lineHeight: 20,
 };
