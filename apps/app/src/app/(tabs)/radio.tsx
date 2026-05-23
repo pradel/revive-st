@@ -214,185 +214,184 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <Host style={{ flex: 1 }}>
-        <View style={$header}>
-          <Text style={$appTitle}>Radio</Text>
-        </View>
+      <View style={$header}>
+        <Text style={$appTitle}>Radio</Text>
+      </View>
 
-        <View style={$tabsContainer}>
-          <Pressable
-            style={[$tab, activeTab === "search" && $activeTab]}
-            onPress={() => {
-              setActiveTab("search");
-            }}
-          >
-            <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
-              Browse
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[$tab, activeTab === "favorites" && $activeTab]}
-            onPress={() => {
-              setActiveTab("favorites");
-            }}
-          >
-            <Text
-              style={[$tabText, activeTab === "favorites" && $activeTabText]}
-            >
-              Favorites ({favorites.length})
-            </Text>
-          </Pressable>
-        </View>
-
-        {activeTab === "search" ? (
-          <View style={{ flex: 1 }}>
-            <View style={$searchBox}>
-              <TextInput
-                style={$searchInput}
-                placeholder="Search by station name..."
-                placeholderTextColor="#71717a"
-                value={query}
-                onChangeText={(text) => {
-                  setQuery(text);
-                  setSelectedTag(null);
-                }}
-                onSubmitEditing={() => {
-                  handleSearch(query, null);
-                }}
-                returnKeyType="search"
-              />
-              {query.trim().length > 0 && (
-                <Pressable
-                  onPress={() => {
-                    setQuery("");
-                  }}
-                  style={$clearSearchButton}
-                >
-                  <Text style={$clearSearchText}>✕</Text>
-                </Pressable>
-              )}
-            </View>
-
-            <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
-              <FlatList
-                data={GENRE_TAGS}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                keyExtractor={(item) => item}
-                contentContainerStyle={$tagsContent}
-                renderItem={({ item }) => (
-                  <Pressable
-                    style={[$tagPill, selectedTag === item && $tagPillActive]}
-                    onPress={() => {
-                      const nextTag = selectedTag === item ? null : item;
-                      handleSearch("", nextTag);
-                    }}
-                  >
-                    <Text
-                      style={[$tagText, selectedTag === item && $tagTextActive]}
-                    >
-                      {item}
-                    </Text>
-                  </Pressable>
-                )}
-              />
-            </View>
-
-            {renderSearchResults()}
-          </View>
-        ) : (
-          <View style={{ flex: 1 }}>
-            {favorites.length === 0 ? (
-              <View style={$infoContainer}>
-                <Text style={$infoIcon}>★</Text>
-                <Text style={$infoTitle}>No Favorites Yet</Text>
-                <Text style={$infoText}>
-                  Stations you mark with a star will appear here for fast
-                  access.
-                </Text>
-                <Pressable
-                  style={$exploreButton}
-                  onPress={() => {
-                    setActiveTab("search");
-                  }}
-                >
-                  <Text style={$exploreButtonText}>Find Stations</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <FlatList
-                data={favorites}
-                keyExtractor={(item) => item.stationuuid}
-                renderItem={renderStationCard}
-                contentContainerStyle={$listContent}
-              />
-            )}
-          </View>
-        )}
-
-        <BottomSheet
-          isPresented={castModalVisible}
-          onDismiss={() => {
-            setCastModalVisible(false);
+      <View style={$tabsContainer}>
+        <Pressable
+          style={[$tab, activeTab === "search" && $activeTab]}
+          onPress={() => {
+            setActiveTab("search");
           }}
         >
-          <View style={$sheetContent}>
-            <Text style={$sheetTitle}>Select Speaker</Text>
-            <Text style={$sheetSubtitle}>
-              Which speaker would you like to stream{" "}
-              {`"${castingStation?.name}"`} to?
-            </Text>
+          <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
+            Browse
+          </Text>
+        </Pressable>
+        <Pressable
+          style={[$tab, activeTab === "favorites" && $activeTab]}
+          onPress={() => {
+            setActiveTab("favorites");
+          }}
+        >
+          <Text style={[$tabText, activeTab === "favorites" && $activeTabText]}>
+            Favorites ({favorites.length})
+          </Text>
+        </Pressable>
+      </View>
 
-            {speakers.length === 0 ? (
-              <View style={$sheetEmpty}>
-                <Text style={$sheetEmptyIcon}>📡</Text>
-                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-                <Text style={$sheetEmptyText}>
-                  Please ensure your SoundTouch speaker is online and connected
-                  to the same Wi-Fi.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={$speakerList}>
-                {speakers.map((speaker) => {
-                  const isPowerOff =
-                    speaker.source === "STANDBY" ||
-                    speaker.playStatus === "STANDBY";
-                  const isCasting = castingToSpeakerId === speaker.deviceID;
-
-                  return (
-                    <Pressable
-                      key={speaker.deviceID}
-                      style={$speakerItem}
-                      onPress={() => {
-                        void handleCastToSpeaker(speaker.deviceID);
-                      }}
-                      disabled={isCasting}
-                    >
-                      <View style={$speakerItemLeft}>
-                        <Text style={$speakerEmoji}>🔊</Text>
-                        <View>
-                          <Text style={$speakerName}>{speaker.name}</Text>
-                          <Text style={$speakerStatus}>
-                            {isPowerOff
-                              ? "Standby"
-                              : `Playing • Vol ${speaker.volume}%`}
-                          </Text>
-                        </View>
-                      </View>
-                      {isCasting ? (
-                        <ActivityIndicator size="small" color="#3b82f6" />
-                      ) : (
-                        <Text style={$castPlayIcon}>▶</Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+      {activeTab === "search" ? (
+        <View style={{ flex: 1 }}>
+          <View style={$searchBox}>
+            <TextInput
+              style={$searchInput}
+              placeholder="Search by station name..."
+              placeholderTextColor="#71717a"
+              value={query}
+              onChangeText={(text) => {
+                setQuery(text);
+                setSelectedTag(null);
+              }}
+              onSubmitEditing={() => {
+                handleSearch(query, null);
+              }}
+              returnKeyType="search"
+            />
+            {query.trim().length > 0 && (
+              <Pressable
+                onPress={() => {
+                  setQuery("");
+                }}
+                style={$clearSearchButton}
+              >
+                <Text style={$clearSearchText}>✕</Text>
+              </Pressable>
             )}
           </View>
-        </BottomSheet>
-      </Host>
+
+          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+            <FlatList
+              data={GENRE_TAGS}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item) => item}
+              contentContainerStyle={$tagsContent}
+              renderItem={({ item }) => (
+                <Pressable
+                  style={[$tagPill, selectedTag === item && $tagPillActive]}
+                  onPress={() => {
+                    const nextTag = selectedTag === item ? null : item;
+                    handleSearch("", nextTag);
+                  }}
+                >
+                  <Text
+                    style={[$tagText, selectedTag === item && $tagTextActive]}
+                  >
+                    {item}
+                  </Text>
+                </Pressable>
+              )}
+            />
+          </View>
+
+          {renderSearchResults()}
+        </View>
+      ) : (
+        <View style={{ flex: 1 }}>
+          {favorites.length === 0 ? (
+            <View style={$infoContainer}>
+              <Text style={$infoIcon}>★</Text>
+              <Text style={$infoTitle}>No Favorites Yet</Text>
+              <Text style={$infoText}>
+                Stations you mark with a star will appear here for fast access.
+              </Text>
+              <Pressable
+                style={$exploreButton}
+                onPress={() => {
+                  setActiveTab("search");
+                }}
+              >
+                <Text style={$exploreButtonText}>Find Stations</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <FlatList
+              data={favorites}
+              keyExtractor={(item) => item.stationuuid}
+              renderItem={renderStationCard}
+              contentContainerStyle={$listContent}
+            />
+          )}
+        </View>
+      )}
+
+      {castModalVisible && (
+        <Host>
+          <BottomSheet
+            isPresented
+            onDismiss={() => {
+              setCastModalVisible(false);
+            }}
+          >
+            <View style={$sheetContent}>
+              <Text style={$sheetTitle}>Select Speaker</Text>
+              <Text style={$sheetSubtitle}>
+                Which speaker would you like to stream{" "}
+                {`"${castingStation?.name}"`} to?
+              </Text>
+
+              {speakers.length === 0 ? (
+                <View style={$sheetEmpty}>
+                  <Text style={$sheetEmptyIcon}>📡</Text>
+                  <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+                  <Text style={$sheetEmptyText}>
+                    Please ensure your SoundTouch speaker is online and
+                    connected to the same Wi-Fi.
+                  </Text>
+                </View>
+              ) : (
+                <ScrollView style={$speakerList}>
+                  {speakers.map((speaker) => {
+                    const isPowerOff =
+                      speaker.source === "STANDBY" ||
+                      speaker.playStatus === "STANDBY";
+                    const isCasting = castingToSpeakerId === speaker.deviceID;
+
+                    return (
+                      <Pressable
+                        key={speaker.deviceID}
+                        style={$speakerItem}
+                        onPress={() => {
+                          void handleCastToSpeaker(speaker.deviceID);
+                        }}
+                        disabled={isCasting}
+                      >
+                        <View style={$speakerItemLeft}>
+                          <Text style={$speakerEmoji}>🔊</Text>
+                          <View>
+                            <Text style={$speakerName}>{speaker.name}</Text>
+                            <Text style={$speakerStatus}>
+                              {isPowerOff
+                                ? "Standby"
+                                : `Playing • Vol ${speaker.volume}%`}
+                            </Text>
+                          </View>
+                        </View>
+                        {isCasting ? (
+                          <ActivityIndicator size="small" color="#3b82f6" />
+                        ) : (
+                          <Text style={$castPlayIcon}>▶</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
+                </ScrollView>
+              )}
+            </View>
+          </BottomSheet>
+        </Host>
+      )}
     </SafeAreaView>
   );
 }
