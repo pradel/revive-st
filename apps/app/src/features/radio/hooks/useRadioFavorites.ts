@@ -36,8 +36,7 @@ export function useRadioToggleFavorite() {
       station: RadioStation;
       isFavorite: boolean;
     }) => {
-      const current =
-        queryClient.getQueryData<RadioStation[]>(["radio-favorites"]) ?? [];
+      const current = await loadFavorites();
       const updated = isFavorite
         ? current.filter((fav) => fav.stationuuid !== station.stationuuid)
         : [...current, station];
