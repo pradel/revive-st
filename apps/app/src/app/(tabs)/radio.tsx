@@ -31,6 +31,7 @@ import { logger } from "@/lib/logger";
 import { COLORS } from "@/ui/theme";
 
 const GENRE_TAGS = [
+  "All",
   "Jazz",
   "Classical",
   "Rock",
@@ -48,7 +49,7 @@ export default function RadioBrowser() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>("All");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -67,7 +68,10 @@ export default function RadioBrowser() {
     isLoading,
     isError,
     error,
-  } = useRadioStations(debouncedQuery, selectedTag);
+  } = useRadioStations(
+    debouncedQuery,
+    selectedTag === "All" ? null : selectedTag,
+  );
 
   const [castingStation, setCastingStation] = useState<RadioStation | null>(
     null,
@@ -80,7 +84,7 @@ export default function RadioBrowser() {
   const handleSearch = (searchQuery = query, tag = selectedTag) => {
     setQuery(searchQuery);
     setDebouncedQuery(searchQuery);
-    setSelectedTag(tag);
+    setSelectedTag(tag ?? "All");
     setActiveTab("search");
   };
 
@@ -155,7 +159,11 @@ export default function RadioBrowser() {
         </View>
 
         <Pressable style={$favoriteButton} onPress={handleToggle}>
-          <Text style={$favoriteIconText}>{isFav ? "★" : "☆"}</Text>
+          <Text
+            style={isFav ? $favoriteIconTextActive : $favoriteIconTextInactive}
+          >
+            {isFav ? "★" : "☆"}
+          </Text>
         </Pressable>
       </Pressable>
     );
@@ -253,10 +261,10 @@ export default function RadioBrowser() {
               value={query}
               onChangeText={(text) => {
                 setQuery(text);
-                setSelectedTag(null);
+                setSelectedTag("All");
               }}
               onSubmitEditing={() => {
-                handleSearch(query, null);
+                handleSearch(query, "All");
               }}
               returnKeyType="search"
             />
@@ -283,7 +291,7 @@ export default function RadioBrowser() {
                 <Pressable
                   style={[$tagPill, selectedTag === item && $tagPillActive]}
                   onPress={() => {
-                    const nextTag = selectedTag === item ? null : item;
+                    const nextTag = selectedTag === item ? "All" : item;
                     handleSearch("", nextTag);
                   }}
                 >
@@ -508,8 +516,8 @@ const $tagPill: ViewStyle = {
 };
 
 const $tagPillActive: ViewStyle = {
-  backgroundColor: COLORS.warning,
-  borderColor: COLORS.warningBorder,
+  backgroundColor: COLORS.primary,
+  borderColor: COLORS.primary,
 };
 
 const $tagText: TextStyle = {
@@ -519,7 +527,7 @@ const $tagText: TextStyle = {
 };
 
 const $tagTextActive: TextStyle = {
-  color: COLORS.background,
+  color: COLORS.text,
 };
 
 const $listContent: ViewStyle = {
@@ -582,8 +590,13 @@ const $favoriteButton: ViewStyle = {
   alignItems: "center",
 };
 
-const $favoriteIconText: TextStyle = {
-  color: COLORS.warning,
+const $favoriteIconTextActive: TextStyle = {
+  color: COLORS.primary,
+  fontSize: 24,
+};
+
+const $favoriteIconTextInactive: TextStyle = {
+  color: COLORS.textMuted,
   fontSize: 24,
 };
 
