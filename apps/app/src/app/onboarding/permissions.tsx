@@ -1,6 +1,8 @@
 import { Stack } from "expo-router";
 import { Text, View, type TextStyle, type ViewStyle } from "react-native";
 
+import { COLORS } from "@/ui/theme";
+
 export default function Permissions() {
   return (
     <View style={$container}>
@@ -20,7 +22,7 @@ export default function Permissions() {
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
   alignItems: "center",
   justifyContent: "center",
   paddingHorizontal: 40,
@@ -29,13 +31,13 @@ const $container: ViewStyle = {
 const $title: TextStyle = {
   fontSize: 20,
   fontWeight: "700",
-  color: "#fafafa",
+  color: COLORS.text,
   marginBottom: 10,
 };
 
 const $description: TextStyle = {
   fontSize: 14,
-  color: "#71717a",
+  color: COLORS.textMuted,
   textAlign: "center",
   lineHeight: 20,
 };

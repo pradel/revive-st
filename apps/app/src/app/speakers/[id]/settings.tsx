@@ -15,6 +15,7 @@ import {
 } from "react-native";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
   value: string;
@@ -103,8 +104,8 @@ export default function SpeakerSettings() {
           options={{
             title: "Settings",
             headerShown: true,
-            headerStyle: { backgroundColor: "#09090b" },
-            headerTintColor: "#fafafa",
+            headerStyle: { backgroundColor: COLORS.background },
+            headerTintColor: COLORS.text,
             headerShadowVisible: false,
             headerTitleStyle: { fontWeight: "600" },
           }}
@@ -151,8 +152,8 @@ export default function SpeakerSettings() {
         options={{
           title: "Settings",
           headerShown: true,
-          headerStyle: { backgroundColor: "#09090b" },
-          headerTintColor: "#fafafa",
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: "600" },
         }}
@@ -491,7 +492,7 @@ function PickerSetting({
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $content: ViewStyle = {
@@ -509,7 +510,7 @@ const $centerState: ViewStyle = {
 
 const $notFoundText: TextStyle = {
   fontSize: 16,
-  color: "#71717a",
+  color: COLORS.textMuted,
   marginTop: 16,
 };
 
@@ -518,27 +519,27 @@ const $backButton: ViewStyle = {
   paddingHorizontal: 24,
   paddingVertical: 10,
   borderRadius: 10,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
 };
 
 const $backButtonText: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "600",
 };
 
 const $card: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
 const $sectionLabel: TextStyle = {
   fontSize: 12,
   fontWeight: "700",
-  color: "#52525b",
+  color: COLORS.textDisabled,
   letterSpacing: 1,
   textTransform: "uppercase",
   marginTop: 24,
@@ -554,27 +555,27 @@ const $renameRow: ViewStyle = {
 
 const $textInput: TextStyle = {
   flex: 1,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   borderRadius: 10,
   paddingHorizontal: 12,
   paddingVertical: 10,
   fontSize: 15,
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $textInputError: TextStyle = {
   borderWidth: 1,
-  borderColor: "#ef4444",
+  borderColor: COLORS.error,
 };
 
 const $nameErrorText: TextStyle = {
   fontSize: 12,
-  color: "#ef4444",
+  color: COLORS.error,
   marginTop: 4,
 };
 
 const $saveButton: ViewStyle = {
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
   paddingHorizontal: 16,
   paddingVertical: 10,
   borderRadius: 10,
@@ -582,13 +583,13 @@ const $saveButton: ViewStyle = {
 
 const $saveButtonText: TextStyle = {
   fontSize: 14,
-  color: "#09090b",
+  color: COLORS.background,
   fontWeight: "700",
 };
 
 const $infoDivider: ViewStyle = {
   height: 1,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   marginVertical: 10,
 };
 
@@ -601,12 +602,12 @@ const $infoRow: ViewStyle = {
 
 const $infoLabel: TextStyle = {
   fontSize: 14,
-  color: "#71717a",
+  color: COLORS.textMuted,
 };
 
 const $infoValue: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "500",
   textAlign: "right",
   flexShrink: 1,
@@ -635,7 +636,7 @@ const $sliderLabels: ViewStyle = {
 
 const $sliderLabelText: TextStyle = {
   fontSize: 11,
-  color: "#52525b",
+  color: COLORS.textDisabled,
 };
 
 const $pickerOptions: ViewStyle = {
@@ -649,41 +650,41 @@ const $pickerChip: ViewStyle = {
   paddingHorizontal: 12,
   paddingVertical: 6,
   borderRadius: 8,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   borderWidth: 1,
-  borderColor: "transparent",
+  borderColor: COLORS.transparent,
 };
 
 const $pickerChipActive: ViewStyle = {
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
 };
 
 const $pickerChipText: TextStyle = {
   fontSize: 13,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "600",
 };
 
 const $pickerChipTextActive: TextStyle = {
-  color: "#09090b",
+  color: COLORS.background,
 };
 
 const $pickerDescription: TextStyle = {
   fontSize: 12,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   marginTop: 8,
 };
 
 const $versionLabel: TextStyle = {
   fontSize: 13,
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontWeight: "600",
   marginBottom: 4,
 };
 
 const $versionValue: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "400",
   lineHeight: 20,
 };

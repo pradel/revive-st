@@ -28,6 +28,7 @@ import {
 } from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
+import { COLORS } from "@/ui/theme";
 
 const GENRE_TAGS = [
   "Jazz",
@@ -418,7 +419,7 @@ export default function RadioBrowser() {
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $header: ViewStyle = {
@@ -428,7 +429,7 @@ const $header: ViewStyle = {
 
 const $appTitle: TextStyle = {
   fontSize: 28,
-  color: "#fafafa",
+  color: COLORS.text,
   fontWeight: "800",
   letterSpacing: -0.5,
 };
@@ -447,31 +448,31 @@ const $tab: ViewStyle = {
   borderRadius: 10,
   alignItems: "center",
   borderWidth: 1,
-  borderColor: "#18181b",
+  borderColor: COLORS.card,
 };
 
 const $activeTab: ViewStyle = {
   backgroundColor: "rgba(37, 99, 235, 0.1)",
-  borderColor: "#2563eb",
+  borderColor: COLORS.primary,
 };
 
 const $tabText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 14,
   fontWeight: "600",
 };
 
 const $activeTabText: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $searchBox: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 12,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   marginHorizontal: 16,
   marginBottom: 12,
   paddingHorizontal: 12,
@@ -479,7 +480,7 @@ const $searchBox: ViewStyle = {
 
 const $searchInput: TextStyle = {
   flex: 1,
-  color: "#fafafa",
+  color: COLORS.text,
   height: 44,
   fontSize: 15,
 };
@@ -489,7 +490,7 @@ const $clearSearchButton: ViewStyle = {
 };
 
 const $clearSearchText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 16,
 };
 
@@ -501,24 +502,24 @@ const $tagPill: ViewStyle = {
   paddingHorizontal: 16,
   paddingVertical: 8,
   borderRadius: 20,
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
 const $tagPillActive: ViewStyle = {
-  backgroundColor: "#f59e0b",
-  borderColor: "#d97706",
+  backgroundColor: COLORS.warning,
+  borderColor: COLORS.warningBorder,
 };
 
 const $tagText: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontSize: 13,
   fontWeight: "600",
 };
 
 const $tagTextActive: TextStyle = {
-  color: "#09090b",
+  color: COLORS.background,
 };
 
 const $listContent: ViewStyle = {
@@ -533,7 +534,7 @@ const $stationCard: ViewStyle = {
   backgroundColor: "rgba(24, 24, 27, 0.6)",
   borderRadius: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   padding: 12,
 };
 
@@ -541,7 +542,7 @@ const $stationLogoContainer: ViewStyle = {
   width: 44,
   height: 44,
   borderRadius: 8,
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   justifyContent: "center",
   alignItems: "center",
   overflow: "hidden",
@@ -563,13 +564,13 @@ const $stationDetails: ViewStyle = {
 };
 
 const $stationName: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 15,
   fontWeight: "bold",
 };
 
 const $stationSubText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 12,
   marginTop: 4,
 };
@@ -582,7 +583,7 @@ const $favoriteButton: ViewStyle = {
 };
 
 const $favoriteIconText: TextStyle = {
-  color: "#f59e0b",
+  color: COLORS.warning,
   fontSize: 24,
 };
 
@@ -594,7 +595,7 @@ const $centerState: ViewStyle = {
 };
 
 const $loadingText: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   marginTop: 12,
   fontSize: 15,
 };
@@ -614,7 +615,7 @@ const $infoIcon: TextStyle = {
 };
 
 const $infoTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 18,
   fontWeight: "bold",
   marginBottom: 8,
@@ -622,7 +623,7 @@ const $infoTitle: TextStyle = {
 };
 
 const $infoText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 14,
   textAlign: "center",
   lineHeight: 20,
@@ -630,14 +631,14 @@ const $infoText: TextStyle = {
 };
 
 const $exploreButton: ViewStyle = {
-  backgroundColor: "#2563eb",
+  backgroundColor: COLORS.primary,
   paddingHorizontal: 24,
   paddingVertical: 12,
   borderRadius: 8,
 };
 
 const $exploreButtonText: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontWeight: "600",
   fontSize: 14,
 };
@@ -649,11 +650,11 @@ const $sheetOverlay: ViewStyle = {
 };
 
 const $sheetContent: ViewStyle = {
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
   borderTopLeftRadius: 24,
   borderTopRightRadius: 24,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   paddingHorizontal: 24,
   paddingTop: 16,
   paddingBottom: 24,
@@ -668,7 +669,7 @@ const $sheetHeader: ViewStyle = {
 };
 
 const $sheetTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 20,
   fontWeight: "700",
 };
@@ -677,18 +678,18 @@ const $sheetCloseButton: ViewStyle = {
   width: 32,
   height: 32,
   borderRadius: 16,
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   justifyContent: "center",
   alignItems: "center",
 };
 
 const $sheetCloseText: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontSize: 14,
 };
 
 const $sheetSubtitle: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontSize: 14,
   lineHeight: 20,
   marginBottom: 20,
@@ -702,9 +703,9 @@ const $speakerItem: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   borderRadius: 16,
   padding: 16,
   marginBottom: 10,
@@ -717,19 +718,19 @@ const $speakerItemLeft: ViewStyle = {
 };
 
 const $speakerName: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 15,
   fontWeight: "bold",
 };
 
 const $speakerStatus: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 12,
   marginTop: 2,
 };
 
 const $castPlayIcon: TextStyle = {
-  color: "#2563eb",
+  color: COLORS.primary,
   fontSize: 18,
   fontWeight: "bold",
 };
@@ -745,14 +746,14 @@ const $sheetEmptyIcon: TextStyle = {
 };
 
 const $sheetEmptyTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 16,
   fontWeight: "bold",
   marginBottom: 6,
 };
 
 const $sheetEmptyText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 12,
   textAlign: "center",
 };

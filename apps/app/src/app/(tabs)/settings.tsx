@@ -11,6 +11,7 @@ import {
 } from "react-native";
 
 import { useLogger } from "@/lib/useLogger";
+import { COLORS } from "@/ui/theme";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
 
@@ -85,7 +86,7 @@ export default function AppSettings() {
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $content: ViewStyle = {
@@ -95,11 +96,11 @@ const $content: ViewStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
 const $cardHeader: ViewStyle = {
@@ -111,7 +112,7 @@ const $appIcon: ViewStyle = {
   width: 48,
   height: 48,
   borderRadius: 14,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   alignItems: "center",
   justifyContent: "center",
   marginRight: 14,
@@ -124,19 +125,19 @@ const $cardMeta: ViewStyle = {
 const $appName: TextStyle = {
   fontSize: 17,
   fontWeight: "700",
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $appType: TextStyle = {
   fontSize: 13,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   marginTop: 2,
 };
 
 const $sectionLabel: TextStyle = {
   fontSize: 12,
   fontWeight: "700",
-  color: "#52525b",
+  color: COLORS.textDisabled,
   letterSpacing: 1,
   textTransform: "uppercase",
   marginTop: 24,
@@ -153,12 +154,12 @@ const $infoRow: ViewStyle = {
 
 const $infoLabel: TextStyle = {
   fontSize: 14,
-  color: "#71717a",
+  color: COLORS.textMuted,
 };
 
 const $infoValue: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "500",
 };
 
