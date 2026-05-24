@@ -144,7 +144,11 @@ export default function RadioBrowser() {
           {item.favicon ? (
             <Image source={{ uri: item.favicon }} style={$stationLogo} />
           ) : (
-            <Text style={$stationFallbackLogo}>📻</Text>
+            <SymbolView
+              name={{ ios: "radio", android: "radio", web: "radio" }}
+              tintColor={COLORS.textMuted}
+              size={32}
+            />
           )}
         </View>
 
@@ -588,10 +592,6 @@ const $stationLogoContainer: ViewStyle = {
 const $stationLogo: ImageStyle = {
   width: 64,
   height: 64,
-};
-
-const $stationFallbackLogo: TextStyle = {
-  fontSize: 32,
 };
 
 const $stationDetails: ViewStyle = {
