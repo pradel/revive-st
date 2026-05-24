@@ -453,15 +453,15 @@ const $tab: ViewStyle = {
   flex: 1,
   paddingVertical: 10,
   backgroundColor: "rgba(24, 24, 27, 0.4)",
-  borderRadius: 10,
+  borderRadius: 20,
   alignItems: "center",
   borderWidth: 1,
   borderColor: COLORS.card,
 };
 
 const $activeTab: ViewStyle = {
-  backgroundColor: "rgba(37, 99, 235, 0.1)",
-  borderColor: COLORS.primary,
+  backgroundColor: COLORS.card,
+  borderColor: COLORS.border,
 };
 
 const $tabText: TextStyle = {
@@ -478,7 +478,7 @@ const $searchBox: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   backgroundColor: COLORS.card,
-  borderRadius: 12,
+  borderRadius: 20,
   borderWidth: 1,
   borderColor: COLORS.border,
   marginHorizontal: 16,
@@ -507,7 +507,7 @@ const $tagsContent: ViewStyle = {
 };
 
 const $tagPill: ViewStyle = {
-  paddingHorizontal: 16,
+  paddingHorizontal: 24,
   paddingVertical: 8,
   borderRadius: 20,
   backgroundColor: COLORS.card,
@@ -533,13 +533,13 @@ const $tagTextActive: TextStyle = {
 const $listContent: ViewStyle = {
   paddingHorizontal: 16,
   paddingBottom: 24,
-  gap: 8,
+  gap: 16,
 };
 
 const $stationCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: "rgba(24, 24, 27, 0.6)",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   borderWidth: 1,
   borderColor: COLORS.border,
