@@ -159,6 +159,21 @@ export default function SpeakerSettings() {
         }}
       />
 
+      {/* Hero */}
+      <View style={[$card, $heroCard]}>
+        <View style={$heroIconContainer}>
+          <SymbolView
+            name={{ ios: "speaker.wave.2", android: "speaker", web: "speaker" }}
+            tintColor={COLORS.primary}
+            size={32}
+          />
+        </View>
+        <Text style={$heroTitle}>{speaker.name}</Text>
+        <Text style={$heroSubtitle}>
+          {speaker.type} · {speaker.host}
+        </Text>
+      </View>
+
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
       {nameValue !== "" ? (
@@ -201,33 +216,33 @@ export default function SpeakerSettings() {
         </View>
       ) : (
         <TouchableOpacity
-          style={$card}
+          style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
             setNameValue(speaker.name);
           }}
         >
-          <View style={$infoRow}>
-            <Text style={$infoLabel}>Name</Text>
-            <View style={$infoRowRight}>
-              <Text style={$infoValue} numberOfLines={1}>
-                {speaker.name}
-              </Text>
-              {setNameMutation.isPending ? (
-                <ActivityIndicator size="small" color="#a1a1aa" />
-              ) : (
-                <SymbolView
-                  name={{
-                    ios: "chevron.right",
-                    android: "chevron_right",
-                    web: "chevron_right",
-                  }}
-                  tintColor="#52525b"
-                  size={14}
-                />
-              )}
-            </View>
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{ ios: "pencil", android: "edit", web: "edit" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
           </View>
+          <Text style={[$linkText, { flex: 1 }]}>Rename Speaker</Text>
+          {setNameMutation.isPending ? (
+            <ActivityIndicator size="small" color="#a1a1aa" />
+          ) : (
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
+              }}
+              tintColor={COLORS.textMuted}
+              size={20}
+            />
+          )}
         </TouchableOpacity>
       )}
 
@@ -497,8 +512,9 @@ const $container: ViewStyle = {
 
 const $content: ViewStyle = {
   paddingHorizontal: 20,
-  paddingTop: 8,
+  paddingTop: 20,
   paddingBottom: 40,
+  gap: 12,
 };
 
 const $centerState: ViewStyle = {
@@ -536,15 +552,68 @@ const $card: ViewStyle = {
   borderColor: COLORS.border,
 };
 
-const $sectionLabel: TextStyle = {
-  fontSize: 12,
-  fontWeight: "700",
-  color: COLORS.textDisabled,
-  letterSpacing: 1,
-  textTransform: "uppercase",
-  marginTop: 24,
+const $heroCard: ViewStyle = {
+  alignItems: "center",
+  paddingVertical: 32,
   marginBottom: 8,
+};
+
+const $heroIconContainer: ViewStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  backgroundColor: "rgba(29, 185, 84, 0.1)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+};
+
+const $heroTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "bold",
+  color: COLORS.text,
+  marginBottom: 4,
+  textAlign: "center",
+};
+
+const $heroSubtitle: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
+};
+
+const $sectionLabel: TextStyle = {
+  fontSize: 16,
+  fontWeight: "700",
+  color: COLORS.primary,
+  marginTop: 16,
+  marginBottom: 4,
   marginLeft: 4,
+};
+
+const $linkCard: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: COLORS.card,
+  borderRadius: 16,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+};
+
+const $linkIconContainer: ViewStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  backgroundColor: "rgba(255, 255, 255, 0.05)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 16,
+};
+
+const $linkText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "500",
 };
 
 const $renameRow: ViewStyle = {
@@ -601,24 +670,16 @@ const $infoRow: ViewStyle = {
 };
 
 const $infoLabel: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "500",
 };
 
 const $infoValue: TextStyle = {
   fontSize: 14,
-  color: COLORS.textSecondary,
-  fontWeight: "500",
+  color: COLORS.textMuted,
   textAlign: "right",
   flexShrink: 1,
-};
-
-const $infoRowRight: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 4,
-  flexShrink: 1,
-  justifyContent: "flex-end",
 };
 
 const $sliderHeader: ViewStyle = {
