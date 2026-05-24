@@ -147,7 +147,7 @@ export default function RadioBrowser() {
             <SymbolView
               name={{ ios: "radio", android: "radio", web: "radio" }}
               tintColor={COLORS.textMuted}
-              size={32}
+              size={28}
             />
           )}
         </View>
@@ -576,12 +576,12 @@ const $stationCard: ViewStyle = {
   borderRadius: 16,
   borderWidth: 1,
   borderColor: COLORS.border,
-  padding: 12,
+  padding: 10,
 };
 
 const $stationLogoContainer: ViewStyle = {
-  width: 64,
-  height: 64,
+  width: 56,
+  height: 56,
   borderRadius: 8,
   backgroundColor: COLORS.card,
   justifyContent: "center",
@@ -590,25 +590,25 @@ const $stationLogoContainer: ViewStyle = {
 };
 
 const $stationLogo: ImageStyle = {
-  width: 64,
-  height: 64,
+  width: 56,
+  height: 56,
 };
 
 const $stationDetails: ViewStyle = {
   flex: 1,
-  marginLeft: 16,
+  marginLeft: 14,
   marginRight: 8,
 };
 
 const $stationName: TextStyle = {
   color: COLORS.text,
-  fontSize: 18,
+  fontSize: 16,
   fontWeight: "bold",
 };
 
 const $stationSubText: TextStyle = {
   color: COLORS.textMuted,
-  fontSize: 14,
+  fontSize: 13,
   marginTop: 4,
 };
 
@@ -621,12 +621,12 @@ const $favoriteButton: ViewStyle = {
 
 const $favoriteIconTextActive: TextStyle = {
   color: COLORS.primary,
-  fontSize: 28,
+  fontSize: 24,
 };
 
 const $favoriteIconTextInactive: TextStyle = {
   color: COLORS.textMuted,
-  fontSize: 28,
+  fontSize: 24,
 };
 
 const $listHeaderTitle: TextStyle = {
