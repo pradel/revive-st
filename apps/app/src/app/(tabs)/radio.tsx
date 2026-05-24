@@ -280,7 +280,7 @@ export default function RadioBrowser() {
             )}
           </View>
 
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
             <FlatList
               data={GENRE_TAGS}
               horizontal
@@ -453,7 +453,7 @@ const $tab: ViewStyle = {
   flex: 1,
   paddingVertical: 10,
   backgroundColor: "rgba(24, 24, 27, 0.4)",
-  borderRadius: 20,
+  borderRadius: 24,
   alignItems: "center",
   borderWidth: 1,
   borderColor: COLORS.card,
@@ -478,7 +478,7 @@ const $searchBox: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   backgroundColor: COLORS.card,
-  borderRadius: 20,
+  borderRadius: 24,
   borderWidth: 1,
   borderColor: COLORS.border,
   marginHorizontal: 16,
@@ -509,8 +509,8 @@ const $tagsContent: ViewStyle = {
 const $tagPill: ViewStyle = {
   paddingHorizontal: 24,
   paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: COLORS.card,
+  borderRadius: 24,
+  backgroundColor: COLORS.background,
   borderWidth: 1,
   borderColor: COLORS.border,
 };
