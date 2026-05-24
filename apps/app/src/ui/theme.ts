@@ -1,42 +1,43 @@
+// oxlint-disable no-inline-comments
 export const COLORS = {
   // Base
-  background: "#09090b",
-  card: "#18181b",
-  border: "#27272a",
+  background: "#121414", // Deep charcoal surface
+  card: "#1a1c1c", // Slightly lighter surface-container-low
+  border: "#38393a", // surface-bright for subtle outlines
 
   // Text & Icons
-  text: "#fafafa",
-  textSecondary: "#a1a1aa",
-  textMuted: "#71717a",
-  textDisabled: "#52525b",
+  text: "#fdfdfd", // High contrast white
+  textSecondary: "#c4c7c5", // Grey for secondary hierarchy
+  textMuted: "#8e918f", // Muted variant for metadata
+  textDisabled: "#444746", // Disabled state
 
-  // Primary
-  primary: "#2563eb",
-  primaryTransparent: "rgba(37, 99, 235, 0.1)",
+  // Primary - Luminous Emerald
+  primary: "#1db954", // Signature Emerald Green
+  primaryTransparent: "rgba(29, 185, 84, 0.1)",
 
-  // Status - Success
-  successLight: "#4ade80",
-  success: "#22c55e",
-  successDark: "#052e16",
+  // Status - Success (Mapped to Primary as they share the green palette)
+  successLight: "#2eff71",
+  success: "#1db954",
+  successDark: "#00521c",
 
   // Status - Warning
-  warning: "#f59e0b",
-  warningBorder: "#d97706",
-  warningDark: "#a16207",
-  warningDarker: "#78350f",
+  warning: "#ffb86c",
+  warningBorder: "#855300",
+  warningDark: "#5c3900",
+  warningDarker: "#412700",
 
   // Status - Error
-  errorLight: "#fca5a5",
-  error: "#ef4444",
-  errorDark: "#7f1d1d",
-  errorDarker: "#450a0a",
+  errorLight: "#ffb4ab",
+  error: "#ff5449",
+  errorDark: "#93000a",
+  errorDarker: "#690005",
 
   // Status - Info
-  infoDark: "#1e3a5f",
+  infoDark: "#004a77",
 
   // Overlays
-  overlayLight: "rgba(24, 24, 27, 0.4)",
-  overlayMedium: "rgba(24, 24, 27, 0.6)",
-  overlayDark: "rgba(0, 0, 0, 0.75)",
+  overlayLight: "rgba(18, 20, 20, 0.4)",
+  overlayMedium: "rgba(18, 20, 20, 0.6)",
+  overlayDark: "rgba(13, 14, 15, 0.8)",
   transparent: "transparent",
 };
