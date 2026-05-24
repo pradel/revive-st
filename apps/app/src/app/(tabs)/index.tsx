@@ -15,6 +15,7 @@ import {
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
 
 export default function Index() {
@@ -77,32 +78,30 @@ export default function Index() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={$header}>
-        <View>
-          <Text style={$appSubtitle}>Revive</Text>
-          <Text style={$appTitle}>SoundTouch</Text>
-        </View>
-        <TouchableOpacity
-          style={$rescanButton}
-          onPress={rescan}
-          activeOpacity={0.7}
-          disabled={isScanning}
-        >
-          {isScanning ? (
-            <ActivityIndicator size="small" color="#a1a1aa" />
-          ) : (
-            <SymbolView
-              name={{
-                ios: "arrow.clockwise",
-                android: "refresh",
-                web: "refresh",
-              }}
-              tintColor="#a1a1aa"
-              size={18}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
+      <Header
+        rightComponent={
+          <TouchableOpacity
+            style={$rescanButton}
+            onPress={rescan}
+            activeOpacity={0.7}
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <ActivityIndicator size="small" color="#a1a1aa" />
+            ) : (
+              <SymbolView
+                name={{
+                  ios: "arrow.clockwise",
+                  android: "refresh",
+                  web: "refresh",
+                }}
+                tintColor="#a1a1aa"
+                size={18}
+              />
+            )}
+          </TouchableOpacity>
+        }
+      />
 
       {/* Loading State */}
       {showLoading && (
@@ -325,31 +324,8 @@ const $container: ViewStyle = {
 };
 
 const $content: ViewStyle = {
-  paddingHorizontal: 20,
   paddingTop: 60,
   paddingBottom: 40,
-};
-
-const $header: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: 28,
-};
-
-const $appSubtitle: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-  fontWeight: "500",
-  letterSpacing: 0.5,
-};
-
-const $appTitle: TextStyle = {
-  fontSize: 28,
-  color: COLORS.text,
-  fontWeight: "800",
-  letterSpacing: -0.5,
-  marginTop: 2,
 };
 
 const $rescanButton: ViewStyle = {
@@ -449,6 +425,7 @@ const $sectionHeader: ViewStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 14,
+  paddingHorizontal: 20,
 };
 
 const $sectionTitle: TextStyle = {
@@ -467,6 +444,7 @@ const $sectionCount: TextStyle = {
 
 const $speakersList: ViewStyle = {
   gap: 10,
+  paddingHorizontal: 20,
 };
 
 const $speakerCard: ViewStyle = {
@@ -633,6 +611,7 @@ const $addSpeakerButton: ViewStyle = {
   justifyContent: "center",
   gap: 8,
   marginTop: 16,
+  marginHorizontal: 20,
   paddingVertical: 14,
   borderRadius: 14,
   borderWidth: 1,

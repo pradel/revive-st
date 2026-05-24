@@ -4,19 +4,26 @@ import { View, Text, type TextStyle, type ViewStyle } from "react-native";
 
 import { COLORS } from "@/ui/theme";
 
-export function Header() {
+interface HeaderProps {
+  rightComponent?: React.ReactNode;
+}
+
+export function Header({ rightComponent }: HeaderProps) {
   return (
     <View style={$header}>
-      <SymbolView
-        name={{
-          ios: "speaker.wave.2.fill",
-          android: "speaker",
-          web: "speaker",
-        }}
-        tintColor={COLORS.primary}
-        size={28}
-      />
-      <Text style={$appTitle}>Revive ST</Text>
+      <View style={$leftContent}>
+        <SymbolView
+          name={{
+            ios: "speaker.wave.2.fill",
+            android: "speaker",
+            web: "speaker",
+          }}
+          tintColor={COLORS.primary}
+          size={28}
+        />
+        <Text style={$appTitle}>Revive ST</Text>
+      </View>
+      {rightComponent}
     </View>
   );
 }
@@ -24,8 +31,14 @@ export function Header() {
 const $header: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
+  justifyContent: "space-between",
   paddingHorizontal: 20,
   paddingBottom: 8,
+};
+
+const $leftContent: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
   gap: 12,
 };
 
