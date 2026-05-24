@@ -12,7 +12,7 @@ export const COLORS = {
   textDisabled: "#444746", // Disabled state
 
   // Primary - Luminous Emerald
-  primary: "#1db954", // Signature Emerald Green
+  primary: "#1DB954", // Signature Emerald Green
   primaryTransparent: "rgba(29, 185, 84, 0.1)",
 
   // Status - Success (Mapped to Primary as they share the green palette)

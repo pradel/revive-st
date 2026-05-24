@@ -225,35 +225,58 @@ export default function RadioBrowser() {
   return (
     <SafeAreaView style={$container}>
       <View style={$header}>
-        <Text style={$appTitle}>Radio</Text>
+        <SymbolView
+          name={{
+            ios: "speaker.wave.2.fill",
+            android: "speaker",
+            web: "speaker",
+          }}
+          tintColor={COLORS.primary}
+          size={28}
+        />
+        <Text style={$appTitle}>Revive ST</Text>
       </View>
 
       <View style={$tabsContainer}>
-        <Pressable
-          style={[$tab, activeTab === "search" && $activeTab]}
-          onPress={() => {
-            setActiveTab("search");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
-            Browse
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[$tab, activeTab === "favorites" && $activeTab]}
-          onPress={() => {
-            setActiveTab("favorites");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "favorites" && $activeTabText]}>
-            Favorites ({favorites.length})
-          </Text>
-        </Pressable>
+        <View style={$tabsWrapper}>
+          <Pressable
+            style={[$tab, activeTab === "search" && $activeTab]}
+            onPress={() => {
+              setActiveTab("search");
+            }}
+          >
+            <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
+              Browse
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[$tab, activeTab === "favorites" && $activeTab]}
+            onPress={() => {
+              setActiveTab("favorites");
+            }}
+          >
+            <Text
+              style={[$tabText, activeTab === "favorites" && $activeTabText]}
+            >
+              Favorites
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {activeTab === "search" ? (
         <View style={{ flex: 1 }}>
           <View style={$searchBox}>
+            <SymbolView
+              name={{
+                ios: "magnifyingglass",
+                android: "search",
+                web: "search",
+              }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+              style={{ marginRight: 8 }}
+            />
             <TextInput
               style={$searchInput}
               placeholder="Search by station name..."
@@ -305,6 +328,7 @@ export default function RadioBrowser() {
             />
           </View>
 
+          <Text style={$listHeaderTitle}>TRENDING STATIONS</Text>
           {renderSearchResults()}
         </View>
       ) : (
@@ -431,8 +455,11 @@ const $container: ViewStyle = {
 };
 
 const $header: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
   paddingHorizontal: 20,
   paddingBottom: 8,
+  gap: 12,
 };
 
 const $appTitle: TextStyle = {
@@ -443,25 +470,27 @@ const $appTitle: TextStyle = {
 };
 
 const $tabsContainer: ViewStyle = {
-  flexDirection: "row",
   paddingHorizontal: 16,
   paddingVertical: 12,
-  gap: 12,
+};
+
+const $tabsWrapper: ViewStyle = {
+  flexDirection: "row",
+  backgroundColor: COLORS.card,
+  borderRadius: 24,
+  padding: 4,
 };
 
 const $tab: ViewStyle = {
   flex: 1,
   paddingVertical: 10,
-  backgroundColor: "rgba(24, 24, 27, 0.4)",
-  borderRadius: 24,
+  borderRadius: 20,
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: COLORS.card,
+  backgroundColor: COLORS.transparent,
 };
 
 const $activeTab: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderColor: COLORS.border,
+  backgroundColor: COLORS.border,
 };
 
 const $tabText: TextStyle = {
@@ -547,8 +576,8 @@ const $stationCard: ViewStyle = {
 };
 
 const $stationLogoContainer: ViewStyle = {
-  width: 44,
-  height: 44,
+  width: 64,
+  height: 64,
   borderRadius: 8,
   backgroundColor: COLORS.card,
   justifyContent: "center",
@@ -557,29 +586,29 @@ const $stationLogoContainer: ViewStyle = {
 };
 
 const $stationLogo: ImageStyle = {
-  width: 44,
-  height: 44,
+  width: 64,
+  height: 64,
 };
 
 const $stationFallbackLogo: TextStyle = {
-  fontSize: 22,
+  fontSize: 32,
 };
 
 const $stationDetails: ViewStyle = {
   flex: 1,
-  marginLeft: 12,
+  marginLeft: 16,
   marginRight: 8,
 };
 
 const $stationName: TextStyle = {
   color: COLORS.text,
-  fontSize: 15,
+  fontSize: 18,
   fontWeight: "bold",
 };
 
 const $stationSubText: TextStyle = {
   color: COLORS.textMuted,
-  fontSize: 12,
+  fontSize: 14,
   marginTop: 4,
 };
 
@@ -592,12 +621,21 @@ const $favoriteButton: ViewStyle = {
 
 const $favoriteIconTextActive: TextStyle = {
   color: COLORS.primary,
-  fontSize: 24,
+  fontSize: 28,
 };
 
 const $favoriteIconTextInactive: TextStyle = {
   color: COLORS.textMuted,
-  fontSize: 24,
+  fontSize: 28,
+};
+
+const $listHeaderTitle: TextStyle = {
+  color: COLORS.textSecondary,
+  fontSize: 12,
+  fontWeight: "bold",
+  letterSpacing: 1.5,
+  paddingHorizontal: 16,
+  marginBottom: 12,
 };
 
 const $centerState: ViewStyle = {
