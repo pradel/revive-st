@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
+  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -47,7 +48,13 @@ export default function AppSettings() {
           <Text style={$heroSubtitle}>Version {version}</Text>
         </View>
 
-        <TouchableOpacity style={$linkCard} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={$linkCard}
+          activeOpacity={0.7}
+          onPress={() => {
+            void Linking.openURL("https://github.com/pradel/revive-st");
+          }}
+        >
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "globe", android: "language", web: "language" }}
@@ -67,7 +74,13 @@ export default function AppSettings() {
           />
         </TouchableOpacity>
 
-        <TouchableOpacity style={$linkCard} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={$linkCard}
+          activeOpacity={0.7}
+          onPress={() => {
+            void Linking.openURL("https://github.com/pradel/revive-st");
+          }}
+        >
           <View style={$linkIconContainer}>
             <SymbolView
               name={{
