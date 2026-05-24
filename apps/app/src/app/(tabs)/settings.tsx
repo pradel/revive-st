@@ -9,8 +9,10 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useLogger } from "@/lib/useLogger";
+import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
@@ -20,46 +22,106 @@ export default function AppSettings() {
   const { logs } = useLogger();
 
   return (
-    <ScrollView
-      style={$container}
-      contentContainerStyle={$content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* About */}
-      <Text style={$sectionLabel}>About</Text>
-      <View style={$card}>
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Version</Text>
-          <Text style={$infoValue}>{version}</Text>
-        </View>
-      </View>
+    <SafeAreaView style={$container}>
+      <Header />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={$content}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={$sectionLabel}>About</Text>
 
-      {/* Developer */}
-      <Text style={$sectionLabel}>Developer</Text>
-      <View style={$card}>
+        <View style={[$card, $heroCard]}>
+          <View style={$heroIconContainer}>
+            <SymbolView
+              name={{
+                ios: "speaker.wave.2",
+                android: "speaker",
+                web: "speaker",
+              }}
+              tintColor={COLORS.primary}
+              size={32}
+            />
+          </View>
+          <Text style={$heroTitle}>Revive SoundTouch</Text>
+          <Text style={$heroSubtitle}>Version {version}</Text>
+        </View>
+
+        <TouchableOpacity style={$linkCard} activeOpacity={0.7}>
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{ ios: "globe", android: "language", web: "language" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
+          </View>
+          <Text style={[$linkText, { flex: 1 }]}>Website</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity style={$linkCard} activeOpacity={0.7}>
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{
+                ios: "chevron.left.forwardslash.chevron.right",
+                android: "code",
+                web: "code",
+              }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
+          </View>
+          <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <Text style={$sectionLabel}>Developer</Text>
         <TouchableOpacity
-          style={$infoRow}
+          style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
             router.push("/logs");
           }}
         >
-          <Text style={$infoLabel}>Logs</Text>
-          <View style={$infoRowRight}>
-            <Text style={$infoValue}>{logs.length} entries</Text>
+          <View style={$linkIconContainer}>
             <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
-              }}
-              tintColor="#52525b"
-              size={14}
+              name={{ ios: "terminal", android: "terminal", web: "terminal" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
             />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={$linkText}>Logs</Text>
+            <Text style={$linkSubText}>{logs.length} entries stored</Text>
+          </View>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -70,8 +132,8 @@ const $container: ViewStyle = {
 
 const $content: ViewStyle = {
   paddingHorizontal: 20,
-  paddingTop: 60,
   paddingBottom: 40,
+  gap: 12,
 };
 
 const $card: ViewStyle = {
@@ -82,36 +144,71 @@ const $card: ViewStyle = {
   borderColor: COLORS.border,
 };
 
-const $sectionLabel: TextStyle = {
-  fontSize: 12,
-  fontWeight: "700",
-  color: COLORS.primary,
-  letterSpacing: 1,
-  marginTop: 24,
-  marginBottom: 8,
-  marginLeft: 4,
-};
-
-const $infoRow: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "space-between",
+const $heroCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 4,
+  paddingVertical: 32,
+  marginBottom: 8,
 };
 
-const $infoLabel: TextStyle = {
+const $heroIconContainer: ViewStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  backgroundColor: "rgba(29, 185, 84, 0.1)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+};
+
+const $heroTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "bold",
+  color: COLORS.text,
+  marginBottom: 4,
+};
+
+const $heroSubtitle: TextStyle = {
   fontSize: 14,
   color: COLORS.textMuted,
 };
 
-const $infoValue: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textSecondary,
+const $sectionLabel: TextStyle = {
+  fontSize: 16,
+  fontWeight: "700",
+  color: COLORS.primary,
+  marginTop: 16,
+  marginBottom: 4,
+  marginLeft: 4,
+};
+
+const $linkCard: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: COLORS.card,
+  borderRadius: 16,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+};
+
+const $linkIconContainer: ViewStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  backgroundColor: "rgba(255, 255, 255, 0.05)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 16,
+};
+
+const $linkText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
   fontWeight: "500",
 };
 
-const $infoRowRight: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 4,
+const $linkSubText: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  marginTop: 2,
 };

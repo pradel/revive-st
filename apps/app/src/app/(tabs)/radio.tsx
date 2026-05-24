@@ -28,6 +28,7 @@ import {
 } from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
+import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
 
 const GENRE_TAGS = [
@@ -228,18 +229,7 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <View style={$header}>
-        <SymbolView
-          name={{
-            ios: "speaker.wave.2.fill",
-            android: "speaker",
-            web: "speaker",
-          }}
-          tintColor={COLORS.primary}
-          size={28}
-        />
-        <Text style={$appTitle}>Revive ST</Text>
-      </View>
+      <Header />
 
       <View style={$tabsContainer}>
         <View style={$tabsWrapper}>
@@ -456,21 +446,6 @@ export default function RadioBrowser() {
 const $container: ViewStyle = {
   flex: 1,
   backgroundColor: COLORS.background,
-};
-
-const $header: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: 20,
-  paddingBottom: 8,
-  gap: 12,
-};
-
-const $appTitle: TextStyle = {
-  fontSize: 28,
-  color: COLORS.text,
-  fontWeight: "800",
-  letterSpacing: -0.5,
 };
 
 const $tabsContainer: ViewStyle = {
