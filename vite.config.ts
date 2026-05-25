@@ -55,6 +55,8 @@ export default defineConfig({
       "no-promise-executor-return": "off",
       "require-await": "off",
       "require-unicode-regexp": "off",
+      "react/jsx-props-no-spreading": "off",
+      "react/no-unescaped-entities": "off",
       "typescript/explicit-function-return-type": "off",
       "typescript/explicit-member-accessibility": "off",
       "typescript/explicit-module-boundary-types": "off",
