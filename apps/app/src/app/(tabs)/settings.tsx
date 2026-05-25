@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { APP_CONFIG } from "@/config";
 import { useLogger } from "@/lib/useLogger";
 import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
@@ -52,7 +53,7 @@ export default function AppSettings() {
           style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
-            void Linking.openURL("https://github.com/pradel/revive-st");
+            void Linking.openURL(APP_CONFIG.WEBSITE_URL);
           }}
         >
           <View style={$linkIconContainer}>
@@ -78,7 +79,7 @@ export default function AppSettings() {
           style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
-            void Linking.openURL("https://github.com/pradel/revive-st");
+            void Linking.openURL(APP_CONFIG.GITHUB_URL);
           }}
         >
           <View style={$linkIconContainer}>
