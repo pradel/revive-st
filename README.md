@@ -17,6 +17,7 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 - **Custom scenes** — trigger multi-speaker groups with a single tap
 - **EQ & audio modes** — bass, treble, Dialog/Night/Direct DSP modes
 - **Real-time sync** — WebSocket-based, instant state updates across devices
+- **Setup wizard** — easy onboarding with automatic speaker discovery
 - **No account required** — works entirely on your local network
 
 ---
