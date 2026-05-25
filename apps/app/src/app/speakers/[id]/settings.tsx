@@ -1,4 +1,4 @@
-import { Host, Slider } from "@expo/ui";
+import { BottomSheet, Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -431,27 +431,60 @@ function NativeSliderSetting({
   disabled?: boolean;
   onValueChange: (value: number) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <View>
-      <View style={$sliderHeader}>
+    <>
+      <TouchableOpacity
+        style={$infoRow}
+        activeOpacity={0.7}
+        onPress={() => {
+          setIsOpen(true);
+        }}
+      >
         <Text style={$infoLabel}>{label}</Text>
-        <Text style={$infoValue}>{value}</Text>
-      </View>
-      <Host style={{ height: 40 }}>
-        <Slider
-          value={value}
-          onValueChange={onValueChange}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-        />
-      </Host>
-      <View style={$sliderLabels}>
-        <Text style={$sliderLabelText}>{min}</Text>
-        <Text style={$sliderLabelText}>{max}</Text>
-      </View>
-    </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={$infoValue}>{value}</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={14}
+          />
+        </View>
+      </TouchableOpacity>
+      <BottomSheet
+        isPresented={isOpen}
+        onDismiss={() => {
+          setIsOpen(false);
+        }}
+        snapPoints={["half"]}
+      >
+        <View style={$bottomSheetContent}>
+          <View style={$sliderHeader}>
+            <Text style={$infoLabel}>{label}</Text>
+            <Text style={$infoValue}>{value}</Text>
+          </View>
+          <Host style={{ height: 40 }}>
+            <Slider
+              value={value}
+              onValueChange={onValueChange}
+              min={min}
+              max={max}
+              step={step}
+              disabled={disabled}
+            />
+          </Host>
+          <View style={$sliderLabels}>
+            <Text style={$sliderLabelText}>{min}</Text>
+            <Text style={$sliderLabelText}>{max}</Text>
+          </View>
+        </View>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -693,6 +726,12 @@ const $sliderLabels: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
   marginTop: 4,
+};
+
+const $bottomSheetContent: ViewStyle = {
+  width: "100%",
+  padding: 24,
+  paddingBottom: 48,
 };
 
 const $sliderLabelText: TextStyle = {
