@@ -1,3 +1,4 @@
+import { BottomSheet } from "@expo/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
@@ -8,7 +9,6 @@ import {
   ActivityIndicator,
   TextInput,
   FlatList,
-  Modal,
   Image,
   Alert,
   ScrollView,
@@ -354,91 +354,79 @@ export default function RadioBrowser() {
         </View>
       )}
 
-      <Modal
-        animationType="slide"
-        transparent
-        visible={castModalVisible}
-        onRequestClose={() => {
+      <BottomSheet
+        isPresented={castModalVisible}
+        onDismiss={() => {
           setCastModalVisible(false);
         }}
       >
-        <View style={$sheetOverlay}>
-          <View style={$sheetContent}>
-            <View style={$sheetHeader}>
-              <Text style={$sheetTitle}>Select Speaker</Text>
-              <Pressable
-                style={$sheetCloseButton}
-                onPress={() => {
-                  setCastModalVisible(false);
-                }}
-              >
-                <Text style={$sheetCloseText}>✕</Text>
-              </Pressable>
-            </View>
-
-            <Text style={$sheetSubtitle}>
-              Which speaker would you like to stream{" "}
-              {`"${castingStation?.name}"`} to?
-            </Text>
-
-            {speakers.length === 0 ? (
-              <View style={$sheetEmpty}>
-                <Text style={$sheetEmptyIcon}>📡</Text>
-                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-                <Text style={$sheetEmptyText}>
-                  Please ensure your SoundTouch speaker is online and connected
-                  to the same Wi-Fi.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={$speakerList}>
-                {speakers.map((speaker) => {
-                  const isPowerOff =
-                    speaker.source === "STANDBY" ||
-                    speaker.playStatus === "STANDBY";
-                  const isCasting = castingToSpeakerId === speaker.deviceID;
-
-                  return (
-                    <Pressable
-                      key={speaker.deviceID}
-                      style={$speakerItem}
-                      onPress={() => {
-                        void handleCastToSpeaker(speaker.deviceID);
-                      }}
-                      disabled={isCasting}
-                    >
-                      <View style={$speakerItemLeft}>
-                        <SymbolView
-                          name={{
-                            ios: "speaker.wave.2.fill",
-                            android: "speaker",
-                            web: "speaker",
-                          }}
-                          tintColor="#a1a1aa"
-                          size={20}
-                        />
-                        <View>
-                          <Text style={$speakerName}>{speaker.name}</Text>
-                          <Text style={$speakerStatus}>
-                            {isPowerOff
-                              ? "Standby"
-                              : `Playing • Vol ${speaker.volume}%`}
-                          </Text>
-                        </View>
-                      </View>
-                      {isCasting ? (
-                        <ActivityIndicator size="small" color="#3b82f6" />
-                      ) : (
-                        <Text style={$castPlayIcon}>▶</Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
+        <View style={$sheetContent}>
+          <View style={$sheetHeader}>
+            <Text style={$sheetTitle}>Select Speaker</Text>
           </View>
+
+          <Text style={$sheetSubtitle}>
+            Which speaker would you like to stream {`"${castingStation?.name}"`}{" "}
+            to?
+          </Text>
+
+          {speakers.length === 0 ? (
+            <View style={$sheetEmpty}>
+              <Text style={$sheetEmptyIcon}>📡</Text>
+              <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+              <Text style={$sheetEmptyText}>
+                Please ensure your SoundTouch speaker is online and connected to
+                the same Wi-Fi.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={$speakerList}>
+              {speakers.map((speaker) => {
+                const isPowerOff =
+                  speaker.source === "STANDBY" ||
+                  speaker.playStatus === "STANDBY";
+                const isCasting = castingToSpeakerId === speaker.deviceID;
+
+                return (
+                  <Pressable
+                    key={speaker.deviceID}
+                    style={$speakerItem}
+                    onPress={() => {
+                      void handleCastToSpeaker(speaker.deviceID);
+                    }}
+                    disabled={isCasting}
+                  >
+                    <View style={$speakerItemLeft}>
+                      <SymbolView
+                        name={{
+                          ios: "speaker.wave.2.fill",
+                          android: "speaker",
+                          web: "speaker",
+                        }}
+                        tintColor="#a1a1aa"
+                        size={20}
+                      />
+                      <View>
+                        <Text style={$speakerName}>{speaker.name}</Text>
+                        <Text style={$speakerStatus}>
+                          {isPowerOff
+                            ? "Standby"
+                            : `Playing • Vol ${speaker.volume}%`}
+                        </Text>
+                      </View>
+                    </View>
+                    {isCasting ? (
+                      <ActivityIndicator size="small" color="#3b82f6" />
+                    ) : (
+                      <Text style={$castPlayIcon}>▶</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
-      </Modal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
@@ -669,22 +657,11 @@ const $exploreButtonText: TextStyle = {
   fontSize: 14,
 };
 
-const $sheetOverlay: ViewStyle = {
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-  justifyContent: "flex-end",
-};
-
 const $sheetContent: ViewStyle = {
-  backgroundColor: COLORS.background,
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
+  width: "100%",
   paddingHorizontal: 24,
   paddingTop: 16,
   paddingBottom: 24,
-  maxHeight: "80%",
 };
 
 const $sheetHeader: ViewStyle = {
@@ -698,20 +675,6 @@ const $sheetTitle: TextStyle = {
   color: COLORS.text,
   fontSize: 20,
   fontWeight: "700",
-};
-
-const $sheetCloseButton: ViewStyle = {
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  backgroundColor: COLORS.card,
-  justifyContent: "center",
-  alignItems: "center",
-};
-
-const $sheetCloseText: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 14,
 };
 
 const $sheetSubtitle: TextStyle = {

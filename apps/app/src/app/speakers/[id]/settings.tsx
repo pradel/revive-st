@@ -731,6 +731,7 @@ const $sliderLabels: ViewStyle = {
 };
 
 const $bottomSheetContent: ViewStyle = {
+  flex: 1,
   width: "100%",
   padding: 24,
   paddingBottom: 48,
