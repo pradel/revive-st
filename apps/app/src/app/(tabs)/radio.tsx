@@ -178,7 +178,7 @@ export default function RadioBrowser() {
     if (isLoading) {
       return (
         <View style={$centerState}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={$loadingText}>Fetching stations...</Text>
         </View>
       );
@@ -274,7 +274,7 @@ export default function RadioBrowser() {
             <TextInput
               style={$searchInput}
               placeholder="Search by station name..."
-              placeholderTextColor="#71717a"
+              placeholderTextColor={COLORS.textMuted}
               value={query}
               onChangeText={(text) => {
                 setQuery(text);
@@ -322,7 +322,13 @@ export default function RadioBrowser() {
             />
           </View>
 
-          <Text style={$listHeaderTitle}>TRENDING STATIONS</Text>
+          {!isLoading && !isError && stations && stations.length > 0 && (
+            <Text style={$listHeaderTitle}>
+              {debouncedQuery || selectedTag !== "All"
+                ? "SEARCH RESULTS"
+                : "TRENDING STATIONS"}
+            </Text>
+          )}
           {renderSearchResults()}
         </View>
       ) : (
@@ -403,7 +409,7 @@ export default function RadioBrowser() {
                           android: "speaker",
                           web: "speaker",
                         }}
-                        tintColor="#a1a1aa"
+                        tintColor={COLORS.textMuted}
                         size={20}
                       />
                       <View>
@@ -416,7 +422,7 @@ export default function RadioBrowser() {
                       </View>
                     </View>
                     {isCasting ? (
-                      <ActivityIndicator size="small" color="#3b82f6" />
+                      <ActivityIndicator size="small" color={COLORS.primary} />
                     ) : (
                       <Text style={$castPlayIcon}>▶</Text>
                     )}

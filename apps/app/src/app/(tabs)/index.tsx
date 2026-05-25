@@ -87,7 +87,7 @@ export default function Index() {
             disabled={isScanning}
           >
             {isScanning ? (
-              <ActivityIndicator size="small" color="#a1a1aa" />
+              <ActivityIndicator size="small" color={COLORS.textMuted} />
             ) : (
               <SymbolView
                 name={{
@@ -95,7 +95,7 @@ export default function Index() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor="#a1a1aa"
+                tintColor={COLORS.textMuted}
                 size={18}
               />
             )}
@@ -106,7 +106,7 @@ export default function Index() {
       {/* Loading State */}
       {showLoading && (
         <View style={$centerState}>
-          <ActivityIndicator size="large" color="#a1a1aa" />
+          <ActivityIndicator size="large" color={COLORS.textMuted} />
           <Text style={$loadingText}>Scanning for speakers...</Text>
         </View>
       )}
@@ -119,7 +119,7 @@ export default function Index() {
               name={{
                 ios: "speaker.wave.2",
               }}
-              tintColor="#52525b"
+              tintColor={COLORS.border}
               size={48}
             />
           </View>
@@ -140,7 +140,7 @@ export default function Index() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor="#ffffff"
+                tintColor={COLORS.text}
                 size={16}
               />
               <Text style={$primaryButtonText}>Rescan Network</Text>
@@ -158,7 +158,7 @@ export default function Index() {
                   android: "add",
                   web: "add",
                 }}
-                tintColor="#a1a1aa"
+                tintColor={COLORS.textMuted}
                 size={18}
               />
               <Text style={$secondaryButtonText}>Add Speaker</Text>
@@ -192,7 +192,7 @@ export default function Index() {
                             android: "speaker",
                             web: "speaker",
                           }}
-                          tintColor="#a1a1aa"
+                          tintColor={COLORS.textMuted}
                           size={20}
                         />
                       </View>
@@ -225,7 +225,7 @@ export default function Index() {
                             android: "settings",
                             web: "settings",
                           }}
-                          tintColor="#71717a"
+                          tintColor={COLORS.textMuted}
                           size={16}
                         />
                       </TouchableOpacity>
@@ -261,7 +261,7 @@ export default function Index() {
                         android: "volume_down",
                         web: "volume_down",
                       }}
-                      tintColor="#52525b"
+                      tintColor={COLORS.border}
                       size={14}
                     />
                     <TouchableOpacity
@@ -283,7 +283,7 @@ export default function Index() {
                         android: "volume_up",
                         web: "volume_up",
                       }}
-                      tintColor="#a1a1aa"
+                      tintColor={COLORS.textMuted}
                       size={14}
                     />
                     <Text style={$volumeText}>{volume}%</Text>
@@ -307,7 +307,7 @@ export default function Index() {
                 android: "add_circle",
                 web: "add_circle",
               }}
-              tintColor="#3f3f46"
+              tintColor={COLORS.card}
               size={22}
             />
             <Text style={$addSpeakerText}>Add New Speaker</Text>
