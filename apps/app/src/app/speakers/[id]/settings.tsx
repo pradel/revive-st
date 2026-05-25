@@ -9,6 +9,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   type TextStyle,
   type ViewStyle,
@@ -432,6 +433,7 @@ function NativeSliderSetting({
   onValueChange: (value: number) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { width } = useWindowDimensions();
 
   return (
     <>
@@ -463,7 +465,7 @@ function NativeSliderSetting({
         }}
         snapPoints={["half"]}
       >
-        <View style={$bottomSheetContent}>
+        <View style={[$bottomSheetContent, { width }]}>
           <View style={$sliderHeader}>
             <Text style={$infoLabel}>{label}</Text>
             <Text style={$infoValue}>{value}</Text>
