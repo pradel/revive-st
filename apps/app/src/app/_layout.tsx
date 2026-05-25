@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { BoseProvider } from "@/features/speakers/contexts/BoseContext";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { COLORS } from "@/ui/theme";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -16,7 +17,7 @@ export default function RootLayout() {
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: "#09090b" },
+            contentStyle: { backgroundColor: COLORS.background },
           }}
         />
       </BoseProvider>

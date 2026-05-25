@@ -1,3 +1,4 @@
+import { BottomSheet } from "@expo/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
@@ -8,7 +9,6 @@ import {
   ActivityIndicator,
   TextInput,
   FlatList,
-  Modal,
   Image,
   Alert,
   ScrollView,
@@ -28,8 +28,11 @@ import {
 } from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
+import { Header } from "@/ui/Header";
+import { COLORS } from "@/ui/theme";
 
 const GENRE_TAGS = [
+  "All",
   "Jazz",
   "Classical",
   "Rock",
@@ -47,7 +50,7 @@ export default function RadioBrowser() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [selectedTag, setSelectedTag] = useState<string | null>("All");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -66,7 +69,10 @@ export default function RadioBrowser() {
     isLoading,
     isError,
     error,
-  } = useRadioStations(debouncedQuery, selectedTag);
+  } = useRadioStations(
+    debouncedQuery,
+    selectedTag === "All" ? null : selectedTag,
+  );
 
   const [castingStation, setCastingStation] = useState<RadioStation | null>(
     null,
@@ -79,7 +85,7 @@ export default function RadioBrowser() {
   const handleSearch = (searchQuery = query, tag = selectedTag) => {
     setQuery(searchQuery);
     setDebouncedQuery(searchQuery);
-    setSelectedTag(tag);
+    setSelectedTag(tag ?? "All");
     setActiveTab("search");
   };
 
@@ -139,7 +145,11 @@ export default function RadioBrowser() {
           {item.favicon ? (
             <Image source={{ uri: item.favicon }} style={$stationLogo} />
           ) : (
-            <Text style={$stationFallbackLogo}>📻</Text>
+            <SymbolView
+              name={{ ios: "radio", android: "radio", web: "radio" }}
+              tintColor={COLORS.textMuted}
+              size={28}
+            />
           )}
         </View>
 
@@ -154,7 +164,11 @@ export default function RadioBrowser() {
         </View>
 
         <Pressable style={$favoriteButton} onPress={handleToggle}>
-          <Text style={$favoriteIconText}>{isFav ? "★" : "☆"}</Text>
+          <Text
+            style={isFav ? $favoriteIconTextActive : $favoriteIconTextInactive}
+          >
+            {isFav ? "★" : "☆"}
+          </Text>
         </Pressable>
       </Pressable>
     );
@@ -164,7 +178,7 @@ export default function RadioBrowser() {
     if (isLoading) {
       return (
         <View style={$centerState}>
-          <ActivityIndicator size="large" color="#3b82f6" />
+          <ActivityIndicator size="large" color={COLORS.primary} />
           <Text style={$loadingText}>Fetching stations...</Text>
         </View>
       );
@@ -215,47 +229,59 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <View style={$header}>
-        <Text style={$appTitle}>Radio</Text>
-      </View>
+      <Header />
 
       <View style={$tabsContainer}>
-        <Pressable
-          style={[$tab, activeTab === "search" && $activeTab]}
-          onPress={() => {
-            setActiveTab("search");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
-            Browse
-          </Text>
-        </Pressable>
-        <Pressable
-          style={[$tab, activeTab === "favorites" && $activeTab]}
-          onPress={() => {
-            setActiveTab("favorites");
-          }}
-        >
-          <Text style={[$tabText, activeTab === "favorites" && $activeTabText]}>
-            Favorites ({favorites.length})
-          </Text>
-        </Pressable>
+        <View style={$tabsWrapper}>
+          <Pressable
+            style={[$tab, activeTab === "search" && $activeTab]}
+            onPress={() => {
+              setActiveTab("search");
+            }}
+          >
+            <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
+              Browse
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[$tab, activeTab === "favorites" && $activeTab]}
+            onPress={() => {
+              setActiveTab("favorites");
+            }}
+          >
+            <Text
+              style={[$tabText, activeTab === "favorites" && $activeTabText]}
+            >
+              Favorites
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       {activeTab === "search" ? (
         <View style={{ flex: 1 }}>
           <View style={$searchBox}>
+            <SymbolView
+              name={{
+                ios: "magnifyingglass",
+                android: "search",
+                web: "search",
+              }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+              style={{ marginRight: 8 }}
+            />
             <TextInput
               style={$searchInput}
               placeholder="Search by station name..."
-              placeholderTextColor="#71717a"
+              placeholderTextColor={COLORS.textMuted}
               value={query}
               onChangeText={(text) => {
                 setQuery(text);
-                setSelectedTag(null);
+                setSelectedTag("All");
               }}
               onSubmitEditing={() => {
-                handleSearch(query, null);
+                handleSearch(query, "All");
               }}
               returnKeyType="search"
             />
@@ -271,7 +297,7 @@ export default function RadioBrowser() {
             )}
           </View>
 
-          <View style={{ paddingHorizontal: 16, marginBottom: 12 }}>
+          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
             <FlatList
               data={GENRE_TAGS}
               horizontal
@@ -282,7 +308,7 @@ export default function RadioBrowser() {
                 <Pressable
                   style={[$tagPill, selectedTag === item && $tagPillActive]}
                   onPress={() => {
-                    const nextTag = selectedTag === item ? null : item;
+                    const nextTag = selectedTag === item ? "All" : item;
                     handleSearch("", nextTag);
                   }}
                 >
@@ -296,6 +322,13 @@ export default function RadioBrowser() {
             />
           </View>
 
+          {!isLoading && !isError && stations && stations.length > 0 && (
+            <Text style={$listHeaderTitle}>
+              {debouncedQuery || selectedTag !== "All"
+                ? "SEARCH RESULTS"
+                : "TRENDING STATIONS"}
+            </Text>
+          )}
           {renderSearchResults()}
         </View>
       ) : (
@@ -327,151 +360,129 @@ export default function RadioBrowser() {
         </View>
       )}
 
-      <Modal
-        animationType="slide"
-        transparent
-        visible={castModalVisible}
-        onRequestClose={() => {
+      <BottomSheet
+        isPresented={castModalVisible}
+        onDismiss={() => {
           setCastModalVisible(false);
         }}
       >
-        <View style={$sheetOverlay}>
-          <View style={$sheetContent}>
-            <View style={$sheetHeader}>
-              <Text style={$sheetTitle}>Select Speaker</Text>
-              <Pressable
-                style={$sheetCloseButton}
-                onPress={() => {
-                  setCastModalVisible(false);
-                }}
-              >
-                <Text style={$sheetCloseText}>✕</Text>
-              </Pressable>
-            </View>
-
-            <Text style={$sheetSubtitle}>
-              Which speaker would you like to stream{" "}
-              {`"${castingStation?.name}"`} to?
-            </Text>
-
-            {speakers.length === 0 ? (
-              <View style={$sheetEmpty}>
-                <Text style={$sheetEmptyIcon}>📡</Text>
-                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-                <Text style={$sheetEmptyText}>
-                  Please ensure your SoundTouch speaker is online and connected
-                  to the same Wi-Fi.
-                </Text>
-              </View>
-            ) : (
-              <ScrollView style={$speakerList}>
-                {speakers.map((speaker) => {
-                  const isPowerOff =
-                    speaker.source === "STANDBY" ||
-                    speaker.playStatus === "STANDBY";
-                  const isCasting = castingToSpeakerId === speaker.deviceID;
-
-                  return (
-                    <Pressable
-                      key={speaker.deviceID}
-                      style={$speakerItem}
-                      onPress={() => {
-                        void handleCastToSpeaker(speaker.deviceID);
-                      }}
-                      disabled={isCasting}
-                    >
-                      <View style={$speakerItemLeft}>
-                        <SymbolView
-                          name={{
-                            ios: "speaker.wave.2.fill",
-                            android: "speaker",
-                            web: "speaker",
-                          }}
-                          tintColor="#a1a1aa"
-                          size={20}
-                        />
-                        <View>
-                          <Text style={$speakerName}>{speaker.name}</Text>
-                          <Text style={$speakerStatus}>
-                            {isPowerOff
-                              ? "Standby"
-                              : `Playing • Vol ${speaker.volume}%`}
-                          </Text>
-                        </View>
-                      </View>
-                      {isCasting ? (
-                        <ActivityIndicator size="small" color="#3b82f6" />
-                      ) : (
-                        <Text style={$castPlayIcon}>▶</Text>
-                      )}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
-            )}
+        <View style={$sheetContent}>
+          <View style={$sheetHeader}>
+            <Text style={$sheetTitle}>Select Speaker</Text>
           </View>
+
+          <Text style={$sheetSubtitle}>
+            Which speaker would you like to stream {`"${castingStation?.name}"`}{" "}
+            to?
+          </Text>
+
+          {speakers.length === 0 ? (
+            <View style={$sheetEmpty}>
+              <Text style={$sheetEmptyIcon}>📡</Text>
+              <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+              <Text style={$sheetEmptyText}>
+                Please ensure your SoundTouch speaker is online and connected to
+                the same Wi-Fi.
+              </Text>
+            </View>
+          ) : (
+            <ScrollView style={$speakerList}>
+              {speakers.map((speaker) => {
+                const isPowerOff =
+                  speaker.source === "STANDBY" ||
+                  speaker.playStatus === "STANDBY";
+                const isCasting = castingToSpeakerId === speaker.deviceID;
+
+                return (
+                  <Pressable
+                    key={speaker.deviceID}
+                    style={$speakerItem}
+                    onPress={() => {
+                      void handleCastToSpeaker(speaker.deviceID);
+                    }}
+                    disabled={isCasting}
+                  >
+                    <View style={$speakerItemLeft}>
+                      <SymbolView
+                        name={{
+                          ios: "speaker.wave.2.fill",
+                          android: "speaker",
+                          web: "speaker",
+                        }}
+                        tintColor={COLORS.textMuted}
+                        size={20}
+                      />
+                      <View>
+                        <Text style={$speakerName}>{speaker.name}</Text>
+                        <Text style={$speakerStatus}>
+                          {isPowerOff
+                            ? "Standby"
+                            : `Playing • Vol ${speaker.volume}%`}
+                        </Text>
+                      </View>
+                    </View>
+                    {isCasting ? (
+                      <ActivityIndicator size="small" color={COLORS.primary} />
+                    ) : (
+                      <Text style={$castPlayIcon}>▶</Text>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
-      </Modal>
+      </BottomSheet>
     </SafeAreaView>
   );
 }
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
-};
-
-const $header: ViewStyle = {
-  paddingHorizontal: 20,
-  paddingBottom: 8,
-};
-
-const $appTitle: TextStyle = {
-  fontSize: 28,
-  color: "#fafafa",
-  fontWeight: "800",
-  letterSpacing: -0.5,
+  backgroundColor: COLORS.background,
 };
 
 const $tabsContainer: ViewStyle = {
-  flexDirection: "row",
   paddingHorizontal: 16,
   paddingVertical: 12,
-  gap: 12,
+};
+
+const $tabsWrapper: ViewStyle = {
+  flexDirection: "row",
+  backgroundColor: COLORS.card,
+  borderRadius: 24,
+  padding: 4,
 };
 
 const $tab: ViewStyle = {
   flex: 1,
   paddingVertical: 10,
-  backgroundColor: "rgba(24, 24, 27, 0.4)",
-  borderRadius: 10,
+  borderRadius: 20,
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#18181b",
+  backgroundColor: COLORS.transparent,
 };
 
 const $activeTab: ViewStyle = {
-  backgroundColor: "rgba(37, 99, 235, 0.1)",
-  borderColor: "#2563eb",
+  backgroundColor: COLORS.border,
 };
 
 const $tabText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 14,
   fontWeight: "600",
 };
 
 const $activeTabText: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $searchBox: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: "#18181b",
-  borderRadius: 12,
+  backgroundColor: COLORS.card,
+  borderRadius: 24,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   marginHorizontal: 16,
   marginBottom: 12,
   paddingHorizontal: 12,
@@ -479,7 +490,7 @@ const $searchBox: ViewStyle = {
 
 const $searchInput: TextStyle = {
   flex: 1,
-  color: "#fafafa",
+  color: COLORS.text,
   height: 44,
   fontSize: 15,
 };
@@ -489,7 +500,7 @@ const $clearSearchButton: ViewStyle = {
 };
 
 const $clearSearchText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 16,
 };
 
@@ -498,79 +509,75 @@ const $tagsContent: ViewStyle = {
 };
 
 const $tagPill: ViewStyle = {
-  paddingHorizontal: 16,
+  paddingHorizontal: 24,
   paddingVertical: 8,
-  borderRadius: 20,
-  backgroundColor: "#18181b",
+  borderRadius: 24,
+  backgroundColor: COLORS.background,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
 const $tagPillActive: ViewStyle = {
-  backgroundColor: "#f59e0b",
-  borderColor: "#d97706",
+  backgroundColor: COLORS.primary,
+  borderColor: COLORS.primary,
 };
 
 const $tagText: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontSize: 13,
   fontWeight: "600",
 };
 
 const $tagTextActive: TextStyle = {
-  color: "#09090b",
+  color: COLORS.text,
 };
 
 const $listContent: ViewStyle = {
   paddingHorizontal: 16,
   paddingBottom: 24,
-  gap: 8,
+  gap: 16,
 };
 
 const $stationCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: "rgba(24, 24, 27, 0.6)",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
-  padding: 12,
+  borderColor: COLORS.border,
+  padding: 10,
 };
 
 const $stationLogoContainer: ViewStyle = {
-  width: 44,
-  height: 44,
+  width: 56,
+  height: 56,
   borderRadius: 8,
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   justifyContent: "center",
   alignItems: "center",
   overflow: "hidden",
 };
 
 const $stationLogo: ImageStyle = {
-  width: 44,
-  height: 44,
-};
-
-const $stationFallbackLogo: TextStyle = {
-  fontSize: 22,
+  width: 56,
+  height: 56,
 };
 
 const $stationDetails: ViewStyle = {
   flex: 1,
-  marginLeft: 12,
+  marginLeft: 14,
   marginRight: 8,
 };
 
 const $stationName: TextStyle = {
-  color: "#fafafa",
-  fontSize: 15,
+  color: COLORS.text,
+  fontSize: 16,
   fontWeight: "bold",
 };
 
 const $stationSubText: TextStyle = {
-  color: "#71717a",
-  fontSize: 12,
+  color: COLORS.textMuted,
+  fontSize: 13,
   marginTop: 4,
 };
 
@@ -581,9 +588,23 @@ const $favoriteButton: ViewStyle = {
   alignItems: "center",
 };
 
-const $favoriteIconText: TextStyle = {
-  color: "#f59e0b",
+const $favoriteIconTextActive: TextStyle = {
+  color: COLORS.primary,
   fontSize: 24,
+};
+
+const $favoriteIconTextInactive: TextStyle = {
+  color: COLORS.textMuted,
+  fontSize: 24,
+};
+
+const $listHeaderTitle: TextStyle = {
+  color: COLORS.textSecondary,
+  fontSize: 12,
+  fontWeight: "bold",
+  letterSpacing: 1.5,
+  paddingHorizontal: 16,
+  marginBottom: 12,
 };
 
 const $centerState: ViewStyle = {
@@ -594,7 +615,7 @@ const $centerState: ViewStyle = {
 };
 
 const $loadingText: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   marginTop: 12,
   fontSize: 15,
 };
@@ -614,7 +635,7 @@ const $infoIcon: TextStyle = {
 };
 
 const $infoTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 18,
   fontWeight: "bold",
   marginBottom: 8,
@@ -622,7 +643,7 @@ const $infoTitle: TextStyle = {
 };
 
 const $infoText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 14,
   textAlign: "center",
   lineHeight: 20,
@@ -630,34 +651,23 @@ const $infoText: TextStyle = {
 };
 
 const $exploreButton: ViewStyle = {
-  backgroundColor: "#2563eb",
+  backgroundColor: COLORS.primary,
   paddingHorizontal: 24,
   paddingVertical: 12,
   borderRadius: 8,
 };
 
 const $exploreButtonText: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontWeight: "600",
   fontSize: 14,
 };
 
-const $sheetOverlay: ViewStyle = {
-  flex: 1,
-  backgroundColor: "rgba(0, 0, 0, 0.75)",
-  justifyContent: "flex-end",
-};
-
 const $sheetContent: ViewStyle = {
-  backgroundColor: "#09090b",
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  borderWidth: 1,
-  borderColor: "#27272a",
+  width: "100%",
   paddingHorizontal: 24,
   paddingTop: 16,
   paddingBottom: 24,
-  maxHeight: "80%",
 };
 
 const $sheetHeader: ViewStyle = {
@@ -668,27 +678,13 @@ const $sheetHeader: ViewStyle = {
 };
 
 const $sheetTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 20,
   fontWeight: "700",
 };
 
-const $sheetCloseButton: ViewStyle = {
-  width: 32,
-  height: 32,
-  borderRadius: 16,
-  backgroundColor: "#18181b",
-  justifyContent: "center",
-  alignItems: "center",
-};
-
-const $sheetCloseText: TextStyle = {
-  color: "#a1a1aa",
-  fontSize: 14,
-};
-
 const $sheetSubtitle: TextStyle = {
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontSize: 14,
   lineHeight: 20,
   marginBottom: 20,
@@ -702,9 +698,9 @@ const $speakerItem: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   borderRadius: 16,
   padding: 16,
   marginBottom: 10,
@@ -717,19 +713,19 @@ const $speakerItemLeft: ViewStyle = {
 };
 
 const $speakerName: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 15,
   fontWeight: "bold",
 };
 
 const $speakerStatus: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 12,
   marginTop: 2,
 };
 
 const $castPlayIcon: TextStyle = {
-  color: "#2563eb",
+  color: COLORS.primary,
   fontSize: 18,
   fontWeight: "bold",
 };
@@ -745,14 +741,14 @@ const $sheetEmptyIcon: TextStyle = {
 };
 
 const $sheetEmptyTitle: TextStyle = {
-  color: "#fafafa",
+  color: COLORS.text,
   fontSize: 16,
   fontWeight: "bold",
   marginBottom: 6,
 };
 
 const $sheetEmptyText: TextStyle = {
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontSize: 12,
   textAlign: "center",
 };
