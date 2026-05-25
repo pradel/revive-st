@@ -138,7 +138,7 @@ export default function HomePage() {
               <FeatureCard
                 icon={<Radio className="w-5 h-5" />}
                 title="Internet radio"
-                description="Thousands of stations available through Radio Browser. Find your favorites and they stay saved."
+                description="Thousands of stations available through Radio Browser. Find and save your favorites."
                 className="md:col-span-2"
               />
               <FeatureCard
