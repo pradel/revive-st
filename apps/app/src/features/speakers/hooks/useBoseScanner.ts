@@ -344,7 +344,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
                   }),
                 );
               }
-              refreshIfAvailable();
+              } else {
+                refreshIfAvailable();
+              }
             } else {
               refreshIfAvailable();
             }
