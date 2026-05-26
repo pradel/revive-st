@@ -101,6 +101,38 @@ describe("parseWebSocketMessage", () => {
     });
   });
 
+  it("parses nowSelection updates with preset and ContentItem", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <nowSelectionUpdated>
+          <preset id="0">
+            <ContentItem source="LOCAL_INTERNET_RADIO" location="eyJzdHJlYW1VcmwiOiJodHRwOi8vc3RyZWFtLXVrMS5yYWRpb3BhcmFkaXNlLmNvbS9hYWMtMzIwIiwibmFtZSI6IlJhZGlvIFBhcmFkaXNlIE1haW4gTWl4IChFVSkgMzIwayBBQUMiLCJpbWFnZVVybCI6IiJ9" sourceAccount="" isPresetable="true">
+              <itemName>Radio Paradise Main Mix (EU) 320k AAC</itemName>
+            </ContentItem>
+          </preset>
+        </nowSelectionUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "nowSelection",
+      nowSelection: {
+        deviceID: "EC1127C25A50",
+        preset: {
+          id: 0,
+          contentItem: {
+            source: "LOCAL_INTERNET_RADIO",
+            location:
+              "eyJzdHJlYW1VcmwiOiJodHRwOi8vc3RyZWFtLXVrMS5yYWRpb3BhcmFkaXNlLmNvbS9hYWMtMzIwIiwibmFtZSI6IlJhZGlvIFBhcmFkaXNlIE1haW4gTWl4IChFVSkgMzIwayBBQUMiLCJpbWFnZVVybCI6IiJ9",
+            sourceAccount: "",
+            isPresetable: true,
+            itemName: "Radio Paradise Main Mix (EU) 320k AAC",
+          },
+        },
+      },
+    });
+  });
+
   it("identifies basic nowPlaying signal updates with no payload", () => {
     const xml = `
       <updates deviceID="000C8A123456">

@@ -319,6 +319,34 @@ export function useBoseScanner(scanDurationMs = 5000) {
               );
             } else if (update.type === "connectionState") {
               // handled by the parser, no state update needed
+            } else if (update.type === "nowSelection") {
+              const ns = update.nowSelection;
+              const contentItem = ns?.preset?.contentItem;
+              if (contentItem) {
+                // Optimistic update: nowSelection fires immediately when a preset/source is selected,
+                // while internet radio may take several seconds to buffer. We update the UI to show
+                // the new selection and set the status to BUFFERING_STATE for immediate feedback.
+                // The speaker will naturally emit a nowPlayingUpdated event once buffering completes.
+                setSpeakers((prev) =>
+                  prev.map((item) => {
+                    if (item.deviceID === update.deviceID) {
+                      return {
+                        ...item,
+                        source: contentItem.source,
+                        track: contentItem.itemName,
+                        playStatus: "BUFFERING_STATE",
+                        artist: undefined,
+                        album: undefined,
+                        artUrl: undefined,
+                      };
+                    }
+                    return item;
+                  }),
+                );
+              }
+              } else {
+                refreshIfAvailable();
+              }
             } else {
               refreshIfAvailable();
             }
