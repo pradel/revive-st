@@ -30,6 +30,20 @@ export interface BoseConnectionState {
   signal: string;
 }
 
+export interface BoseNowSelection {
+  deviceID: string;
+  preset: {
+    id: number;
+    contentItem?: {
+      source: string;
+      location: string;
+      sourceAccount: string;
+      isPresetable: boolean;
+      itemName: string;
+    };
+  };
+}
+
 export type BoseWSUpdate =
   | {
       type: "volume";
@@ -45,6 +59,11 @@ export type BoseWSUpdate =
       type: "connectionState";
       deviceID: string;
       connectionState?: BoseConnectionState;
+    }
+  | {
+      type: "nowSelection";
+      deviceID: string;
+      nowSelection?: BoseNowSelection;
     }
   | {
       type: "presets";
@@ -129,6 +148,37 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
   };
 }
 
+function parseNowSelectionUpdated(xml: string): BoseNowSelection {
+  const root = parseXml(xml);
+  const node =
+    root.name === "nowSelectionUpdated"
+      ? root
+      : getChild(root, "nowSelectionUpdated");
+  const presetNode = node ? getChild(node, "preset") : undefined;
+  const contentItemNode = presetNode
+    ? getChild(presetNode, "ContentItem")
+    : undefined;
+
+  return {
+    deviceID: "",
+    preset: {
+      id: parseIntSafe(presetNode?.attributes.id ?? "0"),
+      contentItem: contentItemNode
+        ? {
+            source: contentItemNode.attributes.source ?? "",
+            location: contentItemNode.attributes.location ?? "",
+            sourceAccount: contentItemNode.attributes.sourceAccount ?? "",
+            isPresetable: parseBool(
+              contentItemNode.attributes.isPresetable ?? "false",
+            ),
+            itemName:
+              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+          }
+        : undefined,
+    },
+  };
+}
+
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
   if (!deviceIDMatch) {
@@ -165,6 +215,18 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
       return { type: "connectionState", deviceID, connectionState };
     }
     return { type: "connectionState", deviceID };
+  }
+
+  if (xml.includes("<nowSelectionUpdated")) {
+    const block = /<nowSelectionUpdated[\s\S]*?<\/nowSelectionUpdated>/.exec(
+      xml,
+    );
+    if (block) {
+      const nowSelection = parseNowSelectionUpdated(block[0]);
+      nowSelection.deviceID = deviceID;
+      return { type: "nowSelection", deviceID, nowSelection };
+    }
+    return { type: "nowSelection", deviceID };
   }
 
   if (xml.includes("<presetsUpdated") || xml.includes("<presets>")) {
