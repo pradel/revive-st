@@ -343,7 +343,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
                     return item;
                   }),
                 );
-              }
               } else {
                 refreshIfAvailable();
               }
