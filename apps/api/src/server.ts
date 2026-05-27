@@ -4,8 +4,8 @@ import {
   createAccountFullXml,
   createSourceProvidersXml,
   createSourcesXml,
-} from "../utils/marge-xml";
-import { getStreamUrl, setStreamUrl } from "../utils/store";
+} from "./utils/marge-xml";
+import { getStreamUrl, setStreamUrl } from "./utils/store";
 
 const app = new Elysia()
   .get("/marge/streaming/sourceproviders", ({ set }) => {
