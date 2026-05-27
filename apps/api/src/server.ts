@@ -1,4 +1,4 @@
-import { Elysia } from "elysia";
+import { Hono } from "hono";
 
 import {
   createAccountFullXml,
@@ -7,41 +7,44 @@ import {
 } from "./utils/marge-xml";
 import { getStreamUrl, setStreamUrl } from "./utils/store";
 
-const app = new Elysia()
-  .get("/marge/streaming/sourceproviders", ({ set }) => {
-    set.headers["Content-Type"] = "application/vnd.bose.streaming-v1.2+xml";
-    return createSourceProvidersXml();
-  })
-  .get(
-    "/marge/streaming/account/:accountId/sources",
-    ({ params: { accountId }, set }) => {
-      set.headers["Content-Type"] = "application/vnd.bose.streaming-v1.2+xml";
-      return createSourcesXml(accountId, getStreamUrl());
-    },
+const app = new Hono()
+  .get("/marge/streaming/sourceproviders", (ctx) =>
+    ctx.body(createSourceProvidersXml(), 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    }),
   )
-  .get(
-    "/marge/streaming/account/:accountId/full",
-    ({ params: { accountId }, set }) => {
-      set.headers["Content-Type"] = "application/vnd.bose.streaming-v1.2+xml";
-      return createAccountFullXml(accountId, getStreamUrl());
-    },
-  )
-  .post("/marge/streaming/support/power_on", ({ set }) => {
-    set.headers["Content-Type"] = "application/vnd.bose.streaming-v1.2+xml";
-    return "";
+  .get("/marge/streaming/account/:accountId/sources", (ctx) => {
+    const accountId = ctx.req.param("accountId");
+    return ctx.body(createSourcesXml(accountId, getStreamUrl()), 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    });
   })
-  .post("/api/stream-url", ({ body }) => {
-    const bodyPayload = body as Record<string, unknown> | undefined;
+  .get("/marge/streaming/account/:accountId/full", (ctx) => {
+    const accountId = ctx.req.param("accountId");
+    return ctx.body(createAccountFullXml(accountId, getStreamUrl()), 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    });
+  })
+  .post("/marge/streaming/support/power_on", (ctx) =>
+    ctx.body("", 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    }),
+  )
+  .post("/api/stream-url", async (ctx) => {
+    const bodyPayload = (await ctx.req.json().catch(() => ({}))) as Record<
+      string,
+      unknown
+    >;
     const url =
       typeof bodyPayload?.url === "string" ? bodyPayload.url : undefined;
     if (url) {
       setStreamUrl(url);
-      return { success: true, url };
+      return ctx.json({ success: true, url });
     }
-    return {
+    return ctx.json({
       success: false,
       error: 'Please provide a "url" in the JSON body.',
-    };
+    });
   });
 
-export default app.handle;
+export default app.fetch;

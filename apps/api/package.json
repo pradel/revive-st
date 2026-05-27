@@ -9,7 +9,7 @@
     "preview": "vp preview"
   },
   "dependencies": {
-    "elysia": "1.4.28",
+    "hono": "^4.12.23",
     "zod": "4.4.3"
   },
   "devDependencies": {
