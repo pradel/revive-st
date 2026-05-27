@@ -26,6 +26,9 @@ importers:
 
   apps/api:
     devDependencies:
+      h3:
+        specifier: 2.0.1-rc.22
+        version: 2.0.1-rc.22(crossws@0.4.5(srvx@0.11.16))
       nitro:
         specifier: 3.0.260522-beta
         version: 3.0.260522-beta(@voidzero-dev/vite-plus-core@0.1.22(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.47.1)(typescript@6.0.3)(yaml@2.9.0))(chokidar@5.0.0)(jiti@2.7.0)(lru-cache@11.5.0)
