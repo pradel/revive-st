@@ -355,10 +355,12 @@ export class BoseWebSocketClient {
   updateHost(host: string) {
     if (this.options.host !== host) {
       this.options.host = host;
+      this.reconnectAttempts = 0;
       // Force connection reset to connect to new host IP
       this.connect();
     }
   }
+
 
   isClosed(): boolean {
     return this.ws === null || this.ws.readyState === WebSocket.CLOSED;
