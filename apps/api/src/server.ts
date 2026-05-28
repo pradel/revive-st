@@ -76,6 +76,16 @@ app
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     }),
   )
+  .post("/streaming/account/:accountId/device", (ctx) =>
+    ctx.body(createStatusOkXml(), 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    }),
+  )
+  .post("/streaming/account/:accountId/device/", (ctx) =>
+    ctx.body(createStatusOkXml(), 200, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+    }),
+  )
 
   // BMX Registry Endpoint
   .get("/v2/registry.json", (ctx) => {
