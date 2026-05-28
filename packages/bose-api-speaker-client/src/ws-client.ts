@@ -44,6 +44,24 @@ export interface BoseNowSelection {
   };
 }
 
+export interface BoseRecent {
+  deviceID: string;
+  utcTime: number;
+  contentItem?: {
+    source: string;
+    type?: string;
+    location: string;
+    sourceAccount: string;
+    isPresetable: boolean;
+    itemName: string;
+  };
+}
+
+export interface BoseRecents {
+  deviceID: string;
+  recents: BoseRecent[];
+}
+
 export type BoseWSUpdate =
   | {
       type: "volume";
@@ -81,6 +99,11 @@ export type BoseWSUpdate =
       type: "nameUpdated";
       deviceID: string;
       name: string;
+    }
+  | {
+      type: "recents";
+      deviceID: string;
+      recents?: BoseRecents;
     }
   | {
       type: "unknown";
@@ -179,6 +202,47 @@ function parseNowSelectionUpdated(xml: string): BoseNowSelection {
   };
 }
 
+function parseRecentsUpdated(xml: string): BoseRecents {
+  const root = parseXml(xml);
+  let recentsNode = root.name === "recents" ? root : getChild(root, "recents");
+  if (!recentsNode && root.name === "recentsUpdated") {
+    recentsNode = getChild(root, "recents");
+  }
+
+  const recentNodes = recentsNode
+    ? (recentsNode.children ?? []).filter((child) => child.name === "recent")
+    : [];
+
+  const recents: BoseRecent[] = recentNodes.map((recentNode) => {
+    const contentItemNode =
+      getChild(recentNode, "contentItem") ??
+      getChild(recentNode, "ContentItem");
+
+    return {
+      deviceID: recentNode.attributes.deviceID ?? "",
+      utcTime: parseIntSafe(recentNode.attributes.utcTime ?? "0"),
+      contentItem: contentItemNode
+        ? {
+            source: contentItemNode.attributes.source ?? "",
+            type: contentItemNode.attributes.type,
+            location: contentItemNode.attributes.location ?? "",
+            sourceAccount: contentItemNode.attributes.sourceAccount ?? "",
+            isPresetable: parseBool(
+              contentItemNode.attributes.isPresetable ?? "false",
+            ),
+            itemName:
+              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+          }
+        : undefined,
+    };
+  });
+
+  return {
+    deviceID: "",
+    recents,
+  };
+}
+
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
   if (!deviceIDMatch) {
@@ -248,6 +312,16 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
 
   if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
     return { type: "info", deviceID };
+  }
+
+  if (xml.includes("<recentsUpdated") || xml.includes("<recents>")) {
+    const block = /<recents[\s\S]*?<\/recents>/.exec(xml);
+    if (block) {
+      const recents = parseRecentsUpdated(block[0]);
+      recents.deviceID = deviceID;
+      return { type: "recents", deviceID, recents };
+    }
+    return { type: "recents", deviceID };
   }
 
   return { type: "unknown", deviceID };

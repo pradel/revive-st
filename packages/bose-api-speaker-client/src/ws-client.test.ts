@@ -169,6 +169,44 @@ describe("parseWebSocketMessage", () => {
     });
   });
 
+  it("identifies recents updates", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <recentsUpdated>
+          <recents>
+            <recent deviceID="EC1127C25A50" utcTime="1779980678">
+              <contentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJzdHJlYW1VcmwiOiJodHRwOi8vaWNlY2FzdC5yYWRpb2ZyYW5jZS5mci9maXAtaGlmaS5hYWMiLCJuYW1lIjoiRklQIiwiaW1hZ2VVcmwiOiIifQ%3D%3D" sourceAccount="revivest-user" isPresetable="true">
+                <itemName>FIP</itemName>
+              </contentItem>
+            </recent>
+          </recents>
+        </recentsUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "recents",
+      recents: {
+        deviceID: "EC1127C25A50",
+        recents: [
+          {
+            deviceID: "EC1127C25A50",
+            utcTime: 1779980678,
+            contentItem: {
+              source: "LOCAL_INTERNET_RADIO",
+              type: "stationurl",
+              location:
+                "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJzdHJlYW1VcmwiOiJodHRwOi8vaWNlY2FzdC5yYWRpb2ZyYW5jZS5mci9maXAtaGlmaS5hYWMiLCJuYW1lIjoiRklQIiwiaW1hZ2VVcmwiOiIifQ%3D%3D",
+              sourceAccount: "revivest-user",
+              isPresetable: true,
+              itemName: "FIP",
+            },
+          },
+        ],
+      },
+    });
+  });
+
   it("parses nameUpdated events", () => {
     const xml = `
       <updates deviceID="EC1127C25A50">
