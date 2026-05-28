@@ -47,4 +47,4 @@ const app = new Hono()
     });
   });
 
-export default app.fetch;
+export default app;
