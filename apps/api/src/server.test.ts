@@ -32,18 +32,6 @@ describe("API server routes", () => {
     expect(text).toContain("<sourceSettings/>");
   });
 
-  it("POST /streaming/support/power_on returns a silent 200", async () => {
-    const res = await app.request("/streaming/support/power_on", {
-      method: "POST",
-    });
-    expect(res.status).toBe(200);
-    expect(res.headers.get("Content-Type")).toBe(
-      "application/vnd.bose.streaming-v1.2+xml",
-    );
-    const text = await res.text();
-    expect(text).toBe("");
-  });
-
   it("GET /streaming/account/:accountId/device/:deviceId/presets returns empty presets", async () => {
     const res = await app.request(
       "/streaming/account/test-account/device/dev-1/presets",
@@ -86,42 +74,5 @@ describe("API server routes", () => {
     const text = await res.text();
     expect(text).toContain('standalone="yes"');
     expect(text).toContain('<recent id="1">');
-  });
-
-  describe("POST /api/stream-url", () => {
-    it("fails if url or accountId is missing", async () => {
-      const res = await app.request("/api/stream-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: "http://example.com" }),
-      });
-      const data = await (res.json() as Promise<{
-        success: boolean;
-        error?: string;
-      }>);
-      expect(data.success).toBe(false);
-      expect(data.error).toBe(
-        'Please provide "url" and "accountId" in the JSON body.',
-      );
-    });
-
-    it("succeeds if url and accountId are provided", async () => {
-      const res = await app.request("/api/stream-url", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          accountId: "test-account",
-          url: "http://example.com/stream.mp3",
-        }),
-      });
-      const data = await (res.json() as Promise<{
-        success: boolean;
-        accountId?: string;
-        url?: string;
-      }>);
-      expect(data.success).toBe(true);
-      expect(data.accountId).toBe("test-account");
-      expect(data.url).toBe("http://example.com/stream.mp3");
-    });
   });
 });

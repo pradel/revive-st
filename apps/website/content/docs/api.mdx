@@ -7,19 +7,6 @@ description: Documentation of the Revive ST streaming API and Bose SoundTouch Ma
 
 Revive ST hosts a custom API server that acts both as the backend for our application and as an emulator for the Bose SoundTouch "Marge" streaming server.
 
-## Application Endpoints
-
-These endpoints are used internally by the Revive ST application to communicate with our backend.
-
-### `POST /api/stream-url`
-
-Registers a stream URL for a specific account. This tells our backend which URL should be provided to the speaker when it requests its source list.
-
-- **Request Body**: `{"accountId": "string", "url": "string"}`
-- **Response**: `{"success": true, "accountId": "string", "url": "string"}`
-
----
-
 ## Marge Emulation Endpoints (Bose SoundTouch)
 
 These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services to trick the speaker into playing custom network streams via the `LOCAL_INTERNET_RADIO` source type.
@@ -43,10 +30,6 @@ Mandatory endpoint called by the speaker. Returns an empty `<presets/>` list to 
 ### `GET /streaming/software/update/account/:accountId`
 
 Mandatory endpoint called by the speaker to check for firmware updates. Returns a `<software_update>` response with an empty `<softwareUpdateLocation>` stub to prevent the speaker from entering an update failure state.
-
-### `POST /streaming/support/power_on`
-
-Endpoint called by the speaker when it powers on. Returns a silent `200 OK` response with the correct `application/vnd.bose.streaming-v1.2+xml` headers.
 
 ### `POST /streaming/account/:accountId/device/:deviceId/recent`
 
