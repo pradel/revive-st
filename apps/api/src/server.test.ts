@@ -92,6 +92,44 @@ describe("API server routes", () => {
     expect(text).toContain("<status>OK</status>");
   });
 
+  it("POST /streaming/account/:accountId/device/ registers the device and returns status OK", async () => {
+    const xmlPayload = `<?xml version="1.0" encoding="UTF-8" ?><device deviceid="EC1127C25A50"><name>Bose SoundTouch 10</name><macaddress>EC1127C25A50</macaddress></device>`;
+
+    // Test with trailing slash
+    const resWithSlash = await app.request(
+      "/streaming/account/revivest-user/device/",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+        body: xmlPayload,
+      },
+    );
+    expect(resWithSlash.status).toBe(200);
+    expect(resWithSlash.headers.get("Content-Type")).toBe(
+      "application/vnd.bose.streaming-v1.2+xml",
+    );
+    const textSlash = await resWithSlash.text();
+    expect(textSlash).toContain('standalone="yes"');
+    expect(textSlash).toContain("<status>OK</status>");
+
+    // Test without trailing slash
+    const resWithoutSlash = await app.request(
+      "/streaming/account/revivest-user/device",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+        body: xmlPayload,
+      },
+    );
+    expect(resWithoutSlash.status).toBe(200);
+    expect(resWithoutSlash.headers.get("Content-Type")).toBe(
+      "application/vnd.bose.streaming-v1.2+xml",
+    );
+    const textNoSlash = await resWithoutSlash.text();
+    expect(textNoSlash).toContain('standalone="yes"');
+    expect(textNoSlash).toContain("<status>OK</status>");
+  });
+
   it("GET /v2/registry.json returns the BMX services registry", async () => {
     const res = await app.request("http://api.revivest.app/v2/registry.json");
     expect(res.status).toBe(200);
