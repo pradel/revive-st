@@ -12,6 +12,7 @@
     "startCommand": "pnpm --filter @revive-st/api preview",
     "limitOverride": {
       "containers": {
+        "cpu": 1,
         "memoryBytes": 500000000
       }
     },
