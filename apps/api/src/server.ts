@@ -5,6 +5,7 @@ import {
   createSourceProvidersXml,
   createPresetsXml,
   createSoftwareUpdateXml,
+  createRecentItemResponseXml,
 } from "./utils/marge-xml";
 import { setStreamUrl } from "./utils/store";
 
@@ -12,6 +13,7 @@ const app = new Hono()
   .get("/streaming/sourceproviders", (ctx) =>
     ctx.body(createSourceProvidersXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+      ETag: "1",
     }),
   )
 
@@ -29,6 +31,7 @@ const app = new Hono()
   .get("/streaming/account/:accountId/device/:deviceId/presets", (ctx) =>
     ctx.body(createPresetsXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+      ETag: "1",
     }),
   )
   .get("/streaming/software/update/account/:accountId", (ctx) =>
@@ -36,9 +39,14 @@ const app = new Hono()
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     }),
   )
-  .post("/streaming/account/:accountId/device/:deviceId/recent", (ctx) =>
-    ctx.body("", 201),
-  )
+  .post("/streaming/account/:accountId/device/:deviceId/recent", (ctx) => {
+    const accountId = ctx.req.param("accountId");
+    const deviceId = ctx.req.param("deviceId");
+    return ctx.body(createRecentItemResponseXml("1"), 201, {
+      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+      Location: `http://localhost:8000/account/${accountId}/device/${deviceId}/recent/1`,
+    });
+  })
   .post("/api/stream-url", async (ctx) => {
     const bodyPayload = (await ctx.req.json().catch(() => ({}))) as Record<
       string,

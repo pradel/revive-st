@@ -28,19 +28,21 @@ These endpoints are requested directly by the Bose SoundTouch speakers. They emu
 
 Returns an XML list of the supported streaming source providers. We only return `LOCAL_INTERNET_RADIO` (id: `10003`) to avoid confusing the device with deprecated cloud services.
 
+- **Headers**: Includes an `ETag` header to signify the current version.
+
 ### `GET /streaming/account/:accountId/full`
 
-Returns the full account XML structure including the list of sources. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source.
+Returns the full account XML structure including the list of sources, root element is `<account>`. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source.
 
 - **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
 
 ### `GET /streaming/account/:accountId/device/:deviceId/presets`
 
-Mandatory endpoint called by the speaker. Returns an empty `<presets/>` list to satisfy the device and prevent retry loops.
+Mandatory endpoint called by the speaker. Returns an empty `<presets/>` list to satisfy the device and prevent retry loops. Includes an `ETag` header.
 
 ### `GET /streaming/software/update/account/:accountId`
 
-Mandatory endpoint called by the speaker to check for firmware updates. Returns an empty `<software_update/>` stub to prevent the speaker from entering an update failure state.
+Mandatory endpoint called by the speaker to check for firmware updates. Returns a `<software_update>` response with an empty `<softwareUpdateLocation>` stub to prevent the speaker from entering an update failure state.
 
 ### `POST /streaming/support/power_on`
 
@@ -48,4 +50,4 @@ Endpoint called by the speaker when it powers on. Returns a silent `200 OK` resp
 
 ### `POST /streaming/account/:accountId/device/:deviceId/recent`
 
-Endpoint called by the speaker to report recent tracks or activity. Returns a silent `201 Created` response to prevent retry loops.
+Endpoint called by the speaker to report recent tracks or activity. We accept the request and respond with a stubbed XML item response, returning `201 Created` with a `Location` header to satisfy the API spec and prevent retry loops.

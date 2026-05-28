@@ -1,10 +1,10 @@
-export const XML_HEADER = '<?xml version="1.0" encoding="UTF-8"?>';
+export const XML_HEADER =
+  '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
 export function createSourceProvidersXml(): string {
   return `${XML_HEADER}
 <sourceProviders>
-  <sourceprovider>
-    <id>10003</id>
+  <sourceprovider id="10003">
     <createdOn>2012-09-19T12:43:00.000+00:00</createdOn>
     <name>LOCAL_INTERNET_RADIO</name>
     <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
@@ -14,11 +14,11 @@ export function createSourceProvidersXml(): string {
 
 export function createAccountFullXml(accountId: string): string {
   return `${XML_HEADER}
-<accountFull>
-  <account id="${accountId}">
-    <devices/>
-    <presets/>
-    <recents/>
+<account id="${accountId}">
+  <accountStatus>OK</accountStatus>
+  <mode>global</mode>
+  <preferredLanguage>en</preferredLanguage>
+  <devices/>
   <sources>
     <source id="1" type="Audio">
       <createdOn>2012-09-19T12:43:00.000+00:00</createdOn>
@@ -30,9 +30,8 @@ export function createAccountFullXml(accountId: string): string {
       <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
       <username>${accountId}</username>
     </source>
-    </sources>
-  </account>
-</accountFull>`;
+  </sources>
+</account>`;
 }
 
 export function createPresetsXml(): string {
@@ -40,5 +39,31 @@ export function createPresetsXml(): string {
 }
 
 export function createSoftwareUpdateXml(): string {
-  return `${XML_HEADER}\n<software_update/>`;
+  return `${XML_HEADER}
+<software_update>
+  <softwareUpdateLocation></softwareUpdateLocation>
+</software_update>`;
+}
+
+export function createRecentItemResponseXml(id: string): string {
+  return `${XML_HEADER}
+<recent id="${id}">
+  <contentItemType>stationurl</contentItemType>
+  <createdOn>2018-11-27T18:20:01.000+00:00</createdOn>
+  <lastplayedat>2025-11-01T17:32:59.000+00:00</lastplayedat>
+  <location>/v1/playback/station/s80044</location>
+  <name>Local Radio</name>
+  <source id="19989313" type="Audio">
+    <createdOn>2018-08-11T08:55:41.000+00:00</createdOn>
+    <credential type="token">eyDu=</credential>
+    <name></name>
+    <sourceproviderid>10003</sourceproviderid>
+    <sourcename></sourcename>
+    <sourceSettings/>
+    <updatedOn>2019-07-20T17:48:31.000+00:00</updatedOn>
+    <username></username>
+  </source>
+  <sourceid>19989313</sourceid>
+  <updatedOn>2025-11-01T17:33:00.574+00:00</updatedOn>
+</recent>`;
 }

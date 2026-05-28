@@ -9,9 +9,11 @@ describe("API server routes", () => {
     expect(res.headers.get("Content-Type")).toBe(
       "application/vnd.bose.streaming-v1.2+xml",
     );
+    expect(res.headers.get("ETag")).toBe("1");
     const text = await res.text();
+    expect(text).toContain('standalone="yes"');
     expect(text).toContain("<sourceProviders>");
-    expect(text).toContain("LOCAL_INTERNET_RADIO");
+    expect(text).toContain('<sourceprovider id="10003">');
   });
 
   it("GET /streaming/account/:accountId/full returns the full account with sources", async () => {
@@ -21,11 +23,12 @@ describe("API server routes", () => {
       "application/vnd.bose.streaming-v1.2+xml",
     );
     const text = await res.text();
-    expect(text).toContain("<accountFull>");
+    expect(text).toContain('standalone="yes"');
     expect(text).toContain('<account id="test-account">');
+    expect(text).toContain("<accountStatus>OK</accountStatus>");
+    expect(text).toContain("<mode>global</mode>");
+    expect(text).toContain("<preferredLanguage>en</preferredLanguage>");
     expect(text).toContain("<devices/>");
-    expect(text).toContain("<presets/>");
-    expect(text).toContain("<recents/>");
     expect(text).toContain("<sourceSettings/>");
   });
 
@@ -49,7 +52,9 @@ describe("API server routes", () => {
     expect(res.headers.get("Content-Type")).toBe(
       "application/vnd.bose.streaming-v1.2+xml",
     );
+    expect(res.headers.get("ETag")).toBe("1");
     const text = await res.text();
+    expect(text).toContain('standalone="yes"');
     expect(text).toContain("<presets/>");
   });
 
@@ -62,17 +67,25 @@ describe("API server routes", () => {
       "application/vnd.bose.streaming-v1.2+xml",
     );
     const text = await res.text();
-    expect(text).toContain("<software_update/>");
+    expect(text).toContain('standalone="yes"');
+    expect(text).toContain("<softwareUpdateLocation></softwareUpdateLocation>");
   });
 
-  it("POST /streaming/account/:accountId/device/:deviceId/recent returns a silent 201", async () => {
+  it("POST /streaming/account/:accountId/device/:deviceId/recent returns a stubbed XML response", async () => {
     const res = await app.request(
       "/streaming/account/test-account/device/dev-1/recent",
       { method: "POST" },
     );
     expect(res.status).toBe(201);
+    expect(res.headers.get("Content-Type")).toBe(
+      "application/vnd.bose.streaming-v1.2+xml",
+    );
+    expect(res.headers.get("Location")).toBe(
+      "http://localhost:8000/account/test-account/device/dev-1/recent/1",
+    );
     const text = await res.text();
-    expect(text).toBe("");
+    expect(text).toContain('standalone="yes"');
+    expect(text).toContain('<recent id="1">');
   });
 
   describe("POST /api/stream-url", () => {
