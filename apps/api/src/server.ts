@@ -170,26 +170,6 @@ app
     } catch {
       return ctx.text("Invalid data parameter", 400);
     }
-  })
-
-  // Media endpoints for Bose Speaker icons
-  .get("/media/orion-monochrome.svg", (ctx) =>
-    ctx.body(
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
-  <circle cx="50" cy="50" r="40" fill="black" />
-  <circle cx="50" cy="50" r="20" fill="white" />
-</svg>`,
-      200,
-      { "Content-Type": "image/svg+xml" },
-    ),
-  )
-  .get("/media/orion-monochrome_v2.png", (ctx) => {
-    const base64 =
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC";
-    const binary = Uint8Array.from(atob(base64), (char) => char.charCodeAt(0));
-    return ctx.body(binary, 200, {
-      "Content-Type": "image/png",
-    });
   });
 
 export default app;
