@@ -10,7 +10,7 @@ import {
   createRecentItemResponseXml,
 } from "./utils/marge-xml";
 
-const app = new Hono();
+const app = new Hono({ strict: false });
 
 app.use(logger());
 
@@ -77,11 +77,6 @@ app
     }),
   )
   .post("/streaming/account/:accountId/device", (ctx) =>
-    ctx.body(createStatusOkXml(), 200, {
-      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
-    }),
-  )
-  .post("/streaming/account/:accountId/device/", (ctx) =>
     ctx.body(createStatusOkXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     }),
