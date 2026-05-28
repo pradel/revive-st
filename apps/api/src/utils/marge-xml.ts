@@ -16,9 +16,6 @@ export function createAccountFullXml(accountId: string): string {
   return `${XML_HEADER}
 <accountFull>
   <account id="${accountId}">
-    <accountStatus>OK</accountStatus>
-    <mode>global</mode>
-    <preferredLanguage>en</preferredLanguage>
     <devices/>
     <presets/>
     <recents/>
