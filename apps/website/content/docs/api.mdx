@@ -1,0 +1,51 @@
+---
+title: API Reference
+description: Documentation of the Revive ST streaming API and Bose SoundTouch Marge emulation endpoints.
+---
+
+# API Reference
+
+Revive ST hosts a custom API server that acts both as the backend for our application and as an emulator for the Bose SoundTouch "Marge" streaming server.
+
+## Application Endpoints
+
+These endpoints are used internally by the Revive ST application to communicate with our backend.
+
+### `POST /api/stream-url`
+
+Registers a stream URL for a specific account. This tells our backend which URL should be provided to the speaker when it requests its source list.
+
+- **Request Body**: `{"accountId": "string", "url": "string"}`
+- **Response**: `{"success": true, "accountId": "string", "url": "string"}`
+
+---
+
+## Marge Emulation Endpoints (Bose SoundTouch)
+
+These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services to trick the speaker into playing custom network streams via the `LOCAL_INTERNET_RADIO` source type.
+
+### `GET /streaming/sourceproviders`
+
+Returns an XML list of the supported streaming source providers. We only return `LOCAL_INTERNET_RADIO` (id: `10003`) to avoid confusing the device with deprecated cloud services.
+
+### `GET /streaming/account/:accountId/full`
+
+Returns the full account XML structure including the list of sources. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source.
+
+- **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
+
+### `GET /streaming/account/:accountId/device/:deviceId/presets`
+
+Mandatory endpoint called by the speaker. Returns an empty `<presets/>` list to satisfy the device and prevent retry loops.
+
+### `GET /streaming/software/update/account/:accountId`
+
+Mandatory endpoint called by the speaker to check for firmware updates. Returns an empty `<software_update/>` stub to prevent the speaker from entering an update failure state.
+
+### `POST /streaming/support/power_on`
+
+Endpoint called by the speaker when it powers on. Returns a silent `200 OK` response with the correct `application/vnd.bose.streaming-v1.2+xml` headers.
+
+### `POST /streaming/account/:accountId/device/:deviceId/recent`
+
+Endpoint called by the speaker to report recent tracks or activity. Returns a silent `201 Created` response to prevent retry loops.
