@@ -44,3 +44,11 @@ export function createAccountFullXml(
   </sources>
 </account>`;
 }
+
+export function createPresetsXml(): string {
+  return `${XML_HEADER}\n<presets/>`;
+}
+
+export function createSoftwareUpdateXml(): string {
+  return `${XML_HEADER}\n<software_update/>`;
+}
