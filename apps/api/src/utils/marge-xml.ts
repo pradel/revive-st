@@ -18,24 +18,6 @@ export function createSourceProvidersXml(): string {
 </sourceProviders>`;
 }
 
-export function createSourcesXml(accountId: string, streamUrl: string): string {
-  return `${XML_HEADER}
-<sources>
-  <source id="1" type="Audio">
-    <createdOn>2012-09-19T12:43:00.000+00:00</createdOn>
-    <credential type="token"></credential>
-    <name>LOCAL_INTERNET_RADIO</name>
-    <sourceproviderid>10003</sourceproviderid>
-    <sourcename>Local Radio Source</sourcename>
-    <sourceSettings>
-      <location>${streamUrl}</location>
-    </sourceSettings>
-    <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
-    <username>${accountId}</username>
-  </source>
-</sources>`;
-}
-
 export function createAccountFullXml(
   accountId: string,
   streamUrl: string,
