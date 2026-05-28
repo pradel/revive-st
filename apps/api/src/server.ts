@@ -133,7 +133,7 @@ app
 
     try {
       // Decode base64 URL-safe JSON string
-      const jsonStr = atob(data);
+      const jsonStr = atob(data.replace(/-/g, "+").replace(/_/g, "/"));
       const jsonObj = JSON.parse(jsonStr) as {
         streamUrl: string;
         name?: string;
