@@ -53,7 +53,8 @@
           }
         }
       ],
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,
