@@ -6,7 +6,7 @@ import {
   createPresetsXml,
   createSoftwareUpdateXml,
 } from "./utils/marge-xml";
-import { getStreamUrl, setStreamUrl } from "./utils/store";
+import { setStreamUrl } from "./utils/store";
 
 const app = new Hono()
   .get("/streaming/sourceproviders", (ctx) =>
@@ -17,7 +17,7 @@ const app = new Hono()
 
   .get("/streaming/account/:accountId/full", (ctx) => {
     const accountId = ctx.req.param("accountId");
-    return ctx.body(createAccountFullXml(accountId, getStreamUrl()), 200, {
+    return ctx.body(createAccountFullXml(accountId), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     });
   })

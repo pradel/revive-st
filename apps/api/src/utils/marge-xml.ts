@@ -12,10 +12,7 @@ export function createSourceProvidersXml(): string {
 </sourceProviders>`;
 }
 
-export function createAccountFullXml(
-  accountId: string,
-  streamUrl: string,
-): string {
+export function createAccountFullXml(accountId: string): string {
   return `${XML_HEADER}
 <account id="${accountId}">
   <accountStatus>OK</accountStatus>
@@ -29,9 +26,7 @@ export function createAccountFullXml(
       <name>LOCAL_INTERNET_RADIO</name>
       <sourceproviderid>10003</sourceproviderid>
       <sourcename>Local Radio Source</sourcename>
-      <sourceSettings>
-        <location>${streamUrl}</location>
-      </sourceSettings>
+      <sourceSettings/>
       <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
       <username>${accountId}</username>
     </source>
