@@ -34,3 +34,7 @@ Mandatory endpoint called by the speaker to check for firmware updates. Returns 
 ### `POST /streaming/account/:accountId/device/:deviceId/recent`
 
 Endpoint called by the speaker to report recent tracks or activity. We accept the request and respond with a stubbed XML item response, returning `201 Created` with a `Location` header to satisfy the API spec and prevent retry loops.
+
+### `POST /streaming/support/power_on`
+
+Endpoint called by the speaker upon boot to signal it has turned on. We return a standard `<status>OK</status>` response with a `200 OK` status to complete the handshake and allow the device to boot.

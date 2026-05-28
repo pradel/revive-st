@@ -48,6 +48,10 @@ export function createPresetsXml(): string {
   return `${XML_HEADER}\n<presets/>`;
 }
 
+export function createStatusOkXml(): string {
+  return `${XML_HEADER}\n<status>OK</status>`;
+}
+
 export function createSoftwareUpdateXml(): string {
   return `${XML_HEADER}
 <software_update>
