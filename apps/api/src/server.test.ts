@@ -76,6 +76,22 @@ describe("API server routes", () => {
     expect(text).toContain('<recent id="1">');
   });
 
+  it("POST /streaming/support/power_on returns a status OK XML response", async () => {
+    const xmlPayload = `<?xml version="1.0" encoding="UTF-8" ?><device-data><device id="EC1127C25A50"><serialnumber>55307133203739342000010</serialnumber></device></device-data>`;
+    const res = await app.request("/streaming/support/power_on", {
+      method: "POST",
+      headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+      body: xmlPayload,
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe(
+      "application/vnd.bose.streaming-v1.2+xml",
+    );
+    const text = await res.text();
+    expect(text).toContain('standalone="yes"');
+    expect(text).toContain("<status>OK</status>");
+  });
+
   it("GET /v2/registry.json returns the BMX services registry", async () => {
     const res = await app.request("http://api.revivest.app/v2/registry.json");
     expect(res.status).toBe(200);
