@@ -14,11 +14,14 @@ export function createSourceProvidersXml(): string {
 
 export function createAccountFullXml(accountId: string): string {
   return `${XML_HEADER}
-<account id="${accountId}">
-  <accountStatus>OK</accountStatus>
-  <mode>global</mode>
-  <preferredLanguage>en</preferredLanguage>
-  <devices/>
+<accountFull>
+  <account id="${accountId}">
+    <accountStatus>OK</accountStatus>
+    <mode>global</mode>
+    <preferredLanguage>en</preferredLanguage>
+    <devices/>
+    <presets/>
+    <recents/>
   <sources>
     <source id="1" type="Audio">
       <createdOn>2012-09-19T12:43:00.000+00:00</createdOn>
@@ -30,8 +33,9 @@ export function createAccountFullXml(accountId: string): string {
       <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
       <username>${accountId}</username>
     </source>
-  </sources>
-</account>`;
+    </sources>
+  </account>
+</accountFull>`;
 }
 
 export function createPresetsXml(): string {
