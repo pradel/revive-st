@@ -79,3 +79,59 @@ const message = matchError(result.error!, {
   ApiError: (e) => `API error: ${e.errors[0].name}`,
 });
 ```
+
+## WebSocket Client
+
+To subscribe to real-time status updates (like volume adjustments, now playing info, presets, zone updates, and recently played items), use the `BoseWebSocketClient`.
+
+### Usage
+
+```ts
+import { BoseWebSocketClient } from "bose-api-speaker-client";
+
+const wsClient = new BoseWebSocketClient({
+  host: "192.168.1.100",
+  deviceID: "000C8A123456",
+  onUpdate: (update) => {
+    switch (update.type) {
+      case "volume":
+        console.log("Volume changed:", update.volume?.actualVolume);
+        break;
+      case "nowPlaying":
+        console.log("Now playing:", update.nowPlaying?.track);
+        break;
+      case "recents":
+        console.log("Recents updated list:", update.recents?.recents);
+        break;
+      default:
+        console.log("Notification received:", update.type);
+    }
+  },
+  onDisconnect: () => {
+    console.log("Disconnected, reconnecting...");
+  },
+  onError: (error) => {
+    console.error("WS error:", error);
+  },
+});
+
+// Connect to the speaker (uses default ws://<host>:8080)
+wsClient.connect();
+
+// Close connection when done
+wsClient.close();
+```
+
+### Event Types
+
+The `onUpdate` callback yields a `BoseWSUpdate` object representing the parsed event:
+
+- `"volume"`: Volume changes or mute updates.
+- `"nowPlaying"`: Active track name, artist, album, art URL, and play status.
+- `"nowSelection"`: Optimistic notification fired when a source or preset is selected.
+- `"recents"`: Fired when the list of recently played streams updates.
+- `"presets"`: Fired when preset definitions are changed.
+- `"zone"`: Multi-room zone updates.
+- `"nameUpdated"`: Speaker name change updates.
+- `"connectionState"`: Network state (Wi-Fi connectivity status and signal level).
+- `"info"`: Device info status changes.
