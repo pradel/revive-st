@@ -32,6 +32,12 @@ interface Step {
   errorDetails?: string;
 }
 
+type ConfigState =
+  | { status: "idle" }
+  | { status: "running"; currentStepIndex: number; rebootTimer: number | null }
+  | { status: "success" }
+  | { status: "error"; currentStepIndex: number; errorDetails: string };
+
 const INITIAL_STEPS: Step[] = [
   {
     id: "telnet_connect",
@@ -65,12 +71,10 @@ export default function ConfigureSpeaker() {
   const speaker = speakers.find((item) => item.deviceID === id);
   const queryClient = useQueryClient();
 
-  const [steps, setSteps] = useState<Step[]>(INITIAL_STEPS);
   const [logs, setLogs] = useState<LogLine[]>([]);
-  const [isRunning, setIsRunning] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
-  const [rebootTimer, setRebootTimer] = useState<number | null>(null);
+  const [configState, setConfigState] = useState<ConfigState>({
+    status: "idle",
+  });
 
   const logsEndRef = useRef<ScrollView | null>(null);
   const isMountedRef = useRef(true);
@@ -94,32 +98,18 @@ export default function ConfigureSpeaker() {
     }, 100);
   };
 
-  const updateStepStatus = (
-    stepId: string,
-    status: Step["status"],
-    errorDetails?: string,
-  ) => {
-    if (!isMountedRef.current) {
-      return;
-    }
-    setSteps((prev) =>
-      prev.map((step) =>
-        step.id === stepId ? { ...step, status, errorDetails } : step,
-      ),
-    );
-  };
-
   const runConfiguration = async () => {
     if (!speaker) {
       addLog("Error: Speaker details not found.", "error");
       return;
     }
 
-    setIsRunning(true);
-    setIsFinished(false);
-    setSteps(INITIAL_STEPS.map((step) => ({ ...step, status: "idle" })));
+    setConfigState({
+      status: "running",
+      currentStepIndex: 0,
+      rebootTimer: null,
+    });
     setLogs([]);
-    setRebootTimer(null);
 
     addLog(`Starting configuration for ${speaker.name} (${speaker.host})...`);
     const telnet = new TelnetClient({
@@ -127,21 +117,25 @@ export default function ConfigureSpeaker() {
       socket: TcpSocket as unknown as SocketModuleLike,
     });
 
+    let activeStepIndex = 0;
+
     try {
       // Step 1: Connect via Telnet
-      setCurrentStepIndex(0);
-      updateStepStatus("telnet_connect", "running");
+      activeStepIndex = 0;
       addLog("Opening Telnet connection...");
       const connRes = await telnet.connect();
       if (!connRes.isOk()) {
         throw connRes.error;
       }
-      updateStepStatus("telnet_connect", "success");
       addLog("Successfully established Telnet connection.", "success");
 
       // Step 2: Set registry URL
-      setCurrentStepIndex(1);
-      updateStepStatus("set_registry", "running");
+      activeStepIndex = 1;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 1,
+        rebootTimer: null,
+      });
       addLog(
         "Executing: sys configuration bmxRegistryUrl https://api.revivest.app/v2/registry.json",
       );
@@ -157,12 +151,15 @@ export default function ConfigureSpeaker() {
       if (regRes.toLowerCase().includes("error")) {
         throw new Error(`Registry URL rejected: ${regRes}`);
       }
-      updateStepStatus("set_registry", "success");
       addLog("Registry URL set successfully.", "success");
 
       // Step 3: Configure boseurls envswitch
-      setCurrentStepIndex(2);
-      updateStepStatus("set_redirect", "running");
+      activeStepIndex = 2;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 2,
+        rebootTimer: null,
+      });
       addLog(
         "Executing: envswitch boseurls set https://api.revivest.app https://worldwide.bose.com/updates/soundtouch",
       );
@@ -178,12 +175,15 @@ export default function ConfigureSpeaker() {
       if (switchRes.toLowerCase().includes("error")) {
         throw new Error(`Failed to configure redirect: ${switchRes}`);
       }
-      updateStepStatus("set_redirect", "success");
       addLog("Redirect paths configured successfully.", "success");
 
       // Step 4: Configure account environment
-      setCurrentStepIndex(3);
-      updateStepStatus("set_account", "running");
+      activeStepIndex = 3;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 3,
+        rebootTimer: null,
+      });
       addLog("Executing: envswitch AccountId set revivest-user");
       const accResResult = await telnet.executeCommand(
         "envswitch AccountId set revivest-user",
@@ -197,12 +197,15 @@ export default function ConfigureSpeaker() {
       if (accRes.toLowerCase().includes("error")) {
         throw new Error(`Failed to save Account ID: ${accRes}`);
       }
-      updateStepStatus("set_account", "success");
       addLog("Account env identifier configured.", "success");
 
       // Step 5: Pair speaker with account
-      setCurrentStepIndex(4);
-      updateStepStatus("pair_device", "running");
+      activeStepIndex = 4;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 4,
+        rebootTimer: null,
+      });
       addLog(
         "Triggering speaker HTTP account pairing (POST /setMargeAccount)...",
       );
@@ -226,30 +229,35 @@ export default function ConfigureSpeaker() {
         );
       }
       addLog("Account pairing verified by speaker.", "success");
-      updateStepStatus("pair_device", "success");
 
       // Step 6: Reboot speaker
-      setCurrentStepIndex(5);
-      updateStepStatus("reboot", "running");
+      activeStepIndex = 5;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 5,
+        rebootTimer: null,
+      });
       addLog("Triggering hardware reboot via Telnet...");
       const rebootResult = await telnet.executeCommand("sys reboot", 500);
       if (!rebootResult.isOk()) {
         throw rebootResult.error;
       }
-      updateStepStatus("reboot", "success");
       addLog("Reboot command accepted. Speaker is restarting.", "success");
 
       // Disconnect Telnet
       telnet.disconnect();
 
       // Step 7: Wait for speaker to come back online
-      setCurrentStepIndex(6);
-      updateStepStatus("wait_online", "running");
+      activeStepIndex = 6;
+      setConfigState({
+        status: "running",
+        currentStepIndex: 6,
+        rebootTimer: 90,
+      });
       addLog("Waiting for speaker to disconnect and reboot...");
 
       // Wait 10 seconds before starting checks to allow speaker to shut down
       let countdown = 90;
-      setRebootTimer(countdown);
 
       const countdownInterval = setInterval(() => {
         if (!isMountedRef.current) {
@@ -257,7 +265,12 @@ export default function ConfigureSpeaker() {
           return;
         }
         countdown--;
-        setRebootTimer(countdown > 0 ? countdown : 0);
+        const currentCountdown = countdown > 0 ? countdown : 0;
+        setConfigState((prev) =>
+          prev.status === "running"
+            ? { ...prev, rebootTimer: currentCountdown }
+            : prev,
+        );
       }, 1000);
 
       // Poll checkMargeAPIStatus until back online
@@ -290,15 +303,13 @@ export default function ConfigureSpeaker() {
       }
 
       clearInterval(countdownInterval);
-      setRebootTimer(null);
 
       if (online) {
-        updateStepStatus("wait_online", "success");
         addLog("Speaker is back online and fully configured!", "success");
         void queryClient.invalidateQueries({
           queryKey: ["marge-api-status", speaker.host],
         });
-        setIsFinished(true);
+        setConfigState({ status: "success" });
       } else {
         throw new Error(
           "Speaker reboot timed out. It is taking longer than expected to join the network.",
@@ -306,7 +317,6 @@ export default function ConfigureSpeaker() {
       }
     } catch (error: unknown) {
       telnet.disconnect();
-      setRebootTimer(null);
       const msg = error instanceof Error ? error.message : String(error);
       addLog(`Error: ${msg}`, "error");
 
@@ -320,7 +330,7 @@ export default function ConfigureSpeaker() {
         "reboot",
         "wait_online",
       ];
-      const failedStepId = stepIds[currentStepIndex] || "telnet_connect";
+      const failedStepId = stepIds[activeStepIndex] || "telnet_connect";
 
       // Formulate useful user suggestions
       let suggestion =
@@ -336,12 +346,11 @@ export default function ConfigureSpeaker() {
           "The speaker did not re-join the network in time. Check the speaker LED. If it has a solid Wi-Fi light, try hitting 'Retry Connection' in settings.";
       }
 
-      updateStepStatus(
-        failedStepId,
-        "error",
-        `${msg}\nSuggestion: ${suggestion}`,
-      );
-      setIsRunning(false);
+      setConfigState({
+        status: "error",
+        currentStepIndex: activeStepIndex,
+        errorDetails: `${msg}\nSuggestion: ${suggestion}`,
+      });
     }
   };
 
@@ -373,7 +382,44 @@ export default function ConfigureSpeaker() {
     );
   }
 
-  const hasErrors = steps.some((step) => step.status === "error");
+  // Derive helper variables and step checklist statuses from single state
+  const isRunning = configState.status === "running";
+  const isFinished = configState.status === "success";
+  const hasErrors = configState.status === "error";
+  const rebootTimer =
+    configState.status === "running" ? configState.rebootTimer : null;
+
+  const steps: Step[] = INITIAL_STEPS.map((step, index) => {
+    let status: Step["status"] = "idle";
+    let errorDetails: string | undefined = undefined;
+
+    if (configState.status === "success") {
+      status = "success";
+    } else if (configState.status === "running") {
+      if (index < configState.currentStepIndex) {
+        status = "success";
+      } else if (index === configState.currentStepIndex) {
+        status = "running";
+      } else {
+        status = "idle";
+      }
+    } else if (configState.status === "error") {
+      if (index < configState.currentStepIndex) {
+        status = "success";
+      } else if (index === configState.currentStepIndex) {
+        status = "error";
+        errorDetails = configState.errorDetails;
+      } else {
+        status = "idle";
+      }
+    }
+
+    return {
+      ...step,
+      status,
+      errorDetails,
+    };
+  });
 
   return (
     <View style={$container}>
