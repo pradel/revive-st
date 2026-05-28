@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { logger } from "hono/logger";
 
 import {
   createAccountFullXml,
@@ -8,7 +9,35 @@ import {
   createRecentItemResponseXml,
 } from "./utils/marge-xml";
 
-const app = new Hono()
+const app = new Hono();
+
+app.use(logger());
+
+app.use(async (ctx, next) => {
+  if (
+    ctx.req.header("content-type")?.includes("xml") ||
+    ctx.req.header("content-type")?.includes("json")
+  ) {
+    const reqBody = await ctx.req.raw.clone().text();
+    if (reqBody) {
+      // eslint-disable-next-line no-console
+      console.log(`[Req Body] ${ctx.req.method} ${ctx.req.path}:\n`, reqBody);
+    }
+  }
+
+  await next();
+
+  if (
+    ctx.res.headers.get("content-type")?.includes("xml") ||
+    ctx.res.headers.get("content-type")?.includes("json")
+  ) {
+    const resBody = await ctx.res.clone().text();
+    // eslint-disable-next-line no-console
+    console.log(`[Res Body] ${ctx.res.status} ${ctx.req.path}:\n`, resBody);
+  }
+});
+
+app
   .get("/streaming/sourceproviders", (ctx) =>
     ctx.body(createSourceProvidersXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
