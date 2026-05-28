@@ -75,4 +75,70 @@ describe("API server routes", () => {
     expect(text).toContain('standalone="yes"');
     expect(text).toContain('<recent id="1">');
   });
+
+  it("GET /v2/registry.json returns the BMX services registry", async () => {
+    const res = await app.request("http://api.revivest.app/v2/registry.json");
+    expect(res.status).toBe(200);
+    interface BmxRegistryResponse {
+      bmx_services: {
+        id: { name: string; value: number };
+        baseUrl: string;
+      }[];
+    }
+    const json = (await res.json()) as BmxRegistryResponse;
+    expect(json.bmx_services).toBeDefined();
+    expect(json.bmx_services.length).toBe(1);
+    expect(json.bmx_services[0].id.name).toBe("LOCAL_INTERNET_RADIO");
+    expect(json.bmx_services[0].id.value).toBe(11);
+    expect(json.bmx_services[0].baseUrl).toBe(
+      "http://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion",
+    );
+  });
+
+  it("GET /core02/svc-bmx-adapter-orion/prod/orion/station returns a valid BmxPlaybackResponse", async () => {
+    const payload = {
+      streamUrl: "http://stream.example.com",
+      name: "Test Stream",
+      imageUrl: "http://image.example.com/art.png",
+    };
+    const data = btoa(JSON.stringify(payload));
+
+    const res = await app.request(
+      `/core02/svc-bmx-adapter-orion/prod/orion/station?data=${data}`,
+    );
+    expect(res.status).toBe(200);
+
+    interface BmxPlaybackResponse {
+      name: string;
+      imageUrl: string;
+      streamType: string;
+      audio: {
+        streamUrl: string;
+        streams: { streamUrl: string }[];
+      };
+    }
+    const json = (await res.json()) as BmxPlaybackResponse;
+    expect(json.name).toBe("Test Stream");
+    expect(json.imageUrl).toBe("http://image.example.com/art.png");
+    expect(json.streamType).toBe("liveRadio");
+    expect(json.audio).toBeDefined();
+    expect(json.audio.streamUrl).toBe("http://stream.example.com");
+    expect(json.audio.streams[0].streamUrl).toBe("http://stream.example.com");
+  });
+
+  it("GET /core02/svc-bmx-adapter-orion/prod/orion/station returns 400 for missing data", async () => {
+    const res = await app.request(
+      `/core02/svc-bmx-adapter-orion/prod/orion/station`,
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Missing data parameter");
+  });
+
+  it("GET /core02/svc-bmx-adapter-orion/prod/orion/station returns 400 for invalid data", async () => {
+    const res = await app.request(
+      `/core02/svc-bmx-adapter-orion/prod/orion/station?data=invalid-base64`,
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid data parameter");
+  });
 });

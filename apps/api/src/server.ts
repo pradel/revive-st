@@ -69,6 +69,101 @@ app
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
       Location: `http://localhost:8000/account/${accountId}/device/${deviceId}/recent/1`,
     });
+  })
+
+  // BMX Registry Endpoint
+  .get("/v2/registry.json", (ctx) => {
+    const url = new URL(ctx.req.url);
+    const host = url.host;
+    const scheme = url.protocol;
+    const baseUrl = `${scheme}//${host}`;
+
+    return ctx.json({
+      _links: {
+        bmx_services_availability: {
+          href: "../servicesAvailability",
+        },
+      },
+      askAgainAfter: 1230482,
+      bmx_services: [
+        {
+          _links: {
+            bmx_token: {
+              href: "/token",
+            },
+            self: {
+              href: "/",
+            },
+          },
+          askAdapter: false,
+          assets: {
+            color: "#000000",
+            description: "Custom radio stations with BMX.",
+            icons: {
+              largeSvg: `${baseUrl}/media/orion-monochrome.svg`,
+              monochromePng: `${baseUrl}/media/orion-monochrome_v2.png`,
+              monochromeSvg: `${baseUrl}/media/orion-monochrome.svg`,
+              smallSvg: `${baseUrl}/media/orion-monochrome.svg`,
+            },
+            name: "Custom Stations",
+          },
+          authenticationModel: {
+            anonymousAccount: {
+              autoCreate: true,
+              enabled: true,
+            },
+          },
+          baseUrl: `${baseUrl}/core02/svc-bmx-adapter-orion/prod/orion`,
+          id: {
+            name: "LOCAL_INTERNET_RADIO",
+            value: 11,
+          },
+          streamTypes: ["liveRadio"],
+        },
+      ],
+    });
+  })
+
+  // BMX Custom Stream Endpoint
+  .get("/core02/svc-bmx-adapter-orion/prod/orion/station", (ctx) => {
+    const data = ctx.req.query("data");
+    if (!data) {
+      return ctx.text("Missing data parameter", 400);
+    }
+
+    try {
+      // Decode base64 URL-safe JSON string
+      const jsonStr = atob(data.replace(/-/g, "+").replace(/_/g, "/"));
+      const jsonObj = JSON.parse(jsonStr) as {
+        streamUrl: string;
+        name?: string;
+        imageUrl?: string;
+      };
+
+      const streamUrl = jsonObj.streamUrl;
+      const name = jsonObj.name ?? "Custom Stream";
+      const imageUrl = jsonObj.imageUrl ?? "";
+
+      return ctx.json({
+        audio: {
+          hasPlaylist: true,
+          isRealtime: true,
+          streamUrl,
+          streams: [
+            {
+              hasPlaylist: true,
+              isRealtime: true,
+              streamUrl,
+            },
+          ],
+        },
+        imageUrl,
+        name,
+        streamType: "liveRadio",
+      });
+    } catch {
+      return ctx.text("Invalid data parameter", 400);
+    }
   });
 
 export default app;
