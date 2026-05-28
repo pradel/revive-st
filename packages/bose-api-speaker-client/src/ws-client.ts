@@ -361,7 +361,6 @@ export class BoseWebSocketClient {
     }
   }
 
-
   isClosed(): boolean {
     return this.ws === null || this.ws.readyState === WebSocket.CLOSED;
   }
