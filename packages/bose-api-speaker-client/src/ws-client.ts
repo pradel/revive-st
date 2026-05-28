@@ -341,10 +341,27 @@ export class BoseWebSocketClient {
   private isClosedIntentional = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private readonly maxReconnectAttempts = 5;
+  // 22 attempts ~ 5 minutes total
+  private readonly maxReconnectAttempts = 22;
 
   constructor(options: BoseWebSocketClientOptions) {
     this.options = options;
+  }
+
+  getHost(): string {
+    return this.options.host;
+  }
+
+  updateHost(host: string) {
+    if (this.options.host !== host) {
+      this.options.host = host;
+      // Force connection reset to connect to new host IP
+      this.connect();
+    }
+  }
+
+  isClosed(): boolean {
+    return this.ws === null || this.ws.readyState === WebSocket.CLOSED;
   }
 
   connect() {
@@ -428,7 +445,7 @@ export class BoseWebSocketClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 15000);
     console.log(
       `[BoseWebSocketClient] Reconnecting to ${this.options.deviceID} in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );

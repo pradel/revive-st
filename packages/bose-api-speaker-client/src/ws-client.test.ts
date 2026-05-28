@@ -390,16 +390,16 @@ describe("BoseWebSocketClient", () => {
       client.connect();
       expect(wsCtor).toHaveBeenCalledTimes(1);
 
-      for (let attempt = 1; attempt <= 5; attempt++) {
+      for (let attempt = 1; attempt <= 22; attempt++) {
         wsMock.onclose!({ code: 1006 });
-        vi.advanceTimersByTime(Math.min(1000 * 2 ** attempt, 10000));
+        vi.advanceTimersByTime(Math.min(1000 * 2 ** attempt, 15000));
       }
 
-      expect(wsCtor).toHaveBeenCalledTimes(6);
+      expect(wsCtor).toHaveBeenCalledTimes(23);
 
       wsMock.onclose!({ code: 1006 });
-      vi.advanceTimersByTime(10000);
-      expect(wsCtor).toHaveBeenCalledTimes(6);
+      vi.advanceTimersByTime(15000);
+      expect(wsCtor).toHaveBeenCalledTimes(23);
     });
   });
 
