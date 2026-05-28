@@ -8,24 +8,24 @@ import {
 import { getStreamUrl, setStreamUrl } from "./utils/store";
 
 const app = new Hono()
-  .get("/marge/streaming/sourceproviders", (ctx) =>
+  .get("/streaming/sourceproviders", (ctx) =>
     ctx.body(createSourceProvidersXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     }),
   )
-  .get("/marge/streaming/account/:accountId/sources", (ctx) => {
+  .get("/streaming/account/:accountId/sources", (ctx) => {
     const accountId = ctx.req.param("accountId");
     return ctx.body(createSourcesXml(accountId, getStreamUrl()), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     });
   })
-  .get("/marge/streaming/account/:accountId/full", (ctx) => {
+  .get("/streaming/account/:accountId/full", (ctx) => {
     const accountId = ctx.req.param("accountId");
     return ctx.body(createAccountFullXml(accountId, getStreamUrl()), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     });
   })
-  .post("/marge/streaming/support/power_on", (ctx) =>
+  .post("/streaming/support/power_on", (ctx) =>
     ctx.body("", 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     }),
