@@ -46,13 +46,18 @@ const app = new Hono()
     >;
     const url =
       typeof bodyPayload?.url === "string" ? bodyPayload.url : undefined;
-    if (url) {
-      setStreamUrl(url);
-      return ctx.json({ success: true, url });
+    const accountId =
+      typeof bodyPayload?.accountId === "string"
+        ? bodyPayload.accountId
+        : undefined;
+
+    if (url && accountId) {
+      setStreamUrl(accountId, url);
+      return ctx.json({ success: true, accountId, url });
     }
     return ctx.json({
       success: false,
-      error: 'Please provide a "url" in the JSON body.',
+      error: 'Please provide "url" and "accountId" in the JSON body.',
     });
   });
 

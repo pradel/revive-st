@@ -1,9 +1,9 @@
-export let currentStreamUrl = "http://localhost:8000/stream.mp3";
+const streamUrls = new Map<string, string>();
 
-export function setStreamUrl(url: string) {
-  currentStreamUrl = url;
+export function setStreamUrl(accountId: string, url: string) {
+  streamUrls.set(accountId, url);
 }
 
-export function getStreamUrl(): string {
-  return currentStreamUrl;
+export function getStreamUrl(accountId: string): string | undefined {
+  return streamUrls.get(accountId);
 }
