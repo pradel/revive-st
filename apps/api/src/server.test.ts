@@ -157,4 +157,21 @@ describe("API server routes", () => {
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("Invalid data parameter");
   });
+
+  it("GET /media/orion-monochrome.svg returns the SVG icon", async () => {
+    const res = await app.request("/media/orion-monochrome.svg");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/svg+xml");
+    const text = await res.text();
+    expect(text).toContain("<svg");
+    expect(text).toContain("</svg>");
+  });
+
+  it("GET /media/orion-monochrome_v2.png returns the PNG icon", async () => {
+    const res = await app.request("/media/orion-monochrome_v2.png");
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/png");
+    const buffer = await res.arrayBuffer();
+    expect(buffer.byteLength).toBeGreaterThan(0);
+  });
 });
