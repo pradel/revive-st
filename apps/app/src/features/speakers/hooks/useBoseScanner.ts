@@ -85,8 +85,18 @@ async function longPress(host: string, key: string, durationMs = 2000) {
   }
 }
 
-async function playUri(host: string, uri: string, name: string) {
-  const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
+async function playUri(host: string, options: { uri: string; name: string }) {
+  const data = {
+    streamUrl: options.uri,
+    name: options.name,
+    imageUrl: "",
+  };
+  const base64Data = btoa(JSON.stringify(data))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+  const locationUrl = `https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(base64Data)}`;
+  const payload = `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(locationUrl)}" sourceAccount="revivest-user"><itemName>${escapeXml(options.name)}</itemName></ContentItem>`;
+
   return fetch(`http://${host}:8090/select`, {
     method: "POST",
     headers: { "Content-Type": "text/xml" },
@@ -227,7 +237,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     const hasDeviceChange =
       currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
-      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id));
+      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id)) ||
+      speakers.some((speaker) => {
+        const client = wsClientsRef.current.get(speaker.deviceID);
+        return (
+          !client || client.getHost() !== speaker.host || client.isClosed()
+        );
+      });
 
     if (!hasDeviceChange) {
       return;
@@ -246,8 +262,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
     });
 
     speakers.forEach((speaker) => {
-      if (!wsClientsRef.current.has(speaker.deviceID)) {
-        const client = new BoseWebSocketClient({
+      const client = wsClientsRef.current.get(speaker.deviceID);
+      if (!client) {
+        const newClient = new BoseWebSocketClient({
           host: speaker.host,
           deviceID: speaker.deviceID,
           onUpdate: (update) => {
@@ -346,6 +363,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
               } else {
                 refreshIfAvailable();
               }
+            } else if (update.type === "recents") {
+              // No-op: recents updates are parsed by the client but not consumed by the app UI yet.
             } else {
               refreshIfAvailable();
             }
@@ -357,7 +376,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
           },
         });
 
-        wsClientsRef.current.set(speaker.deviceID, client);
+        wsClientsRef.current.set(speaker.deviceID, newClient);
+        newClient.connect();
+      } else if (client.getHost() !== speaker.host) {
+        logger.log(
+          `[useBoseScanner] Speaker IP changed from ${client.getHost()} to ${speaker.host}. Reconnecting.`,
+        );
+        client.updateHost(speaker.host);
+      } else if (client.isClosed()) {
+        logger.log(
+          `[useBoseScanner] Speaker ${speaker.name} resolved on network again, forcing WebSocket reconnect.`,
+        );
         client.connect();
       }
     });
@@ -821,7 +850,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   const playStream = useCallback(
-    async (deviceID: string, uri: string, name: string) => {
+    async (deviceID: string, options: { uri: string; name: string }) => {
       const speaker = speakersRef.current.find(
         (item) => item.deviceID === deviceID,
       );
@@ -834,7 +863,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
           ),
         );
-        await playUri(speaker.host, uri, name);
+        await playUri(speaker.host, options);
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 1000);

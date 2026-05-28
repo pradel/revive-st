@@ -14,6 +14,7 @@ import {
   useSetAudioDspControlsMutation,
   useSetAudioProductToneControlsMutation,
   useSetAudioProductLevelControlsMutation,
+  useConfigureMargeAPIMutation,
 } from "../hooks/useSpeakerMutations";
 
 interface BoseContextType {
@@ -35,7 +36,10 @@ interface BoseContextType {
   loadBass: (deviceID: string) => Promise<void>;
   savePreset: (deviceID: string, presetId: number) => Promise<void>;
   setBass: (deviceID: string, value: number) => Promise<void>;
-  playStream: (deviceID: string, uri: string, name: string) => Promise<void>;
+  playStream: (
+    deviceID: string,
+    options: { uri: string; name: string },
+  ) => Promise<void>;
   volumeMutation: ReturnType<typeof useVolumeMutation>;
   powerToggleMutation: ReturnType<typeof usePowerToggleMutation>;
   playPauseMutation: ReturnType<typeof usePlayPauseMutation>;
@@ -54,6 +58,7 @@ interface BoseContextType {
   setAudioProductLevelControlsMutation: ReturnType<
     typeof useSetAudioProductLevelControlsMutation
   >;
+  configureMargeAPIMutation: ReturnType<typeof useConfigureMargeAPIMutation>;
 }
 
 const BoseContext = createContext<BoseContextType | null>(null);
@@ -76,6 +81,7 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
     useSetAudioProductToneControlsMutation();
   const setAudioProductLevelControlsMutation =
     useSetAudioProductLevelControlsMutation();
+  const configureMargeAPIMutation = useConfigureMargeAPIMutation();
 
   const contextValue = useMemo(
     () => ({
@@ -92,6 +98,7 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
       setAudioDspControlsMutation,
       setAudioProductToneControlsMutation,
       setAudioProductLevelControlsMutation,
+      configureMargeAPIMutation,
     }),
     [
       scanner,
@@ -107,6 +114,7 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
       setAudioDspControlsMutation,
       setAudioProductToneControlsMutation,
       setAudioProductLevelControlsMutation,
+      configureMargeAPIMutation,
     ],
   );
 

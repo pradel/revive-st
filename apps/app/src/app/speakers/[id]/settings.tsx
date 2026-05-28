@@ -1,7 +1,7 @@
 import { BottomSheet, Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -16,6 +16,7 @@ import {
 } from "react-native";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
 import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
@@ -57,6 +58,7 @@ export default function SpeakerSettings() {
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
+    loadPresets,
   } = useBose();
 
   const speaker = speakers.find((item) => item.deviceID === id);
@@ -64,6 +66,14 @@ export default function SpeakerSettings() {
   const [nameValue, setNameValue] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [bassSliderValue, setBassSliderValue] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (speaker?.deviceID) {
+      void loadPresets(speaker.deviceID);
+    }
+  }, [speaker?.deviceID, loadPresets]);
+
+  const margeAPIStatus = useMargeAPIStatusQuery(speaker?.host ?? "");
 
   const handleSaveName = () => {
     if (!speaker) {
@@ -139,8 +149,6 @@ export default function SpeakerSettings() {
 
   const bassValue =
     bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
-
-  const isSaving = setBassMutation.isPending;
 
   return (
     <ScrollView
@@ -258,7 +266,7 @@ export default function SpeakerSettings() {
             min={bassCaps.bassMin}
             max={bassCaps.bassMax}
             step={1}
-            disabled={isSaving}
+            isSaving={setBassMutation.isPending}
             onValueChange={(value) => {
               const rounded = Math.round(value);
               setBassSliderValue(rounded);
@@ -296,7 +304,7 @@ export default function SpeakerSettings() {
               min={toneControls.bass.minValue}
               max={toneControls.bass.maxValue}
               step={toneControls.bass.step}
-              disabled={isSaving}
+              isSaving={setAudioProductToneControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
@@ -311,7 +319,7 @@ export default function SpeakerSettings() {
               min={toneControls.treble.minValue}
               max={toneControls.treble.maxValue}
               step={toneControls.treble.step}
-              disabled={isSaving}
+              isSaving={setAudioProductToneControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
                   host: speaker.host,
@@ -332,7 +340,7 @@ export default function SpeakerSettings() {
               min={levelControls.frontCenterSpeakerLevel.minValue}
               max={levelControls.frontCenterSpeakerLevel.maxValue}
               step={levelControls.frontCenterSpeakerLevel.step}
-              disabled={isSaving}
+              isSaving={setAudioProductLevelControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
@@ -347,7 +355,7 @@ export default function SpeakerSettings() {
               min={levelControls.rearSurroundSpeakersLevel.minValue}
               max={levelControls.rearSurroundSpeakersLevel.maxValue}
               step={levelControls.rearSurroundSpeakersLevel.step}
-              disabled={isSaving}
+              isSaving={setAudioProductLevelControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
                   host: speaker.host,
@@ -357,6 +365,131 @@ export default function SpeakerSettings() {
             />
           </>
         ) : null}
+      </View>
+
+      {/* Radio Configuration */}
+      <Text style={$sectionLabel}>Radio Configuration</Text>
+      <View style={$card}>
+        <View style={$infoRow}>
+          <Text style={$infoLabel}>Marge API Radio</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {(() => {
+              if (margeAPIStatus.isLoading) {
+                return (
+                  <ActivityIndicator size="small" color={COLORS.textMuted} />
+                );
+              }
+              if (margeAPIStatus.isError) {
+                return (
+                  <Text style={[$infoValue, { color: COLORS.error }]}>
+                    Connection Failed
+                  </Text>
+                );
+              }
+              if (margeAPIStatus.data) {
+                return (
+                  <Text style={[$infoValue, { color: COLORS.primary }]}>
+                    Configured
+                  </Text>
+                );
+              }
+              return <Text style={$infoValue}>Not Configured</Text>;
+            })()}
+          </View>
+        </View>
+
+        {margeAPIStatus.isError && (
+          <>
+            <View style={$infoDivider} />
+            <Text
+              style={[$pickerDescription, { marginTop: 0, marginBottom: 12 }]}
+            >
+              Failed to connect to the speaker via Telnet. Ensure your device is
+              on the same network.
+            </Text>
+            <TouchableOpacity
+              style={$secondaryButton}
+              onPress={() => {
+                void margeAPIStatus.refetch();
+              }}
+            >
+              <Text style={$secondaryButtonText}>Retry Connection</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        {!margeAPIStatus.isLoading && !margeAPIStatus.isError && (
+          <>
+            <View style={$infoDivider} />
+            <Text
+              style={[$pickerDescription, { marginTop: 0, marginBottom: 12 }]}
+            >
+              Enable custom internet radio streams on this speaker. This will
+              reboot the device.
+            </Text>
+            <TouchableOpacity
+              style={$primaryButton}
+              onPress={() => {
+                router.push("./configure");
+              }}
+            >
+              <Text style={$primaryButtonText}>
+                {margeAPIStatus.data
+                  ? "Re-configure for Marge API"
+                  : "Configure for Marge API"}
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+
+      {/* Presets */}
+      <Text style={$sectionLabel}>Presets</Text>
+      <Text
+        style={[
+          $pickerDescription,
+          { marginLeft: 4, marginTop: 0, marginBottom: 8 },
+        ]}
+      >
+        Press and hold the desired preset button on your device or remote until
+        you hear a beep. From now on you can start the stream by pressing the
+        preset button.
+      </Text>
+      <View style={$card}>
+        {speaker.presets && speaker.presets.length > 0 ? (
+          speaker.presets.map((preset, index) => (
+            <View key={preset.id}>
+              {index > 0 && <View style={$infoDivider} />}
+              <View style={$infoRow}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    flexShrink: 1,
+                  }}
+                >
+                  <View style={$presetNumberBadge}>
+                    <Text style={$presetNumberText}>{preset.id}</Text>
+                  </View>
+                  <View style={{ flexShrink: 1 }}>
+                    <Text style={$infoLabel}>{preset.contentItem.source}</Text>
+                    {preset.contentItem.location ? (
+                      <Text
+                        style={[$pickerDescription, { marginTop: 2 }]}
+                        numberOfLines={1}
+                      >
+                        {preset.contentItem.location}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              </View>
+            </View>
+          ))
+        ) : (
+          <Text style={$infoValue}>No presets configured.</Text>
+        )}
       </View>
 
       {/* Device Info */}
@@ -421,7 +554,7 @@ function NativeSliderSetting({
   min,
   max,
   step,
-  disabled,
+  isSaving,
   onValueChange,
 }: {
   label: string;
@@ -429,11 +562,33 @@ function NativeSliderSetting({
   min: number;
   max: number;
   step: number;
-  disabled?: boolean;
+  isSaving?: boolean;
   onValueChange: (value: number) => void;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const { width } = useWindowDimensions();
+
+  // Local state to keep slider movement fluid
+  const [localValue, setLocalValue] = useState(value);
+
+  // Sync with value prop when value updates or sheet opens
+  useEffect(() => {
+    setLocalValue(value);
+  }, [value, isOpen]);
+
+  // Debounced callback
+  useEffect(() => {
+    if (localValue === value) {
+      // eslint-disable-next-line @typescript-eslint/no-empty-function
+      return () => {};
+    }
+    const timer = setTimeout(() => {
+      onValueChange(localValue);
+    }, 400);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [localValue, onValueChange, value]);
 
   return (
     <>
@@ -446,6 +601,9 @@ function NativeSliderSetting({
       >
         <Text style={$infoLabel}>{label}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          {isSaving && (
+            <ActivityIndicator size="small" color={COLORS.textMuted} />
+          )}
           <Text style={$infoValue}>{value}</Text>
           <SymbolView
             name={{
@@ -468,16 +626,28 @@ function NativeSliderSetting({
         <View style={[$bottomSheetContent, { width }]}>
           <View style={$sliderHeader}>
             <Text style={$infoLabel}>{label}</Text>
-            <Text style={$infoValue}>{value}</Text>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+            >
+              {isSaving && (
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  <ActivityIndicator size="small" color={COLORS.textMuted} />
+                  <Text style={$savingText}>Saving...</Text>
+                </View>
+              )}
+              <Text style={$infoValue}>{localValue}</Text>
+            </View>
           </View>
           <Host style={{ height: 40 }}>
             <Slider
-              value={value}
-              onValueChange={onValueChange}
+              value={localValue}
+              onValueChange={setLocalValue}
               min={min}
               max={max}
               step={step}
-              disabled={disabled}
+              disabled={isSaving}
             />
           </Host>
           <View style={$sliderLabels}>
@@ -742,6 +912,11 @@ const $sliderLabelText: TextStyle = {
   color: COLORS.textDisabled,
 };
 
+const $savingText: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+};
+
 const $pickerOptions: ViewStyle = {
   flexDirection: "row",
   flexWrap: "wrap",
@@ -790,4 +965,45 @@ const $versionValue: TextStyle = {
   color: COLORS.textSecondary,
   fontWeight: "400",
   lineHeight: 20,
+};
+
+const $presetNumberBadge: ViewStyle = {
+  width: 28,
+  height: 28,
+  borderRadius: 14,
+  backgroundColor: COLORS.border,
+  alignItems: "center",
+  justifyContent: "center",
+};
+
+const $presetNumberText: TextStyle = {
+  color: COLORS.text,
+  fontSize: 13,
+  fontWeight: "bold",
+};
+
+const $primaryButton: ViewStyle = {
+  backgroundColor: COLORS.text,
+  paddingVertical: 12,
+  borderRadius: 10,
+  alignItems: "center",
+};
+
+const $primaryButtonText: TextStyle = {
+  color: COLORS.background,
+  fontSize: 15,
+  fontWeight: "600",
+};
+
+const $secondaryButton: ViewStyle = {
+  backgroundColor: COLORS.border,
+  paddingVertical: 12,
+  borderRadius: 10,
+  alignItems: "center",
+};
+
+const $secondaryButtonText: TextStyle = {
+  color: COLORS.text,
+  fontSize: 15,
+  fontWeight: "600",
 };
