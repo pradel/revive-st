@@ -1,6 +1,15 @@
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 export function createSourceProvidersXml(): string {
   return `${XML_HEADER}
 <sourceProviders>
@@ -13,8 +22,9 @@ export function createSourceProvidersXml(): string {
 }
 
 export function createAccountFullXml(accountId: string): string {
+  const safeAccountId = escapeXml(accountId);
   return `${XML_HEADER}
-<account id="${accountId}">
+<account id="${safeAccountId}">
   <accountStatus>OK</accountStatus>
   <mode>global</mode>
   <preferredLanguage>en</preferredLanguage>
@@ -28,7 +38,7 @@ export function createAccountFullXml(accountId: string): string {
       <sourcename>Local Radio Source</sourcename>
       <sourceSettings/>
       <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
-      <username>${accountId}</username>
+      <username>${safeAccountId}</username>
     </source>
   </sources>
 </account>`;
@@ -46,8 +56,9 @@ export function createSoftwareUpdateXml(): string {
 }
 
 export function createRecentItemResponseXml(id: string): string {
+  const safeId = escapeXml(id);
   return `${XML_HEADER}
-<recent id="${id}">
+<recent id="${safeId}">
   <contentItemType>stationurl</contentItemType>
   <createdOn>2018-11-27T18:20:01.000+00:00</createdOn>
   <lastplayedat>2025-11-01T17:32:59.000+00:00</lastplayedat>
