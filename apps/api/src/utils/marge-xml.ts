@@ -9,12 +9,6 @@ export function createSourceProvidersXml(): string {
     <name>LOCAL_INTERNET_RADIO</name>
     <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
   </sourceprovider>
-  <sourceprovider>
-    <id>10002</id>
-    <createdOn>2012-09-19T12:43:00.000+00:00</createdOn>
-    <name>INTERNET_RADIO</name>
-    <updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn>
-  </sourceprovider>
 </sourceProviders>`;
 }
 
