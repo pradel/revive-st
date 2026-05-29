@@ -3,7 +3,6 @@ import { SymbolView } from "expo-symbols";
 import { useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
-  Animated,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -13,40 +12,46 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
 
+interface PulseRingProps {
+  delay: number;
+}
+
+function PulseRing({ delay }: PulseRingProps) {
+  const animatedValue = useSharedValue(0);
+
+  useEffect(() => {
+    animatedValue.value = 0;
+    animatedValue.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 2400 }), -1, false),
+    );
+  }, [animatedValue, delay]);
+
+  const rStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: animatedValue.value * 1.5 + 1 }],
+    opacity: (1 - animatedValue.value) * 0.6,
+  }));
+
+  return <Animated.View style={[$pulseRing, rStyle]} />;
+}
+
 export default function Index() {
   const router = useRouter();
   const { speakers, isScanning, rescan, changeVolume } = useBose();
   const sliderLayoutsRef = useRef<Record<string, number>>({});
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    let animation: Animated.CompositeAnimation | null = null;
-    if (isScanning) {
-      pulseAnim.setValue(0);
-      animation = Animated.loop(
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: 2000,
-          useNativeDriver: true,
-        }),
-      );
-      animation.start();
-    } else {
-      pulseAnim.setValue(0);
-    }
-
-    return () => {
-      if (animation) {
-        animation.stop();
-      }
-    };
-  }, [isScanning, pulseAnim]);
 
   const handleVolumeTap = useCallback(
     (speaker: BoseSpeaker, event: GestureResponderEvent) => {
@@ -95,16 +100,6 @@ export default function Index() {
   const showEmptyState = speakers.length === 0;
   const showSpeakers = speakers.length > 0;
 
-  const scale = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 2.2],
-  });
-
-  const opacity = pulseAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.6, 0],
-  });
-
   return (
     <ScrollView
       style={$container}
@@ -119,15 +114,11 @@ export default function Index() {
         <View style={$centerState}>
           <View style={$emptyIconContainer}>
             {isScanning && (
-              <Animated.View
-                style={[
-                  $pulseRing,
-                  {
-                    transform: [{ scale }],
-                    opacity,
-                  },
-                ]}
-              />
+              <>
+                <PulseRing delay={0} />
+                <PulseRing delay={800} />
+                <PulseRing delay={1600} />
+              </>
             )}
             <SymbolView
               name={{
