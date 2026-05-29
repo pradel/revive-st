@@ -153,7 +153,7 @@ export default function RadioBrowser() {
       if (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") {
         Alert.alert(
           "Source Missing on Speaker",
-          `The speaker "${speaker.name}" is missing the "LOCAL_INTERNET_RADIO" source in its registry (this often happens after a factory reset).\n\nTo fix this, you must run SoundCork on your network once, or use the Marge API V1 root method to restore the source.`,
+          `The speaker "${speaker.name}" is missing the "LOCAL_INTERNET_RADIO" source in its registry (this often happens after a factory reset).\n\nTo fix this, you must setup the speaker from the settings screen.`,
         );
       } else {
         Alert.alert(
