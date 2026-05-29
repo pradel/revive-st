@@ -158,7 +158,7 @@ export default function RadioBrowser() {
       } else {
         Alert.alert(
           "Casting Failed",
-          `Failed to play this stream on ${speaker.name}. Note: SoundTouch speakers prefer direct HTTP MP3/AAC streams.`,
+          `Failed to play this stream on ${speaker.name}.`,
         );
       }
     } finally {
