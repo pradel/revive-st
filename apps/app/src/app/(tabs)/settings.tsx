@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
+  ActivityIndicator,
   Linking,
   ScrollView,
   Text,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { APP_CONFIG } from "@/config";
+import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
 import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
@@ -22,6 +24,7 @@ const version = Constants.expoConfig?.version ?? "0.0.0";
 export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
+  const { isScanning, rescan } = useBose();
 
   return (
     <SafeAreaView style={$container}>
@@ -94,6 +97,47 @@ export default function AppSettings() {
             />
           </View>
           <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <Text style={$sectionLabel}>Network</Text>
+        <TouchableOpacity
+          style={[$linkCard, isScanning && { opacity: 0.6 }]}
+          activeOpacity={0.7}
+          onPress={rescan}
+          disabled={isScanning}
+        >
+          <View style={$linkIconContainer}>
+            {isScanning ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <SymbolView
+                name={{
+                  ios: "arrow.clockwise",
+                  android: "refresh",
+                  web: "refresh",
+                }}
+                tintColor={COLORS.textSecondary}
+                size={20}
+              />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={$linkText}>Rescan Local Network</Text>
+            <Text style={$linkSubText}>
+              {isScanning
+                ? "Scanning network..."
+                : "Search for SoundTouch speakers"}
+            </Text>
+          </View>
           <SymbolView
             name={{
               ios: "chevron.right",
