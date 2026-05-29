@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -105,6 +106,14 @@ export default function Index() {
       style={$container}
       contentContainerStyle={$content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isScanning}
+          onRefresh={rescan}
+          tintColor={COLORS.primary}
+          colors={[COLORS.primary]}
+        />
+      }
     >
       {/* Header */}
       <Header />
