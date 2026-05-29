@@ -112,26 +112,7 @@ export default function Index() {
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <Header
-        rightComponent={
-          <TouchableOpacity
-            style={[$rescanButton, isScanning && { opacity: 0.5 }]}
-            onPress={rescan}
-            activeOpacity={0.7}
-            disabled={isScanning}
-          >
-            <SymbolView
-              name={{
-                ios: "arrow.clockwise",
-                android: "refresh",
-                web: "refresh",
-              }}
-              tintColor={COLORS.textMuted}
-              size={18}
-            />
-          </TouchableOpacity>
-        }
-      />
+      <Header />
 
       {/* Unified Empty/Scanning State */}
       {showEmptyState && (
@@ -406,17 +387,6 @@ const $container: ViewStyle = {
 const $content: ViewStyle = {
   paddingTop: 60,
   paddingBottom: 40,
-};
-
-const $rescanButton: ViewStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: COLORS.card,
-  alignItems: "center",
-  justifyContent: "center",
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $centerState: ViewStyle = {
