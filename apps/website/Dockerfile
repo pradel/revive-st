@@ -16,10 +16,13 @@ COPY packages/bose-wifi/package.json ./packages/bose-wifi/
 RUN npm pkg delete scripts.prepare
 
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 # Copy the rest of the source code
 COPY . .
+
+# Run postinstall for website to generate MDX collections
+RUN pnpm --filter @revive-st/website run postinstall
 
 # Run build
 RUN pnpm --filter @revive-st/website build
