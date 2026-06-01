@@ -12,6 +12,9 @@ COPY apps/website/package.json ./apps/website/
 COPY packages/bose-api-speaker-client/package.json ./packages/bose-api-speaker-client/
 COPY packages/bose-wifi/package.json ./packages/bose-wifi/
 
+# Remove root prepare script to prevent VP command requirement during build
+RUN npm pkg delete scripts.prepare
+
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
