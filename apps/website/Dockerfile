@@ -27,6 +27,7 @@ RUN pnpm --filter @revive-st/website run postinstall
 # Run build
 RUN pnpm --filter @revive-st/website build
 
-# Stage 2: Serve using Nginx
-FROM nginx:1-alpine
-COPY --from=builder /app/apps/website/out /usr/share/nginx/html
+# Stage 2: Serve using Caddy
+FROM caddy:2-alpine
+COPY --from=builder /app/apps/website/out /usr/share/caddy
+COPY apps/website/Caddyfile /etc/caddy/Caddyfile
