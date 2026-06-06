@@ -22,9 +22,10 @@ function createMockWS() {
 }
 
 function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
-  const ctor = vi.fn(function ctor() {
+  function WebSocketMock() {
     return ws;
-  });
+  }
+  const ctor = vi.fn(WebSocketMock);
   vi.stubGlobal("WebSocket", ctor);
   return ctor;
 }
