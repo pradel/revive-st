@@ -40,7 +40,6 @@ export type ProvisioningState =
   | { step: "WAITING_FOR_SPEAKER_ON_NETWORK"; ssid: string }
   | { step: "DISCOVERING_SPEAKER" }
   | { step: "DISCOVERY_TIMEOUT" }
-  | { step: "MANUAL_IP_ENTRY" }
   | {
       step: "PROVISIONING_COMPLETE";
       speakerIP: string;
@@ -77,9 +76,6 @@ export type ProvisioningAction =
       name: string;
     }
   | { type: "DISCOVERY_TIMEOUT" }
-  | { type: "ENTER_MANUAL_IP" }
-  | { type: "MANUAL_IP_VALIDATED"; ip: string; name: string }
-  | { type: "MANUAL_IP_CANCELLED" }
   | { type: "RETRY" };
 
 export const initialState: ProvisioningState = { step: "IDLE" };

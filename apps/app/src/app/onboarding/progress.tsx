@@ -181,27 +181,6 @@ export default function ProgressScreen() {
               <Text style={$primaryButtonText}>Try Again</Text>
             </TouchableOpacity>
           )}
-
-          {step === "DISCOVERY_TIMEOUT" && (
-            <TouchableOpacity
-              style={$secondaryButton}
-              onPress={() => {
-                dispatch({ type: "ENTER_MANUAL_IP" });
-              }}
-              activeOpacity={0.8}
-            >
-              <SymbolView
-                name={{
-                  ios: "keyboard",
-                  android: "keyboard",
-                  web: "keyboard",
-                }}
-                tintColor={COLORS.textSecondary}
-                size={18}
-              />
-              <Text style={$secondaryButtonText}>Enter IP Manually</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </View>
     </View>
@@ -301,24 +280,5 @@ const $primaryButton: ViewStyle = {
 const $primaryButtonText: TextStyle = {
   fontSize: 15,
   color: COLORS.background,
-  fontWeight: "600",
-};
-
-const $secondaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: COLORS.card,
-  height: 52,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  width: "100%",
-};
-
-const $secondaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.textSecondary,
   fontWeight: "600",
 };

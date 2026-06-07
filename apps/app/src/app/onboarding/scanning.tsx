@@ -20,8 +20,6 @@ export default function ScanningScreen() {
   useEffect(() => {
     if (state.step === "CONNECTING_TO_HOTSPOT") {
       router.replace("/onboarding/connecting" as any);
-    } else if (state.step === "MANUAL_IP_ENTRY") {
-      router.push("/onboarding/manual-ip" as any);
     } else if (state.step === "WIFI_DISABLED") {
       router.replace("/onboarding/wifi-enable" as any);
     }
@@ -98,8 +96,8 @@ export default function ScanningScreen() {
         </View>
 
         {/* Action Buttons */}
-        <View style={$buttonContainer}>
-          {isNotFound && (
+        {isNotFound && (
+          <View style={$buttonContainer}>
             <TouchableOpacity
               style={$primaryButton}
               onPress={() => {
@@ -118,27 +116,8 @@ export default function ScanningScreen() {
               />
               <Text style={$primaryButtonText}>Scan Again</Text>
             </TouchableOpacity>
-          )}
-
-          <TouchableOpacity
-            style={$secondaryButton}
-            onPress={() => {
-              dispatch({ type: "ENTER_MANUAL_IP" });
-            }}
-            activeOpacity={0.8}
-          >
-            <SymbolView
-              name={{
-                ios: "keyboard",
-                android: "keyboard",
-                web: "keyboard",
-              }}
-              tintColor={COLORS.textSecondary}
-              size={18}
-            />
-            <Text style={$secondaryButtonText}>Enter IP Manually</Text>
-          </TouchableOpacity>
-        </View>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -249,24 +228,5 @@ const $primaryButton: ViewStyle = {
 const $primaryButtonText: TextStyle = {
   fontSize: 15,
   color: COLORS.background,
-  fontWeight: "600",
-};
-
-const $secondaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: COLORS.card,
-  height: 52,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  width: "100%",
-};
-
-const $secondaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.textSecondary,
   fontWeight: "600",
 };

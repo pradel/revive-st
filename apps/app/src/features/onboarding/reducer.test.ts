@@ -259,53 +259,6 @@ describe("provisioningReducer", () => {
     });
   });
 
-  describe("ENTER_MANUAL_IP", () => {
-    it("transitions from SCANNING_FOR_HOTSPOT to MANUAL_IP_ENTRY", () => {
-      const result = provisioningReducer(SCANNING_FOR_HOTSPOT, {
-        type: "ENTER_MANUAL_IP",
-      });
-      expect(result).toEqual({ step: "MANUAL_IP_ENTRY" });
-    });
-
-    it("transitions from DISCOVERY_TIMEOUT to MANUAL_IP_ENTRY", () => {
-      const result = provisioningReducer(DISCOVERY_TIMEOUT, {
-        type: "ENTER_MANUAL_IP",
-      });
-      expect(result).toEqual({ step: "MANUAL_IP_ENTRY" });
-    });
-
-    it("ignores from wrong state", () => {
-      const result = provisioningReducer(IDLE, { type: "ENTER_MANUAL_IP" });
-      expect(result).toBe(IDLE);
-    });
-  });
-
-  describe("MANUAL_IP_VALIDATED", () => {
-    it("transitions to PROVISIONING_COMPLETE", () => {
-      const manualState: ProvisioningState = { step: "MANUAL_IP_ENTRY" };
-      const result = provisioningReducer(manualState, {
-        type: "MANUAL_IP_VALIDATED",
-        ip: "10.0.0.5",
-        name: "Office Speaker",
-      });
-      expect(result).toEqual({
-        step: "PROVISIONING_COMPLETE",
-        speakerIP: "10.0.0.5",
-        speakerName: "Office Speaker",
-      });
-    });
-  });
-
-  describe("MANUAL_IP_CANCELLED", () => {
-    it("transitions back to SCANNING_FOR_HOTSPOT", () => {
-      const manualState: ProvisioningState = { step: "MANUAL_IP_ENTRY" };
-      const result = provisioningReducer(manualState, {
-        type: "MANUAL_IP_CANCELLED",
-      });
-      expect(result).toEqual(SCANNING_FOR_HOTSPOT);
-    });
-  });
-
   describe("RETRY from error states", () => {
     it("PERMISSIONS_DENIED rewinds to CHECKING_PERMISSIONS", () => {
       const result = provisioningReducer(PERMISSIONS_DENIED, { type: "RETRY" });
@@ -432,25 +385,6 @@ describe("provisioningReducer", () => {
         step: "PROVISIONING_COMPLETE",
         speakerIP: "192.168.1.42",
         speakerName: "Living Room",
-      });
-    });
-
-    it("handles the manual IP path", () => {
-      let state = provisioningReducer(IDLE, { type: "START" });
-      state = provisioningReducer(state, { type: "PERMISSIONS_GRANTED" });
-      state = provisioningReducer(state, { type: "WIFI_ENABLED" });
-      state = provisioningReducer(state, { type: "ENTER_MANUAL_IP" });
-      expect(state.step).toBe("MANUAL_IP_ENTRY");
-
-      state = provisioningReducer(state, {
-        type: "MANUAL_IP_VALIDATED",
-        ip: "10.0.0.100",
-        name: "Studio",
-      });
-      expect(state).toEqual({
-        step: "PROVISIONING_COMPLETE",
-        speakerIP: "10.0.0.100",
-        speakerName: "Studio",
       });
     });
 

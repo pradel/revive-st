@@ -28,7 +28,6 @@ function OnboardingNavigator() {
       <Stack.Screen name="network-picker" />
       <Stack.Screen name="progress" />
       <Stack.Screen name="success" />
-      <Stack.Screen name="manual-ip" options={{ presentation: "modal" }} />
     </Stack>
   );
 }

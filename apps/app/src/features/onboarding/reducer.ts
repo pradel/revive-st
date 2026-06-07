@@ -135,32 +135,6 @@ export function provisioningReducer(
       }
       return state;
 
-    case "ENTER_MANUAL_IP": {
-      if (
-        state.step === "SCANNING_FOR_HOTSPOT" ||
-        state.step === "DISCOVERY_TIMEOUT"
-      ) {
-        return { step: "MANUAL_IP_ENTRY" };
-      }
-      return state;
-    }
-
-    case "MANUAL_IP_VALIDATED":
-      if (state.step === "MANUAL_IP_ENTRY") {
-        return {
-          step: "PROVISIONING_COMPLETE",
-          speakerIP: action.ip,
-          speakerName: action.name,
-        };
-      }
-      return state;
-
-    case "MANUAL_IP_CANCELLED":
-      if (state.step === "MANUAL_IP_ENTRY") {
-        return { step: "SCANNING_FOR_HOTSPOT" };
-      }
-      return state;
-
     case "RETRY": {
       switch (state.step) {
         case "PERMISSIONS_DENIED":
