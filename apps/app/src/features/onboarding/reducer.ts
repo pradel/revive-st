@@ -40,11 +40,23 @@ export function provisioningReducer(
       return state;
 
     case "HOTSPOT_FOUND":
-      if (state.step === "SCANNING_FOR_HOTSPOT") {
+      if (
+        state.step === "SCANNING_FOR_HOTSPOT" ||
+        state.step === "SELECTING_SPEAKER"
+      ) {
         return {
           step: "CONNECTING_TO_HOTSPOT",
           ssid: action.ssid,
           bssid: action.bssid,
+        };
+      }
+      return state;
+
+    case "SPEAKERS_FOUND":
+      if (state.step === "SCANNING_FOR_HOTSPOT") {
+        return {
+          step: "SELECTING_SPEAKER",
+          speakers: action.speakers,
         };
       }
       return state;
@@ -142,6 +154,8 @@ export function provisioningReducer(
         case "WIFI_DISABLED":
           return { step: "CHECKING_WIFI" };
         case "HOTSPOT_NOT_FOUND":
+          return { step: "SCANNING_FOR_HOTSPOT" };
+        case "SELECTING_SPEAKER":
           return { step: "SCANNING_FOR_HOTSPOT" };
         case "CONNECTION_FAILED":
           return { step: "SCANNING_FOR_HOTSPOT" };

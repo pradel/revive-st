@@ -42,15 +42,15 @@ export function useWifiProvisioning() {
           `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level} caps: ${n.capabilities}`,
         );
       });
-      const speaker = networks.find((n) => isSpeakerHotspot(n.SSID));
-      if (speaker) {
-        logger.log(
-          `[WiFi Scan] Speaker found: "${speaker.SSID}" BSSID: ${speaker.BSSID} capabilities: "${speaker.capabilities}" level: ${speaker.level}`,
-        );
+      const speakers = networks
+        .filter((n) => n.SSID && isSpeakerHotspot(n.SSID))
+        .map((n) => ({ ssid: n.SSID, bssid: n.BSSID }));
+
+      if (speakers.length > 0) {
+        logger.log(`[WiFi Scan] Found ${speakers.length} Bose speakers`);
         dispatch({
-          type: "HOTSPOT_FOUND",
-          ssid: speaker.SSID,
-          bssid: speaker.BSSID,
+          type: "SPEAKERS_FOUND",
+          speakers,
         });
       } else {
         logger.log(

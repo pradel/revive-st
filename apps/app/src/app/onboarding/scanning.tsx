@@ -27,6 +27,8 @@ export default function ScanningScreen() {
 
   const isNotFound = state.step === "HOTSPOT_NOT_FOUND";
   const isScanning = state.step === "SCANNING_FOR_HOTSPOT";
+  const isSelecting = state.step === "SELECTING_SPEAKER";
+  const speakers = state.step === "SELECTING_SPEAKER" ? state.speakers : [];
 
   return (
     <View style={$container}>
@@ -49,9 +51,17 @@ export default function ScanningScreen() {
           )}
           <SymbolView
             name={{
-              ios: isNotFound ? "wifi.exclamationmark" : "wifi",
-              android: isNotFound ? "wifi_off" : "wifi",
-              web: isNotFound ? "wifi_off" : "wifi",
+              ios: isNotFound
+                ? "wifi.exclamationmark"
+                : isSelecting
+                  ? "speaker.wave.2"
+                  : "wifi",
+              android: isNotFound
+                ? "wifi_off"
+                : isSelecting
+                  ? "speaker"
+                  : "wifi",
+              web: isNotFound ? "wifi_off" : isSelecting ? "speaker" : "wifi",
             }}
             tintColor={isNotFound ? COLORS.error : COLORS.primary}
             size={48}
@@ -71,6 +81,58 @@ export default function ScanningScreen() {
                 Looking for your Bose SoundTouch speaker's setup network. Make
                 sure your speaker's Wi-Fi indicator is pulsing amber.
               </Text>
+            </>
+          )}
+
+          {isSelecting && (
+            <>
+              <Text style={$cardTitle}>Select Speaker</Text>
+              <Text style={$cardDescription}>
+                We found the following Bose speakers in setup mode nearby.
+                Select the one you want to configure.
+              </Text>
+              <View style={$listContainer}>
+                {speakers.map((item) => (
+                  <TouchableOpacity
+                    key={item.bssid}
+                    style={$speakerItem}
+                    onPress={() => {
+                      dispatch({
+                        type: "HOTSPOT_FOUND",
+                        ssid: item.ssid,
+                        bssid: item.bssid,
+                      });
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <View style={$speakerRow}>
+                      <View style={$speakerIconSmall}>
+                        <SymbolView
+                          name={{
+                            ios: "speaker.wave.2.fill",
+                            android: "speaker",
+                            web: "speaker",
+                          }}
+                          tintColor={COLORS.primary}
+                          size={18}
+                        />
+                      </View>
+                      <Text style={$speakerText} numberOfLines={1}>
+                        {item.ssid}
+                      </Text>
+                      <SymbolView
+                        name={{
+                          ios: "chevron.right",
+                          android: "chevron_right",
+                          web: "chevron_right",
+                        }}
+                        tintColor={COLORS.textMuted}
+                        size={16}
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
             </>
           )}
 
@@ -96,10 +158,10 @@ export default function ScanningScreen() {
         </View>
 
         {/* Action Buttons */}
-        {isNotFound && (
+        {(isNotFound || isSelecting) && (
           <View style={$buttonContainer}>
             <TouchableOpacity
-              style={$primaryButton}
+              style={isSelecting ? $secondaryButton : $primaryButton}
               onPress={() => {
                 dispatch({ type: "RETRY" });
               }}
@@ -111,10 +173,16 @@ export default function ScanningScreen() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor={COLORS.background}
+                tintColor={
+                  isSelecting ? COLORS.textSecondary : COLORS.background
+                }
                 size={18}
               />
-              <Text style={$primaryButtonText}>Scan Again</Text>
+              <Text
+                style={isSelecting ? $secondaryButtonText : $primaryButtonText}
+              >
+                {isSelecting ? "Rescan" : "Scan Again"}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -229,4 +297,61 @@ const $primaryButtonText: TextStyle = {
   fontSize: 15,
   color: COLORS.background,
   fontWeight: "600",
+};
+
+const $secondaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.card,
+  height: 52,
+  borderRadius: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+};
+
+const $secondaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.textSecondary,
+  fontWeight: "600",
+};
+
+const $listContainer: ViewStyle = {
+  width: "100%",
+  gap: 10,
+  marginTop: 10,
+};
+
+const $speakerItem: ViewStyle = {
+  paddingHorizontal: 16,
+  paddingVertical: 14,
+  borderRadius: 12,
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+};
+
+const $speakerRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+};
+
+const $speakerIconSmall: ViewStyle = {
+  width: 32,
+  height: 32,
+  borderRadius: 8,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 12,
+};
+
+const $speakerText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "600",
+  flex: 1,
 };

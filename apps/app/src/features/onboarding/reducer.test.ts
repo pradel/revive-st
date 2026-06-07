@@ -99,6 +99,44 @@ describe("provisioningReducer", () => {
         bssid: "aa:bb:cc:dd:ee:ff",
       });
     });
+
+    it("transitions from SELECTING_SPEAKER to CONNECTING_TO_HOTSPOT", () => {
+      const selectingState: ProvisioningState = {
+        step: "SELECTING_SPEAKER",
+        speakers: [
+          { ssid: "Bose SoundTouch 1234", bssid: "aa:bb:cc:dd:ee:ff" },
+        ],
+      };
+      const result = provisioningReducer(selectingState, {
+        type: "HOTSPOT_FOUND",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+      });
+      expect(result).toEqual({
+        step: "CONNECTING_TO_HOTSPOT",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+      });
+    });
+  });
+
+  describe("SPEAKERS_FOUND", () => {
+    it("transitions to SELECTING_SPEAKER with list of speakers", () => {
+      const result = provisioningReducer(SCANNING_FOR_HOTSPOT, {
+        type: "SPEAKERS_FOUND",
+        speakers: [
+          { ssid: "Bose SoundTouch 1234", bssid: "aa:bb:cc:dd:ee:ff" },
+          { ssid: "Bose SoundTouch 5678", bssid: "11:22:33:44:55:66" },
+        ],
+      });
+      expect(result).toEqual({
+        step: "SELECTING_SPEAKER",
+        speakers: [
+          { ssid: "Bose SoundTouch 1234", bssid: "aa:bb:cc:dd:ee:ff" },
+          { ssid: "Bose SoundTouch 5678", bssid: "11:22:33:44:55:66" },
+        ],
+      });
+    });
   });
 
   describe("HOTSPOT_TIMEOUT", () => {
@@ -385,6 +423,33 @@ describe("provisioningReducer", () => {
         step: "PROVISIONING_COMPLETE",
         speakerIP: "192.168.1.42",
         speakerName: "Living Room",
+      });
+    });
+
+    it("completes the happy path with speaker selection", () => {
+      let state = provisioningReducer(IDLE, { type: "START" });
+      state = provisioningReducer(state, { type: "PERMISSIONS_GRANTED" });
+      state = provisioningReducer(state, { type: "WIFI_ENABLED" });
+      expect(state.step).toBe("SCANNING_FOR_HOTSPOT");
+
+      state = provisioningReducer(state, {
+        type: "SPEAKERS_FOUND",
+        speakers: [
+          { ssid: "Bose SoundTouch 5678", bssid: "aa:bb:cc:dd:ee:ff" },
+          { ssid: "Bose SoundTouch 1234", bssid: "11:22:33:44:55:66" },
+        ],
+      });
+      expect(state.step).toBe("SELECTING_SPEAKER");
+
+      state = provisioningReducer(state, {
+        type: "HOTSPOT_FOUND",
+        ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
+      });
+      expect(state).toEqual({
+        step: "CONNECTING_TO_HOTSPOT",
+        ssid: "Bose SoundTouch 5678",
+        bssid: "aa:bb:cc:dd:ee:ff",
       });
     });
 
