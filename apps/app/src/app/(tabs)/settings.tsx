@@ -2,6 +2,8 @@ import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import {
+  ActivityIndicator,
+  Linking,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -9,161 +11,262 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
+import { APP_CONFIG } from "@/config";
+import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
+import { Header } from "@/ui/Header";
+import { COLORS } from "@/ui/theme";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
+  const { isScanning, rescan } = useBose();
 
   return (
-    <ScrollView
-      style={$container}
-      contentContainerStyle={$content}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* App Identity */}
-      <View style={$card}>
-        <View style={$cardHeader}>
-          <View style={$appIcon}>
+    <SafeAreaView style={$container}>
+      <Header />
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={$content}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={$sectionLabel}>About</Text>
+
+        <View style={[$card, $heroCard]}>
+          <View style={$heroIconContainer}>
             <SymbolView
               name={{
-                ios: "speaker.wave.2.fill",
+                ios: "speaker.wave.2",
                 android: "speaker",
                 web: "speaker",
               }}
-              tintColor="#a1a1aa"
-              size={24}
+              tintColor={COLORS.primary}
+              size={32}
             />
           </View>
-          <View style={$cardMeta}>
-            <Text style={$appName}>Revive SoundTouch</Text>
-            <Text style={$appType}>Bose Speaker Controller</Text>
-          </View>
+          <Text style={$heroTitle}>Revive SoundTouch</Text>
+          <Text style={$heroSubtitle}>Version {version}</Text>
         </View>
-      </View>
 
-      {/* About */}
-      <Text style={$sectionLabel}>About</Text>
-      <View style={$card}>
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Version</Text>
-          <Text style={$infoValue}>{version}</Text>
-        </View>
-      </View>
-
-      {/* Developer */}
-      <Text style={$sectionLabel}>Developer</Text>
-      <View style={$card}>
         <TouchableOpacity
-          style={$infoRow}
+          style={$linkCard}
+          activeOpacity={0.7}
+          onPress={() => {
+            void Linking.openURL(APP_CONFIG.WEBSITE_URL);
+          }}
+        >
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{ ios: "globe", android: "language", web: "language" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
+          </View>
+          <Text style={[$linkText, { flex: 1 }]}>Website</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={$linkCard}
+          activeOpacity={0.7}
+          onPress={() => {
+            void Linking.openURL(APP_CONFIG.GITHUB_URL);
+          }}
+        >
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{
+                ios: "chevron.left.forwardslash.chevron.right",
+                android: "code",
+                web: "code",
+              }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
+          </View>
+          <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <Text style={$sectionLabel}>Network</Text>
+        <TouchableOpacity
+          style={[$linkCard, isScanning && { opacity: 0.6 }]}
+          activeOpacity={0.7}
+          onPress={rescan}
+          disabled={isScanning}
+        >
+          <View style={$linkIconContainer}>
+            {isScanning ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <SymbolView
+                name={{
+                  ios: "arrow.clockwise",
+                  android: "refresh",
+                  web: "refresh",
+                }}
+                tintColor={COLORS.textSecondary}
+                size={20}
+              />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={$linkText}>Rescan Local Network</Text>
+            <Text style={$linkSubText}>
+              {isScanning
+                ? "Scanning network..."
+                : "Search for SoundTouch speakers"}
+            </Text>
+          </View>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
+        </TouchableOpacity>
+
+        <Text style={$sectionLabel}>Developer</Text>
+        <TouchableOpacity
+          style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
             router.push("/logs");
           }}
         >
-          <Text style={$infoLabel}>Logs</Text>
-          <View style={$infoRowRight}>
-            <Text style={$infoValue}>{logs.length} entries</Text>
+          <View style={$linkIconContainer}>
             <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
-              }}
-              tintColor="#52525b"
-              size={14}
+              name={{ ios: "terminal", android: "terminal", web: "terminal" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
             />
           </View>
+          <View style={{ flex: 1 }}>
+            <Text style={$linkText}>Logs</Text>
+            <Text style={$linkSubText}>{logs.length} entries stored</Text>
+          </View>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={20}
+          />
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $content: ViewStyle = {
   paddingHorizontal: 20,
-  paddingTop: 60,
   paddingBottom: 40,
+  gap: 12,
 };
 
 const $card: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
-const $cardHeader: ViewStyle = {
-  flexDirection: "row",
+const $heroCard: ViewStyle = {
   alignItems: "center",
+  paddingVertical: 32,
+  marginBottom: 8,
 };
 
-const $appIcon: ViewStyle = {
-  width: 48,
-  height: 48,
-  borderRadius: 14,
-  backgroundColor: "#27272a",
-  alignItems: "center",
+const $heroIconContainer: ViewStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  backgroundColor: "rgba(29, 185, 84, 0.1)",
   justifyContent: "center",
-  marginRight: 14,
+  alignItems: "center",
+  marginBottom: 16,
 };
 
-const $cardMeta: ViewStyle = {
-  flex: 1,
+const $heroTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "bold",
+  color: COLORS.text,
+  marginBottom: 4,
 };
 
-const $appName: TextStyle = {
-  fontSize: 17,
-  fontWeight: "700",
-  color: "#fafafa",
-};
-
-const $appType: TextStyle = {
-  fontSize: 13,
-  color: "#52525b",
-  marginTop: 2,
+const $heroSubtitle: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 12,
+  fontSize: 16,
   fontWeight: "700",
-  color: "#52525b",
-  letterSpacing: 1,
-  textTransform: "uppercase",
-  marginTop: 24,
-  marginBottom: 8,
+  color: COLORS.primary,
+  marginTop: 16,
+  marginBottom: 4,
   marginLeft: 4,
 };
 
-const $infoRow: ViewStyle = {
+const $linkCard: ViewStyle = {
   flexDirection: "row",
-  justifyContent: "space-between",
   alignItems: "center",
-  paddingVertical: 4,
+  backgroundColor: COLORS.card,
+  borderRadius: 16,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
 };
 
-const $infoLabel: TextStyle = {
-  fontSize: 14,
-  color: "#71717a",
+const $linkIconContainer: ViewStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  backgroundColor: "rgba(255, 255, 255, 0.05)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 16,
 };
 
-const $infoValue: TextStyle = {
-  fontSize: 14,
-  color: "#a1a1aa",
+const $linkText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
   fontWeight: "500",
 };
 
-const $infoRowRight: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 4,
+const $linkSubText: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  marginTop: 2,
 };

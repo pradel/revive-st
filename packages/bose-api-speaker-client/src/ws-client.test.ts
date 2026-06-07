@@ -22,9 +22,10 @@ function createMockWS() {
 }
 
 function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
-  const ctor = vi.fn(function ctor() {
+  function WebSocketMock() {
     return ws;
-  });
+  }
+  const ctor = vi.fn(WebSocketMock);
   vi.stubGlobal("WebSocket", ctor);
   return ctor;
 }
@@ -101,6 +102,38 @@ describe("parseWebSocketMessage", () => {
     });
   });
 
+  it("parses nowSelection updates with preset and ContentItem", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <nowSelectionUpdated>
+          <preset id="0">
+            <ContentItem source="LOCAL_INTERNET_RADIO" location="eyJzdHJlYW1VcmwiOiJodHRwOi8vc3RyZWFtLXVrMS5yYWRpb3BhcmFkaXNlLmNvbS9hYWMtMzIwIiwibmFtZSI6IlJhZGlvIFBhcmFkaXNlIE1haW4gTWl4IChFVSkgMzIwayBBQUMiLCJpbWFnZVVybCI6IiJ9" sourceAccount="" isPresetable="true">
+              <itemName>Radio Paradise Main Mix (EU) 320k AAC</itemName>
+            </ContentItem>
+          </preset>
+        </nowSelectionUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "nowSelection",
+      nowSelection: {
+        deviceID: "EC1127C25A50",
+        preset: {
+          id: 0,
+          contentItem: {
+            source: "LOCAL_INTERNET_RADIO",
+            location:
+              "eyJzdHJlYW1VcmwiOiJodHRwOi8vc3RyZWFtLXVrMS5yYWRpb3BhcmFkaXNlLmNvbS9hYWMtMzIwIiwibmFtZSI6IlJhZGlvIFBhcmFkaXNlIE1haW4gTWl4IChFVSkgMzIwayBBQUMiLCJpbWFnZVVybCI6IiJ9",
+            sourceAccount: "",
+            isPresetable: true,
+            itemName: "Radio Paradise Main Mix (EU) 320k AAC",
+          },
+        },
+      },
+    });
+  });
+
   it("identifies basic nowPlaying signal updates with no payload", () => {
     const xml = `
       <updates deviceID="000C8A123456">
@@ -134,6 +167,44 @@ describe("parseWebSocketMessage", () => {
     expect(parseWebSocketMessage(xml)).toEqual({
       deviceID: "000C8A123456",
       type: "zone",
+    });
+  });
+
+  it("identifies recents updates", () => {
+    const xml = `
+      <updates deviceID="EC1127C25A50">
+        <recentsUpdated>
+          <recents>
+            <recent deviceID="EC1127C25A50" utcTime="1779980678">
+              <contentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJzdHJlYW1VcmwiOiJodHRwOi8vaWNlY2FzdC5yYWRpb2ZyYW5jZS5mci9maXAtaGlmaS5hYWMiLCJuYW1lIjoiRklQIiwiaW1hZ2VVcmwiOiIifQ%3D%3D" sourceAccount="revivest-user" isPresetable="true">
+                <itemName>FIP</itemName>
+              </contentItem>
+            </recent>
+          </recents>
+        </recentsUpdated>
+      </updates>
+    `;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      deviceID: "EC1127C25A50",
+      type: "recents",
+      recents: {
+        deviceID: "EC1127C25A50",
+        recents: [
+          {
+            deviceID: "EC1127C25A50",
+            utcTime: 1779980678,
+            contentItem: {
+              source: "LOCAL_INTERNET_RADIO",
+              type: "stationurl",
+              location:
+                "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJzdHJlYW1VcmwiOiJodHRwOi8vaWNlY2FzdC5yYWRpb2ZyYW5jZS5mci9maXAtaGlmaS5hYWMiLCJuYW1lIjoiRklQIiwiaW1hZ2VVcmwiOiIifQ%3D%3D",
+              sourceAccount: "revivest-user",
+              isPresetable: true,
+              itemName: "FIP",
+            },
+          },
+        ],
+      },
     });
   });
 
@@ -320,16 +391,16 @@ describe("BoseWebSocketClient", () => {
       client.connect();
       expect(wsCtor).toHaveBeenCalledTimes(1);
 
-      for (let attempt = 1; attempt <= 5; attempt++) {
+      for (let attempt = 1; attempt <= 22; attempt++) {
         wsMock.onclose!({ code: 1006 });
-        vi.advanceTimersByTime(Math.min(1000 * 2 ** attempt, 10000));
+        vi.advanceTimersByTime(Math.min(1000 * 2 ** attempt, 15000));
       }
 
-      expect(wsCtor).toHaveBeenCalledTimes(6);
+      expect(wsCtor).toHaveBeenCalledTimes(23);
 
       wsMock.onclose!({ code: 1006 });
-      vi.advanceTimersByTime(10000);
-      expect(wsCtor).toHaveBeenCalledTimes(6);
+      vi.advanceTimersByTime(15000);
+      expect(wsCtor).toHaveBeenCalledTimes(23);
     });
   });
 

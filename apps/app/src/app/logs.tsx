@@ -10,6 +10,7 @@ import {
 } from "react-native";
 
 import { useLogger } from "@/lib/useLogger";
+import { COLORS } from "@/ui/theme";
 
 export default function LogsViewer() {
   const router = useRouter();
@@ -103,7 +104,7 @@ function getLevelStyle(level: string): ViewStyle {
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $header: ViewStyle = {
@@ -118,13 +119,13 @@ const $header: ViewStyle = {
 const $headerTitle: TextStyle = {
   fontSize: 28,
   fontWeight: "800",
-  color: "#fafafa",
+  color: COLORS.text,
   letterSpacing: -0.5,
 };
 
 const $headerDone: TextStyle = {
   fontSize: 15,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "600",
 };
 
@@ -139,17 +140,17 @@ const $scrollContent: ViewStyle = {
 
 const $emptyText: TextStyle = {
   fontSize: 14,
-  color: "#71717a",
+  color: COLORS.textMuted,
   textAlign: "center",
   marginTop: 40,
 };
 
 const $logEntry: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 12,
   padding: 12,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   marginBottom: 8,
 };
 
@@ -162,7 +163,7 @@ const $logMeta: ViewStyle = {
 
 const $logTimestamp: TextStyle = {
   fontSize: 11,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   fontWeight: "500",
 };
 
@@ -175,24 +176,24 @@ const $levelBadge: ViewStyle = {
 const $levelText: TextStyle = {
   fontSize: 10,
   fontWeight: "700",
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $levelError: ViewStyle = {
-  backgroundColor: "#7f1d1d",
+  backgroundColor: COLORS.errorDark,
 };
 
 const $levelWarn: ViewStyle = {
-  backgroundColor: "#78350f",
+  backgroundColor: COLORS.warningDarker,
 };
 
 const $levelInfo: ViewStyle = {
-  backgroundColor: "#1e3a5f",
+  backgroundColor: COLORS.infoDark,
 };
 
 const $logMessage: TextStyle = {
   fontSize: 13,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontFamily: "monospace",
 };
 
@@ -203,7 +204,7 @@ const $bottomBar: ViewStyle = {
   paddingVertical: 12,
   borderTopWidth: 1,
   borderTopColor: "#27272a",
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $bottomButton: ViewStyle = {
@@ -212,13 +213,13 @@ const $bottomButton: ViewStyle = {
   justifyContent: "center",
   height: 44,
   borderRadius: 12,
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
 };
 
 const $bottomButtonText: TextStyle = {
   fontSize: 15,
   fontWeight: "600",
-  color: "#09090b",
+  color: COLORS.background,
 };
 
 const $clearButton: ViewStyle = {
@@ -227,11 +228,11 @@ const $clearButton: ViewStyle = {
   justifyContent: "center",
   height: 44,
   borderRadius: 12,
-  backgroundColor: "#450a0a",
+  backgroundColor: COLORS.errorDarker,
 };
 
 const $clearButtonText: TextStyle = {
   fontSize: 15,
   fontWeight: "600",
-  color: "#fca5a5",
+  color: COLORS.errorLight,
 };

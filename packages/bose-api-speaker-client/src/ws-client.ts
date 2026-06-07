@@ -30,6 +30,38 @@ export interface BoseConnectionState {
   signal: string;
 }
 
+export interface BoseNowSelection {
+  deviceID: string;
+  preset: {
+    id: number;
+    contentItem?: {
+      source: string;
+      location: string;
+      sourceAccount: string;
+      isPresetable: boolean;
+      itemName: string;
+    };
+  };
+}
+
+export interface BoseRecent {
+  deviceID: string;
+  utcTime: number;
+  contentItem?: {
+    source: string;
+    type?: string;
+    location: string;
+    sourceAccount: string;
+    isPresetable: boolean;
+    itemName: string;
+  };
+}
+
+export interface BoseRecents {
+  deviceID: string;
+  recents: BoseRecent[];
+}
+
 export type BoseWSUpdate =
   | {
       type: "volume";
@@ -47,6 +79,11 @@ export type BoseWSUpdate =
       connectionState?: BoseConnectionState;
     }
   | {
+      type: "nowSelection";
+      deviceID: string;
+      nowSelection?: BoseNowSelection;
+    }
+  | {
       type: "presets";
       deviceID: string;
     }
@@ -62,6 +99,11 @@ export type BoseWSUpdate =
       type: "nameUpdated";
       deviceID: string;
       name: string;
+    }
+  | {
+      type: "recents";
+      deviceID: string;
+      recents?: BoseRecents;
     }
   | {
       type: "unknown";
@@ -129,6 +171,78 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
   };
 }
 
+function parseNowSelectionUpdated(xml: string): BoseNowSelection {
+  const root = parseXml(xml);
+  const node =
+    root.name === "nowSelectionUpdated"
+      ? root
+      : getChild(root, "nowSelectionUpdated");
+  const presetNode = node ? getChild(node, "preset") : undefined;
+  const contentItemNode = presetNode
+    ? getChild(presetNode, "ContentItem")
+    : undefined;
+
+  return {
+    deviceID: "",
+    preset: {
+      id: parseIntSafe(presetNode?.attributes.id ?? "0"),
+      contentItem: contentItemNode
+        ? {
+            source: contentItemNode.attributes.source ?? "",
+            location: contentItemNode.attributes.location ?? "",
+            sourceAccount: contentItemNode.attributes.sourceAccount ?? "",
+            isPresetable: parseBool(
+              contentItemNode.attributes.isPresetable ?? "false",
+            ),
+            itemName:
+              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+          }
+        : undefined,
+    },
+  };
+}
+
+function parseRecentsUpdated(xml: string): BoseRecents {
+  const root = parseXml(xml);
+  let recentsNode = root.name === "recents" ? root : getChild(root, "recents");
+  if (!recentsNode && root.name === "recentsUpdated") {
+    recentsNode = getChild(root, "recents");
+  }
+
+  const recentNodes = recentsNode
+    ? (recentsNode.children ?? []).filter((child) => child.name === "recent")
+    : [];
+
+  const recents: BoseRecent[] = recentNodes.map((recentNode) => {
+    const contentItemNode =
+      getChild(recentNode, "contentItem") ??
+      getChild(recentNode, "ContentItem");
+
+    return {
+      deviceID: recentNode.attributes.deviceID ?? "",
+      utcTime: parseIntSafe(recentNode.attributes.utcTime ?? "0"),
+      contentItem: contentItemNode
+        ? {
+            source: contentItemNode.attributes.source ?? "",
+            type: contentItemNode.attributes.type,
+            location: contentItemNode.attributes.location ?? "",
+            sourceAccount: contentItemNode.attributes.sourceAccount ?? "",
+            isPresetable: parseBool(
+              contentItemNode.attributes.isPresetable ?? "false",
+            ),
+            itemName:
+              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+          }
+        : undefined,
+    };
+  });
+
+  return {
+    deviceID: "",
+    recents,
+  };
+}
+
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
   const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
   if (!deviceIDMatch) {
@@ -167,6 +281,18 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     return { type: "connectionState", deviceID };
   }
 
+  if (xml.includes("<nowSelectionUpdated")) {
+    const block = /<nowSelectionUpdated[\s\S]*?<\/nowSelectionUpdated>/.exec(
+      xml,
+    );
+    if (block) {
+      const nowSelection = parseNowSelectionUpdated(block[0]);
+      nowSelection.deviceID = deviceID;
+      return { type: "nowSelection", deviceID, nowSelection };
+    }
+    return { type: "nowSelection", deviceID };
+  }
+
   if (xml.includes("<presetsUpdated") || xml.includes("<presets>")) {
     return { type: "presets", deviceID };
   }
@@ -188,6 +314,16 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     return { type: "info", deviceID };
   }
 
+  if (xml.includes("<recentsUpdated") || xml.includes("<recents>")) {
+    const block = /<recents[\s\S]*?<\/recents>/.exec(xml);
+    if (block) {
+      const recents = parseRecentsUpdated(block[0]);
+      recents.deviceID = deviceID;
+      return { type: "recents", deviceID, recents };
+    }
+    return { type: "recents", deviceID };
+  }
+
   return { type: "unknown", deviceID };
 }
 
@@ -205,10 +341,28 @@ export class BoseWebSocketClient {
   private isClosedIntentional = false;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private reconnectAttempts = 0;
-  private readonly maxReconnectAttempts = 5;
+  // 22 attempts ~ 5 minutes total
+  private readonly maxReconnectAttempts = 22;
 
   constructor(options: BoseWebSocketClientOptions) {
     this.options = options;
+  }
+
+  getHost(): string {
+    return this.options.host;
+  }
+
+  updateHost(host: string) {
+    if (this.options.host !== host) {
+      this.options.host = host;
+      this.reconnectAttempts = 0;
+      // Force connection reset to connect to new host IP
+      this.connect();
+    }
+  }
+
+  isClosed(): boolean {
+    return this.ws === null || this.ws.readyState === WebSocket.CLOSED;
   }
 
   connect() {
@@ -292,7 +446,7 @@ export class BoseWebSocketClient {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 10000);
+    const delay = Math.min(1000 * 2 ** this.reconnectAttempts, 15000);
     console.log(
       `[BoseWebSocketClient] Reconnecting to ${this.options.deviceID} in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
     );

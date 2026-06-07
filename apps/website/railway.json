@@ -1,0 +1,30 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "build": {
+    "builder": "DOCKERFILE",
+    "buildCommand": "pnpm --filter @revive-st/website build",
+    "watchPatterns": ["/apps/website/**"],
+    "dockerfilePath": "apps/website/Dockerfile",
+    "buildEnvironment": "V3"
+  },
+  "deploy": {
+    "runtime": "V2",
+    "numReplicas": 1,
+    "limitOverride": {
+      "containers": {
+        "cpu": 1,
+        "memoryBytes": 500000000
+      }
+    },
+    "sleepApplication": true,
+    "useLegacyStacker": false,
+    "ipv6EgressEnabled": false,
+    "multiRegionConfig": {
+      "europe-west4-drams3a": {
+        "numReplicas": 1
+      }
+    },
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

@@ -1,8 +1,9 @@
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useRef } from "react";
+import { useCallback, useRef, useEffect } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -12,9 +13,41 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withRepeat,
+  withTiming,
+} from "react-native-reanimated";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+import { Header } from "@/ui/Header";
+import { COLORS } from "@/ui/theme";
+
+interface PulseRingProps {
+  delay: number;
+}
+
+function PulseRing({ delay }: PulseRingProps) {
+  const animatedValue = useSharedValue(0);
+
+  useEffect(() => {
+    animatedValue.value = 0;
+    animatedValue.value = withDelay(
+      delay,
+      withRepeat(withTiming(1, { duration: 2400 }), -1, false),
+    );
+  }, [animatedValue, delay]);
+
+  const rStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: animatedValue.value * 1.5 + 1 }],
+    opacity: (1 - animatedValue.value) * 0.6,
+  }));
+
+  return <Animated.View style={[$pulseRing, rStyle]} />;
+}
 
 export default function Index() {
   const router = useRouter();
@@ -65,8 +98,7 @@ export default function Index() {
     router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
-  const showEmptyState = speakers.length === 0 && !isScanning;
-  const showLoading = isScanning && speakers.length === 0;
+  const showEmptyState = speakers.length === 0;
   const showSpeakers = speakers.length > 0;
 
   return (
@@ -74,94 +106,123 @@ export default function Index() {
       style={$container}
       contentContainerStyle={$content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isScanning}
+          onRefresh={rescan}
+          tintColor={COLORS.primary}
+          colors={[COLORS.primary]}
+        />
+      }
     >
       {/* Header */}
-      <View style={$header}>
-        <View>
-          <Text style={$appSubtitle}>Revive</Text>
-          <Text style={$appTitle}>SoundTouch</Text>
-        </View>
-        <TouchableOpacity
-          style={$rescanButton}
-          onPress={rescan}
-          activeOpacity={0.7}
-          disabled={isScanning}
-        >
-          {isScanning ? (
-            <ActivityIndicator size="small" color="#a1a1aa" />
-          ) : (
-            <SymbolView
-              name={{
-                ios: "arrow.clockwise",
-                android: "refresh",
-                web: "refresh",
-              }}
-              tintColor="#a1a1aa"
-              size={18}
-            />
-          )}
-        </TouchableOpacity>
-      </View>
+      <Header />
 
-      {/* Loading State */}
-      {showLoading && (
-        <View style={$centerState}>
-          <ActivityIndicator size="large" color="#a1a1aa" />
-          <Text style={$loadingText}>Scanning for speakers...</Text>
-        </View>
-      )}
-
-      {/* Empty State */}
+      {/* Unified Empty/Scanning State */}
       {showEmptyState && (
         <View style={$centerState}>
           <View style={$emptyIconContainer}>
+            {isScanning && (
+              <>
+                <PulseRing delay={0} />
+                <PulseRing delay={800} />
+                <PulseRing delay={1600} />
+              </>
+            )}
             <SymbolView
               name={{
-                ios: "speaker.wave.2",
+                ios: isScanning ? "waveform" : "speaker.wave.2",
+                android: isScanning ? "graphic_eq" : "speaker",
+                web: isScanning ? "graphic_eq" : "speaker",
               }}
-              tintColor="#52525b"
-              size={48}
+              tintColor={isScanning ? COLORS.primary : COLORS.border}
+              size={36}
             />
           </View>
-          <Text style={$emptyTitle}>No Speaker Phones</Text>
-          <Text style={$emptyDescription}>
-            Make sure your phone and SoundTouch{"\n"}speakers are connected to
-            the same Wi-Fi network.
+          <Text style={$emptyTitle}>
+            {isScanning ? "Searching for Speakers..." : "No Speakers Found"}
           </Text>
+          <Text style={$emptyDescription}>
+            {isScanning
+              ? "Scanning your local network for active Bose SoundTouch speakers."
+              : "Make sure your Bose SoundTouch speakers are powered on and connected to the same Wi-Fi network as your phone."}
+          </Text>
+
           <View style={$emptyActions}>
             <TouchableOpacity
-              style={$primaryButton}
+              style={[$ctaCard, isScanning && $ctaCardDisabled]}
               onPress={rescan}
               activeOpacity={0.8}
+              disabled={isScanning}
             >
+              <View style={$ctaIconContainer}>
+                {isScanning ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <SymbolView
+                    name={{
+                      ios: "arrow.clockwise",
+                      android: "refresh",
+                      web: "refresh",
+                    }}
+                    tintColor={COLORS.primary}
+                    size={20}
+                  />
+                )}
+              </View>
+              <View style={$ctaTextContainer}>
+                <Text style={$ctaTitle}>Rescan Local Network</Text>
+                <Text style={$ctaSubtitle}>
+                  {isScanning
+                    ? "Searching network..."
+                    : "Search for active speakers on your current Wi-Fi connection."}
+                </Text>
+              </View>
               <SymbolView
                 name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
                 }}
-                tintColor="#ffffff"
+                tintColor={COLORS.textDisabled}
                 size={16}
               />
-              <Text style={$primaryButtonText}>Rescan Network</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={$secondaryButton}
+              style={$ctaCard}
               onPress={() => {
                 router.push("/onboarding/permissions");
               }}
               activeOpacity={0.8}
             >
+              <View style={$ctaIconContainer}>
+                <SymbolView
+                  name={{
+                    ios: "plus",
+                    android: "add",
+                    web: "add",
+                  }}
+                  tintColor={COLORS.primary}
+                  size={20}
+                />
+              </View>
+              <View style={$ctaTextContainer}>
+                <Text style={$ctaTitle}>Set Up New Speaker</Text>
+                <Text style={$ctaSubtitle}>
+                  Connect a new or reset SoundTouch speaker to your Wi-Fi
+                  network.
+                </Text>
+              </View>
               <SymbolView
                 name={{
-                  ios: "plus",
-                  android: "add",
-                  web: "add",
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
                 }}
-                tintColor="#a1a1aa"
-                size={18}
+                tintColor={COLORS.textDisabled}
+                size={16}
               />
-              <Text style={$secondaryButtonText}>Add Speaker</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -192,7 +253,7 @@ export default function Index() {
                             android: "speaker",
                             web: "speaker",
                           }}
-                          tintColor="#a1a1aa"
+                          tintColor={COLORS.textMuted}
                           size={20}
                         />
                       </View>
@@ -225,7 +286,7 @@ export default function Index() {
                             android: "settings",
                             web: "settings",
                           }}
-                          tintColor="#71717a"
+                          tintColor={COLORS.textMuted}
                           size={16}
                         />
                       </TouchableOpacity>
@@ -261,7 +322,7 @@ export default function Index() {
                         android: "volume_down",
                         web: "volume_down",
                       }}
-                      tintColor="#52525b"
+                      tintColor={COLORS.border}
                       size={14}
                     />
                     <TouchableOpacity
@@ -283,7 +344,7 @@ export default function Index() {
                         android: "volume_up",
                         web: "volume_up",
                       }}
-                      tintColor="#a1a1aa"
+                      tintColor={COLORS.textMuted}
                       size={14}
                     />
                     <Text style={$volumeText}>{volume}%</Text>
@@ -307,7 +368,7 @@ export default function Index() {
                 android: "add_circle",
                 web: "add_circle",
               }}
-              tintColor="#3f3f46"
+              tintColor={COLORS.card}
               size={22}
             />
             <Text style={$addSpeakerText}>Add New Speaker</Text>
@@ -320,46 +381,12 @@ export default function Index() {
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $content: ViewStyle = {
-  paddingHorizontal: 20,
   paddingTop: 60,
   paddingBottom: 40,
-};
-
-const $header: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  marginBottom: 28,
-};
-
-const $appSubtitle: TextStyle = {
-  fontSize: 14,
-  color: "#71717a",
-  fontWeight: "500",
-  letterSpacing: 0.5,
-};
-
-const $appTitle: TextStyle = {
-  fontSize: 28,
-  color: "#fafafa",
-  fontWeight: "800",
-  letterSpacing: -0.5,
-  marginTop: 2,
-};
-
-const $rescanButton: ViewStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: "#18181b",
-  alignItems: "center",
-  justifyContent: "center",
-  borderWidth: 1,
-  borderColor: "#27272a",
 };
 
 const $centerState: ViewStyle = {
@@ -369,27 +396,32 @@ const $centerState: ViewStyle = {
   paddingVertical: 80,
 };
 
-const $loadingText: TextStyle = {
-  fontSize: 14,
-  color: "#71717a",
-  marginTop: 16,
-};
-
 const $emptyIconContainer: ViewStyle = {
-  width: 96,
-  height: 96,
-  borderRadius: 48,
-  backgroundColor: "#18181b",
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  backgroundColor: COLORS.card,
   alignItems: "center",
   justifyContent: "center",
-  marginBottom: 24,
+  marginBottom: 20,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
+  position: "relative",
+};
+
+const $pulseRing: ViewStyle = {
+  position: "absolute",
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  backgroundColor: COLORS.primaryTransparent,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
 };
 
 const $emptyTitle: TextStyle = {
   fontSize: 22,
-  color: "#fafafa",
+  color: COLORS.text,
   fontWeight: "700",
   letterSpacing: -0.3,
   marginBottom: 10,
@@ -397,50 +429,62 @@ const $emptyTitle: TextStyle = {
 
 const $emptyDescription: TextStyle = {
   fontSize: 14,
-  color: "#71717a",
+  color: COLORS.textMuted,
   textAlign: "center",
   lineHeight: 20,
   marginBottom: 32,
+  paddingHorizontal: 30,
 };
 
 const $emptyActions: ViewStyle = {
   gap: 12,
   width: "100%",
   paddingHorizontal: 20,
+  marginTop: 8,
 };
 
-const $primaryButton: ViewStyle = {
+const $ctaCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: "#fafafa",
-  height: 48,
-  borderRadius: 14,
-};
-
-const $primaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: "#09090b",
-  fontWeight: "600",
-};
-
-const $secondaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: "#18181b",
-  height: 48,
-  borderRadius: 14,
+  backgroundColor: COLORS.card,
+  borderRadius: 16,
+  padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
+  width: "100%",
 };
 
-const $secondaryButtonText: TextStyle = {
+const $ctaCardDisabled: ViewStyle = {
+  opacity: 0.5,
+};
+
+const $ctaIconContainer: ViewStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 16,
+};
+
+const $ctaTextContainer: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  marginRight: 8,
+};
+
+const $ctaTitle: TextStyle = {
   fontSize: 15,
-  color: "#a1a1aa",
   fontWeight: "600",
+  color: COLORS.text,
+  marginBottom: 2,
+};
+
+const $ctaSubtitle: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  lineHeight: 16,
 };
 
 const $sectionHeader: ViewStyle = {
@@ -448,32 +492,34 @@ const $sectionHeader: ViewStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 14,
+  paddingHorizontal: 20,
 };
 
 const $sectionTitle: TextStyle = {
   fontSize: 14,
   fontWeight: "600",
-  color: "#71717a",
+  color: COLORS.textMuted,
   letterSpacing: 0.5,
   textTransform: "uppercase",
 };
 
 const $sectionCount: TextStyle = {
   fontSize: 13,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   fontWeight: "500",
 };
 
 const $speakersList: ViewStyle = {
   gap: 10,
+  paddingHorizontal: 20,
 };
 
 const $speakerCard: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 18,
   padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
 };
 
 const $cardTopRow: ViewStyle = {
@@ -492,7 +538,7 @@ const $speakerIcon: ViewStyle = {
   width: 40,
   height: 40,
   borderRadius: 12,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   alignItems: "center",
   justifyContent: "center",
   marginRight: 12,
@@ -505,12 +551,12 @@ const $cardMeta: ViewStyle = {
 const $speakerName: TextStyle = {
   fontSize: 15,
   fontWeight: "600",
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $speakerType: TextStyle = {
   fontSize: 12,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   marginTop: 2,
 };
 
@@ -524,7 +570,7 @@ const $onlineBadge: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   gap: 5,
-  backgroundColor: "#052e16",
+  backgroundColor: COLORS.successDark,
   paddingHorizontal: 8,
   paddingVertical: 3,
   borderRadius: 6,
@@ -534,12 +580,12 @@ const $onlineDot: ViewStyle = {
   width: 6,
   height: 6,
   borderRadius: 3,
-  backgroundColor: "#22c55e",
+  backgroundColor: COLORS.success,
 };
 
 const $onlineText: TextStyle = {
   fontSize: 10,
-  color: "#4ade80",
+  color: COLORS.successLight,
   fontWeight: "700",
   letterSpacing: 0.3,
 };
@@ -548,14 +594,14 @@ const $settingsButton: ViewStyle = {
   width: 32,
   height: 32,
   borderRadius: 10,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   alignItems: "center",
   justifyContent: "center",
 };
 
 const $cardDivider: ViewStyle = {
   height: 1,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   marginVertical: 12,
 };
 
@@ -573,16 +619,16 @@ const $playingDot: ViewStyle = {
 };
 
 const $playingDotActive: ViewStyle = {
-  backgroundColor: "#22c55e",
+  backgroundColor: COLORS.success,
 };
 
 const $playingDotInactive: ViewStyle = {
-  backgroundColor: "#a16207",
+  backgroundColor: COLORS.warningDark,
 };
 
 const $playingStatusText: TextStyle = {
   fontSize: 13,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "500",
   flex: 1,
 };
@@ -596,7 +642,7 @@ const $volumeRow: ViewStyle = {
 const $sliderTrack: ViewStyle = {
   flex: 1,
   height: 4,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   borderRadius: 2,
   position: "relative",
   overflow: "visible",
@@ -604,7 +650,7 @@ const $sliderTrack: ViewStyle = {
 
 const $sliderFill: ViewStyle = {
   height: "100%",
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
   borderRadius: 2,
 };
 
@@ -614,13 +660,13 @@ const $sliderThumb: ViewStyle = {
   width: 14,
   height: 14,
   borderRadius: 7,
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
   marginLeft: -7,
 };
 
 const $volumeText: TextStyle = {
   fontSize: 12,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   fontWeight: "600",
   width: 32,
   textAlign: "right",
@@ -632,15 +678,16 @@ const $addSpeakerButton: ViewStyle = {
   justifyContent: "center",
   gap: 8,
   marginTop: 16,
+  marginHorizontal: 20,
   paddingVertical: 14,
   borderRadius: 14,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
   borderStyle: "dashed",
 };
 
 const $addSpeakerText: TextStyle = {
   fontSize: 14,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   fontWeight: "600",
 };

@@ -35,7 +35,7 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE"
       ],
-      "package": "com.anonymous.app"
+      "package": "app.revivest.app"
     },
     "web": {
       "output": "static",
@@ -70,7 +70,8 @@
         }
       ],
       "expo-font",
-      "expo-dev-client"
+      "expo-dev-client",
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": true,

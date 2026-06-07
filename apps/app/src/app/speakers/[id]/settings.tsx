@@ -1,4 +1,4 @@
-import { Host, Slider } from "@expo/ui";
+import { BottomSheet, Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -9,12 +9,14 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  useWindowDimensions,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
   value: string;
@@ -103,8 +105,8 @@ export default function SpeakerSettings() {
           options={{
             title: "Settings",
             headerShown: true,
-            headerStyle: { backgroundColor: "#09090b" },
-            headerTintColor: "#fafafa",
+            headerStyle: { backgroundColor: COLORS.background },
+            headerTintColor: COLORS.text,
             headerShadowVisible: false,
             headerTitleStyle: { fontWeight: "600" },
           }}
@@ -151,12 +153,27 @@ export default function SpeakerSettings() {
         options={{
           title: "Settings",
           headerShown: true,
-          headerStyle: { backgroundColor: "#09090b" },
-          headerTintColor: "#fafafa",
+          headerStyle: { backgroundColor: COLORS.background },
+          headerTintColor: COLORS.text,
           headerShadowVisible: false,
           headerTitleStyle: { fontWeight: "600" },
         }}
       />
+
+      {/* Hero */}
+      <View style={[$card, $heroCard]}>
+        <View style={$heroIconContainer}>
+          <SymbolView
+            name={{ ios: "speaker.wave.2", android: "speaker", web: "speaker" }}
+            tintColor={COLORS.primary}
+            size={32}
+          />
+        </View>
+        <Text style={$heroTitle}>{speaker.name}</Text>
+        <Text style={$heroSubtitle}>
+          {speaker.type} · {speaker.host}
+        </Text>
+      </View>
 
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
@@ -200,33 +217,33 @@ export default function SpeakerSettings() {
         </View>
       ) : (
         <TouchableOpacity
-          style={$card}
+          style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
             setNameValue(speaker.name);
           }}
         >
-          <View style={$infoRow}>
-            <Text style={$infoLabel}>Name</Text>
-            <View style={$infoRowRight}>
-              <Text style={$infoValue} numberOfLines={1}>
-                {speaker.name}
-              </Text>
-              {setNameMutation.isPending ? (
-                <ActivityIndicator size="small" color="#a1a1aa" />
-              ) : (
-                <SymbolView
-                  name={{
-                    ios: "chevron.right",
-                    android: "chevron_right",
-                    web: "chevron_right",
-                  }}
-                  tintColor="#52525b"
-                  size={14}
-                />
-              )}
-            </View>
+          <View style={$linkIconContainer}>
+            <SymbolView
+              name={{ ios: "pencil", android: "edit", web: "edit" }}
+              tintColor={COLORS.textSecondary}
+              size={20}
+            />
           </View>
+          <Text style={[$linkText, { flex: 1 }]}>Rename Speaker</Text>
+          {setNameMutation.isPending ? (
+            <ActivityIndicator size="small" color="#a1a1aa" />
+          ) : (
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
+              }}
+              tintColor={COLORS.textMuted}
+              size={20}
+            />
+          )}
         </TouchableOpacity>
       )}
 
@@ -415,27 +432,61 @@ function NativeSliderSetting({
   disabled?: boolean;
   onValueChange: (value: number) => void;
 }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const { width } = useWindowDimensions();
+
   return (
-    <View>
-      <View style={$sliderHeader}>
+    <>
+      <TouchableOpacity
+        style={$infoRow}
+        activeOpacity={0.7}
+        onPress={() => {
+          setIsOpen(true);
+        }}
+      >
         <Text style={$infoLabel}>{label}</Text>
-        <Text style={$infoValue}>{value}</Text>
-      </View>
-      <Host style={{ height: 40 }}>
-        <Slider
-          value={value}
-          onValueChange={onValueChange}
-          min={min}
-          max={max}
-          step={step}
-          disabled={disabled}
-        />
-      </Host>
-      <View style={$sliderLabels}>
-        <Text style={$sliderLabelText}>{min}</Text>
-        <Text style={$sliderLabelText}>{max}</Text>
-      </View>
-    </View>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+          <Text style={$infoValue}>{value}</Text>
+          <SymbolView
+            name={{
+              ios: "chevron.right",
+              android: "chevron_right",
+              web: "chevron_right",
+            }}
+            tintColor={COLORS.textMuted}
+            size={14}
+          />
+        </View>
+      </TouchableOpacity>
+      <BottomSheet
+        isPresented={isOpen}
+        onDismiss={() => {
+          setIsOpen(false);
+        }}
+        snapPoints={["half"]}
+      >
+        <View style={[$bottomSheetContent, { width }]}>
+          <View style={$sliderHeader}>
+            <Text style={$infoLabel}>{label}</Text>
+            <Text style={$infoValue}>{value}</Text>
+          </View>
+          <Host style={{ height: 40 }}>
+            <Slider
+              value={value}
+              onValueChange={onValueChange}
+              min={min}
+              max={max}
+              step={step}
+              disabled={disabled}
+            />
+          </Host>
+          <View style={$sliderLabels}>
+            <Text style={$sliderLabelText}>{min}</Text>
+            <Text style={$sliderLabelText}>{max}</Text>
+          </View>
+        </View>
+      </BottomSheet>
+    </>
   );
 }
 
@@ -491,13 +542,14 @@ function PickerSetting({
 
 const $container: ViewStyle = {
   flex: 1,
-  backgroundColor: "#09090b",
+  backgroundColor: COLORS.background,
 };
 
 const $content: ViewStyle = {
   paddingHorizontal: 20,
-  paddingTop: 8,
+  paddingTop: 20,
   paddingBottom: 40,
+  gap: 12,
 };
 
 const $centerState: ViewStyle = {
@@ -509,7 +561,7 @@ const $centerState: ViewStyle = {
 
 const $notFoundText: TextStyle = {
   fontSize: 16,
-  color: "#71717a",
+  color: COLORS.textMuted,
   marginTop: 16,
 };
 
@@ -518,32 +570,85 @@ const $backButton: ViewStyle = {
   paddingHorizontal: 24,
   paddingVertical: 10,
   borderRadius: 10,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
 };
 
 const $backButtonText: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "600",
 };
 
 const $card: ViewStyle = {
-  backgroundColor: "#18181b",
+  backgroundColor: COLORS.card,
   borderRadius: 16,
   padding: 16,
   borderWidth: 1,
-  borderColor: "#27272a",
+  borderColor: COLORS.border,
+};
+
+const $heroCard: ViewStyle = {
+  alignItems: "center",
+  paddingVertical: 32,
+  marginBottom: 8,
+};
+
+const $heroIconContainer: ViewStyle = {
+  width: 64,
+  height: 64,
+  borderRadius: 32,
+  backgroundColor: "rgba(29, 185, 84, 0.1)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginBottom: 16,
+};
+
+const $heroTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "bold",
+  color: COLORS.text,
+  marginBottom: 4,
+  textAlign: "center",
+};
+
+const $heroSubtitle: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 12,
+  fontSize: 16,
   fontWeight: "700",
-  color: "#52525b",
-  letterSpacing: 1,
-  textTransform: "uppercase",
-  marginTop: 24,
-  marginBottom: 8,
+  color: COLORS.primary,
+  marginTop: 16,
+  marginBottom: 4,
   marginLeft: 4,
+};
+
+const $linkCard: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: COLORS.card,
+  borderRadius: 16,
+  padding: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+};
+
+const $linkIconContainer: ViewStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  backgroundColor: "rgba(255, 255, 255, 0.05)",
+  justifyContent: "center",
+  alignItems: "center",
+  marginRight: 16,
+};
+
+const $linkText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "500",
 };
 
 const $renameRow: ViewStyle = {
@@ -554,27 +659,27 @@ const $renameRow: ViewStyle = {
 
 const $textInput: TextStyle = {
   flex: 1,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   borderRadius: 10,
   paddingHorizontal: 12,
   paddingVertical: 10,
   fontSize: 15,
-  color: "#fafafa",
+  color: COLORS.text,
 };
 
 const $textInputError: TextStyle = {
   borderWidth: 1,
-  borderColor: "#ef4444",
+  borderColor: COLORS.error,
 };
 
 const $nameErrorText: TextStyle = {
   fontSize: 12,
-  color: "#ef4444",
+  color: COLORS.error,
   marginTop: 4,
 };
 
 const $saveButton: ViewStyle = {
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
   paddingHorizontal: 16,
   paddingVertical: 10,
   borderRadius: 10,
@@ -582,13 +687,13 @@ const $saveButton: ViewStyle = {
 
 const $saveButtonText: TextStyle = {
   fontSize: 14,
-  color: "#09090b",
+  color: COLORS.background,
   fontWeight: "700",
 };
 
 const $infoDivider: ViewStyle = {
   height: 1,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   marginVertical: 10,
 };
 
@@ -600,24 +705,16 @@ const $infoRow: ViewStyle = {
 };
 
 const $infoLabel: TextStyle = {
-  fontSize: 14,
-  color: "#71717a",
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "500",
 };
 
 const $infoValue: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
-  fontWeight: "500",
+  color: COLORS.textMuted,
   textAlign: "right",
   flexShrink: 1,
-};
-
-const $infoRowRight: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 4,
-  flexShrink: 1,
-  justifyContent: "flex-end",
 };
 
 const $sliderHeader: ViewStyle = {
@@ -633,9 +730,16 @@ const $sliderLabels: ViewStyle = {
   marginTop: 4,
 };
 
+const $bottomSheetContent: ViewStyle = {
+  flex: 1,
+  width: "100%",
+  padding: 24,
+  paddingBottom: 48,
+};
+
 const $sliderLabelText: TextStyle = {
   fontSize: 11,
-  color: "#52525b",
+  color: COLORS.textDisabled,
 };
 
 const $pickerOptions: ViewStyle = {
@@ -649,41 +753,41 @@ const $pickerChip: ViewStyle = {
   paddingHorizontal: 12,
   paddingVertical: 6,
   borderRadius: 8,
-  backgroundColor: "#27272a",
+  backgroundColor: COLORS.border,
   borderWidth: 1,
-  borderColor: "transparent",
+  borderColor: COLORS.transparent,
 };
 
 const $pickerChipActive: ViewStyle = {
-  backgroundColor: "#fafafa",
+  backgroundColor: COLORS.text,
 };
 
 const $pickerChipText: TextStyle = {
   fontSize: 13,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "600",
 };
 
 const $pickerChipTextActive: TextStyle = {
-  color: "#09090b",
+  color: COLORS.background,
 };
 
 const $pickerDescription: TextStyle = {
   fontSize: 12,
-  color: "#52525b",
+  color: COLORS.textDisabled,
   marginTop: 8,
 };
 
 const $versionLabel: TextStyle = {
   fontSize: 13,
-  color: "#71717a",
+  color: COLORS.textMuted,
   fontWeight: "600",
   marginBottom: 4,
 };
 
 const $versionValue: TextStyle = {
   fontSize: 14,
-  color: "#a1a1aa",
+  color: COLORS.textSecondary,
   fontWeight: "400",
   lineHeight: 20,
 };

@@ -5,6 +5,7 @@ import {
   ProvisioningProvider,
   useProvisioning,
 } from "@/features/onboarding/ProvisioningContext";
+import { COLORS } from "@/ui/theme";
 
 function OnboardingNavigator() {
   const { start } = useProvisioning();
@@ -14,7 +15,12 @@ function OnboardingNavigator() {
   }, [start]);
 
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: COLORS.background },
+      }}
+    >
       <Stack.Screen name="permissions" />
       <Stack.Screen name="scanning" />
       <Stack.Screen name="connecting" />
