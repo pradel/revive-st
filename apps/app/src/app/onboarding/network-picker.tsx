@@ -8,6 +8,9 @@ import {
   FlatList,
   ActivityIndicator,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  ScrollView,
+  Platform,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
@@ -25,6 +28,7 @@ export default function NetworkPickerScreen() {
   >([]);
   const [selectedSSID, setSelectedSSID] = useState("");
   const [password, setPassword] = useState("");
+  const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [loading, setLoading] = useState(true);
   const [manualEntry, setManualEntry] = useState(false);
   const [inputFocused, setInputFocused] = useState<"ssid" | "password" | null>(
@@ -81,169 +85,202 @@ export default function NetworkPickerScreen() {
   }, [selectedSSID, password, dispatch]);
 
   return (
-    <View style={$container}>
-      <View style={$content}>
-        {/* Visual Header/Icon */}
-        <View style={$iconContainer}>
-          <SymbolView
-            name={{
-              ios: "lock.shield",
-              android: "security",
-              web: "security",
-            }}
-            tintColor={COLORS.primary}
-            size={48}
-          />
-        </View>
-
-        {/* Card */}
-        <View style={$card}>
-          <View style={$badge}>
-            <Text style={$badgeText}>SETUP WIZARD</Text>
-          </View>
-          <Text style={$cardTitle}>Connect to Wi-Fi</Text>
-          <Text style={$cardDescription}>
-            Select your 2.4 GHz home Wi-Fi network and enter the password.
-            SoundTouch speakers do not support 5 GHz network setup profiles.
-          </Text>
-
-          {loading ? (
-            <ActivityIndicator
-              size="large"
-              color={COLORS.primary}
-              style={$spinner}
-            />
-          ) : !manualEntry && networks.length > 0 ? (
-            <FlatList
-              data={networks}
-              keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
-              style={$list}
-              contentContainerStyle={{ gap: 6 }}
-              renderItem={({ item }) => {
-                const isSelected = selectedSSID === item.ssid;
-                const dbm = item.level;
-                const bars =
-                  dbm >= -50
-                    ? 4
-                    : dbm >= -60
-                      ? 3
-                      : dbm >= -70
-                        ? 2
-                        : dbm >= -80
-                          ? 1
-                          : 0;
-                return (
-                  <TouchableOpacity
-                    style={[$networkItem, isSelected && $networkItemSelected]}
-                    onPress={() => {
-                      setSelectedSSID(item.ssid);
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={$networkRow}>
-                      <Text
-                        style={[
-                          $networkText,
-                          isSelected && $networkTextSelected,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {item.ssid}
-                      </Text>
-                      <Text
-                        style={[
-                          $signalText,
-                          isSelected && $networkTextSelected,
-                        ]}
-                      >
-                        {"●".repeat(bars)}
-                        {"○".repeat(Math.max(0, 4 - bars))}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              }}
-            />
-          ) : null}
-
-          {(manualEntry || (!loading && networks.length === 0)) && (
-            <TextInput
-              style={[$input, inputFocused === "ssid" ? $inputFocused : null]}
-              placeholder="Network name (SSID)"
-              placeholderTextColor={COLORS.textMuted}
-              value={selectedSSID}
-              onChangeText={setSelectedSSID}
-              onFocus={() => {
-                setInputFocused("ssid");
-              }}
-              onBlur={() => {
-                setInputFocused(null);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          )}
-
-          {!loading && !manualEntry && networks.length > 0 && (
-            <TouchableOpacity
-              onPress={() => {
-                setManualEntry(true);
-              }}
-              style={{ marginBottom: 12 }}
-              activeOpacity={0.7}
-            >
-              <Text style={$manualLink}>Enter SSID manually</Text>
-            </TouchableOpacity>
-          )}
-
-          <TextInput
-            style={[$input, inputFocused === "password" ? $inputFocused : null]}
-            placeholder="Wi-Fi Password"
-            placeholderTextColor={COLORS.textMuted}
-            value={password}
-            onChangeText={setPassword}
-            onFocus={() => {
-              setInputFocused("password");
-            }}
-            onBlur={() => {
-              setInputFocused(null);
-            }}
-            secureTextEntry
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-        </View>
-
-        {/* Action Buttons */}
-        <View style={$buttonContainer}>
-          <TouchableOpacity
-            style={[
-              $primaryButton,
-              (!selectedSSID || !password) && $buttonDisabled,
-            ]}
-            onPress={handleSubmit}
-            disabled={!selectedSSID || !password}
-            activeOpacity={0.8}
-          >
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      style={$container}
+    >
+      <ScrollView
+        contentContainerStyle={$scrollContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={$content}>
+          {/* Visual Header/Icon */}
+          <View style={$iconContainer}>
             <SymbolView
               name={{
-                ios: "key.fill",
-                android: "vpn_key",
-                web: "vpn_key",
+                ios: "lock.shield",
+                android: "security",
+                web: "security",
               }}
-              tintColor={COLORS.background}
-              size={18}
+              tintColor={COLORS.primary}
+              size={48}
             />
-            <Text style={$primaryButtonText}>Connect Speaker</Text>
-          </TouchableOpacity>
+          </View>
 
-          <Text style={$note}>
-            Your credentials are only transmitted locally to the speaker and are
-            never stored.
-          </Text>
+          {/* Card */}
+          <View style={$card}>
+            <View style={$badge}>
+              <Text style={$badgeText}>SETUP WIZARD</Text>
+            </View>
+            <Text style={$cardTitle}>Connect to Wi-Fi</Text>
+            <Text style={$cardDescription}>
+              Select your 2.4 GHz home Wi-Fi network and enter the password.
+              SoundTouch speakers do not support 5 GHz network setup profiles.
+            </Text>
+
+            {loading ? (
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={$spinner}
+              />
+            ) : !manualEntry && networks.length > 0 ? (
+              <FlatList
+                data={networks}
+                keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
+                style={$list}
+                contentContainerStyle={{ gap: 6 }}
+                renderItem={({ item }) => {
+                  const isSelected = selectedSSID === item.ssid;
+                  const dbm = item.level;
+                  const bars =
+                    dbm >= -50
+                      ? 4
+                      : dbm >= -60
+                        ? 3
+                        : dbm >= -70
+                          ? 2
+                          : dbm >= -80
+                            ? 1
+                            : 0;
+                  return (
+                    <TouchableOpacity
+                      style={[$networkItem, isSelected && $networkItemSelected]}
+                      onPress={() => {
+                        setSelectedSSID(item.ssid);
+                      }}
+                      activeOpacity={0.7}
+                    >
+                      <View style={$networkRow}>
+                        <Text
+                          style={[
+                            $networkText,
+                            isSelected && $networkTextSelected,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.ssid}
+                        </Text>
+                        <Text
+                          style={[
+                            $signalText,
+                            isSelected && $networkTextSelected,
+                          ]}
+                        >
+                          {"●".repeat(bars)}
+                          {"○".repeat(Math.max(0, 4 - bars))}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            ) : null}
+
+            {(manualEntry || (!loading && networks.length === 0)) && (
+              <TextInput
+                style={[$input, inputFocused === "ssid" ? $inputFocused : null]}
+                placeholder="Network name (SSID)"
+                placeholderTextColor={COLORS.textMuted}
+                value={selectedSSID}
+                onChangeText={setSelectedSSID}
+                onFocus={() => {
+                  setInputFocused("ssid");
+                }}
+                onBlur={() => {
+                  setInputFocused(null);
+                }}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            )}
+
+            {!loading && !manualEntry && networks.length > 0 && (
+              <TouchableOpacity
+                onPress={() => {
+                  setManualEntry(true);
+                }}
+                style={{ marginBottom: 12 }}
+                activeOpacity={0.7}
+              >
+                <Text style={$manualLink}>Enter SSID manually</Text>
+              </TouchableOpacity>
+            )}
+
+            <View
+              style={[
+                $passwordContainer,
+                inputFocused === "password" ? $containerFocused : null,
+              ]}
+            >
+              <TextInput
+                style={$passwordInput}
+                placeholder="Wi-Fi Password"
+                placeholderTextColor={COLORS.textMuted}
+                value={password}
+                onChangeText={setPassword}
+                onFocus={() => {
+                  setInputFocused("password");
+                }}
+                onBlur={() => {
+                  setInputFocused(null);
+                }}
+                secureTextEntry={secureTextEntry}
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+              <TouchableOpacity
+                onPress={() => {
+                  setSecureTextEntry((prev) => !prev);
+                }}
+                activeOpacity={0.7}
+                style={$eyeButton}
+              >
+                <SymbolView
+                  name={{
+                    ios: secureTextEntry ? "eye" : "eye.slash",
+                    android: secureTextEntry ? "visibility" : "visibility_off",
+                    web: secureTextEntry ? "visibility" : "visibility_off",
+                  }}
+                  tintColor={COLORS.textMuted}
+                  size={20}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={$buttonContainer}>
+            <TouchableOpacity
+              style={[
+                $primaryButton,
+                (!selectedSSID || !password) && $buttonDisabled,
+              ]}
+              onPress={handleSubmit}
+              disabled={!selectedSSID || !password}
+              activeOpacity={0.8}
+            >
+              <SymbolView
+                name={{
+                  ios: "key.fill",
+                  android: "vpn_key",
+                  web: "vpn_key",
+                }}
+                tintColor={COLORS.background}
+                size={18}
+              />
+              <Text style={$primaryButtonText}>Connect Speaker</Text>
+            </TouchableOpacity>
+
+            <Text style={$note}>
+              Your credentials are only transmitted locally to the speaker and
+              are never stored.
+            </Text>
+          </View>
         </View>
-      </View>
-    </View>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -381,6 +418,10 @@ const $inputFocused: TextStyle = {
   borderColor: COLORS.primary,
 };
 
+const $containerFocused: ViewStyle = {
+  borderColor: COLORS.primary,
+};
+
 const $manualLink: TextStyle = {
   color: COLORS.primary,
   fontSize: 14,
@@ -419,4 +460,31 @@ const $note: TextStyle = {
   color: COLORS.textMuted,
   textAlign: "center",
   lineHeight: 16,
+};
+
+const $scrollContent: ViewStyle = {
+  flexGrow: 1,
+};
+
+const $passwordContainer: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  borderRadius: 12,
+  paddingRight: 14,
+  width: "100%",
+  marginBottom: 12,
+};
+
+const $passwordInput: TextStyle = {
+  flex: 1,
+  padding: 14,
+  fontSize: 16,
+  color: COLORS.text,
+};
+
+const $eyeButton: ViewStyle = {
+  padding: 4,
 };
