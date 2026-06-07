@@ -2,6 +2,8 @@ export type ProvisioningState =
   | { step: "IDLE" }
   | { step: "CHECKING_PERMISSIONS" }
   | { step: "PERMISSIONS_DENIED" }
+  | { step: "CHECKING_WIFI" }
+  | { step: "WIFI_DISABLED" }
   | { step: "SCANNING_FOR_HOTSPOT" }
   | { step: "HOTSPOT_NOT_FOUND" }
   | { step: "CONNECTING_TO_HOTSPOT"; ssid: string; bssid: string }
@@ -49,6 +51,8 @@ export type ProvisioningAction =
   | { type: "START" }
   | { type: "PERMISSIONS_GRANTED" }
   | { type: "PERMISSIONS_DENIED" }
+  | { type: "WIFI_ENABLED" }
+  | { type: "WIFI_DISABLED" }
   | { type: "HOTSPOT_FOUND"; ssid: string; bssid: string }
   | { type: "HOTSPOT_TIMEOUT" }
   | {

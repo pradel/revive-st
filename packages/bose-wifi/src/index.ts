@@ -22,3 +22,7 @@ export async function isConnected(): Promise<boolean> {
 export async function openWifiSettings(): Promise<null> {
   return BoseWifiModule.openWifiSettings();
 }
+
+export async function openWifiSettingsPanel(): Promise<null> {
+  return BoseWifiModule.openWifiSettingsPanel();
+}

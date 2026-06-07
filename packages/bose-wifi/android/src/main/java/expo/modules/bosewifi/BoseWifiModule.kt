@@ -53,6 +53,23 @@ class BoseWifiModule : Module() {
       ctx.startActivity(intent)
       promise.resolve(null)
     }
+
+    AsyncFunction("openWifiSettingsPanel") { promise: Promise ->
+      val ctx = appContext.reactContext ?: run {
+        promise.reject("NO_CONTEXT", "No Android context available", null)
+        return@AsyncFunction
+      }
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val intent = Intent(Settings.Panel.ACTION_WIFI)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+      } else {
+        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        ctx.startActivity(intent)
+      }
+      promise.resolve(null)
+    }
   }
 
   @RequiresApi(Build.VERSION_CODES.Q)

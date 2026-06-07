@@ -19,6 +19,8 @@ export default function ScanningScreen() {
       router.replace("/onboarding/connecting" as any);
     } else if (state.step === "MANUAL_IP_ENTRY") {
       router.push("/onboarding/manual-ip" as any);
+    } else if (state.step === "WIFI_DISABLED") {
+      router.replace("/onboarding/wifi-enable" as any);
     }
   }, [state.step, router]);
 

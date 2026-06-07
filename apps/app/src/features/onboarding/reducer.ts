@@ -17,7 +17,19 @@ export function provisioningReducer(
 
     case "PERMISSIONS_GRANTED":
       if (state.step === "CHECKING_PERMISSIONS") {
+        return { step: "CHECKING_WIFI" };
+      }
+      return state;
+
+    case "WIFI_ENABLED":
+      if (state.step === "CHECKING_WIFI" || state.step === "WIFI_DISABLED") {
         return { step: "SCANNING_FOR_HOTSPOT" };
+      }
+      return state;
+
+    case "WIFI_DISABLED":
+      if (state.step === "CHECKING_WIFI") {
+        return { step: "WIFI_DISABLED" };
       }
       return state;
 
@@ -153,6 +165,8 @@ export function provisioningReducer(
       switch (state.step) {
         case "PERMISSIONS_DENIED":
           return { step: "CHECKING_PERMISSIONS" };
+        case "WIFI_DISABLED":
+          return { step: "CHECKING_WIFI" };
         case "HOTSPOT_NOT_FOUND":
           return { step: "SCANNING_FOR_HOTSPOT" };
         case "CONNECTION_FAILED":

@@ -22,6 +22,7 @@ function OnboardingNavigator() {
       }}
     >
       <Stack.Screen name="permissions" />
+      <Stack.Screen name="wifi-enable" />
       <Stack.Screen name="scanning" />
       <Stack.Screen name="connecting" />
       <Stack.Screen name="network-picker" />

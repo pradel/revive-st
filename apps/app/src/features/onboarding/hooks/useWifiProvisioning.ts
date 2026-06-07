@@ -6,7 +6,7 @@ import {
 } from "expo-bose-wifi";
 import * as Location from "expo-location";
 import { useCallback, useEffect, useRef } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 
 import { logger } from "@/lib/logger";
@@ -204,6 +204,23 @@ export function useWifiProvisioning() {
     }
   }, [dispatch]);
 
+  const checkWifiStatus = useCallback(async () => {
+    try {
+      const enabled = await WifiManager.isEnabled();
+      if (enabled) {
+        dispatch({ type: "WIFI_ENABLED" });
+      } else {
+        dispatch({ type: "WIFI_DISABLED" });
+      }
+    } catch (err) {
+      logger.warn(
+        "[WiFi Check] Failed to check status, assuming enabled:",
+        err,
+      );
+      dispatch({ type: "WIFI_ENABLED" });
+    }
+  }, [dispatch]);
+
   useEffect(() => {
     if (state.step === "CHECKING_PERMISSIONS") {
       void requestPermissions();
@@ -268,5 +285,32 @@ export function useWifiProvisioning() {
     };
   }, [state.step, (state as { speakerIP?: string }).speakerIP]);
 
-  return { state, dispatch };
+  useEffect(() => {
+    if (state.step === "CHECKING_WIFI") {
+      void checkWifiStatus();
+    }
+  }, [state.step, checkWifiStatus]);
+
+  useEffect(() => {
+    if (state.step !== "WIFI_DISABLED") {
+      return;
+    }
+
+    const subscription = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "active") {
+        void checkWifiStatus();
+      }
+    });
+
+    const intervalId = setInterval(() => {
+      void checkWifiStatus();
+    }, 2000);
+
+    return () => {
+      subscription.remove();
+      clearInterval(intervalId);
+    };
+  }, [state.step, checkWifiStatus]);
+
+  return { state, dispatch, checkWifiStatus };
 }

@@ -17,6 +17,8 @@ const CONNECTION_FAILED: ProvisioningState = {
   ssid: "Bose SoundTouch 1234",
   bssid: "aa:bb:cc:dd:ee:ff",
 };
+const CHECKING_WIFI: ProvisioningState = { step: "CHECKING_WIFI" };
+const WIFI_DISABLED: ProvisioningState = { step: "WIFI_DISABLED" };
 const DISCOVERY_TIMEOUT: ProvisioningState = { step: "DISCOVERY_TIMEOUT" };
 
 describe("provisioningReducer", () => {
@@ -35,11 +37,11 @@ describe("provisioningReducer", () => {
   });
 
   describe("PERMISSIONS_GRANTED", () => {
-    it("transitions to SCANNING_FOR_HOTSPOT", () => {
+    it("transitions to CHECKING_WIFI", () => {
       const result = provisioningReducer(CHECKING_PERMISSIONS, {
         type: "PERMISSIONS_GRANTED",
       });
-      expect(result).toEqual(SCANNING_FOR_HOTSPOT);
+      expect(result).toEqual(CHECKING_WIFI);
     });
 
     it("ignores from wrong state", () => {
@@ -47,6 +49,31 @@ describe("provisioningReducer", () => {
         type: "PERMISSIONS_GRANTED",
       });
       expect(result).toBe(SCANNING_FOR_HOTSPOT);
+    });
+  });
+
+  describe("WIFI_ENABLED", () => {
+    it("transitions from CHECKING_WIFI to SCANNING_FOR_HOTSPOT", () => {
+      const result = provisioningReducer(CHECKING_WIFI, {
+        type: "WIFI_ENABLED",
+      });
+      expect(result).toEqual(SCANNING_FOR_HOTSPOT);
+    });
+
+    it("transitions from WIFI_DISABLED to SCANNING_FOR_HOTSPOT", () => {
+      const result = provisioningReducer(WIFI_DISABLED, {
+        type: "WIFI_ENABLED",
+      });
+      expect(result).toEqual(SCANNING_FOR_HOTSPOT);
+    });
+  });
+
+  describe("WIFI_DISABLED", () => {
+    it("transitions from CHECKING_WIFI to WIFI_DISABLED", () => {
+      const result = provisioningReducer(CHECKING_WIFI, {
+        type: "WIFI_DISABLED",
+      });
+      expect(result).toEqual(WIFI_DISABLED);
     });
   });
 
@@ -285,6 +312,11 @@ describe("provisioningReducer", () => {
       expect(result).toEqual(CHECKING_PERMISSIONS);
     });
 
+    it("WIFI_DISABLED rewinds to CHECKING_WIFI", () => {
+      const result = provisioningReducer(WIFI_DISABLED, { type: "RETRY" });
+      expect(result).toEqual(CHECKING_WIFI);
+    });
+
     it("HOTSPOT_NOT_FOUND rewinds to SCANNING_FOR_HOTSPOT", () => {
       const result = provisioningReducer(HOTSPOT_NOT_FOUND, { type: "RETRY" });
       expect(result).toEqual(SCANNING_FOR_HOTSPOT);
@@ -348,6 +380,9 @@ describe("provisioningReducer", () => {
       expect(state.step).toBe("CHECKING_PERMISSIONS");
 
       state = provisioningReducer(state, { type: "PERMISSIONS_GRANTED" });
+      expect(state.step).toBe("CHECKING_WIFI");
+
+      state = provisioningReducer(state, { type: "WIFI_ENABLED" });
       expect(state.step).toBe("SCANNING_FOR_HOTSPOT");
 
       state = provisioningReducer(state, {
@@ -403,6 +438,7 @@ describe("provisioningReducer", () => {
     it("handles the manual IP path", () => {
       let state = provisioningReducer(IDLE, { type: "START" });
       state = provisioningReducer(state, { type: "PERMISSIONS_GRANTED" });
+      state = provisioningReducer(state, { type: "WIFI_ENABLED" });
       state = provisioningReducer(state, { type: "ENTER_MANUAL_IP" });
       expect(state.step).toBe("MANUAL_IP_ENTRY");
 
@@ -421,6 +457,7 @@ describe("provisioningReducer", () => {
     it("handles error recovery for password typo", () => {
       let state = provisioningReducer(IDLE, { type: "START" });
       state = provisioningReducer(state, { type: "PERMISSIONS_GRANTED" });
+      state = provisioningReducer(state, { type: "WIFI_ENABLED" });
       state = provisioningReducer(state, {
         type: "HOTSPOT_FOUND",
         ssid: "Bose SoundTouch 1234",
