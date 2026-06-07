@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
   ActivityIndicator,
   TouchableOpacity,
   KeyboardAvoidingView,
@@ -126,12 +125,13 @@ export default function NetworkPickerScreen() {
                 style={$spinner}
               />
             ) : !manualEntry && networks.length > 0 ? (
-              <FlatList
-                data={networks}
-                keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
+              <ScrollView
                 style={$list}
                 contentContainerStyle={{ gap: 6 }}
-                renderItem={({ item }) => {
+                nestedScrollEnabled
+                showsVerticalScrollIndicator
+              >
+                {networks.map((item) => {
                   const isSelected = selectedSSID === item.ssid;
                   const dbm = item.level;
                   const bars =
@@ -146,6 +146,7 @@ export default function NetworkPickerScreen() {
                             : 0;
                   return (
                     <TouchableOpacity
+                      key={`${item.ssid}_${item.bssid}`}
                       style={[$networkItem, isSelected && $networkItemSelected]}
                       onPress={() => {
                         setSelectedSSID(item.ssid);
@@ -174,8 +175,8 @@ export default function NetworkPickerScreen() {
                       </View>
                     </TouchableOpacity>
                   );
-                }}
-              />
+                })}
+              </ScrollView>
             ) : null}
 
             {(manualEntry || (!loading && networks.length === 0)) && (
