@@ -2,7 +2,6 @@ import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
 import {
-  ActivityIndicator,
   Text,
   TouchableOpacity,
   View,
@@ -11,6 +10,7 @@ import {
 } from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
 
 export default function ScanningScreen() {
@@ -42,6 +42,13 @@ export default function ScanningScreen() {
       <View style={$content}>
         {/* Visual Header/Icon */}
         <View style={$iconContainer}>
+          {isScanning && (
+            <>
+              <PulseRing delay={0} size={96} />
+              <PulseRing delay={800} size={96} />
+              <PulseRing delay={1600} size={96} />
+            </>
+          )}
           <SymbolView
             name={{
               ios: isNotFound ? "wifi.exclamationmark" : "wifi",
@@ -66,11 +73,6 @@ export default function ScanningScreen() {
                 Looking for your Bose SoundTouch speaker's setup network. Make
                 sure your speaker's Wi-Fi indicator is pulsing amber.
               </Text>
-              <ActivityIndicator
-                size="large"
-                color={COLORS.primary}
-                style={$spinner}
-              />
             </>
           )}
 
@@ -226,10 +228,6 @@ const $hintText: TextStyle = {
   color: COLORS.textSecondary,
   textAlign: "center",
   lineHeight: 18,
-};
-
-const $spinner: ViewStyle = {
-  marginTop: 16,
 };
 
 const $buttonContainer: ViewStyle = {
