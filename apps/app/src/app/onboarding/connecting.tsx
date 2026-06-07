@@ -1,18 +1,21 @@
 import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useCallback, useState } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   ActivityIndicator,
   Platform,
+  Text,
+  TouchableOpacity,
+  View,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
 import { logger } from "@/lib/logger";
+import { COLORS } from "@/ui/theme";
 
 export default function ConnectingScreen() {
   const { state, dispatch } = useWifiProvisioning();
@@ -31,7 +34,6 @@ export default function ConnectingScreen() {
     setManualPolling(true);
     const s = state as { ssid: string; bssid: string };
     try {
-      // Call specifier to bind process to the Bose network
       logger.log(
         "[Manual Retry] Calling connectToOpenNetwork with",
         s.ssid,
@@ -67,174 +69,309 @@ export default function ConnectingScreen() {
     void openWifiSettings();
   }, []);
 
+  const statusText = manualPolling
+    ? "Looking for speaker on the network..."
+    : "Connecting to your speaker...";
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Connecting</Text>
-      {!isFailed && !manualPolling && (
-        <>
-          <ActivityIndicator size="large" style={styles.spinner} />
-          <Text style={styles.statusText}>Connecting to your speaker...</Text>
-        </>
-      )}
-      {manualPolling && (
-        <>
-          <ActivityIndicator size="large" style={styles.spinner} />
-          <Text style={styles.statusText}>
-            Looking for speaker on the network...
-          </Text>
-        </>
-      )}
-      {isFailed && !manualPolling && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>
-            Could not connect to the speaker automatically.
-          </Text>
-          {Platform.OS === "android" && (
-            <View style={styles.staticIpBox}>
-              <Text style={styles.staticIpTitle}>Manual setup (fallback):</Text>
-              <Text style={styles.staticIpStep}>
-                Open WiFi Settings and connect to the Bose network. Then
-                configure static IP:
-              </Text>
-              <View style={styles.ipRow}>
-                <Text style={styles.ipLabel}>IP:</Text>
-                <Text style={styles.ipValue}>192.0.2.50</Text>
-              </View>
-              <View style={styles.ipRow}>
-                <Text style={styles.ipLabel}>Gateway:</Text>
-                <Text style={styles.ipValue}>192.0.2.1</Text>
-              </View>
-              <View style={styles.ipRow}>
-                <Text style={styles.ipLabel}>Prefix:</Text>
-                <Text style={styles.ipValue}>24</Text>
-              </View>
-              <View style={styles.ipRow}>
-                <Text style={styles.ipLabel}>DNS 1:</Text>
-                <Text style={styles.ipValue}>192.0.2.1</Text>
-              </View>
-              <Pressable
-                style={styles.settingsButton}
-                onPress={handleOpenWifiSettings}
-              >
-                <Text style={styles.settingsButtonText}>
-                  Open WiFi Settings
-                </Text>
-              </Pressable>
-              <Text style={styles.staticIpStep}>
-                After connecting, tap the button below:
-              </Text>
-              <Pressable style={styles.button} onPress={handleManualRetry}>
-                <Text style={styles.buttonText}>
-                  I&apos;m Connected — Continue
-                </Text>
-              </Pressable>
-            </View>
+    <View style={$container}>
+      <Stack.Screen
+        options={{
+          title: "Setup Speaker",
+          headerShown: false,
+        }}
+      />
+
+      <View style={$content}>
+        {/* Visual Header/Icon */}
+        <View style={$iconContainer}>
+          <SymbolView
+            name={{
+              ios: isFailed ? "wifi.exclamationmark" : "wifi",
+              android: isFailed ? "wifi_off" : "wifi",
+              web: isFailed ? "wifi_off" : "wifi",
+            }}
+            tintColor={isFailed ? COLORS.error : COLORS.primary}
+            size={48}
+          />
+        </View>
+
+        {/* Card */}
+        <View style={$card}>
+          <View style={$badge}>
+            <Text style={$badgeText}>SETUP WIZARD</Text>
+          </View>
+
+          {!isFailed && (
+            <>
+              <Text style={$cardTitle}>Establishing Connection</Text>
+              <Text style={$cardDescription}>{statusText}</Text>
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={$spinner}
+              />
+            </>
           )}
-          {Platform.OS !== "android" && (
-            <Pressable
-              style={styles.button}
+
+          {isFailed && (
+            <>
+              <Text style={[$cardTitle, { color: COLORS.error }]}>
+                Connection Failed
+              </Text>
+              <Text style={$cardDescription}>
+                We couldn't connect to the speaker automatically.
+              </Text>
+
+              {Platform.OS === "android" && (
+                <View style={$staticIpBox}>
+                  <Text style={$staticIpTitle}>Manual Setup Fallback</Text>
+                  <Text style={$staticIpStep}>
+                    1. Tap the button below to open Wi-Fi settings.
+                  </Text>
+                  <TouchableOpacity
+                    style={$settingsButton}
+                    onPress={handleOpenWifiSettings}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={$settingsButtonText}>Open Wi-Fi Settings</Text>
+                  </TouchableOpacity>
+                  <Text style={$staticIpStep}>
+                    2. Connect to the speaker's hotspot and configure a static
+                    IP:
+                  </Text>
+                  <View style={$ipList}>
+                    <View style={$ipRow}>
+                      <Text style={$ipLabel}>IP:</Text>
+                      <Text style={$ipValue}>192.0.2.50</Text>
+                    </View>
+                    <View style={$ipRow}>
+                      <Text style={$ipLabel}>Gateway:</Text>
+                      <Text style={$ipValue}>192.0.2.1</Text>
+                    </View>
+                    <View style={$ipRow}>
+                      <Text style={$ipLabel}>Prefix:</Text>
+                      <Text style={$ipValue}>24</Text>
+                    </View>
+                    <View style={$ipRow}>
+                      <Text style={$ipLabel}>DNS:</Text>
+                      <Text style={$ipValue}>192.0.2.1</Text>
+                    </View>
+                  </View>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={$buttonContainer}>
+          {isFailed && Platform.OS === "android" && (
+            <TouchableOpacity
+              style={$primaryButton}
+              onPress={handleManualRetry}
+              activeOpacity={0.8}
+            >
+              <SymbolView
+                name={{
+                  ios: "play.fill",
+                  android: "play_arrow",
+                  web: "play_arrow",
+                }}
+                tintColor={COLORS.background}
+                size={16}
+              />
+              <Text style={$primaryButtonText}>Continue Setup</Text>
+            </TouchableOpacity>
+          )}
+
+          {isFailed && Platform.OS !== "android" && (
+            <TouchableOpacity
+              style={$primaryButton}
               onPress={() => {
                 dispatch({ type: "RETRY" });
               }}
+              activeOpacity={0.8}
             >
-              <Text style={styles.buttonText}>Try Again</Text>
-            </Pressable>
+              <SymbolView
+                name={{
+                  ios: "arrow.clockwise",
+                  android: "refresh",
+                  web: "refresh",
+                }}
+                tintColor={COLORS.background}
+                size={18}
+              />
+              <Text style={$primaryButtonText}>Try Again</Text>
+            </TouchableOpacity>
           )}
         </View>
-      )}
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 24,
-  },
-  spinner: {
-    marginBottom: 16,
-  },
-  statusText: {
-    fontSize: 16,
-    color: "#555",
-  },
-  errorBox: {
-    alignItems: "center",
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 15,
-    color: "#d32f2f",
-    textAlign: "center",
-  },
-  staticIpBox: {
-    backgroundColor: "#f0f6ff",
-    borderRadius: 12,
-    padding: 16,
-    width: "100%",
-    gap: 6,
-    alignItems: "center",
-  },
-  staticIpTitle: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#333",
-    marginBottom: 4,
-  },
-  staticIpStep: {
-    fontSize: 13,
-    color: "#666",
-    textAlign: "center",
-    lineHeight: 18,
-    marginBottom: 4,
-  },
-  ipRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-  },
-  ipLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#333",
-    width: 70,
-    textAlign: "right",
-  },
-  ipValue: {
-    fontSize: 14,
-    color: "#208AEF",
-    fontWeight: "500",
-    width: 110,
-  },
-  settingsButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#208AEF",
-    borderRadius: 8,
-    marginVertical: 8,
-  },
-  settingsButtonText: {
-    color: "#208AEF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: "#208AEF",
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const $container: ViewStyle = {
+  flex: 1,
+  backgroundColor: COLORS.background,
+};
+
+const $content: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  paddingHorizontal: 24,
+  paddingTop: 40,
+};
+
+const $iconContainer: ViewStyle = {
+  width: 96,
+  height: 96,
+  borderRadius: 48,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 32,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+};
+
+const $card: ViewStyle = {
+  backgroundColor: COLORS.card,
+  borderRadius: 20,
+  padding: 24,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+  alignItems: "center",
+  marginBottom: 32,
+};
+
+const $badge: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  marginBottom: 16,
+};
+
+const $badgeText: TextStyle = {
+  fontSize: 10,
+  fontWeight: "800",
+  color: COLORS.primary,
+  letterSpacing: 0.8,
+};
+
+const $cardTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "700",
+  color: COLORS.text,
+  letterSpacing: -0.3,
+  marginBottom: 10,
+  textAlign: "center",
+};
+
+const $cardDescription: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 20,
+  marginBottom: 12,
+};
+
+const $staticIpBox: ViewStyle = {
+  backgroundColor: COLORS.background,
+  borderRadius: 12,
+  padding: 16,
+  width: "100%",
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  gap: 12,
+  marginTop: 8,
+};
+
+const $staticIpTitle: TextStyle = {
+  fontSize: 15,
+  fontWeight: "600",
+  color: COLORS.text,
+  textAlign: "center",
+};
+
+const $staticIpStep: TextStyle = {
+  fontSize: 13,
+  color: COLORS.textSecondary,
+  lineHeight: 18,
+};
+
+const $ipList: ViewStyle = {
+  gap: 6,
+  paddingHorizontal: 8,
+};
+
+const $ipRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+};
+
+const $ipLabel: TextStyle = {
+  fontSize: 14,
+  fontWeight: "600",
+  color: COLORS.textMuted,
+  width: 70,
+  textAlign: "right",
+};
+
+const $ipValue: TextStyle = {
+  fontSize: 14,
+  color: COLORS.primary,
+  fontWeight: "600",
+  width: 110,
+  fontVariant: ["tabular-nums"],
+};
+
+const $settingsButton: ViewStyle = {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  borderRadius: 12,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  marginVertical: 4,
+};
+
+const $settingsButtonText: TextStyle = {
+  color: COLORS.primary,
+  fontSize: 14,
+  fontWeight: "600",
+};
+
+const $spinner: ViewStyle = {
+  marginTop: 16,
+};
+
+const $buttonContainer: ViewStyle = {
+  width: "100%",
+  gap: 12,
+};
+
+const $primaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.primary,
+  height: 52,
+  borderRadius: 16,
+  width: "100%",
+};
+
+const $primaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.background,
+  fontWeight: "600",
+};

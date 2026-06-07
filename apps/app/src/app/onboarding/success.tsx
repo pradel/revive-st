@@ -1,8 +1,16 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
-import { View, Text, StyleSheet, Pressable } from "react-native";
+import { SymbolView } from "expo-symbols";
+import {
+  Text,
+  TouchableOpacity,
+  View,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import { COLORS } from "@/ui/theme";
 
 export default function SuccessScreen() {
   const { state } = useWifiProvisioning();
@@ -21,48 +29,163 @@ export default function SuccessScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Setup Complete</Text>
-      <Text style={styles.speakerName}>{s.speakerName ?? "Speaker"}</Text>
-      <Text style={styles.detail}>is ready to use</Text>
-      <Pressable style={styles.button} onPress={handleDone}>
-        <Text style={styles.buttonText}>Got It</Text>
-      </Pressable>
+    <View style={$container}>
+      <Stack.Screen
+        options={{
+          title: "Setup Speaker",
+          headerShown: false,
+        }}
+      />
+
+      <View style={$content}>
+        {/* Visual Header/Icon */}
+        <View style={$iconContainer}>
+          <SymbolView
+            name={{
+              ios: "checkmark.circle.fill",
+              android: "check_circle",
+              web: "check_circle",
+            }}
+            tintColor={COLORS.primary}
+            size={48}
+          />
+        </View>
+
+        {/* Card */}
+        <View style={$card}>
+          <View style={$badge}>
+            <Text style={$badgeText}>SETUP COMPLETED</Text>
+          </View>
+          <Text style={$cardTitle}>Speaker is Ready</Text>
+          <Text style={$speakerName}>
+            {s.speakerName ?? "SoundTouch Speaker"}
+          </Text>
+          <Text style={$cardDescription}>
+            Your speaker has been configured and connected successfully to your
+            local network.
+          </Text>
+        </View>
+
+        {/* Action Buttons */}
+        <View style={$buttonContainer}>
+          <TouchableOpacity
+            style={$primaryButton}
+            onPress={handleDone}
+            activeOpacity={0.8}
+          >
+            <SymbolView
+              name={{
+                ios: "checkmark",
+                android: "check",
+                web: "check",
+              }}
+              tintColor={COLORS.background}
+              size={18}
+            />
+            <Text style={$primaryButtonText}>Got It</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  speakerName: {
-    fontSize: 20,
-    fontWeight: "500",
-    marginBottom: 4,
-  },
-  detail: {
-    fontSize: 16,
-    color: "#888",
-    marginBottom: 32,
-  },
-  button: {
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    backgroundColor: "#208AEF",
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-});
+const $container: ViewStyle = {
+  flex: 1,
+  backgroundColor: COLORS.background,
+};
+
+const $content: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  paddingHorizontal: 24,
+  paddingTop: 40,
+};
+
+const $iconContainer: ViewStyle = {
+  width: 96,
+  height: 96,
+  borderRadius: 48,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 32,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+};
+
+const $card: ViewStyle = {
+  backgroundColor: COLORS.card,
+  borderRadius: 20,
+  padding: 24,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+  alignItems: "center",
+  marginBottom: 32,
+};
+
+const $badge: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  marginBottom: 16,
+};
+
+const $badgeText: TextStyle = {
+  fontSize: 10,
+  fontWeight: "800",
+  color: COLORS.primary,
+  letterSpacing: 0.8,
+};
+
+const $cardTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "700",
+  color: COLORS.text,
+  letterSpacing: -0.3,
+  marginBottom: 4,
+  textAlign: "center",
+};
+
+const $speakerName: TextStyle = {
+  fontSize: 18,
+  fontWeight: "600",
+  color: COLORS.primary,
+  marginBottom: 12,
+  textAlign: "center",
+};
+
+const $cardDescription: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 20,
+  marginBottom: 8,
+};
+
+const $buttonContainer: ViewStyle = {
+  width: "100%",
+  gap: 12,
+};
+
+const $primaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.primary,
+  height: 52,
+  borderRadius: 16,
+  width: "100%",
+};
+
+const $primaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.background,
+  fontWeight: "600",
+};

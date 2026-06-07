@@ -1,18 +1,21 @@
 import { useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect, useCallback, useState } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   TextInput,
-  Pressable,
   FlatList,
   ActivityIndicator,
+  TouchableOpacity,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
+import { COLORS } from "@/ui/theme";
 
 export default function NetworkPickerScreen() {
   const { state, dispatch } = useWifiProvisioning();
@@ -24,6 +27,9 @@ export default function NetworkPickerScreen() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(true);
   const [manualEntry, setManualEntry] = useState(false);
+  const [inputFocused, setInputFocused] = useState<"ssid" | "password" | null>(
+    null,
+  );
 
   const s = state as {
     ssid?: string;
@@ -75,196 +81,342 @@ export default function NetworkPickerScreen() {
   }, [selectedSSID, password, dispatch]);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Select Your Home Network</Text>
+    <View style={$container}>
+      <View style={$content}>
+        {/* Visual Header/Icon */}
+        <View style={$iconContainer}>
+          <SymbolView
+            name={{
+              ios: "lock.shield",
+              android: "security",
+              web: "security",
+            }}
+            tintColor={COLORS.primary}
+            size={48}
+          />
+        </View>
 
-      {loading ? (
-        <ActivityIndicator size="large" style={styles.spinner} />
-      ) : !manualEntry && networks.length > 0 ? (
-        <FlatList
-          data={networks}
-          keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
-          style={styles.list}
-          renderItem={({ item }) => {
-            const isSelected = selectedSSID === item.ssid;
-            const dbm = item.level;
-            const bars =
-              dbm >= -50
-                ? 4
-                : dbm >= -60
-                  ? 3
-                  : dbm >= -70
-                    ? 2
-                    : dbm >= -80
-                      ? 1
-                      : 0;
-            return (
-              <Pressable
-                style={[
-                  styles.networkItem,
-                  isSelected && styles.networkItemSelected,
-                ]}
-                onPress={() => {
-                  setSelectedSSID(item.ssid);
-                }}
-              >
-                <View style={styles.networkRow}>
-                  <Text
-                    style={[
-                      styles.networkText,
-                      isSelected && styles.networkTextSelected,
-                    ]}
-                    numberOfLines={1}
+        {/* Card */}
+        <View style={$card}>
+          <View style={$badge}>
+            <Text style={$badgeText}>SETUP WIZARD</Text>
+          </View>
+          <Text style={$cardTitle}>Connect to Wi-Fi</Text>
+          <Text style={$cardDescription}>
+            Select your 2.4 GHz home Wi-Fi network and enter the password.
+            SoundTouch speakers do not support 5 GHz network setup profiles.
+          </Text>
+
+          {loading ? (
+            <ActivityIndicator
+              size="large"
+              color={COLORS.primary}
+              style={$spinner}
+            />
+          ) : !manualEntry && networks.length > 0 ? (
+            <FlatList
+              data={networks}
+              keyExtractor={(item) => `${item.ssid}_${item.bssid}`}
+              style={$list}
+              contentContainerStyle={{ gap: 6 }}
+              renderItem={({ item }) => {
+                const isSelected = selectedSSID === item.ssid;
+                const dbm = item.level;
+                const bars =
+                  dbm >= -50
+                    ? 4
+                    : dbm >= -60
+                      ? 3
+                      : dbm >= -70
+                        ? 2
+                        : dbm >= -80
+                          ? 1
+                          : 0;
+                return (
+                  <TouchableOpacity
+                    style={[$networkItem, isSelected && $networkItemSelected]}
+                    onPress={() => {
+                      setSelectedSSID(item.ssid);
+                    }}
+                    activeOpacity={0.7}
                   >
-                    {item.ssid}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.signalText,
-                      isSelected && styles.networkTextSelected,
-                    ]}
-                  >
-                    {"●".repeat(bars)}
-                    {"○".repeat(Math.max(0, 4 - bars))}
-                  </Text>
-                </View>
-              </Pressable>
-            );
-          }}
-        />
-      ) : null}
+                    <View style={$networkRow}>
+                      <Text
+                        style={[
+                          $networkText,
+                          isSelected && $networkTextSelected,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {item.ssid}
+                      </Text>
+                      <Text
+                        style={[
+                          $signalText,
+                          isSelected && $networkTextSelected,
+                        ]}
+                      >
+                        {"●".repeat(bars)}
+                        {"○".repeat(Math.max(0, 4 - bars))}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          ) : null}
 
-      {(manualEntry || networks.length === 0) && (
-        <TextInput
-          style={styles.input}
-          placeholder="Network name (SSID)"
-          value={selectedSSID}
-          onChangeText={setSelectedSSID}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-      )}
+          {(manualEntry || (!loading && networks.length === 0)) && (
+            <TextInput
+              style={[$input, inputFocused === "ssid" ? $inputFocused : null]}
+              placeholder="Network name (SSID)"
+              placeholderTextColor={COLORS.textMuted}
+              value={selectedSSID}
+              onChangeText={setSelectedSSID}
+              onFocus={() => {
+                setInputFocused("ssid");
+              }}
+              onBlur={() => {
+                setInputFocused(null);
+              }}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          )}
 
-      {!manualEntry && networks.length > 0 && (
-        <Pressable
-          onPress={() => {
-            setManualEntry(true);
-          }}
-        >
-          <Text style={styles.manualLink}>Enter SSID manually</Text>
-        </Pressable>
-      )}
+          {!loading && !manualEntry && networks.length > 0 && (
+            <TouchableOpacity
+              onPress={() => {
+                setManualEntry(true);
+              }}
+              style={{ marginBottom: 12 }}
+              activeOpacity={0.7}
+            >
+              <Text style={$manualLink}>Enter SSID manually</Text>
+            </TouchableOpacity>
+          )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="WiFi password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        autoCapitalize="none"
-        autoCorrect={false}
-      />
+          <TextInput
+            style={[$input, inputFocused === "password" ? $inputFocused : null]}
+            placeholder="Wi-Fi Password"
+            placeholderTextColor={COLORS.textMuted}
+            value={password}
+            onChangeText={setPassword}
+            onFocus={() => {
+              setInputFocused("password");
+            }}
+            onBlur={() => {
+              setInputFocused(null);
+            }}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
 
-      <Pressable
-        style={[
-          styles.button,
-          (!selectedSSID || !password) && styles.buttonDisabled,
-        ]}
-        onPress={handleSubmit}
-        disabled={!selectedSSID || !password}
-      >
-        <Text style={styles.buttonText}>Connect Speaker</Text>
-      </Pressable>
+        {/* Action Buttons */}
+        <View style={$buttonContainer}>
+          <TouchableOpacity
+            style={[
+              $primaryButton,
+              (!selectedSSID || !password) && $buttonDisabled,
+            ]}
+            onPress={handleSubmit}
+            disabled={!selectedSSID || !password}
+            activeOpacity={0.8}
+          >
+            <SymbolView
+              name={{
+                ios: "key.fill",
+                android: "vpn_key",
+                web: "vpn_key",
+              }}
+              tintColor={COLORS.background}
+              size={18}
+            />
+            <Text style={$primaryButtonText}>Connect Speaker</Text>
+          </TouchableOpacity>
 
-      {!loading && (
-        <Text style={styles.note}>
-          Your password is only sent to your speaker locally and is never
-          stored.
-        </Text>
-      )}
+          <Text style={$note}>
+            Your credentials are only transmitted locally to the speaker and are
+            never stored.
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 20,
-    textAlign: "center",
-  },
-  spinner: {
-    marginTop: 40,
-  },
-  list: {
-    maxHeight: 200,
-    marginBottom: 16,
-  },
-  networkItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    marginBottom: 4,
-    backgroundColor: "#f5f5f5",
-  },
-  networkItemSelected: {
-    backgroundColor: "#208AEF",
-  },
-  networkText: {
-    fontSize: 16,
-    color: "#333",
-    flex: 1,
-  },
-  networkTextSelected: {
-    color: "#fff",
-  },
-  networkRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  signalText: {
-    fontSize: 11,
-    color: "#999",
-    marginLeft: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    marginBottom: 12,
-  },
-  manualLink: {
-    color: "#208AEF",
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    backgroundColor: "#208AEF",
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  note: {
-    fontSize: 12,
-    color: "#999",
-    textAlign: "center",
-  },
-});
+const $container: ViewStyle = {
+  flex: 1,
+  backgroundColor: COLORS.background,
+};
+
+const $content: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  paddingHorizontal: 24,
+  paddingTop: 40,
+};
+
+const $iconContainer: ViewStyle = {
+  width: 96,
+  height: 96,
+  borderRadius: 48,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 32,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+};
+
+const $card: ViewStyle = {
+  backgroundColor: COLORS.card,
+  borderRadius: 20,
+  padding: 24,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+  alignItems: "center",
+  marginBottom: 32,
+};
+
+const $badge: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  marginBottom: 16,
+};
+
+const $badgeText: TextStyle = {
+  fontSize: 10,
+  fontWeight: "800",
+  color: COLORS.primary,
+  letterSpacing: 0.8,
+};
+
+const $cardTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "700",
+  color: COLORS.text,
+  letterSpacing: -0.3,
+  marginBottom: 10,
+  textAlign: "center",
+};
+
+const $cardDescription: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 20,
+  marginBottom: 20,
+};
+
+const $spinner: ViewStyle = {
+  marginTop: 16,
+};
+
+const $list: ViewStyle = {
+  width: "100%",
+  maxHeight: 180,
+  marginBottom: 16,
+};
+
+const $networkItem: ViewStyle = {
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderRadius: 12,
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+};
+
+const $networkItemSelected: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  borderColor: COLORS.primary,
+};
+
+const $networkRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+};
+
+const $networkText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.text,
+  fontWeight: "500",
+  flex: 1,
+};
+
+const $networkTextSelected: TextStyle = {
+  color: COLORS.primary,
+};
+
+const $signalText: TextStyle = {
+  fontSize: 11,
+  color: COLORS.textMuted,
+  letterSpacing: 1,
+  marginLeft: 8,
+};
+
+const $input: TextStyle = {
+  backgroundColor: COLORS.background,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  borderRadius: 12,
+  padding: 14,
+  fontSize: 16,
+  color: COLORS.text,
+  width: "100%",
+  marginBottom: 12,
+};
+
+const $inputFocused: TextStyle = {
+  borderColor: COLORS.primary,
+};
+
+const $manualLink: TextStyle = {
+  color: COLORS.primary,
+  fontSize: 14,
+  fontWeight: "600",
+  textAlign: "center",
+};
+
+const $buttonContainer: ViewStyle = {
+  width: "100%",
+  gap: 12,
+};
+
+const $primaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.primary,
+  height: 52,
+  borderRadius: 16,
+  width: "100%",
+};
+
+const $buttonDisabled: ViewStyle = {
+  opacity: 0.5,
+};
+
+const $primaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.background,
+  fontWeight: "600",
+};
+
+const $note: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 16,
+};

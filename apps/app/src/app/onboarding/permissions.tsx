@@ -235,7 +235,7 @@ const $primaryButton: ViewStyle = {
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
-  backgroundColor: COLORS.text,
+  backgroundColor: COLORS.primary,
   height: 52,
   borderRadius: 16,
   width: "100%",

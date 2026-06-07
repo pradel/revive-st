@@ -1,14 +1,17 @@
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
+import { SymbolView } from "expo-symbols";
 import { useEffect } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
   ActivityIndicator,
+  Text,
+  TouchableOpacity,
+  View,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import { COLORS } from "@/ui/theme";
 
 export default function ScanningScreen() {
   const { state, dispatch } = useWifiProvisioning();
@@ -28,106 +31,244 @@ export default function ScanningScreen() {
   const isScanning = state.step === "SCANNING_FOR_HOTSPOT";
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Find Your Speaker</Text>
-      {isScanning && (
-        <>
-          <ActivityIndicator size="large" style={styles.spinner} />
-          <Text style={styles.statusText}>Scanning for your speaker...</Text>
-        </>
-      )}
-      {isNotFound && (
-        <View style={styles.errorBox}>
-          <Text style={styles.errorText}>
-            No Bose speaker found nearby. Make sure your speaker is in setup
-            mode.
-          </Text>
-          <Text style={styles.hintText}>
-            Hold the power button for 5 seconds until the light pulses white.
-          </Text>
-          <Pressable
-            style={styles.button}
-            onPress={() => {
-              dispatch({ type: "RETRY" });
+    <View style={$container}>
+      <Stack.Screen
+        options={{
+          title: "Setup Speaker",
+          headerShown: false,
+        }}
+      />
+
+      <View style={$content}>
+        {/* Visual Header/Icon */}
+        <View style={$iconContainer}>
+          <SymbolView
+            name={{
+              ios: isNotFound ? "wifi.exclamationmark" : "wifi",
+              android: isNotFound ? "wifi_off" : "wifi",
+              web: isNotFound ? "wifi_off" : "wifi",
             }}
-          >
-            <Text style={styles.buttonText}>Scan Again</Text>
-          </Pressable>
-          <Pressable
-            style={styles.secondaryButton}
+            tintColor={isNotFound ? COLORS.error : COLORS.primary}
+            size={48}
+          />
+        </View>
+
+        {/* Card */}
+        <View style={$card}>
+          <View style={$badge}>
+            <Text style={$badgeText}>SETUP WIZARD</Text>
+          </View>
+
+          {isScanning && (
+            <>
+              <Text style={$cardTitle}>Searching for Speaker</Text>
+              <Text style={$cardDescription}>
+                Looking for your Bose SoundTouch speaker's setup network. Make
+                sure your speaker's Wi-Fi indicator is pulsing amber.
+              </Text>
+              <ActivityIndicator
+                size="large"
+                color={COLORS.primary}
+                style={$spinner}
+              />
+            </>
+          )}
+
+          {isNotFound && (
+            <>
+              <Text style={[$cardTitle, { color: COLORS.error }]}>
+                No Speaker Found
+              </Text>
+              <Text style={$cardDescription}>
+                We couldn't detect a Bose speaker in setup mode nearby.
+              </Text>
+              <View style={$hintBox}>
+                <Text style={$hintText}>
+                  To put your speaker in setup mode, press and hold the{" "}
+                  <Text style={{ fontWeight: "700" }}>2</Text> and{" "}
+                  <Text style={{ fontWeight: "700" }}>Volume Down</Text> buttons
+                  on the speaker for 5 seconds until the Wi-Fi indicator glows
+                  solid amber.
+                </Text>
+              </View>
+            </>
+          )}
+        </View>
+
+        {/* Action Buttons */}
+        <View style={$buttonContainer}>
+          {isNotFound && (
+            <TouchableOpacity
+              style={$primaryButton}
+              onPress={() => {
+                dispatch({ type: "RETRY" });
+              }}
+              activeOpacity={0.8}
+            >
+              <SymbolView
+                name={{
+                  ios: "arrow.clockwise",
+                  android: "refresh",
+                  web: "refresh",
+                }}
+                tintColor={COLORS.background}
+                size={18}
+              />
+              <Text style={$primaryButtonText}>Scan Again</Text>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity
+            style={$secondaryButton}
             onPress={() => {
               dispatch({ type: "ENTER_MANUAL_IP" });
             }}
+            activeOpacity={0.8}
           >
-            <Text style={styles.secondaryButtonText}>Enter IP Manually</Text>
-          </Pressable>
+            <SymbolView
+              name={{
+                ios: "keyboard",
+                android: "keyboard",
+                web: "keyboard",
+              }}
+              tintColor={COLORS.textSecondary}
+              size={18}
+            />
+            <Text style={$secondaryButtonText}>Enter IP Manually</Text>
+          </TouchableOpacity>
         </View>
-      )}
-      {isScanning && (
-        <Pressable
-          style={styles.secondaryButton}
-          onPress={() => {
-            dispatch({ type: "ENTER_MANUAL_IP" });
-          }}
-        >
-          <Text style={styles.secondaryButtonText}>Enter IP Manually</Text>
-        </Pressable>
-      )}
+      </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: "600",
-    marginBottom: 24,
-  },
-  spinner: {
-    marginBottom: 16,
-  },
-  statusText: {
-    fontSize: 16,
-    color: "#555",
-    marginBottom: 24,
-  },
-  errorBox: {
-    alignItems: "center",
-    gap: 12,
-  },
-  errorText: {
-    fontSize: 15,
-    color: "#d32f2f",
-    textAlign: "center",
-  },
-  hintText: {
-    fontSize: 14,
-    color: "#888",
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  button: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    backgroundColor: "#208AEF",
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  secondaryButton: {
-    paddingVertical: 12,
-  },
-  secondaryButtonText: {
-    color: "#208AEF",
-    fontSize: 14,
-  },
-});
+const $container: ViewStyle = {
+  flex: 1,
+  backgroundColor: COLORS.background,
+};
+
+const $content: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  paddingHorizontal: 24,
+  paddingTop: 40,
+};
+
+const $iconContainer: ViewStyle = {
+  width: 96,
+  height: 96,
+  borderRadius: 48,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginBottom: 32,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+};
+
+const $card: ViewStyle = {
+  backgroundColor: COLORS.card,
+  borderRadius: 20,
+  padding: 24,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+  alignItems: "center",
+  marginBottom: 32,
+};
+
+const $badge: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 8,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  marginBottom: 16,
+};
+
+const $badgeText: TextStyle = {
+  fontSize: 10,
+  fontWeight: "800",
+  color: COLORS.primary,
+  letterSpacing: 0.8,
+};
+
+const $cardTitle: TextStyle = {
+  fontSize: 22,
+  fontWeight: "700",
+  color: COLORS.text,
+  letterSpacing: -0.3,
+  marginBottom: 10,
+  textAlign: "center",
+};
+
+const $cardDescription: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 20,
+  marginBottom: 20,
+};
+
+const $hintBox: ViewStyle = {
+  backgroundColor: COLORS.background,
+  borderRadius: 12,
+  padding: 16,
+  width: "100%",
+  borderWidth: 1,
+  borderColor: COLORS.border,
+};
+
+const $hintText: TextStyle = {
+  fontSize: 13,
+  color: COLORS.textSecondary,
+  textAlign: "center",
+  lineHeight: 18,
+};
+
+const $spinner: ViewStyle = {
+  marginTop: 16,
+};
+
+const $buttonContainer: ViewStyle = {
+  width: "100%",
+  gap: 12,
+};
+
+const $primaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.primary,
+  height: 52,
+  borderRadius: 16,
+  width: "100%",
+};
+
+const $primaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.background,
+  fontWeight: "600",
+};
+
+const $secondaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.card,
+  height: 52,
+  borderRadius: 16,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  width: "100%",
+};
+
+const $secondaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.textSecondary,
+  fontWeight: "600",
+};
