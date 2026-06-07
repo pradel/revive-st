@@ -18,9 +18,13 @@ import expo.modules.kotlin.Promise
 
 class BoseWifiModule : Module() {
 
+  @Volatile
   private var networkCallback: ConnectivityManager.NetworkCallback? = null
+  @Volatile
   private var currentNetwork: Network? = null
+  @Volatile
   private var connectivityManager: ConnectivityManager? = null
+  @Volatile
   private var pendingPromise: Promise? = null
 
   override fun definition() = ModuleDefinition {
@@ -40,7 +44,14 @@ class BoseWifiModule : Module() {
     }
 
     AsyncFunction("isConnected") { promise: Promise ->
-      promise.resolve(currentNetwork != null)
+      val cm = connectivityManager ?: (appContext.reactContext?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)
+      val network = currentNetwork
+      if (cm != null && network != null) {
+        val capabilities = cm.getNetworkCapabilities(network)
+        promise.resolve(capabilities != null)
+      } else {
+        promise.resolve(false)
+      }
     }
 
     AsyncFunction("openWifiSettings") { promise: Promise ->
@@ -65,21 +76,28 @@ class BoseWifiModule : Module() {
     Log.d("BoseWifi", "connectWithSpecifier: SSID=\"$ssid\" BSSID=\"$bssid\"")
 
     val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    connectivityManager = cm
-
-    pendingPromise?.let {
-      Log.d("BoseWifi", "connectWithSpecifier: cancelling previous pending promise")
-      it.reject("CONNECTION_CANCELLED", "Superseded by a new connection request", null)
+    synchronized(this) {
+      connectivityManager = cm
+      releaseNetwork() // Clears previous callbacks and rejects any outstanding promise
+      pendingPromise = promise
     }
-    pendingPromise = promise
-
-    releaseNetwork()
 
     Log.d("BoseWifi", "Building WifiNetworkSpecifier...")
-    val specifier = WifiNetworkSpecifier.Builder()
+    val specifierBuilder = WifiNetworkSpecifier.Builder()
       .setSsid(ssid)
-      .setBssid(MacAddress.fromString(bssid))
-      .build()
+
+    if (!bssid.isNullOrEmpty()) {
+      try {
+        specifierBuilder.setBssid(MacAddress.fromString(bssid))
+      } catch (e: IllegalArgumentException) {
+        synchronized(this) {
+          pendingPromise = null
+        }
+        promise.reject("INVALID_BSSID", "Invalid BSSID format: $bssid", e)
+        return
+      }
+    }
+    val specifier = specifierBuilder.build()
 
     Log.d("BoseWifi", "Building NetworkRequest (no internet capability)...")
     val request = NetworkRequest.Builder()
@@ -91,74 +109,105 @@ class BoseWifiModule : Module() {
     var settled = false
 
     Log.d("BoseWifi", "Registering network callback with 90s timeout...")
-    networkCallback = object : ConnectivityManager.NetworkCallback() {
+    val callback = object : ConnectivityManager.NetworkCallback() {
 
       override fun onAvailable(network: Network) {
         Log.d("BoseWifi", "onAvailable: network=$network settled=$settled")
-        if (settled) return
-        settled = true
-        currentNetwork = network
-        cm.bindProcessToNetwork(network)
+        synchronized(this@BoseWifiModule) {
+          if (settled) return
+          settled = true
+          currentNetwork = network
+          try {
+            cm.bindProcessToNetwork(network)
+          } catch (e: Exception) {
+            Log.e("BoseWifi", "bindProcessToNetwork threw: ${e.message}", e)
+          }
 
-        Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
-        pendingPromise = null
-        promise.resolve(
-          mapOf(
-            "success" to true,
-            "ip" to "192.0.2.1",
-            "telnetPort" to 17000,
-            "apiPort" to 8090,
-            "message" to "Connected — traffic bound to Bose AP",
-          ),
-        )
+          Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
+          pendingPromise = null
+          promise.resolve(
+            mapOf(
+              "success" to true,
+              "ip" to "192.0.2.1",
+              "telnetPort" to 17000,
+              "apiPort" to 8090,
+              "message" to "Connected — traffic bound to Bose AP",
+            ),
+          )
+        }
       }
 
       override fun onUnavailable() {
         Log.d("BoseWifi", "onUnavailable: settled=$settled")
-        if (settled) return
-        settled = true
-        currentNetwork = null
-        pendingPromise = null
-        Log.d("BoseWifi", "onUnavailable: rejecting promise with CONNECTION_FAILED")
-        promise.reject(
-          "CONNECTION_FAILED",
-          "Could not connect to Bose AP. Make sure the speaker is in setup mode (LED amber).",
-          null,
-        )
+        synchronized(this@BoseWifiModule) {
+          if (settled) return
+          settled = true
+          currentNetwork = null
+          pendingPromise = null
+          Log.d("BoseWifi", "onUnavailable: rejecting promise with CONNECTION_FAILED")
+          promise.reject(
+            "CONNECTION_FAILED",
+            "Could not connect to Bose AP. Make sure the speaker is in setup mode (LED amber).",
+            null,
+          )
+        }
       }
 
       override fun onLost(network: Network) {
         Log.d("BoseWifi", "onLost: network=$network currentNetwork=$currentNetwork")
-        if (network == currentNetwork) {
-          currentNetwork = null
-          cm.bindProcessToNetwork(null)
-          Log.d("BoseWifi", "onLost: unbound, currentNetwork cleared")
+        synchronized(this@BoseWifiModule) {
+          if (network == currentNetwork) {
+            currentNetwork = null
+            try {
+              cm.bindProcessToNetwork(null)
+            } catch (e: Exception) {
+              Log.e("BoseWifi", "bindProcessToNetwork(null) onLost threw: ${e.message}", e)
+            }
+            Log.d("BoseWifi", "onLost: unbound, currentNetwork cleared")
+          }
         }
       }
     }
 
+    synchronized(this) {
+      networkCallback = callback
+    }
+
     try {
       Log.d("BoseWifi", "Calling requestNetwork with 90s timeout...")
-      cm.requestNetwork(request, networkCallback!!, 90_000)
+      cm.requestNetwork(request, callback, 90_000)
       Log.d("BoseWifi", "requestNetwork returned — waiting for callback")
     } catch (e: Exception) {
       Log.e("BoseWifi", "requestNetwork threw: ${e.message}", e)
-      settled = true
-      pendingPromise = null
+      synchronized(this) {
+        settled = true
+        pendingPromise = null
+      }
       promise.reject("REQUEST_FAILED", e.message ?: "Unknown error", e)
     }
   }
 
+  @Synchronized
   private fun releaseNetwork() {
-    val cm = connectivityManager ?: return
-    networkCallback?.let {
+    val cm = connectivityManager ?: (appContext.reactContext?.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager)
+    if (cm != null) {
+      networkCallback?.let {
+        try {
+          cm.unregisterNetworkCallback(it)
+        } catch (_: Exception) { /* already unregistered */ }
+      }
       try {
-        cm.unregisterNetworkCallback(it)
-      } catch (_: Exception) { /* already unregistered */ }
+        cm.bindProcessToNetwork(null)
+      } catch (_: Exception) {}
     }
-    cm.bindProcessToNetwork(null)
     networkCallback = null
     currentNetwork = null
+    
+    pendingPromise?.let {
+      try {
+        it.reject("CONNECTION_CANCELLED", "Superseded or disconnected", null)
+      } catch (_: Exception) {}
+    }
     pendingPromise = null
   }
 }

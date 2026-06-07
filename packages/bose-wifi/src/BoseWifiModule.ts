@@ -11,7 +11,7 @@ export interface BoseConnectionResult {
 declare class BoseWifiModule extends NativeModule {
   connectToOpenNetwork(
     ssid: string,
-    bssid: string,
+    bssid?: string,
   ): Promise<BoseConnectionResult>;
   disconnect(): Promise<null>;
   isConnected(): Promise<boolean>;
