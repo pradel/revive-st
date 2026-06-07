@@ -1,3 +1,4 @@
+import { boseSpeakerClient, NetworkError } from "bose-api-speaker-client";
 import {
   connectToOpenNetwork,
   disconnect as disconnectBose,
@@ -15,7 +16,6 @@ import {
   findSpeakerIP,
   isSpeakerHotspot,
   probeSpeakerIP,
-  sendCredentials,
 } from "../utils/networkHelpers";
 
 export function useWifiProvisioning() {
@@ -152,7 +152,18 @@ export function useWifiProvisioning() {
           await connectToOpenNetwork(s.ssid, s.bssid);
         }
       }
-      await sendCredentials(s.speakerIP, s.homeSSID, s.homePassword);
+      const client = boseSpeakerClient({ ip: s.speakerIP });
+      const result = await client.sendCredentials(s.homeSSID, s.homePassword);
+      if (!result.isOk()) {
+        const err = result.error;
+        if (err instanceof NetworkError) {
+          logger.log(
+            `[Send Creds] NetworkError encountered. Treating as success (AP likely shut down by speaker)`,
+          );
+        } else {
+          throw err;
+        }
+      }
       dispatch({ type: "CREDENTIALS_SENT" });
     } catch (err) {
       logger.log("[Send Creds Hook] Error caught in sendCreds callback:", err);
