@@ -50,14 +50,36 @@ export default function NetworkPickerScreen() {
   useEffect(() => {
     void (async () => {
       try {
-        const list = await WifiManager.reScanAndLoadWifiList();
-        const filtered = list
-          .filter(
-            (n): n is typeof n => Boolean(n.SSID) && !isSpeakerHotspot(n.SSID),
-          )
-          .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
-          .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
-        setNetworks(filtered);
+        let list: unknown;
+        try {
+          list = await WifiManager.reScanAndLoadWifiList();
+        } catch {
+          // ignore active scan error, try cached
+        }
+
+        if (!Array.isArray(list)) {
+          try {
+            list = await WifiManager.loadWifiList();
+          } catch {
+            // ignore load cached error
+          }
+        }
+
+        if (Array.isArray(list)) {
+          const typedList = list as {
+            SSID: string;
+            BSSID: string;
+            level: number;
+          }[];
+          const filtered = typedList
+            .filter(
+              (n): n is typeof n =>
+                Boolean(n.SSID) && !isSpeakerHotspot(n.SSID),
+            )
+            .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
+            .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
+          setNetworks(filtered);
+        }
       } catch {
         // show empty list, manual entry still possible
       }

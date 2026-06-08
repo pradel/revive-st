@@ -33,33 +33,68 @@ export function useWifiProvisioning() {
     scanningRef.current = true;
     try {
       logger.log("[WiFi Scan] Starting active scan...");
-      const networks = await WifiManager.reScanAndLoadWifiList();
-      logger.log(
-        `[WiFi Scan] Scan complete. Found ${networks.length} networks:`,
-      );
-      networks.forEach((n) => {
-        logger.log(
-          `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level} caps: ${n.capabilities}`,
-        );
-      });
-      const speakers = networks
-        .filter((n) => n.SSID && isSpeakerHotspot(n.SSID))
-        .map((n) => ({ ssid: n.SSID, bssid: n.BSSID }));
+      let rawNetworks: unknown;
 
-      if (speakers.length > 0) {
-        logger.log(`[WiFi Scan] Found ${speakers.length} Bose speakers`);
-        dispatch({
-          type: "SPEAKERS_FOUND",
-          speakers,
-        });
-      } else {
+      try {
+        rawNetworks = await WifiManager.reScanAndLoadWifiList();
+      } catch (scanErr) {
+        logger.log("[WiFi Scan] Active scan failed/rejected:", scanErr);
+      }
+
+      if (!Array.isArray(rawNetworks)) {
         logger.log(
-          "[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern",
+          `[WiFi Scan] Active scan returned non-array (${typeof rawNetworks}). Falling back to cached wifi list...`,
         );
+        if (typeof rawNetworks === "string") {
+          logger.log(`[WiFi Scan] Active scan warning: "${rawNetworks}"`);
+        }
+        try {
+          rawNetworks = await WifiManager.loadWifiList();
+        } catch (loadErr) {
+          logger.log("[WiFi Scan] Failed to load cached wifi list:", loadErr);
+        }
+      }
+
+      logger.log(
+        `[WiFi Scan] Scan complete. Type of networks: ${typeof rawNetworks}, isArray: ${Array.isArray(rawNetworks)}`,
+      );
+
+      const isArr = Array.isArray(rawNetworks);
+      if (isArr) {
+        const networks = rawNetworks as {
+          SSID: string;
+          BSSID: string;
+          level: number;
+          capabilities: string;
+        }[];
+        networks.forEach((n) => {
+          logger.log(
+            `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level} caps: ${n.capabilities}`,
+          );
+        });
+
+        const speakers = networks
+          .filter((n) => n.SSID && isSpeakerHotspot(n.SSID))
+          .map((n) => ({ ssid: n.SSID, bssid: n.BSSID }));
+
+        if (speakers.length > 0) {
+          logger.log(`[WiFi Scan] Found ${speakers.length} Bose speakers`);
+          dispatch({
+            type: "SPEAKERS_FOUND",
+            speakers,
+          });
+        } else {
+          logger.log(
+            "[WiFi Scan] No speaker hotspot found matching Bose ST/SoundTouch pattern",
+          );
+          dispatch({ type: "HOTSPOT_TIMEOUT" });
+        }
+      } else {
+        logger.log("[WiFi Scan] networks is not an array, skipping parsing");
         dispatch({ type: "HOTSPOT_TIMEOUT" });
       }
     } catch (err) {
-      logger.log("[WiFi Scan] Error:", err);
+      logger.log("[WiFi Scan] Error:", err instanceof Error ? err.stack : err);
       dispatch({ type: "HOTSPOT_TIMEOUT" });
     } finally {
       scanningRef.current = false;
