@@ -10,7 +10,7 @@ export const SPEAKER_HOTSPOT_CANDIDATES = [
 
 export const SPEAKER_PORT = 8090;
 export const PROBE_TIMEOUT_MS = 2000;
-export const MDNS_DISCOVERY_TIMEOUT_MS = 30000;
+export const MDNS_DISCOVERY_TIMEOUT_MS = 180000;
 
 const SPEAKER_SSID_PATTERN = /bose\s*(st|soundtouch)/i;
 

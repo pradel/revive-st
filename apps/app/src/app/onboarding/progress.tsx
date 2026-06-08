@@ -1,6 +1,6 @@
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Text,
@@ -18,12 +18,46 @@ import { COLORS } from "@/ui/theme";
 export default function ProgressScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
+  const [elapsed, setElapsed] = useState(0);
+
+  const step = state.step;
 
   useEffect(() => {
     if (state.step === "PROVISIONING_COMPLETE") {
       router.replace("/onboarding/success" as any);
     }
   }, [state.step, router]);
+
+  useEffect(() => {
+    if (step === "SENDING_CREDENTIALS") {
+      setElapsed(0);
+    }
+  }, [step]);
+
+  useEffect(() => {
+    const activeSteps = [
+      "SENDING_CREDENTIALS",
+      "WAITING_FOR_SPEAKER_ON_NETWORK",
+      "DISCOVERING_SPEAKER",
+    ];
+    if (!activeSteps.includes(step)) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setElapsed((prev) => prev + 1);
+    }, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [step]);
+
+  const formatTime = (secs: number) => {
+    const minutes = Math.floor(secs / 60);
+    const remaining = secs % 60;
+    return `${minutes}:${remaining < 10 ? "0" : ""}${remaining}`;
+  };
 
   const { start: startDiscovery } = useSpeakerDiscovery({
     timeoutMs: MDNS_DISCOVERY_TIMEOUT_MS,
@@ -49,20 +83,78 @@ export default function ProgressScreen() {
     }
   }, [state.step, startDiscovery]);
 
-  const step = state.step;
-
-  const statusText = (() => {
-    switch (step) {
-      case "SENDING_CREDENTIALS":
-        return "Sending Wi-Fi network credentials to your speaker...";
-      case "WAITING_FOR_SPEAKER_ON_NETWORK":
-        return "Waiting for your speaker to join your home Wi-Fi network...";
-      case "DISCOVERING_SPEAKER":
-        return "Searching for your speaker on the home network...";
-      default:
-        return "Setting up speaker...";
-    }
-  })();
+  const steps = [
+    {
+      id: "send",
+      title: "Sending credentials",
+      description: "Transferring Wi-Fi credentials to speaker",
+      getStatus: () => {
+        if (step === "SENDING_CREDENTIALS") {
+          return "active";
+        }
+        if (step === "CREDENTIALS_FAILED") {
+          return "failed";
+        }
+        const passedSteps = [
+          "WAITING_FOR_SPEAKER_ON_NETWORK",
+          "DISCOVERING_SPEAKER",
+          "PROVISIONING_COMPLETE",
+          "DISCOVERY_TIMEOUT",
+        ];
+        if (passedSteps.includes(step)) {
+          return "completed";
+        }
+        return "pending";
+      },
+    },
+    {
+      id: "wait",
+      title: "Connecting to Wi-Fi",
+      description: "Speaker is joining home Wi-Fi",
+      getStatus: () => {
+        if (step === "SENDING_CREDENTIALS" || step === "CREDENTIALS_FAILED") {
+          return "pending";
+        }
+        if (step === "WAITING_FOR_SPEAKER_ON_NETWORK") {
+          return "active";
+        }
+        const passedSteps = [
+          "DISCOVERING_SPEAKER",
+          "PROVISIONING_COMPLETE",
+          "DISCOVERY_TIMEOUT",
+        ];
+        if (passedSteps.includes(step)) {
+          return "completed";
+        }
+        return "pending";
+      },
+    },
+    {
+      id: "discover",
+      title: "Discovering speaker",
+      description: "Searching for speaker on network",
+      getStatus: () => {
+        const pendingSteps = [
+          "SENDING_CREDENTIALS",
+          "CREDENTIALS_FAILED",
+          "WAITING_FOR_SPEAKER_ON_NETWORK",
+        ];
+        if (pendingSteps.includes(step)) {
+          return "pending";
+        }
+        if (step === "DISCOVERING_SPEAKER") {
+          return "active";
+        }
+        if (step === "PROVISIONING_COMPLETE") {
+          return "completed";
+        }
+        if (step === "DISCOVERY_TIMEOUT") {
+          return "failed";
+        }
+        return "pending";
+      },
+    },
+  ];
 
   const isError = step === "CREDENTIALS_FAILED" || step === "DISCOVERY_TIMEOUT";
 
@@ -140,12 +232,87 @@ export default function ProgressScreen() {
           {!isError && (
             <>
               <Text style={$cardTitle}>Setting Up Speaker</Text>
-              <Text style={$cardDescription}>{statusText}</Text>
-              <ActivityIndicator
-                size="large"
-                color={COLORS.primary}
-                style={$spinner}
-              />
+
+              <View style={$stepsContainer}>
+                {steps.map((s, idx) => {
+                  const status = s.getStatus();
+                  return (
+                    <View key={s.id} style={$stepRow}>
+                      <View style={$stepIconCol}>
+                        {status === "active" ? (
+                          <ActivityIndicator
+                            size="small"
+                            color={COLORS.primary}
+                            style={$stepSpinner}
+                          />
+                        ) : (
+                          <SymbolView
+                            name={{
+                              ios:
+                                status === "completed"
+                                  ? "checkmark.circle.fill"
+                                  : status === "failed"
+                                    ? "xmark.circle.fill"
+                                    : "circle",
+                              android:
+                                status === "completed"
+                                  ? "check_circle"
+                                  : status === "failed"
+                                    ? "cancel"
+                                    : "radio_button_unchecked",
+                              web:
+                                status === "completed"
+                                  ? "check_circle"
+                                  : status === "failed"
+                                    ? "cancel"
+                                    : "radio_button_unchecked",
+                            }}
+                            tintColor={
+                              status === "completed"
+                                ? COLORS.primary
+                                : status === "failed"
+                                  ? COLORS.error
+                                  : COLORS.textMuted
+                            }
+                            size={20}
+                          />
+                        )}
+                        {idx < steps.length - 1 && (
+                          <View
+                            style={[
+                              $stepLine,
+                              status === "completed" && $stepLineCompleted,
+                            ]}
+                          />
+                        )}
+                      </View>
+                      <View style={$stepTextCol}>
+                        <Text
+                          style={[
+                            $stepTitle,
+                            status === "active" && $stepTitleActive,
+                            status === "completed" && $stepTitleCompleted,
+                            status === "failed" && $stepTitleFailed,
+                          ]}
+                        >
+                          {s.title}
+                        </Text>
+                        <Text style={$stepDescription}>{s.description}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+
+              <View style={$timerContainer}>
+                <Text style={$timerNote}>
+                  This process can take a few minutes as the speaker reboots and
+                  connects to your router.
+                </Text>
+                <Text style={$timerText}>
+                  Elapsed Time: {formatTime(elapsed)}
+                </Text>
+              </View>
             </>
           )}
 
@@ -257,10 +424,6 @@ const $cardDescription: TextStyle = {
   marginBottom: 20,
 };
 
-const $spinner: ViewStyle = {
-  marginTop: 16,
-};
-
 const $buttonContainer: ViewStyle = {
   width: "100%",
   gap: 12,
@@ -281,4 +444,95 @@ const $primaryButtonText: TextStyle = {
   fontSize: 15,
   color: COLORS.background,
   fontWeight: "600",
+};
+
+const $stepsContainer: ViewStyle = {
+  width: "100%",
+  marginVertical: 16,
+  paddingHorizontal: 8,
+  gap: 16,
+};
+
+const $stepRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  width: "100%",
+};
+
+const $stepIconCol: ViewStyle = {
+  alignItems: "center",
+  width: 20,
+  position: "relative",
+  marginRight: 16,
+  height: "100%",
+};
+
+const $stepLine: ViewStyle = {
+  position: "absolute",
+  top: 24,
+  left: 9,
+  width: 2,
+  height: 24,
+  backgroundColor: COLORS.border,
+};
+
+const $stepLineCompleted: ViewStyle = {
+  backgroundColor: COLORS.primary,
+};
+
+const $stepSpinner: ViewStyle = {
+  height: 20,
+  width: 20,
+};
+
+const $stepTextCol: ViewStyle = {
+  flex: 1,
+};
+
+const $stepTitle: TextStyle = {
+  fontSize: 16,
+  fontWeight: "600",
+  color: COLORS.textMuted,
+  marginBottom: 2,
+};
+
+const $stepTitleActive: TextStyle = {
+  color: COLORS.text,
+};
+
+const $stepTitleCompleted: TextStyle = {
+  color: COLORS.primary,
+};
+
+const $stepTitleFailed: TextStyle = {
+  color: COLORS.error,
+};
+
+const $stepDescription: TextStyle = {
+  fontSize: 13,
+  color: COLORS.textMuted,
+  lineHeight: 18,
+};
+
+const $timerContainer: ViewStyle = {
+  marginTop: 20,
+  alignItems: "center",
+  width: "100%",
+  borderTopWidth: 1,
+  borderTopColor: COLORS.border,
+  paddingTop: 16,
+};
+
+const $timerNote: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 16,
+  marginBottom: 8,
+};
+
+const $timerText: TextStyle = {
+  fontSize: 14,
+  fontWeight: "600",
+  color: COLORS.primary,
 };
