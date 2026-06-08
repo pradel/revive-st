@@ -223,15 +223,21 @@ export default function NetworkPickerScreen() {
             )}
 
             {!loading && !manualEntry && networks.length > 0 && (
-              <TouchableOpacity
-                onPress={() => {
-                  setManualEntry(true);
-                }}
-                style={{ marginBottom: 12 }}
-                activeOpacity={0.7}
-              >
-                <Text style={$manualLink}>Enter SSID manually</Text>
-              </TouchableOpacity>
+              <>
+                <Text style={$filterNote}>
+                  Only showing 2.4 GHz networks. If yours is missing, make sure
+                  it is not a 5 GHz-only network.
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    setManualEntry(true);
+                  }}
+                  style={{ marginBottom: 12 }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={$manualLink}>Enter SSID manually</Text>
+                </TouchableOpacity>
+              </>
             )}
 
             <View
@@ -513,4 +519,14 @@ const $passwordInput: TextStyle = {
 
 const $eyeButton: ViewStyle = {
   padding: 4,
+};
+
+const $filterNote: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  textAlign: "center",
+  lineHeight: 16,
+  marginTop: 4,
+  marginBottom: 12,
+  paddingHorizontal: 8,
 };
