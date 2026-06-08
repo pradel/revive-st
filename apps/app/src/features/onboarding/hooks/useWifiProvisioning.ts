@@ -1,4 +1,10 @@
-import { boseSpeakerClient, NetworkError } from "bose-api-speaker-client";
+import {
+  ApiError,
+  boseSpeakerClient,
+  HttpError,
+  NetworkError,
+  XmlParseError,
+} from "bose-api-speaker-client";
 import {
   connectToOpenNetwork,
   disconnect as disconnectBose,
@@ -201,7 +207,33 @@ export function useWifiProvisioning() {
       }
       dispatch({ type: "CREDENTIALS_SENT" });
     } catch (err) {
-      logger.log("[Send Creds Hook] Error caught in sendCreds callback:", err);
+      if (err instanceof ApiError) {
+        logger.log("[Send Creds Hook] Error tag: ApiError");
+        logger.log(`[Send Creds Hook] ApiError deviceID: ${err.deviceID}`);
+        err.errors.forEach((e, i) => {
+          logger.log(
+            `[Send Creds Hook]   Error #${i + 1}: Name="${e.name}" Value=${e.value} Severity="${e.severity}" Message="${e.message}"`,
+          );
+        });
+      } else if (err instanceof HttpError) {
+        logger.log("[Send Creds Hook] Error tag: HttpError");
+        logger.log(
+          `[Send Creds Hook] HttpError Status: ${err.statusCode} ${err.statusText}`,
+        );
+        logger.log(`[Send Creds Hook] HttpError Body: ${err.body}`);
+      } else if (err instanceof XmlParseError) {
+        logger.log("[Send Creds Hook] Error tag: XmlParseError");
+        logger.log(`[Send Creds Hook] XmlParseError Message: ${err.message}`);
+        logger.log(`[Send Creds Hook] XmlParseError XML: ${err.rawXml}`);
+      } else if (err instanceof NetworkError) {
+        logger.log("[Send Creds Hook] Error tag: NetworkError");
+        logger.log(`[Send Creds Hook] NetworkError Message: ${err.message}`);
+      } else {
+        logger.log(
+          "[Send Creds Hook] Unknown error caught in sendCreds callback:",
+          err instanceof Error ? err.stack : err,
+        );
+      }
       dispatch({ type: "CREDENTIALS_SEND_FAILED" });
     } finally {
       sendingRef.current = false;
