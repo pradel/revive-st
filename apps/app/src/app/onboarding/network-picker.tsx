@@ -70,12 +70,15 @@ export default function NetworkPickerScreen() {
             SSID: string;
             BSSID: string;
             level: number;
+            frequency?: number;
           }[];
           const filtered = typedList
-            .filter(
-              (n): n is typeof n =>
-                Boolean(n.SSID) && !isSpeakerHotspot(n.SSID),
-            )
+            .filter((n): n is typeof n => {
+              const is24GHz =
+                n.frequency === undefined ||
+                (n.frequency >= 2400 && n.frequency < 2500);
+              return Boolean(n.SSID) && !isSpeakerHotspot(n.SSID) && is24GHz;
+            })
             .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
             .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
           setNetworks(filtered);
