@@ -57,7 +57,6 @@ export async function findSpeakerIP(
 ): Promise<string | null> {
   for (const ip of SPEAKER_HOTSPOT_CANDIDATES) {
     const alive = await probeSpeakerIP(ip, timeout);
-    logger.log("Probe result for", ip, ":", alive ? "alive" : "not responding");
     if (alive) {
       return ip;
     }

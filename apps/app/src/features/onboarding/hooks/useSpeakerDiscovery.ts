@@ -81,6 +81,9 @@ export function useSpeakerDiscovery({
           clearTimeout(timerRef.current);
         }
         zeroconf.stop();
+        logger.log(
+          `[Speaker Discovery] Successfully resolved speaker: "${service.name}" at ${service.host}:${service.port}`,
+        );
         onDiscovered({
           host: service.host,
           port: service.port,
@@ -98,11 +101,18 @@ export function useSpeakerDiscovery({
         clearTimeout(timerRef.current);
       }
       zeroconf.stop();
-      onError(err instanceof Error ? err : new Error(String(err)));
+      const errorObj = err instanceof Error ? err : new Error(String(err));
+      logger.log(
+        `[Speaker Discovery] Discovery encountered mDNS error: ${errorObj.message}`,
+      );
+      onError(errorObj);
     });
 
     timerRef.current = setTimeout(() => {
       zeroconf.stop();
+      logger.log(
+        `[Speaker Discovery] Discovery timed out after ${timeoutMs}ms without resolving a matching speaker.`,
+      );
       onTimeout();
     }, timeoutMs);
 

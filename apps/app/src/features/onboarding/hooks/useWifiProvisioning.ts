@@ -33,6 +33,10 @@ export function useWifiProvisioning() {
   const sendingRef = useRef(false);
   const reconnectingRef = useRef(false);
 
+  useEffect(() => {
+    logger.log(`[Onboarding Flow] ➔ Transitioning to step: ${state.step}`);
+  }, [state.step]);
+
   const scanForHotspot = useCallback(async () => {
     if (scanningRef.current) {
       logger.log("[WiFi Scan] Already scanning, skipping");
@@ -63,10 +67,6 @@ export function useWifiProvisioning() {
         }
       }
 
-      logger.log(
-        `[WiFi Scan] Scan complete. Type of networks: ${typeof rawNetworks}, isArray: ${Array.isArray(rawNetworks)}`,
-      );
-
       const isArr = Array.isArray(rawNetworks);
       if (isArr) {
         const networks = rawNetworks as {
@@ -75,18 +75,16 @@ export function useWifiProvisioning() {
           level: number;
           capabilities: string;
         }[];
-        networks.forEach((n) => {
-          logger.log(
-            `[WiFi Scan]   SSID: "${n.SSID}" BSSID: ${n.BSSID} level: ${n.level} caps: ${n.capabilities}`,
-          );
-        });
 
         const speakers = networks
           .filter((n) => n.SSID && isSpeakerHotspot(n.SSID))
           .map((n) => ({ ssid: n.SSID, bssid: n.BSSID }));
 
+        logger.log(
+          `[WiFi Scan] Scan complete. Found ${networks.length} networks. Matching Bose speakers: ${speakers.length}`,
+        );
+
         if (speakers.length > 0) {
-          logger.log(`[WiFi Scan] Found ${speakers.length} Bose speakers`);
           dispatch({
             type: "SPEAKERS_FOUND",
             speakers,
@@ -209,6 +207,9 @@ export function useWifiProvisioning() {
       }
       dispatch({ type: "CREDENTIALS_SENT" });
     } catch (err) {
+      logger.log(
+        "[Send Creds] Error: Failed to transmit Wi-Fi credentials to speaker. Transitioning to CREDENTIALS_FAILED.",
+      );
       if (err instanceof ApiError) {
         logger.log("[Send Creds Hook] Error tag: ApiError");
         logger.log(`[Send Creds Hook] ApiError deviceID: ${err.deviceID}`);
@@ -247,6 +248,9 @@ export function useWifiProvisioning() {
       return;
     }
     reconnectingRef.current = true;
+    logger.log(
+      "[WiFi Connect] Reconnecting phone to home network (releasing Bose AP)...",
+    );
     try {
       if (Platform.OS === "android") {
         await disconnectBose();
@@ -263,12 +267,16 @@ export function useWifiProvisioning() {
   const requestPermissions = useCallback(async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
+      logger.log(
+        `[Onboarding Flow] Location permission check outcome: ${status}`,
+      );
       dispatch(
         status === "granted"
           ? { type: "PERMISSIONS_GRANTED" }
           : { type: "PERMISSIONS_DENIED" },
       );
-    } catch {
+    } catch (err) {
+      logger.log("[Onboarding Flow] Location permission request failed:", err);
       dispatch({ type: "PERMISSIONS_DENIED" });
     }
   }, [dispatch]);
@@ -276,6 +284,7 @@ export function useWifiProvisioning() {
   const checkWifiStatus = useCallback(async () => {
     try {
       const enabled = await WifiManager.isEnabled();
+      logger.log(`[Onboarding Flow] Wi-Fi enabled status: ${enabled}`);
       if (enabled) {
         dispatch({ type: "WIFI_ENABLED" });
       } else {
