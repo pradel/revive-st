@@ -1,6 +1,7 @@
+import { openWifiSettings } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect } from "react";
+import { useEffect, useCallback } from "react";
 import {
   Text,
   TouchableOpacity,
@@ -16,6 +17,10 @@ import { COLORS } from "@/ui/theme";
 export default function ScanningScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
+
+  const handleOpenWifiSettings = useCallback(() => {
+    void openWifiSettings();
+  }, []);
 
   useEffect(() => {
     if (state.step === "CONNECTING_TO_HOTSPOT") {
@@ -79,7 +84,7 @@ export default function ScanningScreen() {
               <Text style={$cardTitle}>Searching for Speaker</Text>
               <Text style={$cardDescription}>
                 Looking for your Bose SoundTouch speaker's setup network. Make
-                sure your speaker's Wi-Fi indicator is pulsing amber.
+                sure your speaker's Wi-Fi indicator is solid amber.
               </Text>
             </>
           )}
@@ -139,19 +144,55 @@ export default function ScanningScreen() {
           {isNotFound && (
             <>
               <Text style={[$cardTitle, { color: COLORS.error }]}>
-                No Speaker Found
+                No Speaker Detected
               </Text>
               <Text style={$cardDescription}>
-                We couldn't detect a Bose speaker in setup mode nearby.
+                Follow these steps to put your speaker in setup mode and try
+                again:
               </Text>
-              <View style={$hintBox}>
-                <Text style={$hintText}>
-                  To put your speaker in setup mode, press and hold the{" "}
-                  <Text style={{ fontWeight: "700" }}>2</Text> and{" "}
-                  <Text style={{ fontWeight: "700" }}>Volume Down</Text> buttons
-                  on the speaker for 5 seconds until the Wi-Fi indicator glows
-                  solid amber.
-                </Text>
+
+              <View style={$stepsContainer}>
+                <View style={$stepRow}>
+                  <View style={$stepNumberBadge}>
+                    <Text style={$stepNumberText}>1</Text>
+                  </View>
+                  <View style={$stepTextContent}>
+                    <Text style={$stepTitleText}>Activate Setup Mode</Text>
+                    <Text style={$stepDescriptionText}>
+                      Press and hold the{" "}
+                      <Text style={{ fontWeight: "700" }}>2</Text> and{" "}
+                      <Text style={{ fontWeight: "700" }}>Volume Down (-)</Text>{" "}
+                      buttons on the speaker for 5 seconds until the Wi-Fi light
+                      is <Text style={{ fontWeight: "700" }}>solid amber</Text>.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={$stepRow}>
+                  <View style={$stepNumberBadge}>
+                    <Text style={$stepNumberText}>2</Text>
+                  </View>
+                  <View style={$stepTextContent}>
+                    <Text style={$stepTitleText}>Move Phone Closer</Text>
+                    <Text style={$stepDescriptionText}>
+                      Ensure your phone is within 10 feet of the speaker for a
+                      strong signal.
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={$stepRow}>
+                  <View style={$stepNumberBadge}>
+                    <Text style={$stepNumberText}>3</Text>
+                  </View>
+                  <View style={$stepTextContent}>
+                    <Text style={$stepTitleText}>Verify Phone Settings</Text>
+                    <Text style={$stepDescriptionText}>
+                      Make sure your phone's Wi-Fi is enabled and Location
+                      services are turned on.
+                    </Text>
+                  </View>
+                </View>
               </View>
             </>
           )}
@@ -184,6 +225,25 @@ export default function ScanningScreen() {
                 {isSelecting ? "Rescan" : "Scan Again"}
               </Text>
             </TouchableOpacity>
+
+            {isNotFound && (
+              <TouchableOpacity
+                style={$secondaryButton}
+                onPress={handleOpenWifiSettings}
+                activeOpacity={0.8}
+              >
+                <SymbolView
+                  name={{
+                    ios: "gearshape",
+                    android: "settings",
+                    web: "settings",
+                  }}
+                  tintColor={COLORS.textSecondary}
+                  size={18}
+                />
+                <Text style={$secondaryButtonText}>Open Wi-Fi Settings</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
       </View>
@@ -259,22 +319,6 @@ const $cardDescription: TextStyle = {
   textAlign: "center",
   lineHeight: 20,
   marginBottom: 20,
-};
-
-const $hintBox: ViewStyle = {
-  backgroundColor: COLORS.background,
-  borderRadius: 12,
-  padding: 16,
-  width: "100%",
-  borderWidth: 1,
-  borderColor: COLORS.border,
-};
-
-const $hintText: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textSecondary,
-  textAlign: "center",
-  lineHeight: 18,
 };
 
 const $buttonContainer: ViewStyle = {
@@ -354,4 +398,53 @@ const $speakerText: TextStyle = {
   color: COLORS.text,
   fontWeight: "600",
   flex: 1,
+};
+
+const $stepsContainer: ViewStyle = {
+  width: "100%",
+  gap: 16,
+  marginTop: 8,
+  paddingHorizontal: 4,
+};
+
+const $stepRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  gap: 12,
+  width: "100%",
+};
+
+const $stepNumberBadge: ViewStyle = {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  backgroundColor: COLORS.primaryTransparent,
+  borderWidth: 1,
+  borderColor: COLORS.primary,
+  alignItems: "center",
+  justifyContent: "center",
+  marginTop: 2,
+};
+
+const $stepNumberText: TextStyle = {
+  fontSize: 12,
+  fontWeight: "700",
+  color: COLORS.primary,
+};
+
+const $stepTextContent: ViewStyle = {
+  flex: 1,
+  gap: 2,
+};
+
+const $stepTitleText: TextStyle = {
+  fontSize: 14,
+  fontWeight: "600",
+  color: COLORS.text,
+};
+
+const $stepDescriptionText: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  lineHeight: 16,
 };
