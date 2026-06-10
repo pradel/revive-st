@@ -1,5 +1,7 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import Zeroconf from "react-native-zeroconf";
+
+import { logger } from "@/lib/logger";
 
 interface DiscoveryResult {
   host: string;
@@ -9,13 +11,30 @@ interface DiscoveryResult {
 
 interface UseSpeakerDiscoveryOptions {
   timeoutMs: number;
+  ssid?: string;
   onDiscovered: (result: DiscoveryResult) => void;
   onTimeout: () => void;
   onError: (error: Error) => void;
 }
 
+export function extractSpeakerMacSuffix(ssid: string): string | null {
+  const parenMatch = /\((.*?)\)/.exec(ssid);
+  if (parenMatch?.[1]) {
+    return parenMatch[1].trim().toLowerCase();
+  }
+  const words = ssid.split(/[\s-_]+/);
+  for (const word of words) {
+    const cleanWord = word.replace(/[^a-fA-F0-9]/g, "");
+    if (cleanWord.length === 6 || cleanWord.length === 12) {
+      return cleanWord.toLowerCase();
+    }
+  }
+  return null;
+}
+
 export function useSpeakerDiscovery({
   timeoutMs,
+  ssid,
   onDiscovered,
   onTimeout,
   onError,
@@ -41,8 +60,23 @@ export function useSpeakerDiscovery({
     zeroconfRef.current = zeroconf;
     attemptsRef.current = 0;
 
+    const expectedMacSuffix = ssid ? extractSpeakerMacSuffix(ssid) : null;
+    if (ssid) {
+      logger.log(
+        `[Speaker Discovery] Starting discovery for speaker with SSID "${ssid}" (expected MAC suffix: ${expectedMacSuffix ?? "any"})`,
+      );
+    } else {
+      logger.log(
+        "[Speaker Discovery] Starting discovery for any SoundTouch speaker",
+      );
+    }
+
     zeroconf.on("resolved", (service) => {
-      if (service.name?.includes("SoundTouch")) {
+      const cleanName = service.name?.toLowerCase() || "";
+      const isMatch =
+        !expectedMacSuffix || cleanName.includes(expectedMacSuffix);
+
+      if (service.name?.includes("SoundTouch") && isMatch) {
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
@@ -52,6 +86,10 @@ export function useSpeakerDiscovery({
           port: service.port,
           name: service.name,
         });
+      } else if (service.name?.includes("SoundTouch")) {
+        logger.log(
+          `[Speaker Discovery] Ignored speaker "${service.name}" (${service.host}) because it does not match expected MAC suffix "${expectedMacSuffix}"`,
+        );
       }
     });
 
@@ -69,7 +107,7 @@ export function useSpeakerDiscovery({
     }, timeoutMs);
 
     zeroconf.scan("soundtouch", "tcp", "local.");
-  }, [timeoutMs, onDiscovered, onTimeout, onError, stop]);
+  }, [ssid, timeoutMs, onDiscovered, onTimeout, onError, stop]);
 
   useEffect(() => stop, [stop]);
 

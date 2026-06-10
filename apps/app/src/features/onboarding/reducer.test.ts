@@ -19,7 +19,10 @@ const CONNECTION_FAILED: ProvisioningState = {
 };
 const CHECKING_WIFI: ProvisioningState = { step: "CHECKING_WIFI" };
 const WIFI_DISABLED: ProvisioningState = { step: "WIFI_DISABLED" };
-const DISCOVERY_TIMEOUT: ProvisioningState = { step: "DISCOVERY_TIMEOUT" };
+const DISCOVERY_TIMEOUT: ProvisioningState = {
+  step: "DISCOVERY_TIMEOUT",
+  ssid: "Bose SoundTouch 1234",
+};
 
 describe("provisioningReducer", () => {
   describe("START", () => {
@@ -262,7 +265,10 @@ describe("provisioningReducer", () => {
       const result = provisioningReducer(waitingState, {
         type: "NETWORK_RECONNECTED",
       });
-      expect(result).toEqual({ step: "DISCOVERING_SPEAKER" });
+      expect(result).toEqual({
+        step: "DISCOVERING_SPEAKER",
+        ssid: "Bose SoundTouch 1234",
+      });
     });
   });
 
@@ -270,6 +276,7 @@ describe("provisioningReducer", () => {
     it("transitions to PROVISIONING_COMPLETE", () => {
       const discoveringState: ProvisioningState = {
         step: "DISCOVERING_SPEAKER",
+        ssid: "Bose SoundTouch 1234",
       };
       const result = provisioningReducer(discoveringState, {
         type: "SPEAKER_DISCOVERED",
@@ -289,6 +296,7 @@ describe("provisioningReducer", () => {
     it("transitions to DISCOVERY_TIMEOUT", () => {
       const discoveringState: ProvisioningState = {
         step: "DISCOVERING_SPEAKER",
+        ssid: "Bose SoundTouch 1234",
       };
       const result = provisioningReducer(discoveringState, {
         type: "DISCOVERY_TIMEOUT",
@@ -338,7 +346,10 @@ describe("provisioningReducer", () => {
 
     it("DISCOVERY_TIMEOUT rewinds to DISCOVERING_SPEAKER", () => {
       const result = provisioningReducer(DISCOVERY_TIMEOUT, { type: "RETRY" });
-      expect(result).toEqual({ step: "DISCOVERING_SPEAKER" });
+      expect(result).toEqual({
+        step: "DISCOVERING_SPEAKER",
+        ssid: "Bose SoundTouch 1234",
+      });
     });
 
     it("ignores RETRY from non-error state", () => {

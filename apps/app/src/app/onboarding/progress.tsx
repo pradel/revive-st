@@ -61,6 +61,7 @@ export default function ProgressScreen() {
 
   const { start: startDiscovery } = useSpeakerDiscovery({
     timeoutMs: MDNS_DISCOVERY_TIMEOUT_MS,
+    ssid: (state as { ssid?: string }).ssid,
     onDiscovered: (result) => {
       dispatch({
         type: "SPEAKER_DISCOVERED",

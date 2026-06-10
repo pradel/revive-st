@@ -38,8 +38,8 @@ export type ProvisioningState =
       homeSSID: string;
     }
   | { step: "WAITING_FOR_SPEAKER_ON_NETWORK"; ssid: string }
-  | { step: "DISCOVERING_SPEAKER" }
-  | { step: "DISCOVERY_TIMEOUT" }
+  | { step: "DISCOVERING_SPEAKER"; ssid: string }
+  | { step: "DISCOVERY_TIMEOUT"; ssid: string }
   | { step: "SELECTING_SPEAKER"; speakers: { ssid: string; bssid: string }[] }
   | {
       step: "PROVISIONING_COMPLETE";

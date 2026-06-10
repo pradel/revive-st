@@ -127,7 +127,7 @@ export function provisioningReducer(
 
     case "NETWORK_RECONNECTED":
       if (state.step === "WAITING_FOR_SPEAKER_ON_NETWORK") {
-        return { step: "DISCOVERING_SPEAKER" };
+        return { step: "DISCOVERING_SPEAKER", ssid: state.ssid };
       }
       return state;
 
@@ -143,7 +143,7 @@ export function provisioningReducer(
 
     case "DISCOVERY_TIMEOUT":
       if (state.step === "DISCOVERING_SPEAKER") {
-        return { step: "DISCOVERY_TIMEOUT" };
+        return { step: "DISCOVERY_TIMEOUT", ssid: state.ssid };
       }
       return state;
 
@@ -168,7 +168,7 @@ export function provisioningReducer(
             homeSSID: state.homeSSID,
           };
         case "DISCOVERY_TIMEOUT":
-          return { step: "DISCOVERING_SPEAKER" };
+          return { step: "DISCOVERING_SPEAKER", ssid: state.ssid };
         default:
           return state;
       }
