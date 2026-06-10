@@ -10,9 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { useSpeakerDiscovery } from "@/features/onboarding/hooks/useSpeakerDiscovery";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
-import { MDNS_DISCOVERY_TIMEOUT_MS } from "@/features/onboarding/utils/networkHelpers";
 import { COLORS } from "@/ui/theme";
 
 export default function ProgressScreen() {
@@ -58,31 +56,6 @@ export default function ProgressScreen() {
     const remaining = secs % 60;
     return `${minutes}:${remaining < 10 ? "0" : ""}${remaining}`;
   };
-
-  const { start: startDiscovery } = useSpeakerDiscovery({
-    timeoutMs: MDNS_DISCOVERY_TIMEOUT_MS,
-    ssid: (state as { ssid?: string }).ssid,
-    onDiscovered: (result) => {
-      dispatch({
-        type: "SPEAKER_DISCOVERED",
-        host: result.host,
-        port: result.port,
-        name: result.name,
-      });
-    },
-    onTimeout: () => {
-      dispatch({ type: "DISCOVERY_TIMEOUT" });
-    },
-    onError: () => {
-      dispatch({ type: "DISCOVERY_TIMEOUT" });
-    },
-  });
-
-  useEffect(() => {
-    if (state.step === "DISCOVERING_SPEAKER") {
-      startDiscovery();
-    }
-  }, [state.step, startDiscovery]);
 
   const steps = [
     {

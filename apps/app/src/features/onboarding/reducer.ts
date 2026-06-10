@@ -15,6 +15,16 @@ export function provisioningReducer(
       }
       return state;
 
+    case "START_MANUAL_CONNECT":
+      if (state.step === "CONNECTION_FAILED") {
+        return {
+          step: "MANUAL_CONNECTING",
+          ssid: state.ssid,
+          bssid: state.bssid,
+        };
+      }
+      return state;
+
     case "PERMISSIONS_GRANTED":
       if (state.step === "CHECKING_PERMISSIONS") {
         return { step: "CHECKING_WIFI" };
@@ -68,7 +78,10 @@ export function provisioningReducer(
       return state;
 
     case "HOTSPOT_CONNECTED":
-      if (state.step === "CONNECTING_TO_HOTSPOT") {
+      if (
+        state.step === "CONNECTING_TO_HOTSPOT" ||
+        state.step === "MANUAL_CONNECTING"
+      ) {
         return {
           step: "CONNECTED_TO_HOTSPOT",
           ssid: state.ssid,
@@ -79,7 +92,10 @@ export function provisioningReducer(
       return state;
 
     case "HOTSPOT_CONNECTION_FAILED":
-      if (state.step === "CONNECTING_TO_HOTSPOT") {
+      if (
+        state.step === "CONNECTING_TO_HOTSPOT" ||
+        state.step === "MANUAL_CONNECTING"
+      ) {
         return {
           step: "CONNECTION_FAILED",
           ssid: state.ssid,

@@ -22,7 +22,9 @@ import {
   findSpeakerIP,
   isSpeakerHotspot,
   probeSpeakerIP,
+  MDNS_DISCOVERY_TIMEOUT_MS,
 } from "../utils/networkHelpers";
+import { useSpeakerDiscovery } from "./useSpeakerDiscovery";
 
 export function useWifiProvisioning() {
   const { state, dispatch } = useProvisioning();
@@ -378,6 +380,94 @@ export function useWifiProvisioning() {
       clearInterval(intervalId);
     };
   }, [state.step, checkWifiStatus]);
+
+  const { start: startDiscovery, stop: stopDiscovery } = useSpeakerDiscovery({
+    timeoutMs: MDNS_DISCOVERY_TIMEOUT_MS,
+    ssid: (state as { ssid?: string }).ssid,
+    onDiscovered: (result) => {
+      dispatch({
+        type: "SPEAKER_DISCOVERED",
+        host: result.host,
+        port: result.port,
+        name: result.name,
+      });
+    },
+    onTimeout: () => {
+      dispatch({ type: "DISCOVERY_TIMEOUT" });
+    },
+    onError: () => {
+      dispatch({ type: "DISCOVERY_TIMEOUT" });
+    },
+  });
+
+  useEffect(() => {
+    if (state.step === "DISCOVERING_SPEAKER") {
+      startDiscovery();
+    }
+    return () => {
+      stopDiscovery();
+    };
+  }, [state.step, startDiscovery, stopDiscovery]);
+
+  useEffect(() => {
+    if (state.step !== "MANUAL_CONNECTING") {
+      return;
+    }
+
+    let active = true;
+    const s = state as { ssid: string; bssid: string };
+
+    const runManualConnect = async () => {
+      try {
+        logger.log(
+          "[Manual Retry Hook] Calling connectToOpenNetwork with",
+          s.ssid,
+          s.bssid,
+        );
+        await connectToOpenNetwork(s.ssid, s.bssid);
+        logger.log(
+          "[Manual Retry Hook] Specifier succeeded, traffic bound to Bose AP, probing...",
+        );
+      } catch {
+        logger.log(
+          "[Manual Retry Hook] Specifier also failed, trying IP probe anyway...",
+        );
+      }
+
+      for (let i = 0; i < 30; i++) {
+        if (!active) {
+          logger.log(
+            "[Manual Retry Hook] Polling cancelled due to unmount or state change",
+          );
+          return;
+        }
+        const ip = await findSpeakerIP();
+        if (ip) {
+          if (active) {
+            dispatch({
+              type: "HOTSPOT_CONNECTED",
+              ssid: s.ssid,
+              bssid: s.bssid,
+              speakerIP: ip,
+            });
+          }
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 1000));
+      }
+
+      logger.log("[Manual Retry Hook] Speaker not reachable after 30s polling");
+      if (active) {
+        dispatch({ type: "HOTSPOT_CONNECTION_FAILED" });
+      }
+    };
+
+    void runManualConnect();
+
+    return () => {
+      active = false;
+    };
+  }, [state, dispatch]);
 
   return { state, dispatch, checkWifiStatus };
 }

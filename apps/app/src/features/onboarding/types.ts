@@ -41,6 +41,7 @@ export type ProvisioningState =
   | { step: "DISCOVERING_SPEAKER"; ssid: string }
   | { step: "DISCOVERY_TIMEOUT"; ssid: string }
   | { step: "SELECTING_SPEAKER"; speakers: { ssid: string; bssid: string }[] }
+  | { step: "MANUAL_CONNECTING"; ssid: string; bssid: string }
   | {
       step: "PROVISIONING_COMPLETE";
       speakerIP: string;
@@ -49,6 +50,7 @@ export type ProvisioningState =
 
 export type ProvisioningAction =
   | { type: "START" }
+  | { type: "START_MANUAL_CONNECT" }
   | { type: "PERMISSIONS_GRANTED" }
   | { type: "PERMISSIONS_DENIED" }
   | { type: "WIFI_ENABLED" }

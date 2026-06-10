@@ -376,6 +376,60 @@ describe("provisioningReducer", () => {
     });
   });
 
+  describe("START_MANUAL_CONNECT", () => {
+    it("transitions from CONNECTION_FAILED to MANUAL_CONNECTING", () => {
+      const result = provisioningReducer(CONNECTION_FAILED, {
+        type: "START_MANUAL_CONNECT",
+      });
+      expect(result).toEqual({
+        step: "MANUAL_CONNECTING",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+      });
+    });
+
+    it("ignores START_MANUAL_CONNECT from other states", () => {
+      const result = provisioningReducer(IDLE, {
+        type: "START_MANUAL_CONNECT",
+      });
+      expect(result).toBe(IDLE);
+    });
+  });
+
+  describe("transitions from MANUAL_CONNECTING", () => {
+    const MANUAL_CONNECTING_STATE: ProvisioningState = {
+      step: "MANUAL_CONNECTING",
+      ssid: "Bose SoundTouch 1234",
+      bssid: "aa:bb:cc:dd:ee:ff",
+    };
+
+    it("transitions to CONNECTED_TO_HOTSPOT on HOTSPOT_CONNECTED", () => {
+      const result = provisioningReducer(MANUAL_CONNECTING_STATE, {
+        type: "HOTSPOT_CONNECTED",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+        speakerIP: "192.0.2.1",
+      });
+      expect(result).toEqual({
+        step: "CONNECTED_TO_HOTSPOT",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+        speakerIP: "192.0.2.1",
+      });
+    });
+
+    it("transitions to CONNECTION_FAILED on HOTSPOT_CONNECTION_FAILED", () => {
+      const result = provisioningReducer(MANUAL_CONNECTING_STATE, {
+        type: "HOTSPOT_CONNECTION_FAILED",
+      });
+      expect(result).toEqual({
+        step: "CONNECTION_FAILED",
+        ssid: "Bose SoundTouch 1234",
+        bssid: "aa:bb:cc:dd:ee:ff",
+      });
+    });
+  });
+
   describe("full flow", () => {
     it("completes the happy path end to end", () => {
       let state = provisioningReducer(IDLE, { type: "START" });

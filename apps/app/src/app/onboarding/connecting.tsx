@@ -1,7 +1,7 @@
-import { openWifiSettings, connectToOpenNetwork } from "expo-bose-wifi";
+import { openWifiSettings } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -13,14 +13,11 @@ import {
 } from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
-import { findSpeakerIP } from "@/features/onboarding/utils/networkHelpers";
-import { logger } from "@/lib/logger";
 import { COLORS } from "@/ui/theme";
 
 export default function ConnectingScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
-  const [manualPolling, setManualPolling] = useState(false);
 
   useEffect(() => {
     if (state.step === "CONNECTED_TO_HOTSPOT") {
@@ -30,46 +27,16 @@ export default function ConnectingScreen() {
 
   const isFailed = state.step === "CONNECTION_FAILED";
 
-  const handleManualRetry = useCallback(async () => {
-    setManualPolling(true);
-    const s = state as { ssid: string; bssid: string };
-    try {
-      logger.log(
-        "[Manual Retry] Calling connectToOpenNetwork with",
-        s.ssid,
-        s.bssid,
-      );
-      await connectToOpenNetwork(s.ssid, s.bssid);
-      logger.log(
-        "[Manual Retry] Specifier succeeded, traffic bound to Bose AP, probing...",
-      );
-    } catch {
-      logger.log(
-        "[Manual Retry] Specifier also failed, trying IP probe anyway...",
-      );
-    }
-    for (let i = 0; i < 30; i++) {
-      const ip = await findSpeakerIP();
-      if (ip) {
-        dispatch({
-          type: "HOTSPOT_CONNECTED",
-          ssid: s.ssid,
-          bssid: s.bssid,
-          speakerIP: ip,
-        });
-        return;
-      }
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    logger.log("[Manual Retry] Speaker not reachable after 30s polling");
-    setManualPolling(false);
-  }, [state, dispatch]);
+  const handleManualRetry = useCallback(() => {
+    dispatch({ type: "START_MANUAL_CONNECT" });
+  }, [dispatch]);
 
   const handleOpenWifiSettings = useCallback(() => {
     void openWifiSettings();
   }, []);
 
-  const statusText = manualPolling
+  const isManualConnecting = state.step === "MANUAL_CONNECTING";
+  const statusText = isManualConnecting
     ? "Looking for speaker on the network..."
     : "Connecting to your speaker...";
 
