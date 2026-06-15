@@ -1,7 +1,7 @@
 import { BottomSheet, Host, Slider } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -576,6 +576,9 @@ function NativeSliderSetting({
     setLocalValue(value);
   }, [value, isOpen]);
 
+  const onValueChangeRef = useRef(onValueChange);
+  onValueChangeRef.current = onValueChange;
+
   // Debounced callback
   useEffect(() => {
     if (localValue === value) {
@@ -583,12 +586,12 @@ function NativeSliderSetting({
       return () => {};
     }
     const timer = setTimeout(() => {
-      onValueChange(localValue);
+      onValueChangeRef.current(localValue);
     }, 400);
     return () => {
       clearTimeout(timer);
     };
-  }, [localValue, onValueChange, value]);
+  }, [localValue, value]);
 
   return (
     <>

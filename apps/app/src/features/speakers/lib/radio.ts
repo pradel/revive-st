@@ -6,7 +6,11 @@ export function buildMargeRadioPayload(uri: string, name: string): string {
     name,
     imageUrl: "",
   };
-  const base64Data = btoa(JSON.stringify(data))
+  const base64Data = btoa(
+    Array.from(new TextEncoder().encode(JSON.stringify(data)), (byte) =>
+      String.fromCodePoint(byte),
+    ).join(""),
+  )
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
   const locationUrl = `https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
