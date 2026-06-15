@@ -10,7 +10,10 @@ function TrackPageView() {
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    const fathomId = process.env.NEXT_PUBLIC_FATHOM_ID ?? "MMLZHBMK";
+    const fathomId = process.env.NEXT_PUBLIC_FATHOM_ID;
+    if (!fathomId) {
+      return;
+    }
 
     // Only load Fathom in production to avoid polluting stats
     if (process.env.NODE_ENV === "production") {
@@ -80,6 +83,11 @@ function TrackPageView() {
   }, []);
 
   useEffect(() => {
+    const fathomId = process.env.NEXT_PUBLIC_FATHOM_ID;
+    if (!fathomId) {
+      return;
+    }
+
     if (process.env.NODE_ENV !== "production") {
       const url =
         pathname +
