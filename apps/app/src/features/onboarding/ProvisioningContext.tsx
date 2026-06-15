@@ -6,6 +6,7 @@ import {
   useMemo,
 } from "react";
 
+import { useWifiProvisioningSideEffects } from "./hooks/useWifiProvisioning";
 import { provisioningReducer } from "./reducer";
 import {
   initialState,
@@ -22,6 +23,11 @@ interface ProvisioningContextValue {
 const ProvisioningContext = createContext<ProvisioningContextValue | null>(
   null,
 );
+
+function ProvisioningSideEffects() {
+  useWifiProvisioningSideEffects();
+  return null;
+}
 
 export function ProvisioningProvider({
   children,
@@ -41,6 +47,7 @@ export function ProvisioningProvider({
   return (
     <ProvisioningContext.Provider value={value}>
       {children}
+      <ProvisioningSideEffects />
     </ProvisioningContext.Provider>
   );
 }

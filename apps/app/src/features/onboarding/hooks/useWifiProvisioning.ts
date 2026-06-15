@@ -28,6 +28,30 @@ import { useSpeakerDiscovery } from "./useSpeakerDiscovery";
 
 export function useWifiProvisioning() {
   const { state, dispatch } = useProvisioning();
+
+  const checkWifiStatus = useCallback(async () => {
+    try {
+      const enabled = await WifiManager.isEnabled();
+      logger.log(`[Onboarding Flow] Wi-Fi enabled status: ${enabled}`);
+      if (enabled) {
+        dispatch({ type: "WIFI_ENABLED" });
+      } else {
+        dispatch({ type: "WIFI_DISABLED" });
+      }
+    } catch (err) {
+      logger.warn(
+        "[WiFi Check] Failed to check status, assuming enabled:",
+        err,
+      );
+      dispatch({ type: "WIFI_ENABLED" });
+    }
+  }, [dispatch]);
+
+  return { state, dispatch, checkWifiStatus };
+}
+
+export function useWifiProvisioningSideEffects() {
+  const { state, dispatch, checkWifiStatus } = useWifiProvisioning();
   const scanningRef = useRef(false);
   const connectingRef = useRef(false);
   const sendingRef = useRef(false);
@@ -284,24 +308,6 @@ export function useWifiProvisioning() {
     }
   }, [dispatch]);
 
-  const checkWifiStatus = useCallback(async () => {
-    try {
-      const enabled = await WifiManager.isEnabled();
-      logger.log(`[Onboarding Flow] Wi-Fi enabled status: ${enabled}`);
-      if (enabled) {
-        dispatch({ type: "WIFI_ENABLED" });
-      } else {
-        dispatch({ type: "WIFI_DISABLED" });
-      }
-    } catch (err) {
-      logger.warn(
-        "[WiFi Check] Failed to check status, assuming enabled:",
-        err,
-      );
-      dispatch({ type: "WIFI_ENABLED" });
-    }
-  }, [dispatch]);
-
   useEffect(() => {
     if (state.step === "CHECKING_PERMISSIONS") {
       void requestPermissions();
@@ -483,6 +489,4 @@ export function useWifiProvisioning() {
       active = false;
     };
   }, [state, dispatch]);
-
-  return { state, dispatch, checkWifiStatus };
 }
