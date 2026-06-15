@@ -571,27 +571,44 @@ function NativeSliderSetting({
   // Local state to keep slider movement fluid
   const [localValue, setLocalValue] = useState(value);
 
-  // Sync with value prop when value updates or sheet opens
+  // Sync with value prop when value updates
   useEffect(() => {
     setLocalValue(value);
-  }, [value, isOpen]);
+  }, [value]);
+
+  // Sync with value prop when sheet opens
+  useEffect(() => {
+    if (isOpen) {
+      setLocalValue(value);
+    }
+  }, [isOpen, value]);
 
   const onValueChangeRef = useRef(onValueChange);
   onValueChangeRef.current = onValueChange;
 
-  // Debounced callback
+  const lastFiredValueRef = useRef<number | null>(null);
   useEffect(() => {
-    if (localValue === value) {
-      // eslint-disable-next-line @typescript-eslint/no-empty-function
-      return () => {};
+    lastFiredValueRef.current = null;
+  }, [value]);
+
+  // Debounced callback with immediate flush on close
+  useEffect(() => {
+    if (localValue === value || localValue === lastFiredValueRef.current) {
+      return;
+    }
+    if (!isOpen) {
+      onValueChangeRef.current(localValue);
+      lastFiredValueRef.current = localValue;
+      return;
     }
     const timer = setTimeout(() => {
       onValueChangeRef.current(localValue);
+      lastFiredValueRef.current = localValue;
     }, 400);
     return () => {
       clearTimeout(timer);
     };
-  }, [localValue, value]);
+  }, [localValue, value, isOpen]);
 
   return (
     <>

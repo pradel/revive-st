@@ -144,7 +144,13 @@ app
 
     try {
       // Decode base64 URL-safe JSON string
-      const jsonStr = atob(data.replace(/-/g, "+").replace(/_/g, "/"));
+      const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+      const jsonStr = new TextDecoder().decode(bytes);
       const jsonObj = JSON.parse(jsonStr) as {
         streamUrl: string;
         name?: string;

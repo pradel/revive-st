@@ -89,11 +89,24 @@ async function longPress(host: string, key: string, durationMs = 2000) {
 async function playUri(host: string, options: { uri: string; name: string }) {
   const payload = buildMargeRadioPayload(options.uri, options.name);
 
-  return fetch(`http://${host}:8090/select`, {
+  const response = await fetch(`http://${host}:8090/select`, {
     method: "POST",
     headers: { "Content-Type": "text/xml" },
     body: payload,
   });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "No response body");
+    if (
+      errorText.includes('"1005"') ||
+      errorText.includes("UNKNOWN_SOURCE_ERROR")
+    ) {
+      throw new Error("UNKNOWN_SOURCE_ERROR");
+    }
+    throw new Error(
+      `Failed to play URI on ${host}: ${response.status} ${response.statusText} - ${errorText}`,
+    );
+  }
 }
 
 export function useBoseScanner(scanDurationMs = 5000) {

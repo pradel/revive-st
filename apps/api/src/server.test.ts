@@ -195,4 +195,28 @@ describe("API server routes", () => {
     expect(res.status).toBe(400);
     expect(await res.text()).toBe("Invalid data parameter");
   });
+
+  it("GET /core02/svc-bmx-adapter-orion/prod/orion/station decodes UTF-8 and non-ASCII character presets correctly", async () => {
+    const payload = {
+      streamUrl: "http://stream.example.com",
+      name: "Éveil & München & Cyrillic: Русский",
+      imageUrl: "http://image.example.com/art.png",
+    };
+    // Replicate client-side safe UTF-8 base64 encoding
+    const base64 = btoa(
+      Array.from(new TextEncoder().encode(JSON.stringify(payload)), (byte) =>
+        String.fromCodePoint(byte),
+      ).join(""),
+    )
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_");
+
+    const res = await app.request(
+      `/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(base64)}`,
+    );
+    expect(res.status).toBe(200);
+
+    const json = (await res.json()) as { name: string };
+    expect(json.name).toBe("Éveil & München & Cyrillic: Русский");
+  });
 });
