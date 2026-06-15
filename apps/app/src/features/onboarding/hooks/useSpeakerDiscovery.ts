@@ -43,6 +43,14 @@ export function useSpeakerDiscovery({
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const attemptsRef = useRef(0);
 
+  const onDiscoveredRef = useRef(onDiscovered);
+  const onTimeoutRef = useRef(onTimeout);
+  const onErrorRef = useRef(onError);
+
+  onDiscoveredRef.current = onDiscovered;
+  onTimeoutRef.current = onTimeout;
+  onErrorRef.current = onError;
+
   const stop = useCallback(() => {
     if (timerRef.current) {
       clearTimeout(timerRef.current);
@@ -84,7 +92,7 @@ export function useSpeakerDiscovery({
         logger.log(
           `[Speaker Discovery] Successfully resolved speaker: "${service.name}" at ${service.host}:${service.port}`,
         );
-        onDiscovered({
+        onDiscoveredRef.current({
           host: service.host,
           port: service.port,
           name: service.name,
@@ -105,7 +113,7 @@ export function useSpeakerDiscovery({
       logger.log(
         `[Speaker Discovery] Discovery encountered mDNS error: ${errorObj.message}`,
       );
-      onError(errorObj);
+      onErrorRef.current(errorObj);
     });
 
     timerRef.current = setTimeout(() => {
@@ -113,11 +121,11 @@ export function useSpeakerDiscovery({
       logger.log(
         `[Speaker Discovery] Discovery timed out after ${timeoutMs}ms without resolving a matching speaker.`,
       );
-      onTimeout();
+      onTimeoutRef.current();
     }, timeoutMs);
 
     zeroconf.scan("soundtouch", "tcp", "local.");
-  }, [ssid, timeoutMs, onDiscovered, onTimeout, onError, stop]);
+  }, [ssid, timeoutMs, stop]);
 
   useEffect(() => stop, [stop]);
 

@@ -243,26 +243,29 @@ export function useWifiProvisioning() {
     }
   }, [dispatch, state]);
 
-  const reconnectPhone = useCallback(async () => {
-    if (reconnectingRef.current) {
-      return;
-    }
-    reconnectingRef.current = true;
-    logger.log(
-      "[WiFi Connect] Reconnecting phone to home network (releasing Bose AP)...",
-    );
-    try {
-      if (Platform.OS === "android") {
-        await disconnectBose();
-      } else {
-        await WifiManager.disconnectFromSSID("Bose ST");
+  const reconnectPhone = useCallback(
+    async (ssid?: string) => {
+      if (reconnectingRef.current) {
+        return;
       }
-    } catch {
-      // best-effort, OS will auto-reconnect
-    }
-    dispatch({ type: "NETWORK_RECONNECTED" });
-    reconnectingRef.current = false;
-  }, [dispatch]);
+      reconnectingRef.current = true;
+      logger.log(
+        `[WiFi Connect] Reconnecting phone to home network (releasing Bose AP: ${ssid ?? "Bose ST"})...`,
+      );
+      try {
+        if (Platform.OS === "android") {
+          await disconnectBose();
+        } else {
+          await WifiManager.disconnectFromSSID(ssid ?? "Bose ST");
+        }
+      } catch {
+        // best-effort, OS will auto-reconnect
+      }
+      dispatch({ type: "NETWORK_RECONNECTED" });
+      reconnectingRef.current = false;
+    },
+    [dispatch],
+  );
 
   const requestPermissions = useCallback(async () => {
     try {
@@ -325,11 +328,14 @@ export function useWifiProvisioning() {
     }
   }, [state.step, sendCreds]);
 
+  const speakerSsid = (state as { ssid?: string }).ssid;
+  const currentStep = state.step;
+
   useEffect(() => {
-    if (state.step === "WAITING_FOR_SPEAKER_ON_NETWORK") {
-      void reconnectPhone();
+    if (currentStep === "WAITING_FOR_SPEAKER_ON_NETWORK") {
+      void reconnectPhone(speakerSsid);
     }
-  }, [state.step, reconnectPhone]);
+  }, [currentStep, speakerSsid, reconnectPhone]);
 
   useEffect(() => {
     if (state.step !== "CONNECTED_TO_HOTSPOT") {
