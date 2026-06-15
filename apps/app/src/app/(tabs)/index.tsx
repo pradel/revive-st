@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { useCallback, useRef } from "react";
 import {
   ActivityIndicator,
+  RefreshControl,
   ScrollView,
   Text,
   TouchableOpacity,
@@ -16,6 +17,7 @@ import {
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 import { Header } from "@/ui/Header";
+import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
 
 export default function Index() {
@@ -67,8 +69,7 @@ export default function Index() {
     router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
-  const showEmptyState = speakers.length === 0 && !isScanning;
-  const showLoading = isScanning && speakers.length === 0;
+  const showEmptyState = speakers.length === 0;
   const showSpeakers = speakers.length > 0;
 
   return (
@@ -76,92 +77,123 @@ export default function Index() {
       style={$container}
       contentContainerStyle={$content}
       showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={isScanning}
+          onRefresh={rescan}
+          tintColor={COLORS.primary}
+          colors={[COLORS.primary]}
+        />
+      }
     >
       {/* Header */}
-      <Header
-        rightComponent={
-          <TouchableOpacity
-            style={$rescanButton}
-            onPress={rescan}
-            activeOpacity={0.7}
-            disabled={isScanning}
-          >
-            {isScanning ? (
-              <ActivityIndicator size="small" color={COLORS.textMuted} />
-            ) : (
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={COLORS.textMuted}
-                size={18}
-              />
-            )}
-          </TouchableOpacity>
-        }
-      />
+      <Header />
 
-      {/* Loading State */}
-      {showLoading && (
-        <View style={$centerState}>
-          <ActivityIndicator size="large" color={COLORS.textMuted} />
-          <Text style={$loadingText}>Scanning for speakers...</Text>
-        </View>
-      )}
-
-      {/* Empty State */}
+      {/* Unified Empty/Scanning State */}
       {showEmptyState && (
         <View style={$centerState}>
           <View style={$emptyIconContainer}>
+            {isScanning && (
+              <>
+                <PulseRing delay={0} />
+                <PulseRing delay={800} />
+                <PulseRing delay={1600} />
+              </>
+            )}
             <SymbolView
               name={{
-                ios: "speaker.wave.2",
+                ios: isScanning ? "waveform" : "speaker.wave.2",
+                android: isScanning ? "graphic_eq" : "speaker",
+                web: isScanning ? "graphic_eq" : "speaker",
               }}
-              tintColor={COLORS.border}
-              size={48}
+              tintColor={isScanning ? COLORS.primary : COLORS.border}
+              size={36}
             />
           </View>
-          <Text style={$emptyTitle}>No Speaker Phones</Text>
-          <Text style={$emptyDescription}>
-            Make sure your phone and SoundTouch{"\n"}speakers are connected to
-            the same Wi-Fi network.
+          <Text style={$emptyTitle}>
+            {isScanning ? "Searching for Speakers..." : "No Speakers Found"}
           </Text>
+          <Text style={$emptyDescription}>
+            {isScanning
+              ? "Scanning your local network for active Bose SoundTouch speakers."
+              : "Make sure your Bose SoundTouch speakers are powered on and connected to the same Wi-Fi network as your phone."}
+          </Text>
+
           <View style={$emptyActions}>
             <TouchableOpacity
-              style={$primaryButton}
+              style={[$ctaCard, isScanning && $ctaCardDisabled]}
               onPress={rescan}
               activeOpacity={0.8}
+              disabled={isScanning}
             >
+              <View style={$ctaIconContainer}>
+                {isScanning ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <SymbolView
+                    name={{
+                      ios: "arrow.clockwise",
+                      android: "refresh",
+                      web: "refresh",
+                    }}
+                    tintColor={COLORS.primary}
+                    size={20}
+                  />
+                )}
+              </View>
+              <View style={$ctaTextContainer}>
+                <Text style={$ctaTitle}>Rescan Local Network</Text>
+                <Text style={$ctaSubtitle}>
+                  {isScanning
+                    ? "Searching network..."
+                    : "Search for active speakers on your current Wi-Fi connection."}
+                </Text>
+              </View>
               <SymbolView
                 name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
                 }}
-                tintColor={COLORS.text}
+                tintColor={COLORS.textDisabled}
                 size={16}
               />
-              <Text style={$primaryButtonText}>Rescan Network</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
-              style={$secondaryButton}
+              style={$ctaCard}
               onPress={() => {
                 router.push("/onboarding/permissions");
               }}
               activeOpacity={0.8}
             >
+              <View style={$ctaIconContainer}>
+                <SymbolView
+                  name={{
+                    ios: "plus",
+                    android: "add",
+                    web: "add",
+                  }}
+                  tintColor={COLORS.primary}
+                  size={20}
+                />
+              </View>
+              <View style={$ctaTextContainer}>
+                <Text style={$ctaTitle}>Set Up New Speaker</Text>
+                <Text style={$ctaSubtitle}>
+                  Connect a new or reset SoundTouch speaker to your Wi-Fi
+                  network.
+                </Text>
+              </View>
               <SymbolView
                 name={{
-                  ios: "plus",
-                  android: "add",
-                  web: "add",
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
                 }}
-                tintColor={COLORS.textMuted}
-                size={18}
+                tintColor={COLORS.textDisabled}
+                size={16}
               />
-              <Text style={$secondaryButtonText}>Add Speaker</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -328,17 +360,6 @@ const $content: ViewStyle = {
   paddingBottom: 40,
 };
 
-const $rescanButton: ViewStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: 20,
-  backgroundColor: COLORS.card,
-  alignItems: "center",
-  justifyContent: "center",
-  borderWidth: 1,
-  borderColor: COLORS.border,
-};
-
 const $centerState: ViewStyle = {
   flex: 1,
   alignItems: "center",
@@ -346,22 +367,17 @@ const $centerState: ViewStyle = {
   paddingVertical: 80,
 };
 
-const $loadingText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-  marginTop: 16,
-};
-
 const $emptyIconContainer: ViewStyle = {
-  width: 96,
-  height: 96,
-  borderRadius: 48,
+  width: 80,
+  height: 80,
+  borderRadius: 40,
   backgroundColor: COLORS.card,
   alignItems: "center",
   justifyContent: "center",
-  marginBottom: 24,
+  marginBottom: 20,
   borderWidth: 1,
   borderColor: COLORS.border,
+  position: "relative",
 };
 
 const $emptyTitle: TextStyle = {
@@ -378,46 +394,58 @@ const $emptyDescription: TextStyle = {
   textAlign: "center",
   lineHeight: 20,
   marginBottom: 32,
+  paddingHorizontal: 30,
 };
 
 const $emptyActions: ViewStyle = {
   gap: 12,
   width: "100%",
   paddingHorizontal: 20,
+  marginTop: 8,
 };
 
-const $primaryButton: ViewStyle = {
+const $ctaCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: COLORS.text,
-  height: 48,
-  borderRadius: 14,
-};
-
-const $primaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.background,
-  fontWeight: "600",
-};
-
-const $secondaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
   backgroundColor: COLORS.card,
-  height: 48,
-  borderRadius: 14,
+  borderRadius: 16,
+  padding: 16,
   borderWidth: 1,
   borderColor: COLORS.border,
+  width: "100%",
 };
 
-const $secondaryButtonText: TextStyle = {
+const $ctaCardDisabled: ViewStyle = {
+  opacity: 0.5,
+};
+
+const $ctaIconContainer: ViewStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  backgroundColor: COLORS.primaryTransparent,
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 16,
+};
+
+const $ctaTextContainer: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  marginRight: 8,
+};
+
+const $ctaTitle: TextStyle = {
   fontSize: 15,
-  color: COLORS.textSecondary,
   fontWeight: "600",
+  color: COLORS.text,
+  marginBottom: 2,
+};
+
+const $ctaSubtitle: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  lineHeight: 16,
 };
 
 const $sectionHeader: ViewStyle = {

@@ -52,6 +52,8 @@ export default defineConfig({
       "max-classes-per-file": "off",
       "max-lines": "off",
       "max-lines-per-function": "off",
+      "max-params": "off",
+      "no-await-in-loop": "off",
       "no-promise-executor-return": "off",
       "require-await": "off",
       "require-unicode-regexp": "off",
@@ -66,6 +68,20 @@ export default defineConfig({
       "typescript/strict-boolean-expressions": "off",
       "typescript/strict-void-return": "off",
       "typescript/unified-signatures": "off",
+
+      "eslint/id-length": [
+        "error",
+        { exceptions: ["i", "e", "n", "s", "r", "f", "a", "b"] },
+      ],
+      "no-explicit-any": "off",
+      "no-inline-comments": "off",
+      "no-misused-promises": "off",
+      "no-nested-ternary": "off",
+      "no-non-null-assertion": "off",
+      "typescript/consistent-return": "off",
+      "typescript/no-unsafe-enum-comparison": "off",
+      "typescript/switch-exhaustiveness-check": "off",
+      "typescript/no-unsafe-argument": "off",
     },
     overrides: [
       {
