@@ -471,13 +471,17 @@ function SpeakerCastItem({
   const isPowerOff =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 
+  const isError = margeAPIStatus.isError;
   const isConfigured = margeAPIStatus.data === true;
   const isLoading = margeAPIStatus.isLoading;
-  const isDisabled = isCasting || isLoading;
+  const isDisabled = isCasting || isLoading || isError;
 
   const getStatusText = () => {
     if (isLoading) {
       return "Checking configuration...";
+    }
+    if (isError) {
+      return "Connection failed";
     }
     if (!isConfigured) {
       return "Not configured for Marge API";
@@ -491,6 +495,19 @@ function SpeakerCastItem({
   const renderIcon = () => {
     if (isCasting || isLoading) {
       return <ActivityIndicator size="small" color={COLORS.primary} />;
+    }
+    if (isError) {
+      return (
+        <SymbolView
+          name={{
+            ios: "exclamationmark.triangle.fill",
+            android: "warning",
+            web: "warning",
+          }}
+          tintColor={COLORS.error}
+          size={16}
+        />
+      );
     }
     if (isConfigured) {
       return <Text style={$castPlayIcon}>▶</Text>;

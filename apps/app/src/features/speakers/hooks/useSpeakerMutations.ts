@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type KeyValue,
   boseSpeakerClient as createClient,
-  escapeXml,
   type SocketModuleLike,
 } from "bose-api-speaker-client";
 import TcpSocket from "react-native-tcp-socket";
 
+import { buildMargeRadioPayload } from "@/features/speakers/lib/radio";
 import {
   checkMargeAPIStatus,
   configureMargeAPI,
@@ -179,16 +179,7 @@ export function usePlayStreamMutation() {
       uri: string;
       name: string;
     }) => {
-      const data = {
-        streamUrl: uri,
-        name,
-        imageUrl: "",
-      };
-      const base64Data = btoa(JSON.stringify(data))
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_");
-      const locationUrl = `https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(base64Data)}`;
-      const payload = `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(locationUrl)}" sourceAccount="revivest-user"><itemName>${escapeXml(name)}</itemName></ContentItem>`;
+      const payload = buildMargeRadioPayload(uri, name);
 
       const response = await fetch(`http://${host}:8090/select`, {
         method: "POST",
@@ -317,6 +308,7 @@ export function useMargeAPIStatusQuery(host: string) {
   return useQuery({
     queryKey: ["marge-api-status", host],
     queryFn: async () => checkMargeAPIStatus(host),
+    enabled: host.length > 0,
     retry: false,
     // 5 minutes
     staleTime: 1000 * 60 * 5,

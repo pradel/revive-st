@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { TelnetClient, type SocketModuleLike } from "bose-api-speaker-client";
+import type { SocketModuleLike } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState, useRef } from "react";
@@ -15,7 +15,10 @@ import {
 import TcpSocket from "react-native-tcp-socket";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { checkMargeAPIStatus } from "@/features/speakers/lib/telnet";
+import {
+  checkMargeAPIStatus,
+  configureMargeAPI,
+} from "@/features/speakers/lib/telnet";
 import { COLORS } from "@/ui/theme";
 
 interface LogLine {
@@ -112,140 +115,34 @@ export default function ConfigureSpeaker() {
     setLogs([]);
 
     addLog(`Starting configuration for ${speaker.name} (${speaker.host})...`);
-    const telnet = new TelnetClient({
-      host: speaker.host,
-      socket: TcpSocket as unknown as SocketModuleLike,
-    });
 
     let activeStepIndex = 0;
 
     try {
-      // Step 1: Connect via Telnet
-      activeStepIndex = 0;
-      addLog("Opening Telnet connection...");
-      const connRes = await telnet.connect();
-      if (!connRes.isOk()) {
-        throw connRes.error;
-      }
-      addLog("Successfully established Telnet connection.", "success");
-
-      // Step 2: Set registry URL
-      activeStepIndex = 1;
-      setConfigState({
-        status: "running",
-        currentStepIndex: 1,
-        rebootTimer: null,
-      });
-      addLog(
-        "Executing: sys configuration bmxRegistryUrl https://api.revivest.app/v2/registry.json",
-      );
-      const regResResult = await telnet.executeCommand(
-        "sys configuration bmxRegistryUrl https://api.revivest.app/v2/registry.json",
-        1200,
-      );
-      if (!regResResult.isOk()) {
-        throw regResResult.error;
-      }
-      const regRes = regResResult.value;
-      addLog(`Response: ${regRes.trim()}`, "debug");
-      if (regRes.toLowerCase().includes("error")) {
-        throw new Error(`Registry URL rejected: ${regRes}`);
-      }
-      addLog("Registry URL set successfully.", "success");
-
-      // Step 3: Configure boseurls envswitch
-      activeStepIndex = 2;
-      setConfigState({
-        status: "running",
-        currentStepIndex: 2,
-        rebootTimer: null,
-      });
-      addLog(
-        "Executing: envswitch boseurls set https://api.revivest.app https://worldwide.bose.com/updates/soundtouch",
-      );
-      const switchResResult = await telnet.executeCommand(
-        "envswitch boseurls set https://api.revivest.app https://worldwide.bose.com/updates/soundtouch",
-        1200,
-      );
-      if (!switchResResult.isOk()) {
-        throw switchResResult.error;
-      }
-      const switchRes = switchResResult.value;
-      addLog(`Response: ${switchRes.trim()}`, "debug");
-      if (switchRes.toLowerCase().includes("error")) {
-        throw new Error(`Failed to configure redirect: ${switchRes}`);
-      }
-      addLog("Redirect paths configured successfully.", "success");
-
-      // Step 4: Configure account environment
-      activeStepIndex = 3;
-      setConfigState({
-        status: "running",
-        currentStepIndex: 3,
-        rebootTimer: null,
-      });
-      addLog("Executing: envswitch AccountId set revivest-user");
-      const accResResult = await telnet.executeCommand(
-        "envswitch AccountId set revivest-user",
-        1200,
-      );
-      if (!accResResult.isOk()) {
-        throw accResResult.error;
-      }
-      const accRes = accResResult.value;
-      addLog(`Response: ${accRes.trim()}`, "debug");
-      if (accRes.toLowerCase().includes("error")) {
-        throw new Error(`Failed to save Account ID: ${accRes}`);
-      }
-      addLog("Account env identifier configured.", "success");
-
-      // Step 5: Pair speaker with account
-      activeStepIndex = 4;
-      setConfigState({
-        status: "running",
-        currentStepIndex: 4,
-        rebootTimer: null,
-      });
-      addLog(
-        "Triggering speaker HTTP account pairing (POST /setMargeAccount)...",
-      );
-
-      const pairingPayload = `<PairDeviceWithAccount>
-  <accountId>revivest-user</accountId>
-  <userAuthToken>dontcare</userAuthToken>
-</PairDeviceWithAccount>`;
-
-      const pairResponse = await fetch(
-        `http://${speaker.host}:8090/setMargeAccount`,
+      const configResult = await configureMargeAPI(
+        speaker.host,
+        TcpSocket as unknown as SocketModuleLike,
         {
-          method: "POST",
-          headers: { "Content-Type": "text/xml" },
-          body: pairingPayload,
+          onLog: (text, type) => {
+            addLog(text, type);
+          },
+          onStepStart: (stepId) => {
+            const stepIndex = INITIAL_STEPS.findIndex((s) => s.id === stepId);
+            if (stepIndex !== -1) {
+              activeStepIndex = stepIndex;
+              setConfigState({
+                status: "running",
+                currentStepIndex: stepIndex,
+                rebootTimer: null,
+              });
+            }
+          },
         },
       );
-      if (!pairResponse.ok) {
-        throw new Error(
-          `HTTP pairing failed with code ${pairResponse.status} ${pairResponse.statusText}`,
-        );
-      }
-      addLog("Account pairing verified by speaker.", "success");
 
-      // Step 6: Reboot speaker
-      activeStepIndex = 5;
-      setConfigState({
-        status: "running",
-        currentStepIndex: 5,
-        rebootTimer: null,
-      });
-      addLog("Triggering hardware reboot via Telnet...");
-      const rebootResult = await telnet.executeCommand("sys reboot", 500);
-      if (!rebootResult.isOk()) {
-        throw rebootResult.error;
+      if (!configResult.isOk()) {
+        throw configResult.error;
       }
-      addLog("Reboot command accepted. Speaker is restarting.", "success");
-
-      // Disconnect Telnet
-      telnet.disconnect();
 
       // Step 7: Wait for speaker to come back online
       activeStepIndex = 6;
@@ -316,7 +213,6 @@ export default function ConfigureSpeaker() {
         );
       }
     } catch (error: unknown) {
-      telnet.disconnect();
       const msg = error instanceof Error ? error.message : String(error);
       addLog(`Error: ${msg}`, "error");
 

@@ -1,7 +1,6 @@
 import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
-  escapeXml,
   type AudioDspControlsResponse,
   type AudioProductLevelControlsResponse,
   type AudioProductToneControlsResponse,
@@ -15,6 +14,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
+
+import { buildMargeRadioPayload } from "../lib/radio";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -86,16 +87,7 @@ async function longPress(host: string, key: string, durationMs = 2000) {
 }
 
 async function playUri(host: string, options: { uri: string; name: string }) {
-  const data = {
-    streamUrl: options.uri,
-    name: options.name,
-    imageUrl: "",
-  };
-  const base64Data = btoa(JSON.stringify(data))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-  const locationUrl = `https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(base64Data)}`;
-  const payload = `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(locationUrl)}" sourceAccount="revivest-user"><itemName>${escapeXml(options.name)}</itemName></ContentItem>`;
+  const payload = buildMargeRadioPayload(options.uri, options.name);
 
   return fetch(`http://${host}:8090/select`, {
     method: "POST",
@@ -240,9 +232,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
       ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id)) ||
       speakers.some((speaker) => {
         const client = wsClientsRef.current.get(speaker.deviceID);
-        return (
-          !client || client.getHost() !== speaker.host || client.isClosed()
-        );
+        return !client || client.getHost() !== speaker.host;
       });
 
     if (!hasDeviceChange) {
@@ -383,11 +373,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
           `[useBoseScanner] Speaker IP changed from ${client.getHost()} to ${speaker.host}. Reconnecting.`,
         );
         client.updateHost(speaker.host);
-      } else if (client.isClosed()) {
-        logger.log(
-          `[useBoseScanner] Speaker ${speaker.name} resolved on network again, forcing WebSocket reconnect.`,
-        );
-        client.connect();
       }
     });
   }, [speakers, refreshSpeakerStatus]);
