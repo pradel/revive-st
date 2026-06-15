@@ -1,7 +1,6 @@
 import {
   BoseWebSocketClient,
   boseSpeakerClient as createClient,
-  escapeXml,
   type AudioDspControlsResponse,
   type AudioProductLevelControlsResponse,
   type AudioProductToneControlsResponse,
@@ -15,6 +14,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
+
+import { buildMargeRadioPayload } from "../lib/radio";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -85,13 +86,27 @@ async function longPress(host: string, key: string, durationMs = 2000) {
   }
 }
 
-async function playUri(host: string, uri: string, name: string) {
-  const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
-  return fetch(`http://${host}:8090/select`, {
+async function playUri(host: string, options: { uri: string; name: string }) {
+  const payload = buildMargeRadioPayload(options.uri, options.name);
+
+  const response = await fetch(`http://${host}:8090/select`, {
     method: "POST",
     headers: { "Content-Type": "text/xml" },
     body: payload,
   });
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "No response body");
+    if (
+      errorText.includes('"1005"') ||
+      errorText.includes("UNKNOWN_SOURCE_ERROR")
+    ) {
+      throw new Error("UNKNOWN_SOURCE_ERROR");
+    }
+    throw new Error(
+      `Failed to play URI on ${host}: ${response.status} ${response.statusText} - ${errorText}`,
+    );
+  }
 }
 
 export function useBoseScanner(scanDurationMs = 5000) {
@@ -227,7 +242,11 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     const hasDeviceChange =
       currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
-      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id));
+      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id)) ||
+      speakers.some((speaker) => {
+        const client = wsClientsRef.current.get(speaker.deviceID);
+        return !client || client.getHost() !== speaker.host;
+      });
 
     if (!hasDeviceChange) {
       return;
@@ -246,8 +265,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
     });
 
     speakers.forEach((speaker) => {
-      if (!wsClientsRef.current.has(speaker.deviceID)) {
-        const client = new BoseWebSocketClient({
+      const client = wsClientsRef.current.get(speaker.deviceID);
+      if (!client) {
+        const newClient = new BoseWebSocketClient({
           host: speaker.host,
           deviceID: speaker.deviceID,
           onUpdate: (update) => {
@@ -346,6 +366,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
               } else {
                 refreshIfAvailable();
               }
+            } else if (update.type === "recents") {
+              // No-op: recents updates are parsed by the client but not consumed by the app UI yet.
             } else {
               refreshIfAvailable();
             }
@@ -357,8 +379,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
           },
         });
 
-        wsClientsRef.current.set(speaker.deviceID, client);
-        client.connect();
+        wsClientsRef.current.set(speaker.deviceID, newClient);
+        newClient.connect();
+      } else if (client.getHost() !== speaker.host) {
+        logger.log(
+          `[useBoseScanner] Speaker IP changed from ${client.getHost()} to ${speaker.host}. Reconnecting.`,
+        );
+        client.updateHost(speaker.host);
       }
     });
   }, [speakers, refreshSpeakerStatus]);
@@ -821,7 +848,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
   }, []);
 
   const playStream = useCallback(
-    async (deviceID: string, uri: string, name: string) => {
+    async (deviceID: string, options: { uri: string; name: string }) => {
       const speaker = speakersRef.current.find(
         (item) => item.deviceID === deviceID,
       );
@@ -834,7 +861,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
           ),
         );
-        await playUri(speaker.host, uri, name);
+        await playUri(speaker.host, options);
         setTimeout(() => {
           void refreshSpeakerStatus(speaker);
         }, 1000);

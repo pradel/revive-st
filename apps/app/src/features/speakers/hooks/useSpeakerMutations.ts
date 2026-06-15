@@ -1,9 +1,16 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   type KeyValue,
   boseSpeakerClient as createClient,
-  escapeXml,
+  type SocketModuleLike,
 } from "bose-api-speaker-client";
+import TcpSocket from "react-native-tcp-socket";
+
+import { buildMargeRadioPayload } from "@/features/speakers/lib/radio";
+import {
+  checkMargeAPIStatus,
+  configureMargeAPI,
+} from "@/features/speakers/lib/telnet";
 
 async function pressAndRelease(host: string, key: string) {
   const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
@@ -172,14 +179,24 @@ export function usePlayStreamMutation() {
       uri: string;
       name: string;
     }) => {
-      const payload = `<ContentItem source="INTERNET_RADIO" location="${escapeXml(uri)}" sourceAccount=""><itemName>${escapeXml(name)}</itemName></ContentItem>`;
+      const payload = buildMargeRadioPayload(uri, name);
+
       const response = await fetch(`http://${host}:8090/select`, {
         method: "POST",
         headers: { "Content-Type": "text/xml" },
         body: payload,
       });
       if (!response.ok) {
-        throw new Error(`Failed to play URI on ${host}`);
+        const errorText = await response.text().catch(() => "No response body");
+        if (
+          errorText.includes('"1005"') ||
+          errorText.includes("UNKNOWN_SOURCE_ERROR")
+        ) {
+          throw new Error("UNKNOWN_SOURCE_ERROR");
+        }
+        throw new Error(
+          `Failed to play URI on ${host}: ${response.status} ${response.statusText} - ${errorText}`,
+        );
       }
     },
     onSettled: () => {
@@ -283,6 +300,38 @@ export function useSetAudioProductLevelControlsMutation() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
+    },
+  });
+}
+
+export function useMargeAPIStatusQuery(host: string) {
+  return useQuery({
+    queryKey: ["marge-api-status", host],
+    queryFn: async () => checkMargeAPIStatus(host),
+    enabled: host.length > 0,
+    retry: false,
+    // 5 minutes
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function useConfigureMargeAPIMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ host }: { host: string }) => {
+      const result = await configureMargeAPI(
+        host,
+        TcpSocket as unknown as SocketModuleLike,
+      );
+      if (!result.isOk()) {
+        throw result.error;
+      }
+    },
+    onSettled: (_data, _error, { host }) => {
+      void queryClient.invalidateQueries({
+        queryKey: ["marge-api-status", host],
+      });
     },
   });
 }

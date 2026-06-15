@@ -1,5 +1,5 @@
-import { BottomSheet } from "@expo/ui";
 import { useQueryClient } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React, { useEffect, useState } from "react";
 import {
@@ -11,7 +11,8 @@ import {
   FlatList,
   Image,
   Alert,
-  ScrollView,
+  Modal,
+  StyleSheet,
   type ImageStyle,
   type TextStyle,
   type ViewStyle,
@@ -27,6 +28,8 @@ import {
   type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
 import { logger } from "@/lib/logger";
 import { Header } from "@/ui/Header";
 import { COLORS } from "@/ui/theme";
@@ -94,7 +97,10 @@ export default function RadioBrowser() {
     setCastModalVisible(true);
   };
 
-  const handleCastToSpeaker = async (speakerId: string) => {
+  const handleCastToSpeaker = async (
+    speakerId: string,
+    isMargeAPIConfigured = false,
+  ) => {
     if (!castingStation) {
       return;
     }
@@ -103,14 +109,40 @@ export default function RadioBrowser() {
       return;
     }
 
+    if (!isMargeAPIConfigured) {
+      Alert.alert(
+        "Configuration Required",
+        "This speaker must be configured for the Marge API before it can play custom radio streams.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Configure",
+            onPress: () => {
+              setCastModalVisible(false);
+              router.push(`/speakers/${speakerId}/settings`);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    logger.info(
+      `[radio] Attempting to cast to speaker ${speakerId} (configured: ${isMargeAPIConfigured})`,
+    );
+
     setCastingToSpeakerId(speakerId);
     try {
       const streamUrl = castingStation.url_resolved ?? castingStation.url;
+      logger.info(
+        `[radio] Calling mutateAsync for ${speaker.host} with ${streamUrl}`,
+      );
       await playStreamMutation.mutateAsync({
         host: speaker.host,
         uri: streamUrl,
         name: castingStation.name,
       });
+      logger.info(`[radio] mutateAsync finished successfully`);
       setCastModalVisible(false);
       Alert.alert(
         "Casting Started",
@@ -118,10 +150,17 @@ export default function RadioBrowser() {
       );
     } catch (err) {
       logger.error(err);
-      Alert.alert(
-        "Casting Failed",
-        `Failed to play this stream on ${speaker.name}. Note: SoundTouch speakers prefer direct HTTP MP3/AAC streams.`,
-      );
+      if (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") {
+        Alert.alert(
+          "Source Missing on Speaker",
+          `The speaker "${speaker.name}" is missing the "LOCAL_INTERNET_RADIO" source in its registry (this often happens after a factory reset).\n\nTo fix this, you must setup the speaker from the settings screen.`,
+        );
+      } else {
+        Alert.alert(
+          "Casting Failed",
+          `Failed to play this stream on ${speaker.name}.`,
+        );
+      }
     } finally {
       setCastingToSpeakerId(null);
     }
@@ -360,80 +399,160 @@ export default function RadioBrowser() {
         </View>
       )}
 
-      <BottomSheet
-        isPresented={castModalVisible}
-        onDismiss={() => {
+      <Modal
+        visible={castModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => {
           setCastModalVisible(false);
         }}
       >
-        <View style={$sheetContent}>
-          <View style={$sheetHeader}>
-            <Text style={$sheetTitle}>Select Speaker</Text>
-          </View>
-
-          <Text style={$sheetSubtitle}>
-            Which speaker would you like to stream {`"${castingStation?.name}"`}{" "}
-            to?
-          </Text>
-
-          {speakers.length === 0 ? (
-            <View style={$sheetEmpty}>
-              <Text style={$sheetEmptyIcon}>📡</Text>
-              <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-              <Text style={$sheetEmptyText}>
-                Please ensure your SoundTouch speaker is online and connected to
-                the same Wi-Fi.
-              </Text>
+        <View style={$modalOverlay}>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => {
+              setCastModalVisible(false);
+            }}
+          />
+          <View style={$sheetContent}>
+            <View style={$sheetHeader}>
+              <Text style={$sheetTitle}>Select Speaker</Text>
             </View>
-          ) : (
-            <ScrollView style={$speakerList}>
-              {speakers.map((speaker) => {
-                const isPowerOff =
-                  speaker.source === "STANDBY" ||
-                  speaker.playStatus === "STANDBY";
-                const isCasting = castingToSpeakerId === speaker.deviceID;
 
-                return (
-                  <Pressable
-                    key={speaker.deviceID}
-                    style={$speakerItem}
-                    onPress={() => {
-                      void handleCastToSpeaker(speaker.deviceID);
-                    }}
-                    disabled={isCasting}
-                  >
-                    <View style={$speakerItemLeft}>
-                      <SymbolView
-                        name={{
-                          ios: "speaker.wave.2.fill",
-                          android: "speaker",
-                          web: "speaker",
-                        }}
-                        tintColor={COLORS.textMuted}
-                        size={20}
-                      />
-                      <View>
-                        <Text style={$speakerName}>{speaker.name}</Text>
-                        <Text style={$speakerStatus}>
-                          {isPowerOff
-                            ? "Standby"
-                            : `Playing • Vol ${speaker.volume}%`}
-                        </Text>
-                      </View>
-                    </View>
-                    {isCasting ? (
-                      <ActivityIndicator size="small" color={COLORS.primary} />
-                    ) : (
-                      <Text style={$castPlayIcon}>▶</Text>
-                    )}
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          )}
+            <Text style={$sheetSubtitle}>
+              Which speaker would you like to stream{" "}
+              {`"${castingStation?.name}"`} to?
+            </Text>
+
+            {speakers.length === 0 ? (
+              <View style={$sheetEmpty}>
+                <Text style={$sheetEmptyIcon}>📡</Text>
+                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
+                <Text style={$sheetEmptyText}>
+                  Please ensure your SoundTouch speaker is online and connected
+                  to the same Wi-Fi.
+                </Text>
+              </View>
+            ) : (
+              <View style={$speakerList}>
+                {speakers.map((speaker) => {
+                  const isCasting = castingToSpeakerId === speaker.deviceID;
+
+                  return (
+                    <SpeakerCastItem
+                      key={speaker.deviceID}
+                      speaker={speaker}
+                      isCasting={isCasting}
+                      onCast={(id, isConfigured) => {
+                        void handleCastToSpeaker(id, isConfigured);
+                      }}
+                    />
+                  );
+                })}
+              </View>
+            )}
+          </View>
         </View>
-      </BottomSheet>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function SpeakerCastItem({
+  speaker,
+  isCasting,
+  onCast,
+}: {
+  speaker: BoseSpeaker;
+  isCasting: boolean;
+  onCast: (id: string, isConfigured: boolean) => void;
+}) {
+  const margeAPIStatus = useMargeAPIStatusQuery(speaker.host);
+  const isPowerOff =
+    speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
+
+  const isError = margeAPIStatus.isError;
+  const isConfigured = margeAPIStatus.data === true;
+  const isLoading = margeAPIStatus.isLoading;
+  const isDisabled = isCasting || isLoading || isError;
+
+  const getStatusText = () => {
+    if (isLoading) {
+      return "Checking configuration...";
+    }
+    if (isError) {
+      return "Connection failed";
+    }
+    if (!isConfigured) {
+      return "Not configured for Marge API";
+    }
+    if (isPowerOff) {
+      return "Standby";
+    }
+    return `Playing • Vol ${speaker.volume}%`;
+  };
+
+  const renderIcon = () => {
+    if (isCasting || isLoading) {
+      return <ActivityIndicator size="small" color={COLORS.primary} />;
+    }
+    if (isError) {
+      return (
+        <SymbolView
+          name={{
+            ios: "exclamationmark.triangle.fill",
+            android: "warning",
+            web: "warning",
+          }}
+          tintColor={COLORS.error}
+          size={16}
+        />
+      );
+    }
+    if (isConfigured) {
+      return <Text style={$castPlayIcon}>▶</Text>;
+    }
+    return (
+      <SymbolView
+        name={{
+          ios: "lock",
+          android: "lock",
+          web: "lock",
+        }}
+        tintColor={COLORS.textMuted}
+        size={16}
+      />
+    );
+  };
+
+  return (
+    <Pressable
+      style={[$speakerItem, (!isConfigured || isDisabled) && { opacity: 0.6 }]}
+      onPress={() => {
+        logger.info(
+          `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
+        );
+        onCast(speaker.deviceID, isConfigured);
+      }}
+      disabled={isDisabled}
+    >
+      <View style={$speakerItemLeft}>
+        <SymbolView
+          name={{
+            ios: "speaker.wave.2.fill",
+            android: "speaker",
+            web: "speaker",
+          }}
+          tintColor={COLORS.textMuted}
+          size={20}
+        />
+        <View>
+          <Text style={$speakerName}>{speaker.name}</Text>
+          <Text style={$speakerStatus}>{getStatusText()}</Text>
+        </View>
+      </View>
+      {renderIcon()}
+    </Pressable>
   );
 }
 
@@ -663,11 +782,19 @@ const $exploreButtonText: TextStyle = {
   fontSize: 14,
 };
 
+const $modalOverlay: ViewStyle = {
+  flex: 1,
+  justifyContent: "flex-end",
+  backgroundColor: "rgba(0, 0, 0, 0.4)",
+};
+
 const $sheetContent: ViewStyle = {
-  width: "100%",
+  backgroundColor: COLORS.card,
+  borderTopLeftRadius: 24,
+  borderTopRightRadius: 24,
   paddingHorizontal: 24,
-  paddingTop: 16,
-  paddingBottom: 24,
+  paddingTop: 24,
+  paddingBottom: 48,
 };
 
 const $sheetHeader: ViewStyle = {
