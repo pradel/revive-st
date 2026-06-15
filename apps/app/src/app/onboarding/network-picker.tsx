@@ -19,6 +19,33 @@ import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisio
 import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 import { COLORS } from "@/ui/theme";
 
+interface ScannedNetwork {
+  SSID: string;
+  BSSID: string;
+  level: number;
+  frequency?: number;
+}
+
+function deduplicateNetworks(list: ScannedNetwork[]) {
+  const ssidMap = new Map<
+    string,
+    { ssid: string; bssid: string; level: number }
+  >();
+  for (const n of list) {
+    const is24GHz =
+      n.frequency === undefined || (n.frequency >= 2400 && n.frequency < 2500);
+    if (Boolean(n.SSID) && !isSpeakerHotspot(n.SSID) && is24GHz) {
+      const existing = ssidMap.get(n.SSID);
+      if (!existing || n.level > existing.level) {
+        ssidMap.set(n.SSID, { ssid: n.SSID, bssid: n.BSSID, level: n.level });
+      }
+    }
+  }
+  return Array.from(ssidMap.values()).sort((a, b) =>
+    a.ssid.localeCompare(b.ssid),
+  );
+}
+
 export default function NetworkPickerScreen() {
   const { state, dispatch } = useWifiProvisioning();
   const router = useRouter();
@@ -66,21 +93,7 @@ export default function NetworkPickerScreen() {
         }
 
         if (Array.isArray(list)) {
-          const typedList = list as {
-            SSID: string;
-            BSSID: string;
-            level: number;
-            frequency?: number;
-          }[];
-          const filtered = typedList
-            .filter((n): n is typeof n => {
-              const is24GHz =
-                n.frequency === undefined ||
-                (n.frequency >= 2400 && n.frequency < 2500);
-              return Boolean(n.SSID) && !isSpeakerHotspot(n.SSID) && is24GHz;
-            })
-            .map((n) => ({ ssid: n.SSID, bssid: n.BSSID, level: n.level }))
-            .sort((a, b) => a.ssid.localeCompare(b.ssid) || b.level - a.level);
+          const filtered = deduplicateNetworks(list as ScannedNetwork[]);
           setNetworks(filtered);
         }
       } catch {

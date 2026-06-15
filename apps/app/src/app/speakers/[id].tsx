@@ -3,13 +3,15 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
-  StyleSheet,
   Pressable,
   ActivityIndicator,
   ScrollView,
   Image,
   Alert,
   type GestureResponderEvent,
+  type TextStyle,
+  type ViewStyle,
+  type ImageStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -47,20 +49,20 @@ export default function SpeakerDetail() {
 
   if (!speaker) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorEmoji}>🔍</Text>
-          <Text style={styles.errorTitle}>Speaker Offline</Text>
-          <Text style={styles.errorText}>
+      <SafeAreaView style={$container}>
+        <View style={$errorContainer}>
+          <Text style={$errorEmoji}>🔍</Text>
+          <Text style={$errorTitle}>Speaker Offline</Text>
+          <Text style={$errorText}>
             This speaker is no longer detected on your local network.
           </Text>
           <Pressable
-            style={styles.backButton}
+            style={$backButton}
             onPress={() => {
               router.back();
             }}
           >
-            <Text style={styles.backButtonText}>Return to Dashboard</Text>
+            <Text style={$backButtonText}>Return to Dashboard</Text>
           </Pressable>
         </View>
       </SafeAreaView>
@@ -204,32 +206,29 @@ export default function SpeakerDetail() {
   const activeSource = speaker.source ?? "STANDBY";
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={$container}>
       {/* Header */}
-      <View style={styles.header}>
+      <View style={$header}>
         <Pressable
-          style={styles.headerIconButton}
+          style={$headerIconButton}
           onPress={() => {
             router.back();
           }}
         >
-          <Text style={styles.headerIconText}>←</Text>
+          <Text style={$headerIconText}>←</Text>
         </Pressable>
 
-        <View style={styles.headerTitleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
+        <View style={$headerTitleContainer}>
+          <Text style={$headerTitle} numberOfLines={1}>
             {speaker.name}
           </Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={$headerSubtitle}>
             {isStandby ? "Standby" : getSourceLabel(activeSource)}
           </Text>
         </View>
 
         <Pressable
-          style={[
-            styles.headerPowerButton,
-            isStandby ? styles.powerOff : styles.powerOn,
-          ]}
+          style={[$headerPowerButton, isStandby ? $powerOff : $powerOn]}
           onPress={() => {
             void togglePower(speaker.deviceID);
           }}
@@ -238,28 +237,28 @@ export default function SpeakerDetail() {
           {speaker.isUpdating ? (
             <ActivityIndicator size="small" color="#fff" />
           ) : (
-            <Text style={styles.powerIconText}>⏻</Text>
+            <Text style={$powerIconText}>⏻</Text>
           )}
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={$scrollContent}>
         {isStandby ? (
           /* Standby View */
-          <View style={styles.standbyCard}>
-            <View style={styles.standbyGlowContainer}>
-              <View style={styles.standbyOuterCircle}>
-                <View style={styles.standbyInnerCircle}>
-                  <Text style={styles.standbyIcon}>💤</Text>
+          <View style={$standbyCard}>
+            <View style={$standbyGlowContainer}>
+              <View style={$standbyOuterCircle}>
+                <View style={$standbyInnerCircle}>
+                  <Text style={$standbyIcon}>💤</Text>
                 </View>
               </View>
             </View>
-            <Text style={styles.standbyTitle}>Speaker is Asleep</Text>
-            <Text style={styles.standbySubtitle}>
+            <Text style={$standbyTitle}>Speaker is Asleep</Text>
+            <Text style={$standbySubtitle}>
               Tap the power icon above or press below to wake up your speaker.
             </Text>
             <Pressable
-              style={styles.wakeButton}
+              style={$wakeButton}
               onPress={() => {
                 void togglePower(speaker.deviceID);
               }}
@@ -268,69 +267,64 @@ export default function SpeakerDetail() {
               {speaker.isUpdating ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.wakeButtonText}>Power On Speaker</Text>
+                <Text style={$wakeButtonText}>Power On Speaker</Text>
               )}
             </Pressable>
           </View>
         ) : (
           /* Active Playing View */
-          <View style={styles.activeContainer}>
+          <View style={$activeContainer}>
             {/* Album Art Card */}
-            <View style={styles.albumArtContainer}>
+            <View style={$albumArtContainer}>
               {speaker.artUrl ? (
                 <Image
                   source={{ uri: speaker.artUrl }}
-                  style={styles.albumArt}
+                  style={$albumArt}
                   resizeMode="cover"
                 />
               ) : (
-                <View style={styles.albumArtPlaceholder}>
-                  <Text style={styles.placeholderEmoji}>🎵</Text>
-                  <Text style={styles.placeholderText}>Bose SoundTouch</Text>
+                <View style={$albumArtPlaceholder}>
+                  <Text style={$placeholderEmoji}>🎵</Text>
+                  <Text style={$placeholderText}>Bose SoundTouch</Text>
                 </View>
               )}
             </View>
 
             {/* Track Info */}
-            <View style={styles.trackInfoContainer}>
-              <Text style={styles.trackName} numberOfLines={2}>
+            <View style={$trackInfoContainer}>
+              <Text style={$trackName} numberOfLines={2}>
                 {speaker.track ?? "Nothing Playing"}
               </Text>
-              <Text style={styles.artistName} numberOfLines={1}>
+              <Text style={$artistName} numberOfLines={1}>
                 {speaker.artist ?? "Unknown Artist"}
               </Text>
               {speaker.album ? (
-                <Text style={styles.albumName} numberOfLines={1}>
+                <Text style={$albumName} numberOfLines={1}>
                   {speaker.album}
                 </Text>
               ) : null}
 
               <View
                 style={[
-                  styles.sourceBadge,
+                  $sourceBadge,
                   { backgroundColor: getSourceBadgeColor(activeSource) },
                 ]}
               >
-                <Text style={styles.sourceText}>
-                  {getSourceLabel(activeSource)}
-                </Text>
+                <Text style={$sourceText}>{getSourceLabel(activeSource)}</Text>
               </View>
             </View>
 
             {/* Playback Controls Panel */}
-            <View style={styles.panel}>
-              <View style={styles.controlsRow}>
+            <View style={$panel}>
+              <View style={$controlsRow}>
                 {/* Skip Back */}
-                <Pressable
-                  style={styles.controlButton}
-                  onPress={handlePrevTrack}
-                >
-                  <Text style={styles.controlButtonText}>⏮</Text>
+                <Pressable style={$controlButton} onPress={handlePrevTrack}>
+                  <Text style={$controlButtonText}>⏮</Text>
                 </Pressable>
 
                 {/* Play/Pause */}
                 <Pressable
-                  style={styles.mainPlayButton}
+                  style={$mainPlayButton}
                   onPress={() => {
                     void playPause(speaker.deviceID);
                   }}
@@ -339,49 +333,46 @@ export default function SpeakerDetail() {
                   {speaker.isUpdating ? (
                     <ActivityIndicator size="small" color="#09090b" />
                   ) : (
-                    <Text style={styles.mainPlayButtonText}>
+                    <Text style={$mainPlayButtonText}>
                       {speaker.playStatus === "PLAY_STATE" ? "⏸" : "▶"}
                     </Text>
                   )}
                 </Pressable>
 
                 {/* Skip Forward */}
-                <Pressable
-                  style={styles.controlButton}
-                  onPress={handleNextTrack}
-                >
-                  <Text style={styles.controlButtonText}>⏭</Text>
+                <Pressable style={$controlButton} onPress={handleNextTrack}>
+                  <Text style={$controlButtonText}>⏭</Text>
                 </Pressable>
               </View>
             </View>
 
             {/* Volume Panel */}
-            <View style={styles.panel}>
-              <View style={styles.panelHeader}>
-                <Text style={styles.panelTitle}>Volume</Text>
-                <Text style={styles.panelValue}>
+            <View style={$panel}>
+              <View style={$panelHeader}>
+                <Text style={$panelTitle}>Volume</Text>
+                <Text style={$panelValue}>
                   {speaker.muteEnabled ? "Muted" : `${speaker.volume ?? 0}%`}
                 </Text>
               </View>
 
-              <View style={styles.volumeRow}>
+              <View style={$volumeRow}>
                 {/* Mute Button */}
                 <Pressable
                   style={[
-                    styles.volumeButton,
-                    speaker.muteEnabled && styles.volumeButtonActive,
+                    $volumeButton,
+                    speaker.muteEnabled && $volumeButtonActive,
                   ]}
                   onPress={handleToggleMute}
                 >
-                  <Text style={styles.volumeButtonText}>
+                  <Text style={$volumeButtonText}>
                     {speaker.muteEnabled || speaker.volume === 0 ? "🔇" : "🔊"}
                   </Text>
                 </Pressable>
 
                 {/* Volume Slider */}
-                <View style={styles.sliderContainer}>
+                <View style={$sliderContainer}>
                   <Pressable
-                    style={styles.volTrack}
+                    style={$volTrack}
                     onLayout={(event) => {
                       setSliderWidth(event.nativeEvent.layout.width);
                     }}
@@ -389,7 +380,7 @@ export default function SpeakerDetail() {
                   >
                     <View
                       style={[
-                        styles.volFill,
+                        $volFill,
                         {
                           width: `${speaker.muteEnabled ? 0 : (speaker.volume ?? 30)}%`,
                         },
@@ -399,38 +390,38 @@ export default function SpeakerDetail() {
                 </View>
 
                 {/* Precise Steppers */}
-                <View style={styles.steppersContainer}>
+                <View style={$steppersContainer}>
                   <Pressable
-                    style={styles.stepButton}
+                    style={$stepButton}
                     onPress={() => {
                       adjustVolumeStep(-5);
                     }}
                   >
-                    <Text style={styles.stepButtonText}>-</Text>
+                    <Text style={$stepButtonText}>-</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.stepButton}
+                    style={$stepButton}
                     onPress={() => {
                       adjustVolumeStep(5);
                     }}
                   >
-                    <Text style={styles.stepButtonText}>+</Text>
+                    <Text style={$stepButtonText}>+</Text>
                   </Pressable>
                 </View>
               </View>
             </View>
 
             {/* Acoustic Bass Tuning Panel */}
-            <View style={styles.panel}>
-              <View style={styles.panelHeader}>
-                <Text style={styles.panelTitle}>Bass Tuning</Text>
-                <Text style={styles.panelValue}>{speaker.bass ?? "..."}</Text>
+            <View style={$panel}>
+              <View style={$panelHeader}>
+                <Text style={$panelTitle}>Bass Tuning</Text>
+                <Text style={$panelValue}>{speaker.bass ?? "..."}</Text>
               </View>
 
-              <View style={styles.volumeRow}>
-                <View style={styles.sliderContainer}>
+              <View style={$volumeRow}>
+                <View style={$sliderContainer}>
                   <Pressable
-                    style={styles.volTrack}
+                    style={$volTrack}
                     onLayout={(event) => {
                       setBassSliderWidth(event.nativeEvent.layout.width);
                     }}
@@ -438,7 +429,7 @@ export default function SpeakerDetail() {
                   >
                     <View
                       style={[
-                        styles.volFill,
+                        $volFill,
                         {
                           // Amber accent color for bass tuning
                           backgroundColor: "#f59e0b",
@@ -455,31 +446,31 @@ export default function SpeakerDetail() {
                 </View>
 
                 {/* Bass Steppers */}
-                <View style={styles.steppersContainer}>
+                <View style={$steppersContainer}>
                   <Pressable
-                    style={styles.stepButton}
+                    style={$stepButton}
                     onPress={() => {
                       adjustBassStep(-1);
                     }}
                   >
-                    <Text style={styles.stepButtonText}>-</Text>
+                    <Text style={$stepButtonText}>-</Text>
                   </Pressable>
                   <Pressable
-                    style={styles.stepButton}
+                    style={$stepButton}
                     onPress={() => {
                       adjustBassStep(1);
                     }}
                   >
-                    <Text style={styles.stepButtonText}>+</Text>
+                    <Text style={$stepButtonText}>+</Text>
                   </Pressable>
                 </View>
               </View>
             </View>
 
             {/* Presets Grid Panel */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Quick Presets (1-6)</Text>
-              <View style={styles.presetGrid}>
+            <View style={$panel}>
+              <Text style={$panelTitle}>Quick Presets (1-6)</Text>
+              <View style={$presetGrid}>
                 {[1, 2, 3, 4, 5, 6].map((num) => {
                   const preset = speaker.presets?.find(
                     (sPreset) => sPreset.id === num,
@@ -489,10 +480,7 @@ export default function SpeakerDetail() {
                   return (
                     <Pressable
                       key={num}
-                      style={[
-                        styles.presetCard,
-                        preset && styles.presetCardActive,
-                      ]}
+                      style={[$presetCard, preset && $presetCardActive]}
                       onPress={() => {
                         handlePresetPress(num);
                       }}
@@ -501,20 +489,17 @@ export default function SpeakerDetail() {
                       }}
                       delayLongPress={600}
                     >
-                      <View style={styles.presetHeader}>
+                      <View style={$presetHeader}>
                         <View
-                          style={[
-                            styles.presetBadge,
-                            preset && styles.presetBadgeActive,
-                          ]}
+                          style={[$presetBadge, preset && $presetBadgeActive]}
                         >
-                          <Text style={styles.presetBadgeText}>{num}</Text>
+                          <Text style={$presetBadgeText}>{num}</Text>
                         </View>
 
                         {preset && (
                           <View
                             style={[
-                              styles.presetSourceBadge,
+                              $presetSourceBadge,
                               {
                                 backgroundColor: getSourceBadgeColor(
                                   preset.contentItem.source,
@@ -522,7 +507,7 @@ export default function SpeakerDetail() {
                               },
                             ]}
                           >
-                            <Text style={styles.presetSourceText}>
+                            <Text style={$presetSourceText}>
                               {preset.contentItem.source === "INTERNET_RADIO"
                                 ? "Radio"
                                 : preset.contentItem.source}
@@ -540,10 +525,8 @@ export default function SpeakerDetail() {
                       ) : (
                         <Text
                           style={[
-                            styles.presetName,
-                            preset
-                              ? styles.presetNameFilled
-                              : styles.presetNameEmpty,
+                            $presetName,
+                            preset ? $presetNameFilled : $presetNameEmpty,
                           ]}
                           numberOfLines={2}
                         >
@@ -559,51 +542,51 @@ export default function SpeakerDetail() {
             </View>
 
             {/* Sources Selector Panel */}
-            <View style={styles.panel}>
-              <Text style={styles.panelTitle}>Input Source</Text>
-              <View style={styles.sourcesGrid}>
+            <View style={$panel}>
+              <Text style={$panelTitle}>Input Source</Text>
+              <View style={$sourcesGrid}>
                 {/* Bluetooth Selector */}
                 <Pressable
                   style={[
-                    styles.sourceCard,
-                    speaker.source === "BLUETOOTH" && styles.sourceCardActive,
+                    $sourceCard,
+                    speaker.source === "BLUETOOTH" && $sourceCardActive,
                   ]}
                   onPress={() =>
                     void selectSource(speaker.deviceID, "BLUETOOTH")
                   }
                 >
-                  <Text style={styles.sourceCardEmoji}>📱</Text>
-                  <Text style={styles.sourceCardText}>Bluetooth</Text>
+                  <Text style={$sourceCardEmoji}>📱</Text>
+                  <Text style={$sourceCardText}>Bluetooth</Text>
                 </Pressable>
 
                 {/* AUX Selector */}
                 <Pressable
                   style={[
-                    styles.sourceCard,
-                    speaker.source === "AUX" && styles.sourceCardActive,
+                    $sourceCard,
+                    speaker.source === "AUX" && $sourceCardActive,
                   ]}
                   onPress={() =>
                     void selectSource(speaker.deviceID, "AUX", "AUX")
                   }
                 >
-                  <Text style={styles.sourceCardEmoji}>🔌</Text>
-                  <Text style={styles.sourceCardText}>Auxiliary</Text>
+                  <Text style={$sourceCardEmoji}>🔌</Text>
+                  <Text style={$sourceCardText}>Auxiliary</Text>
                 </Pressable>
 
                 {/* Wi-Fi Selector */}
                 <Pressable
                   style={[
-                    styles.sourceCard,
+                    $sourceCard,
                     speaker.source !== "BLUETOOTH" &&
                       speaker.source !== "AUX" &&
-                      styles.sourceCardActive,
+                      $sourceCardActive,
                   ]}
                   onPress={() => {
                     void selectSource(speaker.deviceID, "TUNEIN");
                   }}
                 >
-                  <Text style={styles.sourceCardEmoji}>🌐</Text>
-                  <Text style={styles.sourceCardText}>Wi-Fi Audio</Text>
+                  <Text style={$sourceCardEmoji}>🌐</Text>
+                  <Text style={$sourceCardText}>Wi-Fi Audio</Text>
                 </Pressable>
               </View>
             </View>
@@ -614,467 +597,531 @@ export default function SpeakerDetail() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    // Deep zinc black background
-    backgroundColor: "#09090b",
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  errorEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  errorTitle: {
-    color: "#fafafa",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  errorText: {
-    color: "#a1a1aa",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 24,
-  },
-  backButton: {
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  backButtonText: {
-    color: "#fafafa",
-    fontWeight: "600",
-    fontSize: 16,
-  },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#18181b",
-  },
-  headerIconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#18181b",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#27272a",
-  },
-  headerIconText: {
-    color: "#fafafa",
-    fontSize: 20,
-    fontWeight: "bold",
-  },
-  headerTitleContainer: {
-    flex: 1,
-    alignItems: "center",
-    marginHorizontal: 12,
-  },
-  headerTitle: {
-    color: "#fafafa",
-    fontSize: 18,
-    fontWeight: "bold",
-    textAlign: "center",
-  },
-  headerSubtitle: {
-    color: "#a1a1aa",
-    fontSize: 12,
-    marginTop: 2,
-  },
-  headerPowerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-  },
-  powerIconText: {
-    color: "#fafafa",
-    fontSize: 18,
-    fontWeight: "bold",
-  },
-  powerOn: {
-    backgroundColor: "rgba(22, 163, 74, 0.2)",
-    borderColor: "#16a34a",
-  },
-  powerOff: {
-    backgroundColor: "rgba(39, 39, 42, 0.4)",
-    borderColor: "#3f3f46",
-  },
-  scrollContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  /* Standby Styles */
-  standbyCard: {
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "#27272a",
-    padding: 32,
-    alignItems: "center",
-    marginTop: 40,
-  },
-  standbyGlowContainer: {
-    marginBottom: 24,
-  },
-  standbyOuterCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(37, 99, 235, 0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(37, 99, 235, 0.3)",
-  },
-  standbyInnerCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(37, 99, 235, 0.2)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  standbyIcon: {
-    fontSize: 36,
-  },
-  standbyTitle: {
-    color: "#fafafa",
-    fontSize: 22,
-    fontWeight: "bold",
-    marginBottom: 8,
-  },
-  standbySubtitle: {
-    color: "#a1a1aa",
-    fontSize: 14,
-    textAlign: "center",
-    lineHeight: 20,
-    marginBottom: 28,
-  },
-  wakeButton: {
-    backgroundColor: "#2563eb",
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
-    shadowColor: "#2563eb",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  wakeButtonText: {
-    color: "#fafafa",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  /* Active Player Styles */
-  activeContainer: {
-    alignItems: "stretch",
-  },
-  albumArtContainer: {
-    width: "100%",
-    aspectRatio: 1,
-    borderRadius: 24,
-    backgroundColor: "#18181b",
-    overflow: "hidden",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: 24,
-  },
-  albumArt: {
-    width: "100%",
-    height: "100%",
-  },
-  albumArtPlaceholder: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(39, 39, 42, 0.3)",
-  },
-  placeholderEmoji: {
-    fontSize: 72,
-    opacity: 0.5,
-    marginBottom: 12,
-  },
-  placeholderText: {
-    color: "#71717a",
-    fontSize: 14,
-    fontWeight: "600",
-    letterSpacing: 1,
-    textTransform: "uppercase",
-  },
-  trackInfoContainer: {
-    alignItems: "center",
-    marginBottom: 24,
-    paddingHorizontal: 8,
-  },
-  trackName: {
-    color: "#fafafa",
-    fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
-    marginBottom: 6,
-  },
-  artistName: {
-    color: "#a1a1aa",
-    fontSize: 16,
-    textAlign: "center",
-    marginBottom: 4,
-  },
-  albumName: {
-    color: "#71717a",
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  sourceBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginTop: 4,
-  },
-  sourceText: {
-    color: "#fafafa",
-    fontSize: 11,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-  },
-  panel: {
-    backgroundColor: "rgba(24, 24, 27, 0.6)",
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#27272a",
-    padding: 16,
-    marginBottom: 16,
-  },
-  panelHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  panelTitle: {
-    color: "#71717a",
-    fontSize: 13,
-    fontWeight: "600",
-    textTransform: "uppercase",
-    letterSpacing: 1,
-    marginBottom: 8,
-  },
-  panelValue: {
-    color: "#fafafa",
-    fontSize: 14,
-    fontWeight: "bold",
-  },
-  controlsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    gap: 32,
-    paddingVertical: 8,
-  },
-  controlButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  controlButtonText: {
-    color: "#fafafa",
-    fontSize: 18,
-  },
-  mainPlayButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: "#fafafa",
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#fff",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  mainPlayButtonText: {
-    color: "#09090b",
-    fontSize: 28,
-    // Slight adjustment to center triangle visually
-    marginLeft: 4,
-  },
-  volumeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-  },
-  volumeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#18181b",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#27272a",
-  },
-  volumeButtonActive: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
-    borderColor: "#ef4444",
-  },
-  volumeButtonText: {
-    fontSize: 16,
-  },
-  sliderContainer: {
-    flex: 1,
-    justifyContent: "center",
-  },
-  volTrack: {
-    height: 8,
-    backgroundColor: "#18181b",
-    borderRadius: 4,
-    overflow: "hidden",
-  },
-  volFill: {
-    height: "100%",
-    backgroundColor: "#2563eb",
-    borderRadius: 4,
-  },
-  steppersContainer: {
-    flexDirection: "row",
-    gap: 6,
-  },
-  stepButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "#18181b",
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#27272a",
-  },
-  stepButtonText: {
-    color: "#fafafa",
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  /* Presets Grid */
-  presetGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 4,
-  },
-  presetCard: {
-    // Grid layout
-    width: "48%",
-    aspectRatio: 1.3,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    padding: 10,
-    justifyContent: "space-between",
-  },
-  presetCardActive: {
-    // Amber highlight for assigned presets
-    borderColor: "rgba(245, 158, 11, 0.4)",
-    backgroundColor: "rgba(245, 158, 11, 0.03)",
-  },
-  presetHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  presetBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#27272a",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  presetBadgeActive: {
-    // Amber glowing badge for presets
-    backgroundColor: "#f59e0b",
-  },
-  presetBadgeText: {
-    color: "#fafafa",
-    fontSize: 12,
-    fontWeight: "bold",
-  },
-  presetSourceBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  presetSourceText: {
-    color: "#fafafa",
-    fontSize: 9,
-    fontWeight: "bold",
-    textTransform: "uppercase",
-  },
-  presetName: {
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
-  },
-  presetNameFilled: {
-    color: "#fafafa",
-  },
-  presetNameEmpty: {
-    color: "#71717a",
-    fontStyle: "italic",
-  },
-  sourcesGrid: {
-    flexDirection: "row",
-    gap: 10,
-    marginTop: 4,
-  },
-  sourceCard: {
-    flex: 1,
-    backgroundColor: "#18181b",
-    borderWidth: 1,
-    borderColor: "#27272a",
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    gap: 6,
-  },
-  sourceCardActive: {
-    backgroundColor: "rgba(37, 99, 235, 0.1)",
-    borderColor: "#2563eb",
-  },
-  sourceCardEmoji: {
-    fontSize: 20,
-  },
-  sourceCardText: {
-    color: "#fafafa",
-    fontSize: 12,
-    fontWeight: "600",
-  },
-});
+const $container: ViewStyle = {
+  flex: 1,
+  backgroundColor: "#09090b",
+};
+
+const $errorContainer: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  padding: 24,
+};
+
+const $errorEmoji: TextStyle = {
+  fontSize: 64,
+  marginBottom: 16,
+};
+
+const $errorTitle: TextStyle = {
+  color: "#fafafa",
+  fontSize: 24,
+  fontWeight: "bold",
+  marginBottom: 8,
+};
+
+const $errorText: TextStyle = {
+  color: "#a1a1aa",
+  fontSize: 16,
+  textAlign: "center",
+  marginBottom: 24,
+};
+
+const $backButton: ViewStyle = {
+  backgroundColor: "#2563eb",
+  paddingHorizontal: 24,
+  paddingVertical: 12,
+  borderRadius: 8,
+};
+
+const $backButtonText: TextStyle = {
+  color: "#fafafa",
+  fontWeight: "600",
+  fontSize: 16,
+};
+
+const $header: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  paddingHorizontal: 16,
+  paddingVertical: 12,
+  borderBottomWidth: 1,
+  borderBottomColor: "#18181b",
+};
+
+const $headerIconButton: ViewStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: "#18181b",
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#27272a",
+};
+
+const $headerIconText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 20,
+  fontWeight: "bold",
+};
+
+const $headerTitleContainer: ViewStyle = {
+  flex: 1,
+  alignItems: "center",
+  marginHorizontal: 12,
+};
+
+const $headerTitle: TextStyle = {
+  color: "#fafafa",
+  fontSize: 18,
+  fontWeight: "bold",
+  textAlign: "center",
+};
+
+const $headerSubtitle: TextStyle = {
+  color: "#a1a1aa",
+  fontSize: 12,
+  marginTop: 2,
+};
+
+const $headerPowerButton: ViewStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+};
+
+const $powerIconText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 18,
+  fontWeight: "bold",
+};
+
+const $powerOn: ViewStyle = {
+  backgroundColor: "rgba(22, 163, 74, 0.2)",
+  borderColor: "#16a34a",
+};
+
+const $powerOff: ViewStyle = {
+  backgroundColor: "rgba(39, 39, 42, 0.4)",
+  borderColor: "#3f3f46",
+};
+
+const $scrollContent: ViewStyle = {
+  padding: 20,
+  paddingBottom: 40,
+};
+
+const $standbyCard: ViewStyle = {
+  backgroundColor: "rgba(24, 24, 27, 0.6)",
+  borderRadius: 24,
+  borderWidth: 1,
+  borderColor: "#27272a",
+  padding: 32,
+  alignItems: "center",
+  marginTop: 40,
+};
+
+const $standbyGlowContainer: ViewStyle = {
+  marginBottom: 24,
+};
+
+const $standbyOuterCircle: ViewStyle = {
+  width: 120,
+  height: 120,
+  borderRadius: 60,
+  backgroundColor: "rgba(37, 99, 235, 0.1)",
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "rgba(37, 99, 235, 0.3)",
+};
+
+const $standbyInnerCircle: ViewStyle = {
+  width: 80,
+  height: 80,
+  borderRadius: 40,
+  backgroundColor: "rgba(37, 99, 235, 0.2)",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const $standbyIcon: TextStyle = {
+  fontSize: 36,
+};
+
+const $standbyTitle: TextStyle = {
+  color: "#fafafa",
+  fontSize: 22,
+  fontWeight: "bold",
+  marginBottom: 8,
+};
+
+const $standbySubtitle: TextStyle = {
+  color: "#a1a1aa",
+  fontSize: 14,
+  textAlign: "center",
+  lineHeight: 20,
+  marginBottom: 28,
+};
+
+const $wakeButton: ViewStyle = {
+  backgroundColor: "#2563eb",
+  paddingHorizontal: 32,
+  paddingVertical: 14,
+  borderRadius: 12,
+  shadowColor: "#2563eb",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.3,
+  shadowRadius: 8,
+  elevation: 4,
+};
+
+const $wakeButtonText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 16,
+  fontWeight: "bold",
+};
+
+const $activeContainer: ViewStyle = {
+  alignItems: "stretch",
+};
+
+const $albumArtContainer: ViewStyle = {
+  width: "100%",
+  aspectRatio: 1,
+  borderRadius: 24,
+  backgroundColor: "#18181b",
+  overflow: "hidden",
+  borderWidth: 1,
+  borderColor: "#27272a",
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.4,
+  shadowRadius: 16,
+  elevation: 8,
+  marginBottom: 24,
+};
+
+const $albumArt: ImageStyle = {
+  width: "100%",
+  height: "100%",
+};
+
+const $albumArtPlaceholder: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  alignItems: "center",
+  backgroundColor: "rgba(39, 39, 42, 0.3)",
+};
+
+const $placeholderEmoji: TextStyle = {
+  fontSize: 72,
+  opacity: 0.5,
+  marginBottom: 12,
+};
+
+const $placeholderText: TextStyle = {
+  color: "#71717a",
+  fontSize: 14,
+  fontWeight: "600",
+  letterSpacing: 1,
+  textTransform: "uppercase",
+};
+
+const $trackInfoContainer: ViewStyle = {
+  alignItems: "center",
+  marginBottom: 24,
+  paddingHorizontal: 8,
+};
+
+const $trackName: TextStyle = {
+  color: "#fafafa",
+  fontSize: 24,
+  fontWeight: "bold",
+  textAlign: "center",
+  marginBottom: 6,
+};
+
+const $artistName: TextStyle = {
+  color: "#a1a1aa",
+  fontSize: 16,
+  textAlign: "center",
+  marginBottom: 4,
+};
+
+const $albumName: TextStyle = {
+  color: "#71717a",
+  fontSize: 14,
+  textAlign: "center",
+  marginBottom: 12,
+};
+
+const $sourceBadge: ViewStyle = {
+  paddingHorizontal: 12,
+  paddingVertical: 4,
+  borderRadius: 12,
+  marginTop: 4,
+};
+
+const $sourceText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 11,
+  fontWeight: "bold",
+  textTransform: "uppercase",
+  letterSpacing: 0.5,
+};
+
+const $panel: ViewStyle = {
+  backgroundColor: "rgba(24, 24, 27, 0.6)",
+  borderRadius: 20,
+  borderWidth: 1,
+  borderColor: "#27272a",
+  padding: 16,
+  marginBottom: 16,
+};
+
+const $panelHeader: ViewStyle = {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 12,
+};
+
+const $panelTitle: TextStyle = {
+  color: "#71717a",
+  fontSize: 13,
+  fontWeight: "600",
+  textTransform: "uppercase",
+  letterSpacing: 1,
+  marginBottom: 8,
+};
+
+const $panelValue: TextStyle = {
+  color: "#fafafa",
+  fontSize: 14,
+  fontWeight: "bold",
+};
+
+const $controlsRow: ViewStyle = {
+  flexDirection: "row",
+  justifyContent: "center",
+  alignItems: "center",
+  gap: 32,
+  paddingVertical: 8,
+};
+
+const $controlButton: ViewStyle = {
+  width: 48,
+  height: 48,
+  borderRadius: 24,
+  backgroundColor: "#18181b",
+  borderWidth: 1,
+  borderColor: "#27272a",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const $controlButtonText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 18,
+};
+
+const $mainPlayButton: ViewStyle = {
+  width: 68,
+  height: 68,
+  borderRadius: 34,
+  backgroundColor: "#fafafa",
+  justifyContent: "center",
+  alignItems: "center",
+  shadowColor: "#fff",
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.15,
+  shadowRadius: 8,
+  elevation: 4,
+};
+
+const $mainPlayButtonText: TextStyle = {
+  color: "#09090b",
+  fontSize: 28,
+  marginLeft: 4,
+};
+
+const $volumeRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 12,
+};
+
+const $volumeButton: ViewStyle = {
+  width: 40,
+  height: 40,
+  borderRadius: 20,
+  backgroundColor: "#18181b",
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#27272a",
+};
+
+const $volumeButtonActive: ViewStyle = {
+  backgroundColor: "rgba(239, 68, 68, 0.15)",
+  borderColor: "#ef4444",
+};
+
+const $volumeButtonText: TextStyle = {
+  fontSize: 16,
+};
+
+const $sliderContainer: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+};
+
+const $volTrack: ViewStyle = {
+  height: 8,
+  backgroundColor: "#18181b",
+  borderRadius: 4,
+  overflow: "hidden",
+};
+
+const $volFill: ViewStyle = {
+  height: "100%",
+  backgroundColor: "#2563eb",
+  borderRadius: 4,
+};
+
+const $steppersContainer: ViewStyle = {
+  flexDirection: "row",
+  gap: 6,
+};
+
+const $stepButton: ViewStyle = {
+  width: 32,
+  height: 32,
+  borderRadius: 16,
+  backgroundColor: "#18181b",
+  justifyContent: "center",
+  alignItems: "center",
+  borderWidth: 1,
+  borderColor: "#27272a",
+};
+
+const $stepButtonText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 16,
+  fontWeight: "bold",
+};
+
+const $presetGrid: ViewStyle = {
+  flexDirection: "row",
+  flexWrap: "wrap",
+  gap: 10,
+  marginTop: 4,
+};
+
+const $presetCard: ViewStyle = {
+  width: "48%",
+  aspectRatio: 1.3,
+  backgroundColor: "#18181b",
+  borderWidth: 1,
+  borderColor: "#27272a",
+  borderRadius: 12,
+  padding: 10,
+  justifyContent: "space-between",
+};
+
+const $presetCardActive: ViewStyle = {
+  borderColor: "rgba(245, 158, 11, 0.4)",
+  backgroundColor: "rgba(245, 158, 11, 0.03)",
+};
+
+const $presetHeader: ViewStyle = {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  alignItems: "center",
+};
+
+const $presetBadge: ViewStyle = {
+  width: 24,
+  height: 24,
+  borderRadius: 12,
+  backgroundColor: "#27272a",
+  justifyContent: "center",
+  alignItems: "center",
+};
+
+const $presetBadgeActive: ViewStyle = {
+  backgroundColor: "#f59e0b",
+};
+
+const $presetBadgeText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 12,
+  fontWeight: "bold",
+};
+
+const $presetSourceBadge: ViewStyle = {
+  paddingHorizontal: 6,
+  paddingVertical: 2,
+  borderRadius: 6,
+};
+
+const $presetSourceText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 9,
+  fontWeight: "bold",
+  textTransform: "uppercase",
+};
+
+const $presetName: TextStyle = {
+  fontSize: 12,
+  fontWeight: "600",
+  lineHeight: 16,
+};
+
+const $presetNameFilled: TextStyle = {
+  color: "#fafafa",
+};
+
+const $presetNameEmpty: TextStyle = {
+  color: "#71717a",
+  fontStyle: "italic",
+};
+
+const $sourcesGrid: ViewStyle = {
+  flexDirection: "row",
+  gap: 10,
+  marginTop: 4,
+};
+
+const $sourceCard: ViewStyle = {
+  flex: 1,
+  backgroundColor: "#18181b",
+  borderWidth: 1,
+  borderColor: "#27272a",
+  borderRadius: 12,
+  paddingVertical: 12,
+  alignItems: "center",
+  gap: 6,
+};
+
+const $sourceCardActive: ViewStyle = {
+  backgroundColor: "rgba(37, 99, 235, 0.1)",
+  borderColor: "#2563eb",
+};
+
+const $sourceCardEmoji: TextStyle = {
+  fontSize: 20,
+};
+
+const $sourceCardText: TextStyle = {
+  color: "#fafafa",
+  fontSize: 12,
+  fontWeight: "600",
+};

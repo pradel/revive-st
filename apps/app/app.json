@@ -31,9 +31,7 @@
         "CHANGE_WIFI_MULTICAST_STATE",
         "ACCESS_FINE_LOCATION",
         "ACCESS_NETWORK_STATE",
-        "CHANGE_NETWORK_STATE",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
+        "CHANGE_NETWORK_STATE"
       ],
       "package": "app.revivest.app"
     },

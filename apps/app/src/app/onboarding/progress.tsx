@@ -23,6 +23,8 @@ export default function ProgressScreen() {
   useEffect(() => {
     if (state.step === "PROVISIONING_COMPLETE") {
       router.replace("/onboarding/success" as any);
+    } else if (state.step === "SELECTING_HOME_NETWORK") {
+      router.replace("/onboarding/network-picker" as any);
     }
   }, [state.step, router]);
 
