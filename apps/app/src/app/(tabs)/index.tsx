@@ -1,6 +1,6 @@
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -13,41 +13,12 @@ import {
   type TextStyle,
   type ViewStyle,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withDelay,
-  withRepeat,
-  withTiming,
-} from "react-native-reanimated";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 import { Header } from "@/ui/Header";
+import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
-
-interface PulseRingProps {
-  delay: number;
-}
-
-function PulseRing({ delay }: PulseRingProps) {
-  const animatedValue = useSharedValue(0);
-
-  useEffect(() => {
-    animatedValue.value = 0;
-    animatedValue.value = withDelay(
-      delay,
-      withRepeat(withTiming(1, { duration: 2400 }), -1, false),
-    );
-  }, [animatedValue, delay]);
-
-  const rStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: animatedValue.value * 1.5 + 1 }],
-    opacity: (1 - animatedValue.value) * 0.6,
-  }));
-
-  return <Animated.View style={[$pulseRing, rStyle]} />;
-}
 
 export default function Index() {
   const router = useRouter();
@@ -407,16 +378,6 @@ const $emptyIconContainer: ViewStyle = {
   borderWidth: 1,
   borderColor: COLORS.border,
   position: "relative",
-};
-
-const $pulseRing: ViewStyle = {
-  position: "absolute",
-  width: 80,
-  height: 80,
-  borderRadius: 40,
-  backgroundColor: COLORS.primaryTransparent,
-  borderWidth: 1,
-  borderColor: COLORS.primary,
 };
 
 const $emptyTitle: TextStyle = {

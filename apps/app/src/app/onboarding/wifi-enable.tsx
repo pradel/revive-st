@@ -1,6 +1,7 @@
+import { openWifiSettingsPanel } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Text,
@@ -11,22 +12,37 @@ import {
 } from "react-native";
 
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import { logger } from "@/lib/logger";
 import { COLORS } from "@/ui/theme";
 
-export default function PermissionsScreen() {
-  const { state, dispatch } = useWifiProvisioning();
+export default function WifiEnableScreen() {
+  const { state, checkWifiStatus } = useWifiProvisioning();
   const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (state.step === "SCANNING_FOR_HOTSPOT") {
       router.replace("/onboarding/scanning" as any);
-    } else if (state.step === "WIFI_DISABLED") {
-      router.replace("/onboarding/wifi-enable" as any);
     }
   }, [state.step, router]);
 
-  const isDenied = state.step === "PERMISSIONS_DENIED";
-  const isLoading = state.step === "CHECKING_PERMISSIONS";
+  const handleEnableWifi = async () => {
+    setLoading(true);
+    try {
+      await openWifiSettingsPanel();
+      // Wait briefly before running a manual check to allow panel startup/interaction
+      setTimeout(async () => {
+        await checkWifiStatus();
+        setLoading(false);
+      }, 1000);
+    } catch (err) {
+      logger.warn(
+        "[WifiEnableScreen] Failed to open Wi-Fi settings panel:",
+        err,
+      );
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={$container}>
@@ -42,67 +58,55 @@ export default function PermissionsScreen() {
         <View style={$iconContainer}>
           <SymbolView
             name={{
-              ios: "location.fill",
-              android: "my_location",
-              web: "my_location",
+              ios: "wifi",
+              android: "wifi",
+              web: "wifi",
             }}
             tintColor={COLORS.primary}
             size={48}
           />
         </View>
 
-        {/* Permissions Card */}
+        {/* Card */}
         <View style={$card}>
           <View style={$badge}>
             <Text style={$badgeText}>SETUP WIZARD</Text>
           </View>
-          <Text style={$cardTitle}>Location Access</Text>
+          <Text style={$cardTitle}>Wi-Fi is Disabled</Text>
           <Text style={$cardDescription}>
-            To find and connect your Bose SoundTouch speaker, this app needs
-            access to your location. This is required by the system to scan for
-            nearby Wi-Fi networks.
+            To find and connect to your Bose SoundTouch speaker, this app needs
+            Wi-Fi to be turned on. This is required to search for and connect to
+            the speaker's setup hotspot.
           </Text>
 
-          {isLoading && (
+          {loading && (
             <ActivityIndicator
               size="large"
               color={COLORS.primary}
               style={$spinner}
             />
           )}
-
-          {isDenied && (
-            <View style={$errorBox}>
-              <View style={$divider} />
-              <Text style={$errorText}>
-                Location access was denied. Enable it in settings to continue.
-              </Text>
-            </View>
-          )}
         </View>
 
         {/* Action Buttons */}
         <View style={$buttonContainer}>
-          {isDenied && (
-            <TouchableOpacity
-              style={$primaryButton}
-              onPress={() => {
-                dispatch({ type: "RETRY" });
+          <TouchableOpacity
+            style={$primaryButton}
+            onPress={handleEnableWifi}
+            activeOpacity={0.8}
+            disabled={loading}
+          >
+            <SymbolView
+              name={{
+                ios: "wifi",
+                android: "wifi",
+                web: "wifi",
               }}
-              activeOpacity={0.8}
-            >
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={COLORS.background}
-                size={18}
-              />
-              <Text style={$primaryButtonText}>Try Again</Text>
-            </TouchableOpacity>
-          )}
+              tintColor={COLORS.background}
+              size={18}
+            />
+            <Text style={$primaryButtonText}>Enable Wi-Fi</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={$secondaryButton}
@@ -200,25 +204,6 @@ const $cardDescription: TextStyle = {
   textAlign: "center",
   lineHeight: 20,
   marginBottom: 20,
-};
-
-const $divider: ViewStyle = {
-  width: "100%",
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginVertical: 16,
-};
-
-const $errorBox: ViewStyle = {
-  width: "100%",
-  alignItems: "center",
-};
-
-const $errorText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.error,
-  textAlign: "center",
-  lineHeight: 20,
 };
 
 const $spinner: ViewStyle = {

@@ -10,7 +10,11 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "Used to find and communicate with Bose speakers on the local network."
+        "NSLocationWhenInUseUsageDescription": "Required to scan for your Bose speaker on WiFi.",
+        "NSLocalNetworkUsageDescription": "Used to find and communicate with your Bose speaker on the local network."
+      },
+      "entitlements": {
+        "com.apple.developer.networking.HotspotConfiguration": true
       }
     },
     "android": {
@@ -22,9 +26,12 @@
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "ACCESS_NETWORK_STATE",
         "ACCESS_WIFI_STATE",
-        "CHANGE_WIFI_MULTICAST_STATE"
+        "CHANGE_WIFI_STATE",
+        "CHANGE_WIFI_MULTICAST_STATE",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_NETWORK_STATE",
+        "CHANGE_NETWORK_STATE"
       ],
       "package": "app.revivest.app"
     },
@@ -45,6 +52,13 @@
         }
       ],
       [
+        "react-native-wifi-reborn",
+        {
+          "fineLocationPermission": true
+        }
+      ],
+      "expo-secure-store",
+      [
         "expo-build-properties",
         {
           "android": {
@@ -53,6 +67,7 @@
           }
         }
       ],
+      "expo-font",
       "expo-dev-client",
       "expo-image"
     ],
