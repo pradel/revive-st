@@ -29,7 +29,7 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 ### Prerequisites
 
 - **Node.js**: v24 or newer
-- **Vite Plus+**: Unified toolchain for the web (`npm install -g vite-plus` or use `vp`)
+- **Vite +**: Unified toolchain for the web (`npm install -g vite-plus` or use `vp`)
 - **Expo CLI**: For React Native development (`npm install -g expo-cli`)
 
 ### Setup
