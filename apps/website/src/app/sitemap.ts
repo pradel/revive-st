@@ -9,7 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
   const url = (path: string) =>
     new URL(
       path,
-      process.env.NEXT_PUBLIC_SITE_URL ?? "https://revivest.app",
+      process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
     ).toString();
 
   const docs = source.getPages().map((page) => ({
