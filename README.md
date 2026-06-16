@@ -6,6 +6,8 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 
 **Available on:** [iOS (coming soon)](#TODO) · [Android (coming soon)](#TODO)
 
+**Website & Documentation:** [revivest.app](https://www.revivest.app)
+
 ---
 
 ## Features
@@ -24,11 +26,33 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 
 ## Development
 
+### Prerequisites
+
+- **Node.js**: v24 or newer
+- **Vite Plus+**: Unified toolchain for the web (`npm install -g vite-plus` or use `vp`)
+- **Expo CLI**: For React Native development (`npm install -g expo-cli`)
+
+### Setup
+
 - Setup the monorepo:
 
 ```bash
 vp run ready
 ```
+
+---
+
+## Contributing
+
+We welcome contributions! Please follow these steps to contribute:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes following Conventional Commits (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+For large features or architecture changes, please open an issue first to discuss what you would like to change.
 
 ---
 
