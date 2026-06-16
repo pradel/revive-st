@@ -11,6 +11,7 @@ export default defineConfig({
   lint: {
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
+    ignorePatterns: ["apps/app/metro.config.js"],
     plugins: ["react", "typescript"],
     env: {
       browser: true,
