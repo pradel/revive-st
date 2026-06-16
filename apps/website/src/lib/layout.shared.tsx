@@ -8,6 +8,13 @@ export function baseOptions(): BaseLayoutProps {
       // JSX supported
       title: appName,
     },
+    links: [
+      {
+        text: "Documentation",
+        url: "/docs",
+        active: "nested-url",
+      },
+    ],
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
   };
 }

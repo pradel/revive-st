@@ -26,7 +26,7 @@ export default function HomePage() {
           </h1>
           <p className="text-lg md:text-xl text-neutral-600 text-pretty max-w-2xl mx-auto mb-10">
             The SoundTouch app stopped working in May 2026. Revive ST brings
-            back full control of your speakers, for free, no account needed.
+            back full control of your speakers, no account needed.
           </p>
 
           <div className="flex flex-col items-center gap-4">
@@ -172,7 +172,7 @@ export default function HomePage() {
               </h2>
             </div>
 
-            <div className="relative flex flex-col md:flex-row justify-between items-start gap-8 md:gap-4 mt-12">
+            <div className="relative flex flex-col md:flex-row justify-between items-center md:items-start gap-8 md:gap-4 mt-12">
               <div className="hidden md:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-neutral-200 -z-10" />
 
               <Step
