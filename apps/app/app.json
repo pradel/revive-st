@@ -14,7 +14,8 @@
       },
       "entitlements": {
         "com.apple.developer.networking.HotspotConfiguration": true
-      }
+      },
+      "bundleIdentifier": "app.revivest.app"
     },
     "android": {
       "adaptiveIcon": {
