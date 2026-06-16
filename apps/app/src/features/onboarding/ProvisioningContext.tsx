@@ -25,8 +25,7 @@ const ProvisioningContext = createContext<ProvisioningContextValue | null>(
 );
 
 function ProvisioningSideEffects() {
-  const { state, dispatch } = useProvisioning();
-  useWifiProvisioningSideEffects(state, dispatch);
+  useWifiProvisioningSideEffects();
   return null;
 }
 
