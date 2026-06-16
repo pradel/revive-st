@@ -17,6 +17,10 @@
       }
     },
     "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/icon.png",
+        "backgroundColor": "#208AEF"
+      },
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_WIFI_STATE",
