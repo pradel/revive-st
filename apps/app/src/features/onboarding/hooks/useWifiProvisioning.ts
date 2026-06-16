@@ -17,7 +17,7 @@ import WifiManager from "react-native-wifi-reborn";
 
 import { logger } from "@/lib/logger";
 
-import { useProvisioning } from "../ProvisioningContext";
+import type { ProvisioningAction, ProvisioningState } from "../types";
 import {
   findSpeakerIP,
   isSpeakerHotspot,
@@ -26,9 +26,10 @@ import {
 } from "../utils/networkHelpers";
 import { useSpeakerDiscovery } from "./useSpeakerDiscovery";
 
-export function useWifiProvisioning() {
-  const { state, dispatch } = useProvisioning();
-
+export function useWifiProvisioning(
+  state: ProvisioningState,
+  dispatch: React.Dispatch<ProvisioningAction>,
+) {
   const checkWifiStatus = useCallback(async () => {
     try {
       const enabled = await WifiManager.isEnabled();
@@ -50,8 +51,11 @@ export function useWifiProvisioning() {
   return { state, dispatch, checkWifiStatus };
 }
 
-export function useWifiProvisioningSideEffects() {
-  const { state, dispatch, checkWifiStatus } = useWifiProvisioning();
+export function useWifiProvisioningSideEffects(
+  state: ProvisioningState,
+  dispatch: React.Dispatch<ProvisioningAction>,
+) {
+  const { checkWifiStatus } = useWifiProvisioning(state, dispatch);
   const scanningRef = useRef(false);
   const connectingRef = useRef(false);
   const sendingRef = useRef(false);
