@@ -5,6 +5,8 @@ import { load, trackPageview, trackEvent } from "fathom-client";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, Suspense } from "react";
 
+import { WEBSITE_CONFIG } from "@/config";
+
 function TrackPageView() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -50,8 +52,8 @@ function TrackPageView() {
         text.includes("app store") ||
         text.includes("google play") ||
         href.includes("#download") ||
-        href.includes("#download-ios") ||
-        href.includes("#download-android") ||
+        href.includes(WEBSITE_CONFIG.IOS_APP_URL) ||
+        href.includes(WEBSITE_CONFIG.ANDROID_APP_URL) ||
         href.includes("apple.com") ||
         href.includes("play.google.com")
       ) {

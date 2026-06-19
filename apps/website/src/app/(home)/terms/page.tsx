@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { WEBSITE_CONFIG } from "@/config";
+
 export const metadata: Metadata = {
   title: "Terms and Conditions — Revive ST",
 };
@@ -106,7 +108,9 @@ export default function TermsPage() {
           <p>
             If you have any questions or concerns about these Terms or the App,
             please contact the Developer at{" "}
-            <a href="mailto:incognitolabs@gmail.com">incognitolabs@gmail.com</a>
+            <a href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}>
+              {WEBSITE_CONFIG.CONTACT_EMAIL}
+            </a>
             .
           </p>
         </div>
@@ -132,7 +136,7 @@ export default function TermsPage() {
             Terms of Service
           </Link>
           <a
-            href="https://github.com/pradel/revive-st"
+            href={WEBSITE_CONFIG.GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-neutral-900 transition-colors"
