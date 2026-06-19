@@ -70,5 +70,8 @@ export async function generateMetadata(
     openGraph: {
       images: getPageImage(page).url,
     },
+    alternates: {
+      canonical: page.url,
+    },
   };
 }

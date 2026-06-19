@@ -9,9 +9,16 @@ import {
   ShieldCheck,
   WifiOff,
 } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { WEBSITE_CONFIG } from "@/config";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function HomePage() {
   return (

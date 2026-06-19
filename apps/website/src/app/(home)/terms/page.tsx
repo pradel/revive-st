@@ -5,6 +5,9 @@ import { WEBSITE_CONFIG } from "@/config";
 
 export const metadata: Metadata = {
   title: "Terms and Conditions — Revive ST",
+  alternates: {
+    canonical: "/terms",
+  },
 };
 
 export default function TermsPage() {
