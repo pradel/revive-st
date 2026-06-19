@@ -1,6 +1,8 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
-import { appName, gitConfig } from "./shared";
+import { WEBSITE_CONFIG } from "@/config";
+
+import { appName } from "./shared";
 
 export function baseOptions(): BaseLayoutProps {
   return {
@@ -15,6 +17,6 @@ export function baseOptions(): BaseLayoutProps {
         active: "nested-url",
       },
     ],
-    githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
+    githubUrl: WEBSITE_CONFIG.GITHUB_URL,
   };
 }

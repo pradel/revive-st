@@ -11,6 +11,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 
+import { WEBSITE_CONFIG } from "@/config";
+
 export default function HomePage() {
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50 text-neutral-900 selection:bg-emerald-200">
@@ -32,14 +34,14 @@ export default function HomePage() {
           <div className="flex flex-col items-center gap-4">
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <Link
-                href="#download-ios"
+                href={WEBSITE_CONFIG.IOS_APP_URL}
                 className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors w-full sm:w-auto shadow-sm"
               >
                 <Apple className="w-5 h-5 mr-2" />
                 App Store
               </Link>
               <Link
-                href="#download-android"
+                href={WEBSITE_CONFIG.ANDROID_APP_URL}
                 className="inline-flex items-center justify-center rounded-md bg-neutral-200 text-neutral-900 px-6 py-3 text-base font-semibold hover:bg-neutral-300 transition-colors w-full sm:w-auto shadow-sm"
               >
                 <Store className="w-5 h-5 mr-2" />
@@ -62,7 +64,7 @@ export default function HomePage() {
               ever happen to you again.
             </p>
             <a
-              href="https://github.com/pradel/revive-st"
+              href={WEBSITE_CONFIG.GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="shrink-0 inline-flex items-center font-medium hover:underline text-emerald-600"
@@ -222,7 +224,7 @@ export default function HomePage() {
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <a
-                href="https://github.com/pradel/revive-st"
+                href={WEBSITE_CONFIG.GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-md border border-neutral-300 px-6 py-3 text-base font-semibold hover:bg-neutral-50 transition-colors text-neutral-900 shadow-sm"
@@ -253,14 +255,14 @@ export default function HomePage() {
             <div className="flex flex-col items-center gap-4">
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link
-                  href="#download-ios"
+                  href={WEBSITE_CONFIG.IOS_APP_URL}
                   className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
                 >
                   <Apple className="w-5 h-5 mr-2" />
                   Download for iOS
                 </Link>
                 <Link
-                  href="#download-android"
+                  href={WEBSITE_CONFIG.ANDROID_APP_URL}
                   className="inline-flex items-center justify-center rounded-md bg-neutral-200 text-neutral-900 px-6 py-3 text-base font-semibold hover:bg-neutral-300 transition-colors shadow-sm"
                 >
                   <Store className="w-5 h-5 mr-2" />
@@ -297,7 +299,7 @@ export default function HomePage() {
             Terms of Service
           </Link>
           <a
-            href="https://github.com/pradel/revive-st"
+            href={WEBSITE_CONFIG.GITHUB_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="hover:text-neutral-900 transition-colors"
