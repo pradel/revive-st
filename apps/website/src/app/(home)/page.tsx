@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { FAQPage, SoftwareApplication, WithContext } from "schema-dts";
 
 import { WEBSITE_CONFIG } from "@/config";
 
@@ -26,9 +27,68 @@ export const metadata: Metadata = {
   },
 };
 
+const FAQS = [
+  {
+    question: "Which speakers does Revive ST work with?",
+    answer:
+      "Every Bose SoundTouch speaker that used the original app — the SoundTouch 10, 20, 30, Portable, Wave SoundTouch, SoundTouch SA‑4, SoundTouch 300 soundbar, and SoundTouch outdoor speaker systems. If the original SoundTouch app controlled it, Revive ST will too.",
+  },
+  {
+    question: "How hard is the setup?",
+    answer:
+      "The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works.",
+  },
+  {
+    question: "What features are supported?",
+    answer:
+      "Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), and real-time sync across devices. Multi-room zone control is coming soon.",
+  },
+  {
+    question: "How can I help?",
+    answer:
+      "Revive ST is a community project. You can report bugs, request features, or contribute code on GitHub. If you just want to support the work, downloading the app from the store is the easiest way.",
+  },
+];
+
 export default function HomePage() {
+  const softwareLd: WithContext<SoftwareApplication> = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Revive ST",
+    operatingSystem: "iOS, Android",
+    applicationCategory: "MultimediaApplication",
+    offers: {
+      "@type": "Offer",
+      price: "9.99",
+      priceCurrency: "USD",
+    },
+  };
+
+  const faqLd: WithContext<FAQPage> = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50 text-neutral-900 selection:bg-emerald-200">
+      <script
+        type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
       <main className="flex flex-col flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-32 pb-24 flex flex-col items-center justify-center text-center px-4">
@@ -274,22 +334,13 @@ export default function HomePage() {
             </div>
 
             <div className="md:col-span-7 lg:col-span-8 flex flex-col gap-3">
-              <FaqItem
-                question="Which speakers does Revive ST work with?"
-                answer="Every Bose SoundTouch speaker that used the original app — the SoundTouch 10, 20, 30, Portable. If the original SoundTouch app controlled it, Revive ST will too."
-              />
-              <FaqItem
-                question="How hard is the setup?"
-                answer="The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works."
-              />
-              <FaqItem
-                question="What features are supported?"
-                answer="Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), and real-time sync across devices. Multi-room zone control is coming soon."
-              />
-              <FaqItem
-                question="How can I help?"
-                answer="Revive ST is a community project. You can report bugs, request features, or contribute code on GitHub. If you just want to support the work, downloading the app from the store is the easiest way."
-              />
+              {FAQS.map((faq) => (
+                <FaqItem
+                  key={faq.question}
+                  question={faq.question}
+                  answer={faq.answer}
+                />
+              ))}
             </div>
           </div>
         </section>
