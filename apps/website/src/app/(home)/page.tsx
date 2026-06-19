@@ -8,9 +8,13 @@ import {
   Store,
   ShieldCheck,
   WifiOff,
+  Plus,
+  Minus,
+  MessageCircle,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { FAQPage, SoftwareApplication, WithContext } from "schema-dts";
 
 import { WEBSITE_CONFIG } from "@/config";
 
@@ -23,9 +27,68 @@ export const metadata: Metadata = {
   },
 };
 
+const FAQS = [
+  {
+    question: "Which speakers does Revive ST work with?",
+    answer:
+      "Every Bose SoundTouch speaker that used the original app — the SoundTouch 10, 20, 30, Portable, Wave SoundTouch, SoundTouch SA‑4, SoundTouch 300 soundbar, and SoundTouch outdoor speaker systems. If the original SoundTouch app controlled it, Revive ST will too.",
+  },
+  {
+    question: "How hard is the setup?",
+    answer:
+      "The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works.",
+  },
+  {
+    question: "What features are supported?",
+    answer:
+      "Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), and real-time sync across devices. Multi-room zone control is coming soon.",
+  },
+  {
+    question: "How can I help?",
+    answer:
+      "Revive ST is a community project. You can report bugs, request features, or contribute code on GitHub. If you just want to support the work, downloading the app from the store is the easiest way.",
+  },
+];
+
 export default function HomePage() {
+  const softwareLd: WithContext<SoftwareApplication> = {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    name: "Revive ST",
+    operatingSystem: "iOS, Android",
+    applicationCategory: "MultimediaApplication",
+    offers: {
+      "@type": "Offer",
+      price: "9.99",
+      priceCurrency: "USD",
+    },
+  };
+
+  const faqLd: WithContext<FAQPage> = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: FAQS.map((faq) => ({
+      "@type": "Question",
+      name: faq.question,
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: faq.answer,
+      },
+    })),
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50 text-neutral-900 selection:bg-emerald-200">
+      <script
+        type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareLd) }}
+      />
+      <script
+        type="application/ld+json"
+        // oxlint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
       <main className="flex flex-col flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-32 pb-24 flex flex-col items-center justify-center text-center px-4">
@@ -251,8 +314,42 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* FAQ Section */}
+        <section id="faq" className="py-24 px-4 bg-neutral-50">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
+            <div className="md:col-span-5 lg:col-span-4 flex flex-col">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-balance">
+                Frequently asked questions
+              </h2>
+              <p className="text-lg text-neutral-600 mb-8 text-pretty">
+                Can't find the answer you're looking for? We're here to help.
+              </p>
+              <a
+                href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}
+                className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors self-start shadow-sm"
+              >
+                Get in touch
+                <MessageCircle className="w-5 h-5 ml-2" />
+              </a>
+            </div>
+
+            <div className="md:col-span-7 lg:col-span-8 flex flex-col gap-3">
+              {FAQS.map((faq) => (
+                <FaqItem
+                  key={faq.question}
+                  question={faq.question}
+                  answer={faq.answer}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Final CTA Section */}
-        <section id="download" className="py-24 px-4 bg-neutral-50 text-center">
+        <section
+          id="download"
+          className="py-24 px-4 bg-white border-t border-neutral-200 text-center"
+        >
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-balance mb-6">
               Your speakers are still good.
@@ -367,5 +464,22 @@ function Step({
       <h3 className="text-lg font-bold mb-2 text-neutral-900">{title}</h3>
       <p className="text-sm text-neutral-600">{description}</p>
     </div>
+  );
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <details className="group bg-white rounded-2xl border border-neutral-200 hover:border-emerald-200 shadow-sm text-left overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-colors">
+      <summary className="flex cursor-pointer items-center justify-between p-4 md:p-5 font-semibold text-base text-neutral-900 focus-visible:outline-none focus-visible:bg-neutral-50 hover:bg-neutral-50 transition-colors">
+        {question}
+        <div className="ml-4 shrink-0 w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 transition-colors group-hover:bg-emerald-100">
+          <Plus className="w-4 h-4 block group-open:hidden" />
+          <Minus className="w-4 h-4 hidden group-open:block" />
+        </div>
+      </summary>
+      <div className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-neutral-600 leading-relaxed text-pretty">
+        {answer}
+      </div>
+    </details>
   );
 }

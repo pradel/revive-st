@@ -23,6 +23,25 @@ const inter = Inter({
 export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
+      <head>
+        <script
+          type="application/ld+json"
+          // oxlint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              name: "Revive ST",
+              url: siteUrl,
+              potentialAction: {
+                "@type": "SearchAction",
+                target: `${siteUrl}/api/search?query={search_term_string}`,
+                "query-input": "required name=search_term_string",
+              },
+            }),
+          }}
+        />
+      </head>
       <body className="flex flex-col min-h-screen">
         <FathomAnalytics />
         <RootProvider search={{ options: { type: "static" } }}>
