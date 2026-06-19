@@ -15,6 +15,9 @@ import Link from "next/link";
 import { WEBSITE_CONFIG } from "@/config";
 
 export const metadata: Metadata = {
+  title: "Revive ST — SoundTouch Controller App for iPhone and Android",
+  description:
+    "The SoundTouch app was shut down, but your speakers still work perfectly. Revive ST is the open-source replacement that brings back your preset buttons, internet radio, and multi-room control. Get your speakers working again today!",
   alternates: {
     canonical: "/",
   },
@@ -67,8 +70,8 @@ export default function HomePage() {
             <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
             <p className="text-pretty">
               <strong>Revive ST is fully open source.</strong> The code lives on
-              GitHub and anyone can run it for free, so nothing like this can
-              ever happen to you again.
+              GitHub and anyone can run or compile it themselves, so nothing
+              like this can ever happen to you again.
             </p>
             <a
               href={WEBSITE_CONFIG.GITHUB_URL}
