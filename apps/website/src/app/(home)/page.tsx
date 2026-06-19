@@ -8,6 +8,9 @@ import {
   Store,
   ShieldCheck,
   WifiOff,
+  Plus,
+  Minus,
+  MessageCircle,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -251,8 +254,51 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* FAQ Section */}
+        <section id="faq" className="py-24 px-4 bg-neutral-50">
+          <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
+            <div className="md:col-span-5 lg:col-span-4 flex flex-col">
+              <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-balance">
+                Frequently asked questions
+              </h2>
+              <p className="text-lg text-neutral-600 mb-8 text-pretty">
+                Can't find the answer you're looking for? We're here to help.
+              </p>
+              <a
+                href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}
+                className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors self-start shadow-sm"
+              >
+                Get in touch
+                <MessageCircle className="w-5 h-5 ml-2" />
+              </a>
+            </div>
+
+            <div className="md:col-span-7 lg:col-span-8 flex flex-col gap-3">
+              <FaqItem
+                question="Which speakers does Revive ST work with?"
+                answer="Every Bose SoundTouch speaker that used the original app — the SoundTouch 10, 20, 30, Portable. If the original SoundTouch app controlled it, Revive ST will too."
+              />
+              <FaqItem
+                question="How hard is the setup?"
+                answer="The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works."
+              />
+              <FaqItem
+                question="What features are supported?"
+                answer="Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), and real-time sync across devices. Multi-room zone control is coming soon."
+              />
+              <FaqItem
+                question="How can I help?"
+                answer="Revive ST is a community project. You can report bugs, request features, or contribute code on GitHub. If you just want to support the work, downloading the app from the store is the easiest way."
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Final CTA Section */}
-        <section id="download" className="py-24 px-4 bg-neutral-50 text-center">
+        <section
+          id="download"
+          className="py-24 px-4 bg-white border-t border-neutral-200 text-center"
+        >
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-balance mb-6">
               Your speakers are still good.
@@ -367,5 +413,22 @@ function Step({
       <h3 className="text-lg font-bold mb-2 text-neutral-900">{title}</h3>
       <p className="text-sm text-neutral-600">{description}</p>
     </div>
+  );
+}
+
+function FaqItem({ question, answer }: { question: string; answer: string }) {
+  return (
+    <details className="group bg-white rounded-2xl border border-neutral-200 hover:border-emerald-200 shadow-sm text-left overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-colors">
+      <summary className="flex cursor-pointer items-center justify-between p-4 md:p-5 font-semibold text-base text-neutral-900 focus-visible:outline-none focus-visible:bg-neutral-50 hover:bg-neutral-50 transition-colors">
+        {question}
+        <div className="ml-4 shrink-0 w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 transition-colors group-hover:bg-emerald-100">
+          <Plus className="w-4 h-4 block group-open:hidden" />
+          <Minus className="w-4 h-4 hidden group-open:block" />
+        </div>
+      </summary>
+      <div className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-neutral-600 leading-relaxed text-pretty">
+        {answer}
+      </div>
+    </details>
   );
 }
