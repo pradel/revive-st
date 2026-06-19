@@ -46,6 +46,7 @@ export default defineConfig({
       "no-magic-numbers": "off",
       "no-ternary": "off",
       "prefer-destructuring": "off",
+      "prefer-named-capture-group": "off",
       "sort-keys": "off",
       "sort-imports": "off",
       "react/jsx-max-depth": "off",
@@ -60,6 +61,7 @@ export default defineConfig({
       "require-unicode-regexp": "off",
       "react/jsx-props-no-spreading": "off",
       "react/no-unescaped-entities": "off",
+      "react/jsx-no-literals": "off",
       "typescript/explicit-function-return-type": "off",
       "typescript/explicit-member-accessibility": "off",
       "typescript/explicit-module-boundary-types": "off",
@@ -83,6 +85,7 @@ export default defineConfig({
       "typescript/no-unsafe-enum-comparison": "off",
       "typescript/switch-exhaustiveness-check": "off",
       "typescript/no-unsafe-argument": "off",
+      "react/react-compiler": "off",
     },
     overrides: [
       {
