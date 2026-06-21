@@ -32,6 +32,10 @@ const FAQS = [
     question: "Which speakers does Revive ST work with?",
     answer:
       "Every Bose SoundTouch speaker that used the original app — the SoundTouch 10, 20, 30, Portable, Wave SoundTouch, SoundTouch SA‑4, SoundTouch 300 soundbar, and SoundTouch outdoor speaker systems. If the original SoundTouch app controlled it, Revive ST will too.",
+    link: {
+      text: "See supported speakers \u2192",
+      href: "/docs/supported-speakers",
+    },
   },
   {
     question: "How hard is the setup?",
@@ -339,6 +343,7 @@ export default function HomePage() {
                   key={faq.question}
                   question={faq.question}
                   answer={faq.answer}
+                  link={faq.link}
                 />
               ))}
             </div>
@@ -467,7 +472,15 @@ function Step({
   );
 }
 
-function FaqItem({ question, answer }: { question: string; answer: string }) {
+function FaqItem({
+  question,
+  answer,
+  link,
+}: {
+  question: string;
+  answer: string;
+  link?: { text: string; href: string };
+}) {
   return (
     <details className="group bg-white rounded-2xl border border-neutral-200 hover:border-emerald-200 shadow-sm text-left overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-colors">
       <summary className="flex cursor-pointer items-center justify-between p-4 md:p-5 font-semibold text-base text-neutral-900 focus-visible:outline-none focus-visible:bg-neutral-50 hover:bg-neutral-50 transition-colors">
@@ -478,7 +491,15 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
         </div>
       </summary>
       <div className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-neutral-600 leading-relaxed text-pretty">
-        {answer}
+        <p>{answer}</p>
+        {link && (
+          <Link
+            href={link.href}
+            className="inline-block mt-2 font-medium text-emerald-600 hover:underline"
+          >
+            {link.text}
+          </Link>
+        )}
       </div>
     </details>
   );
