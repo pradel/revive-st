@@ -28,9 +28,11 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 
 ### Prerequisites
 
-- **Node.js**: v24 or newer
-- **Vite +**: Unified toolchain for the web (`npm install -g vite-plus` or use `vp`)
-- **Expo CLI**: For React Native development (`npm install -g expo-cli`)
+Before you start, ensure you have the following prerequisites installed:
+
+- **Node.js**: v24 or newer.
+- **Vite+**: We use Vite+ (`vp`) as our unified toolchain for package and runtime management.
+- **Expo CLI**: Required for mobile development.
 
 ### Setup
 
@@ -44,14 +46,14 @@ vp run ready
 
 ## Contributing
 
-We welcome contributions! Please follow these steps to contribute:
+We welcome contributions of all kinds, whether you want to fix a bug, add a new feature, or improve the documentation, this guide will help you get started.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes following Conventional Commits (`git commit -m 'feat: add amazing feature'`)
-4. Generate a changeset using `pnpm changeset` or `npx changeset` to document your changes
-5. Push to the branch (`git push origin feature/amazing-feature`)
-6. Open a Pull Request
+1. **Fork the repository** on GitHub.
+2. **Create a branch** for your feature or bug fix (`git checkout -b feature/my-new-feature`).
+3. **Write your code** and ensure it passes all tests (`vp check`, `vp test`).
+4. **Commit your changes** using [Conventional Commits](https://www.conventionalcommits.org/).
+5. **Add a changeset** if you modify any packages or apps: `vp run changeset`.
+6. **Open a Pull Request** against the `main` branch.
 
 For large features or architecture changes, please open an issue first to discuss what you would like to change.
 

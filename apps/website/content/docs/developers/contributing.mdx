@@ -5,17 +5,19 @@ description: How to contribute code, report bugs, or request features.
 
 # Contributing
 
-Revive ST is a community project, and we welcome contributions of all kinds. Whether you want to fix a bug, add a new feature, or improve the documentation, this guide will help you get started.
+We welcome contributions of all kinds, whether you want to fix a bug, add a new feature, or improve the documentation, this guide will help you get started.
 
 ## Monorepo Structure
 
 We use a modern monorepo structure to keep everything organized:
 
 - `apps/app/`: The Expo React Native mobile application.
-- `apps/api/`: The Hono/Nitro API server that emulates the legacy Marge streaming server.
+- `apps/api/`: The Hono/Nitro API server that emulates the Bose Sountouch Marge streaming server.
 - `apps/website/`: The Next.js website and documentation.
-- `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Web API.
+- `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Speaker API.
 - `packages/bose-wifi/`: Expo native module for Wi-Fi speaker setup.
+- `docs/`: Project documentation including Bose API reference, agent skills guides.
+- `.github/workflows/`: CI/CD pipeline definitions.
 
 ## Development Setup
 
@@ -29,21 +31,6 @@ Run the setup command to install dependencies across the monorepo:
 
 ```bash
 vp install
-```
-
-## Running Locally
-
-To start the website and the API server locally:
-
-```bash
-vp dev
-```
-
-To run the mobile app, navigate to `apps/app` and start Expo:
-
-```bash
-cd apps/app
-vp run start
 ```
 
 ## Running Tests
