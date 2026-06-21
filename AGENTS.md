@@ -31,10 +31,10 @@ Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md
 
 ## Repository Structure
 
-- `apps/api/` — Hono/Nitro API server emulating the Bose SoundTouch "Marge" streaming server.
-- `apps/app/` — Expo React Native mobile app for controlling Bose SoundTouch speakers.
-- `apps/website/` — Next.js website and documentation for Revive ST.
-- `packages/bose-api-speaker-client/` — Typed HTTP client library covering all 19 Bose SoundTouch Web API endpoints with `better-result` railway-oriented error handling.
-- `packages/bose-wifi/` — Expo native module providing WiFi connectivity for Bose speaker setup.
+- `apps/app/`: The Expo React Native mobile application.
+- `apps/api/`: The Hono/Nitro API server that emulates the Bose Sountouch Marge streaming server.
+- `apps/website/`: The Next.js website and documentation.
+- `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Speaker API.
+- `packages/bose-wifi/`: Expo native module for Wi-Fi speaker setup.
 - `docs/` — Project documentation including Bose API reference, agent skills guides.
 - `.github/workflows/` — CI/CD pipeline definitions.
