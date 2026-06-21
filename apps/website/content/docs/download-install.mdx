@@ -3,6 +3,8 @@ title: Download & Install
 description: How to get the app on your device.
 ---
 
+import { WEBSITE_CONFIG } from "@/config";
+
 # Download & Install
 
 Revive ST is available on both iOS and Android devices. You can download the app directly from your device's app store.
@@ -10,8 +12,8 @@ Revive ST is available on both iOS and Android devices. You can download the app
 ## Get the App
 
 <Cards>
-  <Card title="Download on the App Store" href="https://apps.apple.com" />
-  <Card title="Get it on Google Play" href="https://play.google.com" />
+  <Card title="Download on the App Store" href={WEBSITE_CONFIG.IOS_APP_URL} />
+  <Card title="Get it on Google Play" href={WEBSITE_CONFIG.ANDROID_APP_URL} />
 </Cards>
 
 ## System Requirements
