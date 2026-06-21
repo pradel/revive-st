@@ -1,0 +1,84 @@
+---
+title: Contributing to Revive ST
+description: How to contribute code, report bugs, or request features.
+---
+
+# Contributing
+
+Revive ST is a community project, and we welcome contributions of all kinds. Whether you want to fix a bug, add a new feature, or improve the documentation, this guide will help you get started.
+
+## Monorepo Structure
+
+We use a modern monorepo structure to keep everything organized:
+
+- `apps/app/`: The Expo React Native mobile application.
+- `apps/api/`: The Hono/Nitro API server that emulates the legacy Marge streaming server.
+- `apps/website/`: The Next.js website and documentation.
+- `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Web API.
+- `packages/bose-wifi/`: Expo native module for Wi-Fi speaker setup.
+
+## Development Setup
+
+Before you start, ensure you have the following prerequisites installed:
+
+- **Node.js**: v24 or newer.
+- **Vite+**: We use Vite+ (`vp`) as our unified toolchain for package and runtime management.
+- **Expo CLI**: Required for mobile development.
+
+Run the setup command to install dependencies across the monorepo:
+
+```bash
+vp install
+```
+
+## Running Locally
+
+To start the website and the API server locally:
+
+```bash
+vp dev
+```
+
+To run the mobile app, navigate to `apps/app` and start Expo:
+
+```bash
+cd apps/app
+vp run start
+```
+
+## Running Tests
+
+We strictly enforce code formatting, linting, and type checking:
+
+```bash
+# Format, lint, and type check changes
+vp check
+
+# Run tests
+vp test
+```
+
+## Pull Request Process
+
+1. **Fork the repository** on GitHub.
+2. **Create a branch** for your feature or bug fix (`git checkout -b feature/my-new-feature`).
+3. **Write your code** and ensure it passes all tests (`vp check`, `vp test`).
+4. **Commit your changes** using [Conventional Commits](https://www.conventionalcommits.org/).
+5. **Add a changeset** if you modify any packages or apps: `vp run changeset`.
+6. **Open a Pull Request** against the `main` branch.
+
+## Issues
+
+### Bug Reports
+
+When filing a bug, please provide:
+
+- A clear description of the issue.
+- Steps to reproduce.
+- Your device type, OS version, and SoundTouch speaker model.
+
+### Feature Requests
+
+For feature requests, describe the problem you're trying to solve and how the proposed feature would address it.
+
+[View GitHub Issues & Discussions →](https://github.com/pradel/revive-st/issues)
