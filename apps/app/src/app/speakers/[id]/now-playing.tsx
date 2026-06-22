@@ -6,7 +6,6 @@ import {
   Text,
   TouchableOpacity,
   View,
-  PanResponder,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type TextStyle,
@@ -46,18 +45,6 @@ export default function NowPlayingModal() {
     sliderLayoutsRef.current = event.nativeEvent.layout.width;
   }, []);
 
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (evt, gestureState) => gestureState.dy > 5,
-      onPanResponderRelease: (evt, gestureState) => {
-        if (gestureState.dy > 50 || gestureState.vy > 0.5) {
-          router.back();
-        }
-      },
-    }),
-  ).current;
-
   if (!speaker) {
     return (
       <View style={$container}>
@@ -77,11 +64,6 @@ export default function NowPlayingModal() {
 
   return (
     <SafeAreaView style={$container}>
-      {/* Drag Handle */}
-      <View style={$dragHandleContainer} {...panResponder.panHandlers}>
-        <View style={$dragHandle} />
-      </View>
-
       {/* Top Header */}
       <View style={$header}>
         <TouchableOpacity
@@ -249,21 +231,6 @@ export default function NowPlayingModal() {
 const $container: ViewStyle = {
   flex: 1,
   backgroundColor: COLORS.background, // Should match dark background from design
-};
-
-const $dragHandleContainer: ViewStyle = {
-  alignItems: "center",
-  justifyContent: "center",
-  paddingTop: 16,
-  paddingBottom: 16,
-  width: "100%",
-};
-
-const $dragHandle: ViewStyle = {
-  width: 40,
-  height: 5,
-  borderRadius: 3,
-  backgroundColor: COLORS.border,
 };
 
 const $header: ViewStyle = {

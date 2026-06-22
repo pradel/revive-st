@@ -23,10 +23,8 @@ export default function RootLayout() {
           <Stack.Screen
             name="speakers/[id]/now-playing"
             options={{
-              presentation: "modal",
-              animation: "slide_from_bottom",
-              gestureEnabled: true,
-              gestureDirection: "vertical",
+              presentation: "formSheet",
+              sheetGrabberVisible: true,
             }}
           />
         </Stack>
