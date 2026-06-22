@@ -82,7 +82,7 @@ export default function NowPlayingModal() {
             size={24}
           />
         </TouchableOpacity>
-        {speaker.source && (
+        {Boolean(speaker.source) && (
           <View style={$sourceContainer}>
             <Text style={$sourceText}>{speaker.source}</Text>
           </View>
