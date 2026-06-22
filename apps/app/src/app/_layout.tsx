@@ -19,7 +19,12 @@ export default function RootLayout() {
             headerShown: false,
             contentStyle: { backgroundColor: COLORS.background },
           }}
-        />
+        >
+          <Stack.Screen
+            name="speakers/[id]/now-playing"
+            options={{ presentation: "modal" }}
+          />
+        </Stack>
       </BoseProvider>
     </QueryProvider>
   );
