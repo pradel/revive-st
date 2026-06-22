@@ -1,3 +1,4 @@
+import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useRef } from "react";
@@ -9,6 +10,7 @@ import {
   TouchableOpacity,
   View,
   type GestureResponderEvent,
+  type ImageStyle,
   type LayoutChangeEvent,
   type TextStyle,
   type ViewStyle,
@@ -214,78 +216,57 @@ export default function Index() {
 
               return (
                 <View key={speaker.deviceID} style={$speakerCard}>
-                  {/* Top row: icon, name, type, online badge, settings */}
-                  <View style={$cardTopRow}>
-                    <View style={$cardTopLeft}>
-                      <View style={$speakerIcon}>
-                        <SymbolView
-                          name={{
-                            ios: "speaker.wave.2.fill",
-                            android: "speaker",
-                            web: "speaker",
-                          }}
-                          tintColor={COLORS.textMuted}
-                          size={20}
-                        />
-                      </View>
-                      <View style={$cardMeta}>
-                        <Text style={$speakerName} numberOfLines={1}>
-                          {speaker.name}
-                        </Text>
-                        <Text style={$speakerType}>
-                          {speaker.type} · {speaker.host}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View style={$cardTopRight}>
-                      <View style={$onlineBadge}>
-                        <View style={$onlineDot} />
-                        <Text style={$onlineText}>Online</Text>
-                      </View>
-                      <TouchableOpacity
-                        style={$settingsButton}
-                        onPress={() => {
-                          navigateToSettings(speaker);
-                        }}
-                        activeOpacity={0.7}
-                        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                      >
-                        <SymbolView
-                          name={{
-                            ios: "gearshape.fill",
-                            android: "settings",
-                            web: "settings",
-                          }}
-                          tintColor={COLORS.textMuted}
-                          size={16}
-                        />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-
-                  {/* Divider */}
-                  <View style={$cardDivider} />
-
-                  {/* Playing status */}
-                  <View style={$playingRow}>
-                    <View
-                      style={[
-                        $playingDot,
-                        status.active ? $playingDotActive : $playingDotInactive,
-                      ]}
-                    />
-                    <Text style={$playingStatusText}>
-                      {status.active || status.label === "Paused"
-                        ? status.label +
-                          (speaker.track
-                            ? ` · ${speaker.track}${speaker.artist ? ` — ${speaker.artist}` : ""}`
-                            : "")
-                        : status.label}
+                  {/* Top row: name, link icon / online badge */}
+                  <View style={$cardHeader}>
+                    <Text style={$speakerName} numberOfLines={1}>
+                      {speaker.name}
                     </Text>
                   </View>
 
-                  {/* Volume slider */}
+                  {/* Middle row: Album Art & Track Info OR Fallback & Select Music */}
+                  <View style={$cardContent}>
+                    <View style={$albumCoverContainer}>
+                      {speaker.artUrl ? (
+                        <Image
+                          source={{ uri: speaker.artUrl }}
+                          style={$albumCoverImage}
+                          contentFit="cover"
+                          transition={200}
+                        />
+                      ) : (
+                        <SymbolView
+                          name={{
+                            ios: "music.note",
+                            android: "music_note",
+                            web: "music_note",
+                          }}
+                          tintColor={COLORS.textMuted}
+                          size={24}
+                        />
+                      )}
+                    </View>
+
+                    <View style={$trackInfoContainer}>
+                      {speaker.track || speaker.artUrl || status.active ? (
+                        <>
+                          <View style={$trackTitleRow}>
+                            <Text style={$trackTitle} numberOfLines={1}>
+                              {speaker.track ?? "Unknown Track"}
+                            </Text>
+                          </View>
+                          <Text style={$trackSubtitle} numberOfLines={1}>
+                            {speaker.artist
+                              ? `${speaker.artist} - ${speaker.album ?? ""}`
+                              : (speaker.album ?? "")}
+                          </Text>
+                        </>
+                      ) : (
+                        <Text style={$emptyTrackText}>No Music Selected</Text>
+                      )}
+                    </View>
+                  </View>
+
+                  {/* Bottom row: Volume */}
                   <View style={$volumeRow}>
                     <SymbolView
                       name={{
@@ -293,8 +274,8 @@ export default function Index() {
                         android: "volume_down",
                         web: "volume_down",
                       }}
-                      tintColor={COLORS.border}
-                      size={14}
+                      tintColor={COLORS.text}
+                      size={16}
                     />
                     <TouchableOpacity
                       style={$sliderTrack}
@@ -309,16 +290,25 @@ export default function Index() {
                       <View style={[$sliderFill, { width: `${volume}%` }]} />
                       <View style={[$sliderThumb, { left: `${volume}%` }]} />
                     </TouchableOpacity>
-                    <SymbolView
-                      name={{
-                        ios: "speaker.wave.3.fill",
-                        android: "volume_up",
-                        web: "volume_up",
+                    <Text style={$volumeText}>{volume}</Text>
+                    <TouchableOpacity
+                      style={$settingsButton}
+                      onPress={() => {
+                        navigateToSettings(speaker);
                       }}
-                      tintColor={COLORS.textMuted}
-                      size={14}
-                    />
-                    <Text style={$volumeText}>{volume}%</Text>
+                      activeOpacity={0.7}
+                      hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    >
+                      <SymbolView
+                        name={{
+                          ios: "gearshape",
+                          android: "settings",
+                          web: "settings",
+                        }}
+                        tintColor={COLORS.text}
+                        size={20}
+                      />
+                    </TouchableOpacity>
                   </View>
                 </View>
               );
@@ -483,121 +473,76 @@ const $speakerCard: ViewStyle = {
   borderColor: COLORS.border,
 };
 
-const $cardTopRow: ViewStyle = {
+const $cardHeader: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
-  alignItems: "flex-start",
-};
-
-const $cardTopLeft: ViewStyle = {
-  flexDirection: "row",
   alignItems: "center",
-  flex: 1,
-};
-
-const $speakerIcon: ViewStyle = {
-  width: 40,
-  height: 40,
-  borderRadius: 12,
-  backgroundColor: COLORS.border,
-  alignItems: "center",
-  justifyContent: "center",
-  marginRight: 12,
-};
-
-const $cardMeta: ViewStyle = {
-  flex: 1,
+  marginBottom: 16,
 };
 
 const $speakerName: TextStyle = {
-  fontSize: 15,
+  fontSize: 18,
+  fontWeight: "700",
+  color: COLORS.text,
+  flex: 1,
+};
+
+const $cardContent: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 20,
+};
+
+const $albumCoverContainer: ViewStyle = {
+  width: 60,
+  height: 60,
+  borderRadius: 8,
+  backgroundColor: COLORS.border,
+  alignItems: "center",
+  justifyContent: "center",
+  marginRight: 16,
+  overflow: "hidden",
+};
+
+const $albumCoverImage: ImageStyle = {
+  position: "absolute",
+  width: "100%",
+  height: "100%",
+};
+
+const $trackInfoContainer: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+};
+
+const $trackTitleRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  marginBottom: 4,
+};
+
+const $trackTitle: TextStyle = {
+  fontSize: 16,
   fontWeight: "600",
   color: COLORS.text,
 };
 
-const $speakerType: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textDisabled,
-  marginTop: 2,
+const $trackSubtitle: TextStyle = {
+  fontSize: 14,
+  color: COLORS.textMuted,
 };
 
-const $cardTopRight: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 10,
-};
-
-const $onlineBadge: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 5,
-  backgroundColor: COLORS.successDark,
-  paddingHorizontal: 8,
-  paddingVertical: 3,
-  borderRadius: 6,
-};
-
-const $onlineDot: ViewStyle = {
-  width: 6,
-  height: 6,
-  borderRadius: 3,
-  backgroundColor: COLORS.success,
-};
-
-const $onlineText: TextStyle = {
-  fontSize: 10,
-  color: COLORS.successLight,
-  fontWeight: "700",
-  letterSpacing: 0.3,
-};
-
-const $settingsButton: ViewStyle = {
-  width: 32,
-  height: 32,
-  borderRadius: 10,
-  backgroundColor: COLORS.border,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $cardDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginVertical: 12,
-};
-
-const $playingRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  marginBottom: 14,
-};
-
-const $playingDot: ViewStyle = {
-  width: 7,
-  height: 7,
-  borderRadius: 4,
-  marginRight: 8,
-};
-
-const $playingDotActive: ViewStyle = {
-  backgroundColor: COLORS.success,
-};
-
-const $playingDotInactive: ViewStyle = {
-  backgroundColor: COLORS.warningDark,
-};
-
-const $playingStatusText: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textSecondary,
+const $emptyTrackText: TextStyle = {
+  fontSize: 14,
   fontWeight: "500",
-  flex: 1,
+  color: COLORS.text,
+  marginBottom: 8,
 };
 
 const $volumeRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  gap: 10,
+  gap: 12,
 };
 
 const $sliderTrack: ViewStyle = {
@@ -626,11 +571,16 @@ const $sliderThumb: ViewStyle = {
 };
 
 const $volumeText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textDisabled,
-  fontWeight: "600",
-  width: 32,
+  fontSize: 14,
+  color: COLORS.text,
+  fontWeight: "500",
+  width: 24,
   textAlign: "right",
+};
+
+const $settingsButton: ViewStyle = {
+  padding: 4,
+  marginLeft: 4,
 };
 
 const $addSpeakerButton: ViewStyle = {
