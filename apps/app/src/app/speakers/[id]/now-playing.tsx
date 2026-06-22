@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  PanResponder,
   type GestureResponderEvent,
   type LayoutChangeEvent,
   type TextStyle,
@@ -45,6 +46,18 @@ export default function NowPlayingModal() {
     sliderLayoutsRef.current = event.nativeEvent.layout.width;
   }, []);
 
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (evt, gestureState) => gestureState.dy > 5,
+      onPanResponderRelease: (evt, gestureState) => {
+        if (gestureState.dy > 50 || gestureState.vy > 0.5) {
+          router.back();
+        }
+      },
+    }),
+  ).current;
+
   if (!speaker) {
     return (
       <View style={$container}>
@@ -65,7 +78,7 @@ export default function NowPlayingModal() {
   return (
     <SafeAreaView style={$container}>
       {/* Drag Handle */}
-      <View style={$dragHandleContainer}>
+      <View style={$dragHandleContainer} {...panResponder.panHandlers}>
         <View style={$dragHandle} />
       </View>
 
@@ -240,8 +253,10 @@ const $container: ViewStyle = {
 
 const $dragHandleContainer: ViewStyle = {
   alignItems: "center",
-  paddingTop: 8,
-  paddingBottom: 4,
+  justifyContent: "center",
+  paddingTop: 16,
+  paddingBottom: 16,
+  width: "100%",
 };
 
 const $dragHandle: ViewStyle = {
