@@ -2,6 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "release:app": "./scripts/release-app.sh",
     "ready": "vp check && vp run -r test && vp run -r build",
     "dev": "vp run website#dev",
     "prepare": "vp config"
@@ -13,5 +14,5 @@
   "engines": {
     "node": ">=24.0.0"
   },
-  "packageManager": "pnpm@11.6.0"
+  "packageManager": "pnpm@11.8.0"
 }
