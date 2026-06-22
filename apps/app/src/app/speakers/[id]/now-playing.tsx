@@ -64,6 +64,11 @@ export default function NowPlayingModal() {
 
   return (
     <SafeAreaView style={$container}>
+      {/* Drag Handle */}
+      <View style={$dragHandleContainer}>
+        <View style={$dragHandle} />
+      </View>
+
       {/* Top Header */}
       <View style={$header}>
         <TouchableOpacity
@@ -231,6 +236,19 @@ export default function NowPlayingModal() {
 const $container: ViewStyle = {
   flex: 1,
   backgroundColor: COLORS.background, // Should match dark background from design
+};
+
+const $dragHandleContainer: ViewStyle = {
+  alignItems: "center",
+  paddingTop: 8,
+  paddingBottom: 4,
+};
+
+const $dragHandle: ViewStyle = {
+  width: 40,
+  height: 5,
+  borderRadius: 3,
+  backgroundColor: COLORS.border,
 };
 
 const $header: ViewStyle = {
