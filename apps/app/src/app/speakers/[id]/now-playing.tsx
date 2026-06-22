@@ -82,16 +82,15 @@ export default function NowPlayingModal() {
             size={24}
           />
         </TouchableOpacity>
-        {Boolean(speaker.source) && (
+        {speaker.source ? (
           <View style={$sourceContainer}>
             <Text style={$sourceText}>{speaker.source}</Text>
           </View>
-        )}
-        <View style={{ width: 24 }} /> {/* Spacer to balance header */}
+        ) : null}
+        <View style={{ width: 24 }} />
       </View>
 
       <View style={$content}>
-        {/* Album Art Area */}
         <View style={$albumContainer}>
           {hasMusic && speaker.artUrl ? (
             <Image
@@ -115,7 +114,6 @@ export default function NowPlayingModal() {
           )}
         </View>
 
-        {/* Track Info */}
         <View style={$trackInfo}>
           {hasMusic ? (
             <>
@@ -140,7 +138,6 @@ export default function NowPlayingModal() {
           )}
         </View>
 
-        {/* Playback Controls */}
         <View style={$playbackControls}>
           <TouchableOpacity
             style={$controlButton}
@@ -196,7 +193,6 @@ export default function NowPlayingModal() {
           </TouchableOpacity>
         </View>
 
-        {/* Volume Control */}
         <View style={$volumeRow}>
           <SymbolView
             name={{
@@ -219,10 +215,7 @@ export default function NowPlayingModal() {
           <Text style={$volumeText}>{volume}</Text>
         </View>
 
-        {/* Placeholder for action buttons / presets at the bottom */}
-        <View style={$actionsRow}>
-          {/* Add future preset/grouping buttons here if needed */}
-        </View>
+        <View style={$actionsRow} />
       </View>
     </SafeAreaView>
   );
