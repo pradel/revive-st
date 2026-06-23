@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import WifiManager from "react-native-wifi-reborn";
 
+import { Card } from "@/components/ui/Card";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { isSpeakerHotspot } from "@/features/onboarding/utils/networkHelpers";
 import { COLORS } from "@/ui/theme";
@@ -146,7 +147,7 @@ export default function NetworkPickerScreen() {
           </View>
 
           {/* Card */}
-          <View style={$card}>
+          <Card style={$card}>
             <View style={$badge}>
               <Text style={$badgeText}>SETUP WIZARD</Text>
             </View>
@@ -293,7 +294,7 @@ export default function NetworkPickerScreen() {
                 />
               </TouchableOpacity>
             </View>
-          </View>
+          </Card>
 
           {/* Action Buttons */}
           <View style={$buttonContainer}>
@@ -355,11 +356,8 @@ const $iconContainer: ViewStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
   borderRadius: 20,
   padding: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
   alignItems: "center",
   marginBottom: 32,

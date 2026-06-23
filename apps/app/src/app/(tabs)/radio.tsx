@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
+  TouchableOpacity,
   Pressable,
   ActivityIndicator,
   TextInput,
@@ -19,6 +20,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Card } from "@/components/ui/Card";
 import {
   useRadioFavorites,
   useRadioToggleFavorite,
@@ -174,11 +176,15 @@ export default function RadioBrowser() {
     };
 
     return (
-      <Pressable
+      <Card
         style={$stationCard}
-        onPress={() => {
-          handleStationPress(item);
-        }}
+        render={
+          <TouchableOpacity
+            onPress={() => {
+              handleStationPress(item);
+            }}
+          />
+        }
       >
         <View style={$stationLogoContainer}>
           {item.favicon ? (
@@ -209,7 +215,7 @@ export default function RadioBrowser() {
             {isFav ? "★" : "☆"}
           </Text>
         </Pressable>
-      </Pressable>
+      </Card>
     );
   };
 
@@ -526,15 +532,19 @@ function SpeakerCastItem({
   };
 
   return (
-    <Pressable
+    <Card
       style={[$speakerItem, (!isConfigured || isDisabled) && { opacity: 0.6 }]}
-      onPress={() => {
-        logger.info(
-          `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
-        );
-        onCast(speaker.deviceID, isConfigured);
-      }}
-      disabled={isDisabled}
+      render={
+        <TouchableOpacity
+          onPress={() => {
+            logger.info(
+              `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
+            );
+            onCast(speaker.deviceID, isConfigured);
+          }}
+          disabled={isDisabled}
+        />
+      }
     >
       <View style={$speakerItemLeft}>
         <SymbolView
@@ -552,7 +562,7 @@ function SpeakerCastItem({
         </View>
       </View>
       {renderIcon()}
-    </Pressable>
+    </Card>
   );
 }
 
@@ -660,10 +670,6 @@ const $listContent: ViewStyle = {
 const $stationCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   padding: 10,
 };
 
@@ -825,10 +831,6 @@ const $speakerItem: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  backgroundColor: COLORS.card,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  borderRadius: 16,
   padding: 16,
   marginBottom: 10,
 };

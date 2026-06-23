@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { COLORS } from "@/ui/theme";
 
@@ -52,7 +53,7 @@ export default function SuccessScreen() {
         </View>
 
         {/* Card */}
-        <View style={$card}>
+        <Card style={$card}>
           <View style={$badge}>
             <Text style={$badgeText}>SETUP COMPLETED</Text>
           </View>
@@ -64,7 +65,7 @@ export default function SuccessScreen() {
             Your speaker has been configured and connected successfully to your
             local network.
           </Text>
-        </View>
+        </Card>
 
         {/* Action Buttons */}
         <View style={$buttonContainer}>
@@ -116,11 +117,8 @@ const $iconContainer: ViewStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
   borderRadius: 20,
   padding: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
   alignItems: "center",
   marginBottom: 32,

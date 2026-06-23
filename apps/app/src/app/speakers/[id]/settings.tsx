@@ -15,6 +15,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
 import { COLORS } from "@/ui/theme";
@@ -169,7 +170,7 @@ export default function SpeakerSettings() {
       />
 
       {/* Hero */}
-      <View style={[$card, $heroCard]}>
+      <Card style={[$card, $heroCard]}>
         <View style={$heroIconContainer}>
           <SymbolView
             name={{ ios: "speaker.wave.2", android: "speaker", web: "speaker" }}
@@ -181,12 +182,12 @@ export default function SpeakerSettings() {
         <Text style={$heroSubtitle}>
           {speaker.type} · {speaker.host}
         </Text>
-      </View>
+      </Card>
 
       {/* Name */}
       <Text style={$sectionLabel}>Name</Text>
       {nameValue !== "" ? (
-        <View style={$card}>
+        <Card>
           <View style={$renameRow}>
             <TextInput
               style={[$textInput, nameError ? $textInputError : undefined]}
@@ -222,14 +223,18 @@ export default function SpeakerSettings() {
             )}
           </View>
           {nameError ? <Text style={$nameErrorText}>{nameError}</Text> : null}
-        </View>
+        </Card>
       ) : (
-        <TouchableOpacity
+        <Card
           style={$linkCard}
-          activeOpacity={0.7}
-          onPress={() => {
-            setNameValue(speaker.name);
-          }}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setNameValue(speaker.name);
+              }}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             <SymbolView
@@ -252,12 +257,12 @@ export default function SpeakerSettings() {
               size={20}
             />
           )}
-        </TouchableOpacity>
+        </Card>
       )}
 
       {/* Audio */}
       <Text style={$sectionLabel}>Audio</Text>
-      <View style={$card}>
+      <Card>
         {/* Bass */}
         {showBass && bassCaps ? (
           <NativeSliderSetting
@@ -365,11 +370,11 @@ export default function SpeakerSettings() {
             />
           </>
         ) : null}
-      </View>
+      </Card>
 
       {/* Radio Configuration */}
       <Text style={$sectionLabel}>Radio Configuration</Text>
-      <View style={$card}>
+      <Card>
         <View style={$infoRow}>
           <Text style={$infoLabel}>Marge API Radio</Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
@@ -441,7 +446,7 @@ export default function SpeakerSettings() {
             </TouchableOpacity>
           </>
         )}
-      </View>
+      </Card>
 
       {/* Presets */}
       <Text style={$sectionLabel}>Presets</Text>
@@ -455,7 +460,7 @@ export default function SpeakerSettings() {
         you hear a beep. From now on you can start the stream by pressing the
         preset button.
       </Text>
-      <View style={$card}>
+      <Card>
         {speaker.presets && speaker.presets.length > 0 ? (
           speaker.presets.map((preset, index) => (
             <View key={preset.id}>
@@ -490,11 +495,11 @@ export default function SpeakerSettings() {
         ) : (
           <Text style={$infoValue}>No presets configured.</Text>
         )}
-      </View>
+      </Card>
 
       {/* Device Info */}
       <Text style={$sectionLabel}>Device Info</Text>
-      <View style={$card}>
+      <Card>
         <View style={$infoRow}>
           <Text style={$infoLabel}>Device ID</Text>
           <Text style={$infoValue} numberOfLines={1}>
@@ -525,13 +530,13 @@ export default function SpeakerSettings() {
           <Text style={$infoLabel}>Type</Text>
           <Text style={$infoValue}>{speaker.type}</Text>
         </View>
-      </View>
+      </Card>
 
       {/* Software Versions */}
       {speaker.components && speaker.components.length > 0 ? (
         <>
           <Text style={$sectionLabel}>Software</Text>
-          <View style={$card}>
+          <Card>
             {speaker.components.map((comp, index) => (
               <View key={comp.serialNumber || index}>
                 {index > 0 && <View style={$infoDivider} />}
@@ -541,7 +546,7 @@ export default function SpeakerSettings() {
                 <Text style={$versionValue}>{comp.softwareVersion}</Text>
               </View>
             ))}
-          </View>
+          </Card>
         </>
       ) : null}
     </ScrollView>
@@ -770,11 +775,7 @@ const $backButtonText: TextStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
   padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $heroCard: ViewStyle = {
@@ -818,11 +819,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
   padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $linkIconContainer: ViewStyle = {
