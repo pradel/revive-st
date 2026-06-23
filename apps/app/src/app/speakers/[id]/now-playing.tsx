@@ -12,7 +12,6 @@ import {
   type ViewStyle,
   type ImageStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { COLORS } from "@/ui/theme";
@@ -63,7 +62,7 @@ export default function NowPlayingModal() {
   );
 
   return (
-    <SafeAreaView style={$container}>
+    <View style={$container}>
       {/* Top Header */}
       <View style={$header}>
         <TouchableOpacity
@@ -217,7 +216,7 @@ export default function NowPlayingModal() {
 
         <View style={$actionsRow} />
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
