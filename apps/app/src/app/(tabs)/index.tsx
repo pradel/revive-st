@@ -216,55 +216,64 @@ export default function Index() {
 
               return (
                 <View key={speaker.deviceID} style={$speakerCard}>
-                  {/* Top row: name, link icon / online badge */}
-                  <View style={$cardHeader}>
-                    <Text style={$speakerName} numberOfLines={1}>
-                      {speaker.name}
-                    </Text>
-                  </View>
-
-                  {/* Middle row: Album Art & Track Info OR Fallback & Select Music */}
-                  <View style={$cardContent}>
-                    <View style={$albumCoverContainer}>
-                      {speaker.artUrl ? (
-                        <Image
-                          source={{ uri: speaker.artUrl }}
-                          style={$albumCoverImage}
-                          contentFit="cover"
-                          transition={200}
-                        />
-                      ) : (
-                        <SymbolView
-                          name={{
-                            ios: "music.note",
-                            android: "music_note",
-                            web: "music_note",
-                          }}
-                          tintColor={COLORS.textMuted}
-                          size={24}
-                        />
-                      )}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      router.push(
+                        `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
+                      );
+                    }}
+                  >
+                    {/* Top row: name, link icon / online badge */}
+                    <View style={$cardHeader}>
+                      <Text style={$speakerName} numberOfLines={1}>
+                        {speaker.name}
+                      </Text>
                     </View>
 
-                    <View style={$trackInfoContainer}>
-                      {speaker.track || speaker.artUrl || status.active ? (
-                        <>
-                          <View style={$trackTitleRow}>
-                            <Text style={$trackTitle} numberOfLines={1}>
-                              {speaker.track ?? "Unknown Track"}
+                    {/* Middle row: Album Art & Track Info OR Fallback & Select Music */}
+                    <View style={$cardContent}>
+                      <View style={$albumCoverContainer}>
+                        {speaker.artUrl ? (
+                          <Image
+                            source={{ uri: speaker.artUrl }}
+                            style={$albumCoverImage}
+                            contentFit="cover"
+                            transition={200}
+                          />
+                        ) : (
+                          <SymbolView
+                            name={{
+                              ios: "music.note",
+                              android: "music_note",
+                              web: "music_note",
+                            }}
+                            tintColor={COLORS.textMuted}
+                            size={24}
+                          />
+                        )}
+                      </View>
+
+                      <View style={$trackInfoContainer}>
+                        {speaker.track || speaker.artUrl || status.active ? (
+                          <>
+                            <View style={$trackTitleRow}>
+                              <Text style={$trackTitle} numberOfLines={1}>
+                                {speaker.track ?? "Unknown Track"}
+                              </Text>
+                            </View>
+                            <Text style={$trackSubtitle} numberOfLines={1}>
+                              {speaker.artist
+                                ? `${speaker.artist} - ${speaker.album ?? ""}`
+                                : (speaker.album ?? "")}
                             </Text>
-                          </View>
-                          <Text style={$trackSubtitle} numberOfLines={1}>
-                            {speaker.artist
-                              ? `${speaker.artist} - ${speaker.album ?? ""}`
-                              : (speaker.album ?? "")}
-                          </Text>
-                        </>
-                      ) : (
-                        <Text style={$emptyTrackText}>No Music Selected</Text>
-                      )}
+                          </>
+                        ) : (
+                          <Text style={$emptyTrackText}>No Music Selected</Text>
+                        )}
+                      </View>
                     </View>
-                  </View>
+                  </TouchableOpacity>
 
                   {/* Bottom row: Volume */}
                   <View style={$volumeRow}>
