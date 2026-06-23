@@ -107,14 +107,18 @@ export default function PermissionsScreen() {
 
           <Card
             style={$secondaryButton}
-            onPress={() => {
-              if (router.canGoBack()) {
-                router.back();
-              } else {
-                router.replace("/(tabs)");
-              }
-            }}
-            activeOpacity={0.8}
+            render={
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                  if (router.canGoBack()) {
+                    router.back();
+                  } else {
+                    router.replace("/(tabs)");
+                  }
+                }}
+              />
+            }
           >
             <SymbolView
               name={{

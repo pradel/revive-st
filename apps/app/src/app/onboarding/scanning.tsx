@@ -204,10 +204,14 @@ export default function ScanningScreen() {
           <View style={$buttonContainer}>
             <Card
               style={isSelecting ? $secondaryButton : $primaryButton}
-              onPress={() => {
-                dispatch({ type: "RETRY" });
-              }}
-              activeOpacity={0.8}
+              render={
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    dispatch({ type: "RETRY" });
+                  }}
+                />
+              }
             >
               <SymbolView
                 name={{
@@ -230,8 +234,12 @@ export default function ScanningScreen() {
             {isNotFound && (
               <Card
                 style={$secondaryButton}
-                onPress={handleOpenWifiSettings}
-                activeOpacity={0.8}
+                render={
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleOpenWifiSettings}
+                  />
+                }
               >
                 <SymbolView
                   name={{

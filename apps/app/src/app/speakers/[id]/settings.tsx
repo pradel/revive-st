@@ -227,10 +227,14 @@ export default function SpeakerSettings() {
       ) : (
         <Card
           style={$linkCard}
-          activeOpacity={0.7}
-          onPress={() => {
-            setNameValue(speaker.name);
-          }}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setNameValue(speaker.name);
+              }}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             <SymbolView

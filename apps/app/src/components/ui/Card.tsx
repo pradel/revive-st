@@ -1,47 +1,24 @@
 import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  type ViewProps,
-  type ViewStyle,
-  type TouchableOpacityProps,
-} from "react-native";
+import { View, type ViewProps, type ViewStyle } from "react-native";
 
 import { COLORS } from "../../ui/theme";
+import { useRender } from "../../utils/useRender";
 
 export interface CardProps extends ViewProps {
   children?: React.ReactNode;
-  onPress?: TouchableOpacityProps["onPress"];
-  activeOpacity?: TouchableOpacityProps["activeOpacity"];
-  disabled?: TouchableOpacityProps["disabled"];
+  render?: React.ReactElement | ((props: any) => React.ReactElement);
 }
 
-export function Card({
-  children,
-  style,
-  onPress,
-  activeOpacity,
-  disabled,
-  ...props
-}: CardProps) {
-  if (onPress || disabled !== undefined) {
-    return (
-      <TouchableOpacity
-        style={[$card, style]}
-        onPress={onPress}
-        activeOpacity={activeOpacity ?? 0.8}
-        disabled={disabled}
-        {...(props as any)}
-      >
-        {children}
-      </TouchableOpacity>
-    );
-  }
-  return (
-    <View style={[$card, style]} {...props}>
-      {children}
-    </View>
-  );
+export function Card({ children, style, render, ...props }: CardProps) {
+  return useRender({
+    render,
+    props: {
+      style: [$card, style],
+      children,
+      ...props,
+    },
+    defaultElement: <View />,
+  });
 }
 
 const $card: ViewStyle = {

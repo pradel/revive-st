@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
+  TouchableOpacity,
   Pressable,
   ActivityIndicator,
   TextInput,
@@ -177,9 +178,13 @@ export default function RadioBrowser() {
     return (
       <Card
         style={$stationCard}
-        onPress={() => {
-          handleStationPress(item);
-        }}
+        render={
+          <TouchableOpacity
+            onPress={() => {
+              handleStationPress(item);
+            }}
+          />
+        }
       >
         <View style={$stationLogoContainer}>
           {item.favicon ? (
@@ -529,13 +534,17 @@ function SpeakerCastItem({
   return (
     <Card
       style={[$speakerItem, (!isConfigured || isDisabled) && { opacity: 0.6 }]}
-      onPress={() => {
-        logger.info(
-          `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
-        );
-        onCast(speaker.deviceID, isConfigured);
-      }}
-      disabled={isDisabled}
+      render={
+        <TouchableOpacity
+          onPress={() => {
+            logger.info(
+              `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
+            );
+            onCast(speaker.deviceID, isConfigured);
+          }}
+          disabled={isDisabled}
+        />
+      }
     >
       <View style={$speakerItemLeft}>
         <SymbolView

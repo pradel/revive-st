@@ -125,9 +125,13 @@ export default function Index() {
           <View style={$emptyActions}>
             <Card
               style={[$ctaCard, isScanning && $ctaCardDisabled]}
-              onPress={rescan}
-              activeOpacity={0.8}
-              disabled={isScanning}
+              render={
+                <TouchableOpacity
+                  onPress={rescan}
+                  activeOpacity={0.8}
+                  disabled={isScanning}
+                />
+              }
             >
               <View style={$ctaIconContainer}>
                 {isScanning ? (
@@ -165,10 +169,14 @@ export default function Index() {
 
             <Card
               style={$ctaCard}
-              onPress={() => {
-                router.push("/onboarding/permissions");
-              }}
-              activeOpacity={0.8}
+              render={
+                <TouchableOpacity
+                  onPress={() => {
+                    router.push("/onboarding/permissions");
+                  }}
+                  activeOpacity={0.8}
+                />
+              }
             >
               <View style={$ctaIconContainer}>
                 <SymbolView

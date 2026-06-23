@@ -6,6 +6,7 @@ import {
   Linking,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
   type TextStyle,
   type ViewStyle,
@@ -54,10 +55,14 @@ export default function AppSettings() {
 
         <Card
           style={$linkCard}
-          activeOpacity={0.7}
-          onPress={() => {
-            void Linking.openURL(APP_CONFIG.WEBSITE_URL);
-          }}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                void Linking.openURL(APP_CONFIG.WEBSITE_URL);
+              }}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             <SymbolView
@@ -80,10 +85,14 @@ export default function AppSettings() {
 
         <Card
           style={$linkCard}
-          activeOpacity={0.7}
-          onPress={() => {
-            void Linking.openURL(APP_CONFIG.GITHUB_URL);
-          }}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                void Linking.openURL(APP_CONFIG.GITHUB_URL);
+              }}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             <SymbolView
@@ -111,9 +120,13 @@ export default function AppSettings() {
         <Text style={$sectionLabel}>Network</Text>
         <Card
           style={[$linkCard, isScanning && { opacity: 0.6 }]}
-          activeOpacity={0.7}
-          onPress={rescan}
-          disabled={isScanning}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={rescan}
+              disabled={isScanning}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             {isScanning ? (
@@ -152,10 +165,14 @@ export default function AppSettings() {
         <Text style={$sectionLabel}>Developer</Text>
         <Card
           style={$linkCard}
-          activeOpacity={0.7}
-          onPress={() => {
-            router.push("/logs");
-          }}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                router.push("/logs");
+              }}
+            />
+          }
         >
           <View style={$linkIconContainer}>
             <SymbolView
