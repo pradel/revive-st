@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { COLORS } from "@/ui/theme";
 
@@ -52,7 +53,7 @@ export default function PermissionsScreen() {
         </View>
 
         {/* Permissions Card */}
-        <View style={$card}>
+        <Card style={$card}>
           <View style={$badge}>
             <Text style={$badgeText}>SETUP WIZARD</Text>
           </View>
@@ -79,7 +80,7 @@ export default function PermissionsScreen() {
               </Text>
             </View>
           )}
-        </View>
+        </Card>
 
         {/* Action Buttons */}
         <View style={$buttonContainer}>
@@ -104,7 +105,7 @@ export default function PermissionsScreen() {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity
+          <Card
             style={$secondaryButton}
             onPress={() => {
               if (router.canGoBack()) {
@@ -125,7 +126,7 @@ export default function PermissionsScreen() {
               size={16}
             />
             <Text style={$secondaryButtonText}>Back to Dashboard</Text>
-          </TouchableOpacity>
+          </Card>
         </View>
       </View>
     </View>
@@ -158,11 +159,8 @@ const $iconContainer: ViewStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
   borderRadius: 20,
   padding: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
   alignItems: "center",
   marginBottom: 32,
@@ -252,11 +250,7 @@ const $secondaryButton: ViewStyle = {
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
-  backgroundColor: COLORS.card,
   height: 52,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
 };
 

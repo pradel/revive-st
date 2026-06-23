@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import TcpSocket from "react-native-tcp-socket";
 
+import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
   checkMargeAPIStatus,
@@ -334,7 +335,7 @@ export default function ConfigureSpeaker() {
         showsVerticalScrollIndicator={false}
       >
         {/* Header summary */}
-        <View style={$headerCard}>
+        <Card style={$headerCard}>
           <SymbolView
             name={{
               ios: "gearshape.2.fill",
@@ -348,11 +349,11 @@ export default function ConfigureSpeaker() {
           <Text style={$headerSubtitle}>
             {speaker.name} · {speaker.host}
           </Text>
-        </View>
+        </Card>
 
         {/* Steps Tracker */}
         <Text style={$sectionLabel}>Progress Checklist</Text>
-        <View style={$card}>
+        <Card>
           {steps.map((step, index) => {
             const isPending = step.status === "idle";
             const isActive = step.status === "running";
@@ -416,7 +417,7 @@ export default function ConfigureSpeaker() {
               </View>
             );
           })}
-        </View>
+        </Card>
 
         {/* Console Log */}
         <Text style={$sectionLabel}>Execution Logs</Text>
@@ -538,12 +539,8 @@ const $backButtonText: TextStyle = {
 
 const $headerCard: ViewStyle = {
   alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
   paddingVertical: 24,
   paddingHorizontal: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $headerTitle: TextStyle = {
@@ -570,14 +567,6 @@ const $sectionLabel: TextStyle = {
   marginLeft: 4,
   textTransform: "uppercase",
   letterSpacing: 0.5,
-};
-
-const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $stepRow: ViewStyle = {

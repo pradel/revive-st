@@ -16,6 +16,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 import { Header } from "@/ui/Header";
@@ -122,7 +123,7 @@ export default function Index() {
           </Text>
 
           <View style={$emptyActions}>
-            <TouchableOpacity
+            <Card
               style={[$ctaCard, isScanning && $ctaCardDisabled]}
               onPress={rescan}
               activeOpacity={0.8}
@@ -160,9 +161,9 @@ export default function Index() {
                 tintColor={COLORS.textDisabled}
                 size={16}
               />
-            </TouchableOpacity>
+            </Card>
 
-            <TouchableOpacity
+            <Card
               style={$ctaCard}
               onPress={() => {
                 router.push("/onboarding/permissions");
@@ -196,7 +197,7 @@ export default function Index() {
                 tintColor={COLORS.textDisabled}
                 size={16}
               />
-            </TouchableOpacity>
+            </Card>
           </View>
         </View>
       )}
@@ -215,7 +216,7 @@ export default function Index() {
               const volume = speaker.volume ?? 0;
 
               return (
-                <View key={speaker.deviceID} style={$speakerCard}>
+                <Card key={speaker.deviceID} style={$speakerCard}>
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => {
@@ -319,7 +320,7 @@ export default function Index() {
                       />
                     </TouchableOpacity>
                   </View>
-                </View>
+                </Card>
               );
             })}
           </View>
@@ -406,11 +407,7 @@ const $emptyActions: ViewStyle = {
 const $ctaCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
   padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
 };
 
@@ -475,11 +472,7 @@ const $speakersList: ViewStyle = {
 };
 
 const $speakerCard: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderRadius: 18,
   padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $cardHeader: ViewStyle = {

@@ -10,6 +10,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
 import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
@@ -74,7 +75,7 @@ export default function ScanningScreen() {
         </View>
 
         {/* Card */}
-        <View style={$card}>
+        <Card style={$card}>
           <View style={$badge}>
             <Text style={$badgeText}>SETUP WIZARD</Text>
           </View>
@@ -196,12 +197,12 @@ export default function ScanningScreen() {
               </View>
             </>
           )}
-        </View>
+        </Card>
 
         {/* Action Buttons */}
         {(isNotFound || isSelecting) && (
           <View style={$buttonContainer}>
-            <TouchableOpacity
+            <Card
               style={isSelecting ? $secondaryButton : $primaryButton}
               onPress={() => {
                 dispatch({ type: "RETRY" });
@@ -224,10 +225,10 @@ export default function ScanningScreen() {
               >
                 {isSelecting ? "Rescan" : "Scan Again"}
               </Text>
-            </TouchableOpacity>
+            </Card>
 
             {isNotFound && (
-              <TouchableOpacity
+              <Card
                 style={$secondaryButton}
                 onPress={handleOpenWifiSettings}
                 activeOpacity={0.8}
@@ -242,7 +243,7 @@ export default function ScanningScreen() {
                   size={18}
                 />
                 <Text style={$secondaryButtonText}>Open Wi-Fi Settings</Text>
-              </TouchableOpacity>
+              </Card>
             )}
           </View>
         )}
@@ -277,11 +278,8 @@ const $iconContainer: ViewStyle = {
 };
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
   borderRadius: 20,
   padding: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
   alignItems: "center",
   marginBottom: 32,
@@ -348,11 +346,7 @@ const $secondaryButton: ViewStyle = {
   alignItems: "center",
   justifyContent: "center",
   gap: 8,
-  backgroundColor: COLORS.card,
   height: 52,
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   width: "100%",
 };
 

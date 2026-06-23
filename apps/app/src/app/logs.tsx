@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { Card } from "@/components/ui/Card";
 import { useLogger } from "@/lib/useLogger";
 import { COLORS } from "@/ui/theme";
 
@@ -52,7 +53,7 @@ export default function LogsViewer() {
           <Text style={$emptyText}>No logs yet</Text>
         ) : (
           logs.map((entry) => (
-            <View key={entry.id} style={$logEntry}>
+            <Card key={entry.id} style={$logEntry}>
               <View style={$logMeta}>
                 <Text style={$logTimestamp}>
                   {new Date(entry.timestamp).toLocaleTimeString()}
@@ -64,7 +65,7 @@ export default function LogsViewer() {
               <Text style={$logMessage} selectable>
                 {entry.message}
               </Text>
-            </View>
+            </Card>
           ))
         )}
       </ScrollView>
@@ -146,11 +147,8 @@ const $emptyText: TextStyle = {
 };
 
 const $logEntry: ViewStyle = {
-  backgroundColor: COLORS.card,
   borderRadius: 12,
   padding: 12,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   marginBottom: 8,
 };
 

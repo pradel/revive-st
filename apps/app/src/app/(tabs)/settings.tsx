@@ -6,13 +6,13 @@ import {
   Linking,
   ScrollView,
   Text,
-  TouchableOpacity,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Card } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/config";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
@@ -36,7 +36,7 @@ export default function AppSettings() {
       >
         <Text style={$sectionLabel}>About</Text>
 
-        <View style={[$card, $heroCard]}>
+        <Card style={$heroCard}>
           <View style={$heroIconContainer}>
             <SymbolView
               name={{
@@ -50,9 +50,9 @@ export default function AppSettings() {
           </View>
           <Text style={$heroTitle}>Revive SoundTouch</Text>
           <Text style={$heroSubtitle}>Version {version}</Text>
-        </View>
+        </Card>
 
-        <TouchableOpacity
+        <Card
           style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
@@ -76,9 +76,9 @@ export default function AppSettings() {
             tintColor={COLORS.textMuted}
             size={20}
           />
-        </TouchableOpacity>
+        </Card>
 
-        <TouchableOpacity
+        <Card
           style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
@@ -106,10 +106,10 @@ export default function AppSettings() {
             tintColor={COLORS.textMuted}
             size={20}
           />
-        </TouchableOpacity>
+        </Card>
 
         <Text style={$sectionLabel}>Network</Text>
-        <TouchableOpacity
+        <Card
           style={[$linkCard, isScanning && { opacity: 0.6 }]}
           activeOpacity={0.7}
           onPress={rescan}
@@ -147,10 +147,10 @@ export default function AppSettings() {
             tintColor={COLORS.textMuted}
             size={20}
           />
-        </TouchableOpacity>
+        </Card>
 
         <Text style={$sectionLabel}>Developer</Text>
-        <TouchableOpacity
+        <Card
           style={$linkCard}
           activeOpacity={0.7}
           onPress={() => {
@@ -177,7 +177,7 @@ export default function AppSettings() {
             tintColor={COLORS.textMuted}
             size={20}
           />
-        </TouchableOpacity>
+        </Card>
       </ScrollView>
     </SafeAreaView>
   );
@@ -192,14 +192,6 @@ const $content: ViewStyle = {
   paddingHorizontal: 20,
   paddingBottom: 40,
   gap: 12,
-};
-
-const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
-  padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $heroCard: ViewStyle = {
@@ -242,11 +234,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
   padding: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
 };
 
 const $linkIconContainer: ViewStyle = {
