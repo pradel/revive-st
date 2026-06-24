@@ -4,8 +4,6 @@ import {
   Radio,
   Settings2,
   PlayCircle,
-  Apple,
-  Store,
   ShieldCheck,
   WifiOff,
   Plus,
@@ -13,10 +11,12 @@ import {
   MessageCircle,
 } from "lucide-react";
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import type { FAQPage, SoftwareApplication, WithContext } from "schema-dts";
 
 import { Footer } from "@/components/footer";
+import { HeroPhone } from "@/components/hero-phone";
 import { WEBSITE_CONFIG } from "@/config";
 
 export const metadata: Metadata = {
@@ -96,39 +96,60 @@ export default function HomePage() {
       />
       <main className="flex flex-col flex-1">
         {/* Hero Section */}
-        <section className="relative overflow-hidden pt-32 pb-24 flex flex-col items-center justify-center text-center px-4">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50 via-neutral-50 to-neutral-50" />
+        <section className="relative overflow-hidden pt-24 pb-16 lg:pt-32 lg:pb-24 px-4">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/50 via-neutral-50 to-neutral-50" />
 
-          <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance max-w-4xl mx-auto mb-6 text-neutral-900">
-            Your Bose speakers still work.
-            <br />
-            <span className="text-emerald-600">Now your app does too.</span>
-          </h1>
-          <p className="text-lg md:text-xl text-neutral-600 text-pretty max-w-2xl mx-auto mb-10">
-            The SoundTouch app stopped working in May 2026. Revive ST brings
-            back full control of your speakers, no account needed.
-          </p>
+          <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
+            {/* Left Column: Text & CTA */}
+            <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance max-w-2xl mb-6 text-neutral-900">
+                Your Bose speakers still work.
+                <br />
+                <span className="text-emerald-600">Now your app does too.</span>
+              </h1>
+              <p className="text-lg md:text-xl text-neutral-600 text-pretty max-w-xl mb-10">
+                The SoundTouch app stopped working in May 2026. Revive ST brings
+                back full control of your speakers, no account needed.
+              </p>
 
-          <div className="flex flex-col items-center gap-4">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <Link
-                href={WEBSITE_CONFIG.IOS_APP_URL}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors w-full sm:w-auto shadow-sm"
-              >
-                <Apple className="w-5 h-5 mr-2" />
-                App Store
-              </Link>
-              <Link
-                href={WEBSITE_CONFIG.ANDROID_APP_URL}
-                className="inline-flex items-center justify-center rounded-md bg-neutral-200 text-neutral-900 px-6 py-3 text-base font-semibold hover:bg-neutral-300 transition-colors w-full sm:w-auto shadow-sm"
-              >
-                <Store className="w-5 h-5 mr-2" />
-                Google Play
-              </Link>
+              <div className="flex flex-col items-center lg:items-start gap-4 w-full">
+                <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                  <Link
+                    href={WEBSITE_CONFIG.IOS_APP_URL}
+                    className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    <Image
+                      src="/button-ios-download.png"
+                      alt="Download on the App Store"
+                      width={150}
+                      height={45}
+                      style={{ width: "auto", height: "45px" }}
+                    />
+                  </Link>
+                  <Link
+                    href={WEBSITE_CONFIG.ANDROID_APP_URL}
+                    className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
+                  >
+                    <Image
+                      src="/button-android-download.png"
+                      alt="Get it on Google Play"
+                      width={150}
+                      height={45}
+                      style={{ width: "auto", height: "45px" }}
+                    />
+                  </Link>
+                </div>
+                <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
+                  One-time purchase &middot; No subscription &middot; Open
+                  source
+                </span>
+              </div>
             </div>
-            <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
-              One-time purchase &middot; No subscription &middot; Open source
-            </span>
+
+            {/* Right Column: Phone Carousel */}
+            <div className="relative w-full flex justify-center lg:justify-end lg:pr-8 xl:pr-16 z-10">
+              <HeroPhone />
+            </div>
           </div>
         </section>
 
@@ -369,17 +390,27 @@ export default function HomePage() {
               <div className="flex flex-col sm:flex-row items-center gap-4">
                 <Link
                   href={WEBSITE_CONFIG.IOS_APP_URL}
-                  className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                  className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                 >
-                  <Apple className="w-5 h-5 mr-2" />
-                  Download for iOS
+                  <Image
+                    src="/button-ios-download.png"
+                    alt="Download on the App Store"
+                    width={150}
+                    height={45}
+                    style={{ width: "auto", height: "45px" }}
+                  />
                 </Link>
                 <Link
                   href={WEBSITE_CONFIG.ANDROID_APP_URL}
-                  className="inline-flex items-center justify-center rounded-md bg-neutral-200 text-neutral-900 px-6 py-3 text-base font-semibold hover:bg-neutral-300 transition-colors shadow-sm"
+                  className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                 >
-                  <Store className="w-5 h-5 mr-2" />
-                  Download for Android
+                  <Image
+                    src="/button-android-download.png"
+                    alt="Get it on Google Play"
+                    width={150}
+                    height={45}
+                    style={{ width: "auto", height: "45px" }}
+                  />
                 </Link>
               </div>
               <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
