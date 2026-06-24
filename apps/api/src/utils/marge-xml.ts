@@ -1,4 +1,4 @@
-import type { Preset } from "../db";
+import type { Preset } from "../db/schema.js";
 
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';

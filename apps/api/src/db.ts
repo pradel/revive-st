@@ -1,45 +1,9 @@
 import { createClient } from "@libsql/client";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
-import {
-  sqliteTable,
-  text,
-  integer,
-  primaryKey,
-} from "drizzle-orm/sqlite-core";
 
-import { dbUrl } from "./config";
-
-export interface ContentItem {
-  source: string;
-  location: string;
-  sourceAccount: string;
-  isPresetable: boolean;
-  itemName: string;
-}
-
-export interface Preset {
-  id: number;
-  createdOn?: number;
-  updatedOn?: number;
-  contentItem: ContentItem;
-}
-
-export const presetsTable = sqliteTable(
-  "presets",
-  {
-    deviceId: text("device_id").notNull(),
-    presetId: integer("preset_id").notNull(),
-    createdOn: integer("created_on"),
-    updatedOn: integer("updated_on"),
-    source: text("source").notNull(),
-    location: text("location").notNull(),
-    sourceAccount: text("source_account").notNull(),
-    isPresetable: integer("is_presetable", { mode: "boolean" }).notNull(),
-    itemName: text("item_name").notNull(),
-  },
-  (table) => [primaryKey({ columns: [table.deviceId, table.presetId] })],
-);
+import { dbUrl } from "./config.js";
+import { presetsTable, type Preset } from "./db/schema.js";
 
 const client = createClient({
   url: dbUrl,

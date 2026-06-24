@@ -4,7 +4,7 @@ import { dbUrl } from "./src/config.js";
 
 export default defineConfig({
   dialect: "sqlite",
-  schema: "./src/db.ts",
+  schema: "./src/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
     url: dbUrl,
