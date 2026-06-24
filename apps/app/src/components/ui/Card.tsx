@@ -26,4 +26,5 @@ const $card: ViewStyle = {
   borderRadius: 16,
   borderWidth: 1,
   borderColor: COLORS.border,
+  padding: 16,
 };

@@ -148,7 +148,6 @@ const $emptyText: TextStyle = {
 
 const $logEntry: ViewStyle = {
   borderRadius: 12,
-  padding: 12,
   marginBottom: 8,
 };
 

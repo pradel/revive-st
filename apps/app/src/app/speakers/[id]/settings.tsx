@@ -170,7 +170,7 @@ export default function SpeakerSettings() {
       />
 
       {/* Hero */}
-      <Card style={[$card, $heroCard]}>
+      <Card style={$heroCard}>
         <View style={$heroIconContainer}>
           <SymbolView
             name={{ ios: "speaker.wave.2", android: "speaker", web: "speaker" }}
@@ -774,10 +774,6 @@ const $backButtonText: TextStyle = {
   fontWeight: "600",
 };
 
-const $card: ViewStyle = {
-  padding: 16,
-};
-
 const $heroCard: ViewStyle = {
   alignItems: "center",
   paddingVertical: 32,
@@ -819,7 +815,6 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  padding: 16,
 };
 
 const $linkIconContainer: ViewStyle = {

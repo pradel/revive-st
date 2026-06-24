@@ -224,7 +224,7 @@ export default function Index() {
               const volume = speaker.volume ?? 0;
 
               return (
-                <Card key={speaker.deviceID} style={$speakerCard}>
+                <Card key={speaker.deviceID}>
                   <TouchableOpacity
                     activeOpacity={0.8}
                     onPress={() => {
@@ -415,7 +415,6 @@ const $emptyActions: ViewStyle = {
 const $ctaCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  padding: 16,
   width: "100%",
 };
 
@@ -477,10 +476,6 @@ const $sectionCount: TextStyle = {
 const $speakersList: ViewStyle = {
   gap: 10,
   paddingHorizontal: 20,
-};
-
-const $speakerCard: ViewStyle = {
-  padding: 16,
 };
 
 const $cardHeader: ViewStyle = {

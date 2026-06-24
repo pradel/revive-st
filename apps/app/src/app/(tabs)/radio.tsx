@@ -670,7 +670,6 @@ const $listContent: ViewStyle = {
 const $stationCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  padding: 10,
 };
 
 const $stationLogoContainer: ViewStyle = {
@@ -831,7 +830,6 @@ const $speakerItem: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  padding: 16,
   marginBottom: 10,
 };
 

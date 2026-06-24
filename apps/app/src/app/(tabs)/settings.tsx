@@ -251,7 +251,6 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  padding: 16,
 };
 
 const $linkIconContainer: ViewStyle = {
