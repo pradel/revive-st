@@ -57,7 +57,6 @@ export default function NetworkPickerScreen() {
   const [password, setPassword] = useState("");
   const [secureTextEntry, setSecureTextEntry] = useState(true);
   const [loading, setLoading] = useState(true);
-  const [manualEntry, setManualEntry] = useState(false);
   const [inputFocused, setInputFocused] = useState<"ssid" | "password" | null>(
     null,
   );
@@ -133,66 +132,47 @@ export default function NetworkPickerScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={$content}>
-          {/* Visual Header/Icon */}
-          <View style={$iconContainer}>
-            <SymbolView
-              name={{
-                ios: "lock.shield",
-                android: "security",
-                web: "security",
-              }}
-              tintColor={COLORS.primary}
-              size={48}
-            />
-          </View>
-
-          {/* Card */}
-          <Card style={$card}>
+          <View style={$headerContainer}>
             <View style={$badge}>
               <Text style={$badgeText}>SETUP WIZARD</Text>
             </View>
-            <Text style={$cardTitle}>Connect to Wi-Fi</Text>
-            <Text style={$cardDescription}>
-              Select your 2.4 GHz home Wi-Fi network and enter the password.
-              SoundTouch speakers do not support 5 GHz network setup profiles.
+            <Text style={$title}>Connect to Wi-Fi</Text>
+            <Text style={$description}>
+              Select your <Text style={$highlightText}>2.4 GHz</Text> home Wi-Fi
+              network and enter the password. SoundTouch speakers do not support
+              5 GHz network setup profiles.
             </Text>
+          </View>
 
-            {loading ? (
-              <ActivityIndicator
-                size="large"
-                color={COLORS.primary}
-                style={$spinner}
-              />
-            ) : !manualEntry && networks.length > 0 ? (
+          {loading ? (
+            <ActivityIndicator
+              size="large"
+              color={COLORS.primary}
+              style={$spinner}
+            />
+          ) : networks.length > 0 ? (
+            <Card style={[$card, { padding: 0, paddingVertical: 8 }]}>
               <ScrollView
                 style={$list}
-                contentContainerStyle={{ gap: 6 }}
                 nestedScrollEnabled
                 showsVerticalScrollIndicator
               >
-                {networks.map((item) => {
+                {networks.map((item, index) => {
                   const isSelected = selectedSSID === item.ssid;
-                  const dbm = item.level;
-                  const bars =
-                    dbm >= -50
-                      ? 4
-                      : dbm >= -60
-                        ? 3
-                        : dbm >= -70
-                          ? 2
-                          : dbm >= -80
-                            ? 1
-                            : 0;
                   return (
-                    <TouchableOpacity
-                      key={`${item.ssid}_${item.bssid}`}
-                      style={[$networkItem, isSelected && $networkItemSelected]}
-                      onPress={() => {
-                        setSelectedSSID(item.ssid);
-                      }}
-                      activeOpacity={0.7}
-                    >
-                      <View style={$networkRow}>
+                    <View key={`${item.ssid}_${item.bssid}`}>
+                      <TouchableOpacity
+                        style={[$networkRow, isSelected && $networkRowSelected]}
+                        onPress={() => {
+                          setSelectedSSID(item.ssid);
+                        }}
+                        activeOpacity={0.7}
+                      >
+                        <SymbolView
+                          name={{ ios: "wifi", android: "wifi", web: "wifi" }}
+                          tintColor={COLORS.primary}
+                          size={20}
+                        />
                         <Text
                           style={[
                             $networkText,
@@ -202,66 +182,76 @@ export default function NetworkPickerScreen() {
                         >
                           {item.ssid}
                         </Text>
-                        <Text
-                          style={[
-                            $signalText,
-                            isSelected && $networkTextSelected,
-                          ]}
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 12,
+                          }}
                         >
-                          {"●".repeat(bars)}
-                          {"○".repeat(Math.max(0, 4 - bars))}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
+                          <SymbolView
+                            name={{ ios: "lock", android: "lock", web: "lock" }}
+                            tintColor={COLORS.textMuted}
+                            size={14}
+                          />
+                          <SymbolView
+                            name={{
+                              ios: "wifi",
+                              android: "signal_cellular_4_bar",
+                              web: "wifi",
+                            }}
+                            tintColor={COLORS.primary}
+                            size={18}
+                          />
+                        </View>
+                      </TouchableOpacity>
+                      {index < networks.length - 1 && <View style={$divider} />}
+                    </View>
                   );
                 })}
               </ScrollView>
-            ) : null}
+            </Card>
+          ) : null}
 
-            {(manualEntry || (!loading && networks.length === 0)) && (
-              <TextInput
-                style={[$input, inputFocused === "ssid" ? $inputFocused : null]}
-                placeholder="Network name (SSID)"
-                placeholderTextColor={COLORS.textMuted}
-                value={selectedSSID}
-                onChangeText={setSelectedSSID}
-                onFocus={() => {
-                  setInputFocused("ssid");
+          {!loading && (
+            <Card style={[$card, { padding: 16 }]}>
+              <View
+                style={{
+                  flexDirection: "row",
+                  alignItems: "flex-start",
+                  gap: 12,
                 }}
-                onBlur={() => {
-                  setInputFocused(null);
-                }}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            )}
+              >
+                <SymbolView
+                  name={{ ios: "info.circle", android: "info", web: "info" }}
+                  tintColor={COLORS.primary}
+                  size={20}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text style={$infoTitle}>Only showing 2.4 GHz networks.</Text>
+                  <Text style={$infoDesc}>
+                    If yours is missing, make sure it is not a 5 GHz-only
+                    network.
+                  </Text>
+                </View>
+              </View>
+            </Card>
+          )}
 
-            {!loading && !manualEntry && networks.length > 0 && (
-              <>
-                <Text style={$filterNote}>
-                  Only showing 2.4 GHz networks. If yours is missing, make sure
-                  it is not a 5 GHz-only network.
-                </Text>
-                <TouchableOpacity
-                  onPress={() => {
-                    setManualEntry(true);
-                  }}
-                  style={{ marginBottom: 12 }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={$manualLink}>Enter SSID manually</Text>
-                </TouchableOpacity>
-              </>
-            )}
-
+          <Card style={[$card, { padding: 0 }]}>
             <View
               style={[
-                $passwordContainer,
-                inputFocused === "password" ? $containerFocused : null,
+                $inputContainer,
+                inputFocused === "password" && $inputFocused,
               ]}
             >
+              <SymbolView
+                name={{ ios: "lock", android: "lock", web: "lock" }}
+                tintColor={COLORS.primary}
+                size={20}
+              />
               <TextInput
-                style={$passwordInput}
+                style={$inputField}
                 placeholder="Wi-Fi Password"
                 placeholderTextColor={COLORS.textMuted}
                 value={password}
@@ -296,7 +286,6 @@ export default function NetworkPickerScreen() {
             </View>
           </Card>
 
-          {/* Action Buttons */}
           <View style={$buttonContainer}>
             <TouchableOpacity
               style={[
@@ -308,21 +297,24 @@ export default function NetworkPickerScreen() {
               activeOpacity={0.8}
             >
               <SymbolView
-                name={{
-                  ios: "key.fill",
-                  android: "vpn_key",
-                  web: "vpn_key",
-                }}
+                name={{ ios: "key", android: "vpn_key", web: "vpn_key" }}
                 tintColor={COLORS.background}
                 size={18}
               />
               <Text style={$primaryButtonText}>Connect Speaker</Text>
             </TouchableOpacity>
 
-            <Text style={$note}>
-              Your credentials are only transmitted locally to the speaker and
-              are never stored.
-            </Text>
+            <View style={$disclaimerContainer}>
+              <SymbolView
+                name={{ ios: "lock", android: "lock", web: "lock" }}
+                tintColor={COLORS.textMuted}
+                size={12}
+              />
+              <Text style={$note}>
+                Your credentials are only transmitted locally to the speaker and
+                are never stored.
+              </Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -335,30 +327,18 @@ const $container: ViewStyle = {
   backgroundColor: COLORS.background,
 };
 
+const $scrollContent: ViewStyle = {
+  flexGrow: 1,
+};
+
 const $content: ViewStyle = {
   flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
   paddingHorizontal: 24,
-  paddingTop: 40,
+  paddingTop: 100,
+  paddingBottom: 40,
 };
 
-const $iconContainer: ViewStyle = {
-  width: 96,
-  height: 96,
-  borderRadius: 48,
-  backgroundColor: COLORS.primaryTransparent,
-  alignItems: "center",
-  justifyContent: "center",
-  marginBottom: 32,
-  borderWidth: 1,
-  borderColor: COLORS.primary,
-};
-
-const $card: ViewStyle = {
-  borderRadius: 20,
-  padding: 24,
-  width: "100%",
+const $headerContainer: ViewStyle = {
   alignItems: "center",
   marginBottom: 32,
 };
@@ -380,51 +360,53 @@ const $badgeText: TextStyle = {
   letterSpacing: 0.8,
 };
 
-const $cardTitle: TextStyle = {
-  fontSize: 22,
+const $title: TextStyle = {
+  fontSize: 24,
   fontWeight: "700",
   color: COLORS.text,
   letterSpacing: -0.3,
-  marginBottom: 10,
+  marginBottom: 12,
   textAlign: "center",
 };
 
-const $cardDescription: TextStyle = {
+const $description: TextStyle = {
   fontSize: 14,
   color: COLORS.textMuted,
   textAlign: "center",
   lineHeight: 20,
-  marginBottom: 20,
+};
+
+const $highlightText: TextStyle = {
+  color: COLORS.primary,
+  fontWeight: "600",
 };
 
 const $spinner: ViewStyle = {
   marginTop: 16,
+  marginBottom: 32,
+};
+
+const $card: ViewStyle = {
+  borderRadius: 16,
+  width: "100%",
+  marginBottom: 20,
 };
 
 const $list: ViewStyle = {
   width: "100%",
-  maxHeight: 180,
-  marginBottom: 16,
-};
-
-const $networkItem: ViewStyle = {
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-  borderRadius: 12,
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-};
-
-const $networkItemSelected: ViewStyle = {
-  backgroundColor: COLORS.primaryTransparent,
-  borderColor: COLORS.primary,
+  maxHeight: 220,
 };
 
 const $networkRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  justifyContent: "space-between",
+  paddingHorizontal: 16,
+  paddingVertical: 16,
+  gap: 12,
+};
+
+const $networkRowSelected: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
 };
 
 const $networkText: TextStyle = {
@@ -438,43 +420,53 @@ const $networkTextSelected: TextStyle = {
   color: COLORS.primary,
 };
 
-const $signalText: TextStyle = {
-  fontSize: 11,
-  color: COLORS.textMuted,
-  letterSpacing: 1,
-  marginLeft: 8,
+const $divider: ViewStyle = {
+  height: 1,
+  backgroundColor: COLORS.border,
+  marginLeft: 48,
 };
 
-const $input: TextStyle = {
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  borderRadius: 12,
-  padding: 14,
+const $infoTitle: TextStyle = {
+  color: COLORS.text,
+  fontSize: 13,
+  fontWeight: "600",
+  marginBottom: 4,
+};
+
+const $infoDesc: TextStyle = {
+  color: COLORS.textMuted,
+  fontSize: 13,
+  lineHeight: 18,
+};
+
+const $inputContainer: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 16,
+  height: 56,
+  gap: 12,
+};
+
+const $inputFocused: ViewStyle = {
+  backgroundColor: COLORS.primaryTransparent,
+  borderRadius: 16,
+};
+
+const $inputField: TextStyle = {
+  flex: 1,
   fontSize: 16,
   color: COLORS.text,
-  width: "100%",
-  marginBottom: 12,
+  height: "100%",
 };
 
-const $inputFocused: TextStyle = {
-  borderColor: COLORS.primary,
-};
-
-const $containerFocused: ViewStyle = {
-  borderColor: COLORS.primary,
-};
-
-const $manualLink: TextStyle = {
-  color: COLORS.primary,
-  fontSize: 14,
-  fontWeight: "600",
-  textAlign: "center",
+const $eyeButton: ViewStyle = {
+  padding: 4,
 };
 
 const $buttonContainer: ViewStyle = {
   width: "100%",
-  gap: 12,
+  gap: 16,
+  marginTop: 12,
 };
 
 const $primaryButton: ViewStyle = {
@@ -498,46 +490,18 @@ const $primaryButtonText: TextStyle = {
   fontWeight: "600",
 };
 
+const $disclaimerContainer: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  paddingHorizontal: 24,
+};
+
 const $note: TextStyle = {
   fontSize: 12,
   color: COLORS.textMuted,
   textAlign: "center",
   lineHeight: 16,
-};
-
-const $scrollContent: ViewStyle = {
-  flexGrow: 1,
-};
-
-const $passwordContainer: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  borderRadius: 12,
-  paddingRight: 14,
-  width: "100%",
-  marginBottom: 12,
-};
-
-const $passwordInput: TextStyle = {
   flex: 1,
-  padding: 14,
-  fontSize: 16,
-  color: COLORS.text,
-};
-
-const $eyeButton: ViewStyle = {
-  padding: 4,
-};
-
-const $filterNote: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  textAlign: "center",
-  lineHeight: 16,
-  marginTop: 4,
-  marginBottom: 12,
-  paddingHorizontal: 8,
 };
