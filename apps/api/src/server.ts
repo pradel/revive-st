@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { z } from "zod";
 
 import { getPresets, savePresets } from "./db";
 import {
@@ -10,6 +11,23 @@ import {
   createSoftwareUpdateXml,
   createRecentItemResponseXml,
 } from "./utils/marge-xml";
+
+const presetSchema = z.object({
+  id: z.number(),
+  createdOn: z.number().optional(),
+  updatedOn: z.number().optional(),
+  contentItem: z.object({
+    source: z.string(),
+    location: z.string(),
+    sourceAccount: z.string(),
+    isPresetable: z.boolean(),
+    itemName: z.string(),
+  }),
+});
+
+const presetsPayloadSchema = z.object({
+  presets: z.array(presetSchema),
+});
 
 const app = new Hono({ strict: false });
 
@@ -67,7 +85,7 @@ app
   .post("/api/internal/device/:deviceId/presets", async (ctx) => {
     const deviceId = ctx.req.param("deviceId");
     try {
-      const payload: { presets: any[] } = await ctx.req.json();
+      const payload = presetsPayloadSchema.parse(await ctx.req.json());
       const { presets } = payload;
       await savePresets(deviceId, presets);
       return ctx.json({ success: true });
