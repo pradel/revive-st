@@ -224,18 +224,7 @@ function NotFoundState({
         <Card
           style={$secondaryButton}
           render={
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                height: "100%",
-                width: "100%",
-              }}
-              onPress={onOpenSettings}
-            />
+            <TouchableOpacity activeOpacity={0.8} onPress={onOpenSettings} />
           }
         >
           <SymbolView
