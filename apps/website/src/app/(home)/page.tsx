@@ -114,8 +114,10 @@ export default function HomePage() {
 
               <div className="flex flex-col items-center lg:items-start gap-4 w-full">
                 <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
-                  <Link
+                  <a
                     href={WEBSITE_CONFIG.IOS_APP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                   >
                     <Image
@@ -124,9 +126,11 @@ export default function HomePage() {
                       width={135}
                       height={45}
                     />
-                  </Link>
-                  <Link
+                  </a>
+                  <a
                     href={WEBSITE_CONFIG.ANDROID_APP_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                   >
                     <Image
@@ -135,7 +139,7 @@ export default function HomePage() {
                       width={135}
                       height={45}
                     />
-                  </Link>
+                  </a>
                 </div>
                 <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
                   One-time purchase &middot; No subscription &middot; Open
@@ -386,8 +390,10 @@ export default function HomePage() {
             </p>
             <div className="flex flex-col items-center gap-4">
               <div className="flex flex-col sm:flex-row items-center gap-4">
-                <Link
+                <a
                   href={WEBSITE_CONFIG.IOS_APP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <Image
@@ -396,9 +402,11 @@ export default function HomePage() {
                     width={135}
                     height={45}
                   />
-                </Link>
-                <Link
+                </a>
+                <a
                   href={WEBSITE_CONFIG.ANDROID_APP_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="transition-transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <Image
@@ -407,7 +415,7 @@ export default function HomePage() {
                     width={135}
                     height={45}
                   />
-                </Link>
+                </a>
               </div>
               <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
                 One-time purchase &middot; No subscription &middot; Open source
