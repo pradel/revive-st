@@ -1,10 +1,3 @@
-declare const process: {
-  env: {
-    DATABASE_URL?: string;
-    RAILWAY_VOLUME_MOUNT_PATH?: string;
-  };
-};
-
 import { createClient } from "@libsql/client";
 import { eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/libsql";
@@ -14,6 +7,8 @@ import {
   integer,
   primaryKey,
 } from "drizzle-orm/sqlite-core";
+
+import { dbUrl } from "./config";
 
 export interface ContentItem {
   source: string;
@@ -46,11 +41,6 @@ export const presetsTable = sqliteTable(
   (table) => [primaryKey({ columns: [table.deviceId, table.presetId] })],
 );
 
-const dbUrl =
-  process.env.DATABASE_URL ??
-  (process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? `file:${process.env.RAILWAY_VOLUME_MOUNT_PATH}/presets.db`
-    : "file:presets.db");
 const client = createClient({
   url: dbUrl,
 });
