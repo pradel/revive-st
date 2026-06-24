@@ -19,7 +19,7 @@ import {
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
-import { Header } from "@/ui/Header";
+import { PageHeader } from "@/ui/PageHeader";
 import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
 
@@ -90,7 +90,7 @@ export default function Index() {
       }
     >
       {/* Header */}
-      <Header />
+      <PageHeader title="Revive ST" />
 
       {/* Unified Empty/Scanning State */}
       {showEmptyState && (

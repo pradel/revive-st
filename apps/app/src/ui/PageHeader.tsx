@@ -4,11 +4,12 @@ import { View, Text, type TextStyle, type ViewStyle } from "react-native";
 
 import { COLORS } from "@/ui/theme";
 
-interface HeaderProps {
+export interface PageHeaderProps {
+  title: string;
   rightComponent?: React.ReactNode;
 }
 
-export function Header({ rightComponent }: HeaderProps) {
+export function PageHeader({ title, rightComponent }: PageHeaderProps) {
   return (
     <View style={$header}>
       <View style={$leftContent}>
@@ -21,7 +22,7 @@ export function Header({ rightComponent }: HeaderProps) {
           tintColor={COLORS.primary}
           size={28}
         />
-        <Text style={$appTitle}>Revive ST</Text>
+        <Text style={$appTitle}>{title}</Text>
       </View>
       {rightComponent}
     </View>
@@ -33,7 +34,8 @@ const $header: ViewStyle = {
   alignItems: "center",
   justifyContent: "space-between",
   paddingHorizontal: 20,
-  paddingBottom: 8,
+  paddingTop: 8,
+  paddingBottom: 16,
 };
 
 const $leftContent: ViewStyle = {

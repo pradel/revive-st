@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/config";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
-import { Header } from "@/ui/Header";
+import { PageHeader } from "@/ui/PageHeader";
 import { COLORS } from "@/ui/theme";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
@@ -29,7 +29,7 @@ export default function AppSettings() {
 
   return (
     <SafeAreaView style={$container}>
-      <Header />
+      <PageHeader title="Settings" />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={$content}

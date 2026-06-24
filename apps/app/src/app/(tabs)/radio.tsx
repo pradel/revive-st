@@ -33,7 +33,7 @@ import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
 import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
 import { logger } from "@/lib/logger";
-import { Header } from "@/ui/Header";
+import { PageHeader } from "@/ui/PageHeader";
 import { COLORS } from "@/ui/theme";
 
 const GENRE_TAGS = [
@@ -274,7 +274,7 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <Header />
+      <PageHeader title="Radio" />
 
       <View style={$tabsContainer}>
         <View style={$tabsWrapper}>
