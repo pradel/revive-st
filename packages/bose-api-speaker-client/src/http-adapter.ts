@@ -45,7 +45,7 @@ import {
   type XmlNode,
 } from "./xml-parser.ts";
 
-export class BoseSpeakerClient {
+export class BoseHttpAdapter {
   private readonly baseUrl: string;
 
   constructor(opts: { ip: string; port?: number }) {
@@ -60,7 +60,7 @@ export class BoseSpeakerClient {
     if (!result.isOk()) {
       return new Err(result.error);
     }
-    return BoseSpeakerClient.parseBody(result.value, parse);
+    return BoseHttpAdapter.parseBody(result.value, parse);
   }
 
   private async post(
