@@ -1,3 +1,4 @@
+import { Button, Host } from "@expo/ui";
 import { openWifiSettings } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -60,7 +61,7 @@ export default function ScanningScreen() {
               ios: isNotFound
                 ? "wifi.slash"
                 : isSelecting
-                  ? "speaker.wave.2"
+                  ? "hifispeaker"
                   : "wifi",
               android: isNotFound
                 ? "wifi_off"
@@ -74,17 +75,29 @@ export default function ScanningScreen() {
           />
         </View>
 
-        {isNotFound && (
-          <View style={$notFoundHeader}>
+        {(isNotFound || isSelecting) && (
+          <View style={$headerTextContainer}>
+            {isSelecting && (
+              <View style={[$badge, { marginBottom: 24 }]}>
+                <Text style={$badgeText}>SETUP WIZARD</Text>
+              </View>
+            )}
+
             <Text style={[$cardTitle, { marginBottom: 4, color: COLORS.text }]}>
-              No Speaker Detected
+              {isNotFound ? "No Speaker Detected" : "Select Speaker"}
             </Text>
+
             <Text style={[$cardDescription, { marginBottom: 20 }]}>
-              Let's get your speaker connected.
+              {isNotFound
+                ? "Let's get your speaker connected."
+                : `We found the following Bose speaker${speakers.length === 1 ? "" : "s"} in setup mode nearby. Select the one you want to configure.`}
             </Text>
-            <View style={[$badge, { marginBottom: 24 }]}>
-              <Text style={$badgeText}>SETUP WIZARD</Text>
-            </View>
+
+            {isNotFound && (
+              <View style={[$badge, { marginBottom: 24 }]}>
+                <Text style={$badgeText}>SETUP WIZARD</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -185,21 +198,17 @@ export default function ScanningScreen() {
         )}
 
         {isSelecting && (
-          <Card style={$card}>
-            <View style={$badge}>
-              <Text style={$badgeText}>SETUP WIZARD</Text>
-            </View>
-
-            <Text style={$cardTitle}>Select Speaker</Text>
-            <Text style={$cardDescription}>
-              We found the following Bose speakers in setup mode nearby. Select
-              the one you want to configure.
-            </Text>
-            <View style={$listContainer}>
-              {speakers.map((item) => (
+          <View style={$listContainer}>
+            {speakers.map((item) => (
+              <Card
+                key={item.bssid}
+                style={[
+                  $card,
+                  { padding: 16, marginBottom: 12, width: "100%" },
+                ]}
+              >
                 <TouchableOpacity
-                  key={item.bssid}
-                  style={$speakerItem}
+                  style={[$speakerRow, { width: "100%" }]}
                   onPress={() => {
                     dispatch({
                       type: "HOTSPOT_FOUND",
@@ -209,64 +218,75 @@ export default function ScanningScreen() {
                   }}
                   activeOpacity={0.7}
                 >
-                  <View style={$speakerRow}>
-                    <View style={$speakerIconSmall}>
-                      <SymbolView
-                        name={{
-                          ios: "speaker.wave.2.fill",
-                          android: "speaker",
-                          web: "speaker",
-                        }}
-                        tintColor={COLORS.primary}
-                        size={18}
-                      />
-                    </View>
+                  <View style={$speakerIconSmall}>
+                    <SymbolView
+                      name={{
+                        ios: "hifispeaker",
+                        android: "speaker",
+                        web: "speaker",
+                      }}
+                      tintColor={COLORS.primary}
+                      size={20}
+                    />
+                  </View>
+                  <View style={$speakerTextCol}>
                     <Text style={$speakerText} numberOfLines={1}>
                       {item.ssid}
                     </Text>
-                    <SymbolView
-                      name={{
-                        ios: "chevron.right",
-                        android: "chevron_right",
-                        web: "chevron_right",
-                      }}
-                      tintColor={COLORS.textMuted}
-                      size={16}
-                    />
+                    <Text style={$speakerSubtitle} numberOfLines={1}>
+                      {item.ssid.includes("ST 10")
+                        ? "SoundTouch 10"
+                        : "SoundTouch Speaker"}
+                    </Text>
                   </View>
+                  <SymbolView
+                    name={{
+                      ios: "chevron.right",
+                      android: "chevron_right",
+                      web: "chevron_right",
+                    }}
+                    tintColor={COLORS.primary}
+                    size={16}
+                  />
                 </TouchableOpacity>
-              ))}
-            </View>
-          </Card>
+              </Card>
+            ))}
+          </View>
         )}
 
         {/* Action Buttons */}
         {(isNotFound || isSelecting) && (
           <View style={$buttonContainer}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              style={isSelecting ? $secondaryButtonContainer : $primaryButton}
-              onPress={() => {
-                dispatch({ type: "RETRY" });
-              }}
-            >
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
+            {isSelecting ? (
+              <Host style={{ width: "100%", height: 52 }}>
+                <Button
+                  variant="text"
+                  label="Rescan"
+                  onPress={() => {
+                    dispatch({ type: "RETRY" });
+                  }}
+                />
+              </Host>
+            ) : (
+              <TouchableOpacity
+                activeOpacity={0.8}
+                style={$primaryButton}
+                onPress={() => {
+                  dispatch({ type: "RETRY" });
                 }}
-                tintColor={
-                  isSelecting ? COLORS.textSecondary : COLORS.background
-                }
-                size={18}
-              />
-              <Text
-                style={isSelecting ? $secondaryButtonText : $primaryButtonText}
               >
-                {isSelecting ? "Rescan" : "Scan Again"}
-              </Text>
-            </TouchableOpacity>
+                <SymbolView
+                  name={{
+                    ios: "arrow.clockwise",
+                    android: "refresh",
+                    web: "refresh",
+                  }}
+                  tintColor={COLORS.background}
+                  size={18}
+                />
+                <Text style={$primaryButtonText}>Scan Again</Text>
+              </TouchableOpacity>
+            )}
 
             {isNotFound && (
               <Card
@@ -274,6 +294,14 @@ export default function ScanningScreen() {
                 render={
                   <TouchableOpacity
                     activeOpacity={0.8}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      height: "100%",
+                      width: "100%",
+                    }}
                     onPress={handleOpenWifiSettings}
                   />
                 }
@@ -323,11 +351,11 @@ const $iconContainer: ViewStyle = {
 };
 
 const $iconContainerError: ViewStyle = {
-  backgroundColor: `${COLORS.errorLight}10`, // Just a hint of red
+  backgroundColor: `${COLORS.errorLight}10`,
   borderColor: COLORS.error,
 };
 
-const $notFoundHeader: ViewStyle = {
+const $headerTextContainer: ViewStyle = {
   alignItems: "center",
   width: "100%",
 };
@@ -395,6 +423,7 @@ const $cardDescription: TextStyle = {
 const $buttonContainer: ViewStyle = {
   width: "100%",
   gap: 12,
+  marginTop: 16,
 };
 
 const $primaryButton: ViewStyle = {
@@ -412,15 +441,6 @@ const $primaryButtonText: TextStyle = {
   fontSize: 15,
   color: COLORS.background,
   fontWeight: "600",
-};
-
-const $secondaryButtonContainer: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  height: 52,
-  width: "100%",
 };
 
 const $secondaryButton: ViewStyle = {
@@ -441,18 +461,9 @@ const $secondaryButtonText: TextStyle = {
 
 const $listContainer: ViewStyle = {
   width: "100%",
-  gap: 10,
-  marginTop: 10,
-};
-
-const $speakerItem: ViewStyle = {
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-  borderRadius: 12,
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  width: "100%",
+  gap: 12,
+  marginTop: 12,
+  marginBottom: 24,
 };
 
 const $speakerRow: ViewStyle = {
@@ -461,20 +472,31 @@ const $speakerRow: ViewStyle = {
 };
 
 const $speakerIconSmall: ViewStyle = {
-  width: 32,
-  height: 32,
+  width: 44,
+  height: 44,
   borderRadius: 8,
-  backgroundColor: COLORS.primaryTransparent,
+  backgroundColor: COLORS.background,
   alignItems: "center",
   justifyContent: "center",
-  marginRight: 12,
+  marginRight: 16,
+};
+
+const $speakerTextCol: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  marginRight: 16,
 };
 
 const $speakerText: TextStyle = {
-  fontSize: 15,
+  fontSize: 16,
   color: COLORS.text,
   fontWeight: "600",
-  flex: 1,
+  marginBottom: 2,
+};
+
+const $speakerSubtitle: TextStyle = {
+  fontSize: 13,
+  color: COLORS.textMuted,
 };
 
 const $stepsContainer: ViewStyle = {
