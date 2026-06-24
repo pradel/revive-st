@@ -329,14 +329,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
                           : item,
                       ),
                     );
-                    syncPresetsToMarge(update.deviceID, presets).catch(
-                      (err: unknown) => {
-                        logger.warn(
-                          "[useBoseScanner] Error syncing presets:",
-                          err,
-                        );
-                      },
-                    );
                   }
                 })
                 .catch((err: unknown) => {
@@ -813,13 +805,6 @@ export function useBoseScanner(scanDurationMs = 5000) {
       const result = await client.getPresets();
       if (!isMounted.current) {
         return;
-      }
-      if (result.isOk()) {
-        syncPresetsToMarge(deviceID, result.value.presets).catch(
-          (err: unknown) => {
-            logger.warn("[useBoseScanner] Error syncing presets:", err);
-          },
-        );
       }
       setSpeakers((prev) =>
         prev.map((item) =>
