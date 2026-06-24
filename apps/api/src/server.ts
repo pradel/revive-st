@@ -1,6 +1,9 @@
+import { parseXml, type XmlNode } from "bose-api-speaker-client";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
+import { z } from "zod";
 
+import { getPresets, savePresets } from "./db";
 import {
   createAccountFullXml,
   createSourceProvidersXml,
@@ -9,6 +12,29 @@ import {
   createSoftwareUpdateXml,
   createRecentItemResponseXml,
 } from "./utils/marge-xml";
+
+const presetSchema = z.object({
+  id: z.number(),
+  createdOn: z.number().optional(),
+  updatedOn: z.number().optional(),
+  contentItem: z.object({
+    source: z.string(),
+    location: z.string(),
+    sourceAccount: z.string(),
+    isPresetable: z.boolean(),
+    itemName: z.string(),
+  }),
+});
+
+const presetsPayloadSchema = z.object({
+  presets: z.array(presetSchema),
+});
+
+const bmxStationPayloadSchema = z.object({
+  streamUrl: z.string(),
+  name: z.string().optional(),
+  imageUrl: z.string().optional(),
+});
 
 const app = new Hono({ strict: false });
 
@@ -52,12 +78,79 @@ app
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     });
   })
-  .get("/streaming/account/:accountId/device/:deviceId/presets", (ctx) =>
-    ctx.body(createPresetsXml(), 200, {
-      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
-      ETag: "1",
-    }),
+  .get(
+    "/streaming/account/:accountId/device/:deviceId/presets",
+    async (ctx) => {
+      const deviceId = ctx.req.param("deviceId");
+      const presets = await getPresets(deviceId);
+      return ctx.body(createPresetsXml(presets), 200, {
+        "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+        ETag: "1",
+      });
+    },
   )
+  .put(
+    "/streaming/account/:accountId/device/:deviceId/preset/:presetId",
+    async (ctx) => {
+      const deviceId = ctx.req.param("deviceId");
+      const presetId = parseInt(ctx.req.param("presetId"), 10);
+
+      if (isNaN(presetId) || presetId < 1 || presetId > 6) {
+        return ctx.text("Invalid preset ID", 400);
+      }
+
+      const xmlStr = await ctx.req.text();
+      let name = "Unknown Preset";
+      let location = "";
+
+      try {
+        const root = parseXml(xmlStr);
+        const nameNode = root.children.find(
+          (childNode: XmlNode) => childNode.name === "name",
+        );
+        if (nameNode) {
+          name = nameNode.text;
+        }
+
+        const locationNode = root.children.find(
+          (childNode: XmlNode) => childNode.name === "location",
+        );
+        if (locationNode) {
+          location = locationNode.text;
+        }
+      } catch {
+        return ctx.text("Invalid XML payload", 400);
+      }
+
+      const preset = {
+        id: presetId,
+        contentItem: {
+          source: "LOCAL_INTERNET_RADIO",
+          location,
+          sourceAccount: "revivest-user",
+          isPresetable: true,
+          itemName: name,
+        },
+      };
+
+      await savePresets(deviceId, [preset]);
+
+      return ctx.body(createStatusOkXml(), 200, {
+        "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+      });
+    },
+  )
+  .post("/api/internal/device/:deviceId/presets", async (ctx) => {
+    const deviceId = ctx.req.param("deviceId");
+    try {
+      const payload = presetsPayloadSchema.parse(await ctx.req.json());
+      const { presets } = payload;
+      await savePresets(deviceId, presets);
+      return ctx.json({ success: true });
+    } catch (err) {
+      return ctx.json({ success: false, error: String(err) }, 500);
+    }
+  })
   .get("/streaming/software/update/account/:accountId", (ctx) =>
     ctx.body(createSoftwareUpdateXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
@@ -151,11 +244,7 @@ app
         bytes[i] = binaryString.charCodeAt(i);
       }
       const jsonStr = new TextDecoder().decode(bytes);
-      const jsonObj = JSON.parse(jsonStr) as {
-        streamUrl: string;
-        name?: string;
-        imageUrl?: string;
-      };
+      const jsonObj = bmxStationPayloadSchema.parse(JSON.parse(jsonStr));
 
       const streamUrl = jsonObj.streamUrl;
       const name = jsonObj.name ?? "Custom Stream";

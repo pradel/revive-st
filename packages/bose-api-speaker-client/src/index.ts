@@ -9,6 +9,8 @@ export function boseSpeakerClient(opts: {
 
 export type { BoseSpeakerClient } from "./client.ts";
 export { escapeXml } from "./client.ts";
+export { parseXml } from "./xml-parser.ts";
+export type { XmlNode } from "./xml-parser.ts";
 
 export { BoseWebSocketClient } from "./ws-client.ts";
 export {
