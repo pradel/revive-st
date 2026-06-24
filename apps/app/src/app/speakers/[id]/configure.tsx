@@ -252,9 +252,7 @@ export default function ConfigureSpeaker() {
   };
 
   useEffect(() => {
-    if (speaker) {
-      void runConfiguration();
-    } else {
+    if (!speaker) {
       addLog("Speaker not resolved.", "error");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -345,7 +343,7 @@ export default function ConfigureSpeaker() {
             tintColor={COLORS.primary}
             size={36}
           />
-          <Text style={$headerTitle}>Pairing with Marge API</Text>
+          <Text style={$headerTitle}>Pairing with Revive ST Marge API</Text>
           <Text style={$headerSubtitle}>
             {speaker.name} · {speaker.host}
           </Text>
@@ -429,7 +427,11 @@ export default function ConfigureSpeaker() {
             nestedScrollEnabled
           >
             {logs.length === 0 ? (
-              <Text style={$logTextMuted}>Initializing steps...</Text>
+              <Text style={$logTextMuted}>
+                {configState.status === "idle"
+                  ? "Ready to start configuration..."
+                  : "Initializing steps..."}
+              </Text>
             ) : (
               logs.map((log) => {
                 let color = "#a1a1aa";
@@ -452,6 +454,16 @@ export default function ConfigureSpeaker() {
 
         {/* Actions */}
         <View style={{ marginTop: 12, gap: 10 }}>
+          {configState.status === "idle" && (
+            <TouchableOpacity
+              style={$primaryButton}
+              onPress={() => void runConfiguration()}
+              activeOpacity={0.8}
+            >
+              <Text style={$primaryButtonText}>Start Configuration</Text>
+            </TouchableOpacity>
+          )}
+
           {isFinished && (
             <TouchableOpacity
               style={$primaryButton}

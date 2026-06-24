@@ -106,6 +106,10 @@ export type BoseWSUpdate =
       recents?: BoseRecents;
     }
   | {
+      type: "siteSurveyResults";
+      deviceID: string;
+    }
+  | {
       type: "unknown";
       deviceID: string;
     };
@@ -322,6 +326,13 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
       return { type: "recents", deviceID, recents };
     }
     return { type: "recents", deviceID };
+  }
+
+  if (
+    xml.includes("<siteSurveyResultsUpdated") ||
+    xml.includes("<siteSurveyResults>")
+  ) {
+    return { type: "siteSurveyResults", deviceID };
   }
 
   return { type: "unknown", deviceID };

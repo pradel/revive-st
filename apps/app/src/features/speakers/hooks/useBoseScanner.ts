@@ -368,6 +368,8 @@ export function useBoseScanner(scanDurationMs = 5000) {
               }
             } else if (update.type === "recents") {
               // No-op: recents updates are parsed by the client but not consumed by the app UI yet.
+            } else if (update.type === "siteSurveyResults") {
+              // No-op: siteSurveyResults updates are sent periodically by the device, we ignore them
             } else {
               refreshIfAvailable();
             }
