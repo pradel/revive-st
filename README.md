@@ -59,6 +59,16 @@ For large features or architecture changes, please open an issue first to discus
 
 ---
 
+## Acknowledgements
+
+A huge thanks to the maintainers and contributors of the following projects, whose code and reverse-engineering efforts were instrumental in building Revive ST:
+
+- [soundcork](https://github.com/deborahgu/soundcork)
+- [Bose-SoundTouch](https://github.com/gesellix/Bose-SoundTouch)
+- [soundploy](https://github.com/gmuth/soundploy)
+
+---
+
 ## License
 
 _Revive ST is not affiliated with or endorsed by Bose Corporation. Bose and SoundTouch are trademarks of Bose Corporation._
