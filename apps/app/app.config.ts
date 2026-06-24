@@ -4,7 +4,7 @@ import pkg from "./package.json";
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: "app",
+  name: "Revive ST",
   slug: "revive-st",
   owner: "incognito-labs",
   version: pkg.version,
