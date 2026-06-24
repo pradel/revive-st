@@ -1,3 +1,5 @@
+/* eslint-disable */
+// @ts-nocheck
 const { getDefaultConfig } = require("expo/metro-config");
 const path = require("path");
 
