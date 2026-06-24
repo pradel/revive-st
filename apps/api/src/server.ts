@@ -1,3 +1,4 @@
+import { sValidator } from "@hono/standard-validator";
 import { parseXml, type XmlNode } from "bose-api-speaker-client";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
@@ -140,17 +141,17 @@ app
       });
     },
   )
-  .post("/api/internal/device/:deviceId/presets", async (ctx) => {
-    const deviceId = ctx.req.param("deviceId");
-    try {
-      const payload = presetsPayloadSchema.parse(await ctx.req.json());
+  .post(
+    "/api/internal/device/:deviceId/presets",
+    sValidator("json", presetsPayloadSchema),
+    async (ctx) => {
+      const deviceId = ctx.req.param("deviceId");
+      const payload = ctx.req.valid("json");
       const { presets } = payload;
       await savePresets(deviceId, presets);
       return ctx.json({ success: true });
-    } catch (err) {
-      return ctx.json({ success: false, error: String(err) }, 500);
-    }
-  })
+    },
+  )
   .get("/streaming/software/update/account/:accountId", (ctx) =>
     ctx.body(createSoftwareUpdateXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
