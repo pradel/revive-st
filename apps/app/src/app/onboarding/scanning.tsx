@@ -1,4 +1,4 @@
-import { Button, Host } from "@expo/ui";
+import { Button, Host, Text as ExpoText } from "@expo/ui";
 import { openWifiSettings } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -261,11 +261,20 @@ export default function ScanningScreen() {
               <Host style={{ width: "100%", height: 52 }}>
                 <Button
                   variant="text"
-                  label="Rescan"
                   onPress={() => {
                     dispatch({ type: "RETRY" });
                   }}
-                />
+                >
+                  <ExpoText
+                    textStyle={{
+                      color: COLORS.textSecondary,
+                      fontWeight: "600",
+                      fontSize: 15,
+                    }}
+                  >
+                    Rescan
+                  </ExpoText>
+                </Button>
               </Host>
             ) : (
               <TouchableOpacity
