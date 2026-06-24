@@ -93,6 +93,63 @@ describe("API server routes", () => {
     expect(savePresets).toHaveBeenCalledWith("dev-1", expect.any(Array));
   });
 
+  it("PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId saves preset from speaker", async () => {
+    const xmlPayload = `<?xml version="1.0" encoding="UTF-8" ?><preset buttonNumber="1"><sourceid>1</sourceid><name>Dance Wave!</name><username>Dance Wave!</username><location>https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJzdHJlYW1VcmwiOiJodHRwczovL2RhbmNld2F2ZS5vbmxpbmUvZGFuY2UubXAzIiwibmFtZSI6IkRhbmNlIFdhdmUhIiwiaW1hZ2VVcmwiOiIifQ%3D%3D</location><contentItemType>stationurl</contentItemType><containerArt></containerArt></preset>`;
+
+    const res = await app.request(
+      "/streaming/account/test-account/device/dev-1/preset/1",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+        body: xmlPayload,
+      },
+    );
+    expect(res.status).toBe(200);
+    const text = await res.text();
+    expect(text).toContain("<status>OK</status>");
+
+    expect(savePresets).toHaveBeenCalledWith("dev-1", [
+      {
+        id: 1,
+        contentItem: {
+          source: "LOCAL_INTERNET_RADIO",
+          location: expect.stringContaining(
+            "https://api.revivest.app/core02/",
+          ) as unknown as string,
+          sourceAccount: "revivest-user",
+          isPresetable: true,
+          itemName: "Dance Wave!",
+        },
+      },
+    ]);
+  });
+
+  it("PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId returns 400 for out-of-bounds preset ID", async () => {
+    const res = await app.request(
+      "/streaming/account/test-account/device/dev-1/preset/7",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+        body: `<preset></preset>`,
+      },
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid preset ID");
+  });
+
+  it("PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId returns 400 for invalid XML", async () => {
+    const res = await app.request(
+      "/streaming/account/test-account/device/dev-1/preset/2",
+      {
+        method: "PUT",
+        headers: { "Content-Type": "application/vnd.bose.streaming-v1.2+xml" },
+        body: `invalid xml`,
+      },
+    );
+    expect(res.status).toBe(400);
+    expect(await res.text()).toBe("Invalid XML payload");
+  });
+
   it("GET /streaming/software/update/account/:accountId returns empty software update", async () => {
     const res = await app.request(
       "/streaming/software/update/account/test-account",

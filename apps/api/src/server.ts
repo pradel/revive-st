@@ -1,3 +1,4 @@
+import { parseXml, type XmlNode } from "bose-api-speaker-client";
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 import { z } from "zod";
@@ -85,6 +86,57 @@ app
       return ctx.body(createPresetsXml(presets), 200, {
         "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
         ETag: "1",
+      });
+    },
+  )
+  .put(
+    "/streaming/account/:accountId/device/:deviceId/preset/:presetId",
+    async (ctx) => {
+      const deviceId = ctx.req.param("deviceId");
+      const presetId = parseInt(ctx.req.param("presetId"), 10);
+
+      if (isNaN(presetId) || presetId < 1 || presetId > 6) {
+        return ctx.text("Invalid preset ID", 400);
+      }
+
+      const xmlStr = await ctx.req.text();
+      let name = "Unknown Preset";
+      let location = "";
+
+      try {
+        const root = parseXml(xmlStr);
+        const nameNode = root.children.find(
+          (childNode: XmlNode) => childNode.name === "name",
+        );
+        if (nameNode) {
+          name = nameNode.text;
+        }
+
+        const locationNode = root.children.find(
+          (childNode: XmlNode) => childNode.name === "location",
+        );
+        if (locationNode) {
+          location = locationNode.text;
+        }
+      } catch {
+        return ctx.text("Invalid XML payload", 400);
+      }
+
+      const preset = {
+        id: presetId,
+        contentItem: {
+          source: "LOCAL_INTERNET_RADIO",
+          location,
+          sourceAccount: "revivest-user",
+          isPresetable: true,
+          itemName: name,
+        },
+      };
+
+      await savePresets(deviceId, [preset]);
+
+      return ctx.body(createStatusOkXml(), 200, {
+        "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
       });
     },
   )
