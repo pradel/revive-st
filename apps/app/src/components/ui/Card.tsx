@@ -24,7 +24,5 @@ export function Card({ children, style, render, ...props }: CardProps) {
 const $card: ViewStyle = {
   backgroundColor: COLORS.card,
   borderRadius: 16,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   padding: 16,
 };

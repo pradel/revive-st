@@ -647,8 +647,6 @@ const $header: ViewStyle = {
   justifyContent: "space-between",
   paddingHorizontal: 16,
   paddingVertical: 12,
-  borderBottomWidth: 1,
-  borderBottomColor: "#18181b",
 };
 
 const $headerIconButton: ViewStyle = {
@@ -658,8 +656,6 @@ const $headerIconButton: ViewStyle = {
   backgroundColor: "#18181b",
   justifyContent: "center",
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#27272a",
 };
 
 const $headerIconText: TextStyle = {
@@ -693,7 +689,6 @@ const $headerPowerButton: ViewStyle = {
   borderRadius: 20,
   justifyContent: "center",
   alignItems: "center",
-  borderWidth: 1,
 };
 
 const $powerIconText: TextStyle = {
@@ -704,12 +699,10 @@ const $powerIconText: TextStyle = {
 
 const $powerOn: ViewStyle = {
   backgroundColor: "rgba(22, 163, 74, 0.2)",
-  borderColor: "#16a34a",
 };
 
 const $powerOff: ViewStyle = {
   backgroundColor: "rgba(39, 39, 42, 0.4)",
-  borderColor: "#3f3f46",
 };
 
 const $scrollContent: ViewStyle = {
@@ -720,8 +713,6 @@ const $scrollContent: ViewStyle = {
 const $standbyCard: ViewStyle = {
   backgroundColor: "rgba(24, 24, 27, 0.6)",
   borderRadius: 24,
-  borderWidth: 1,
-  borderColor: "#27272a",
   padding: 32,
   alignItems: "center",
   marginTop: 40,
@@ -738,8 +729,6 @@ const $standbyOuterCircle: ViewStyle = {
   backgroundColor: "rgba(37, 99, 235, 0.1)",
   justifyContent: "center",
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: "rgba(37, 99, 235, 0.3)",
 };
 
 const $standbyInnerCircle: ViewStyle = {
@@ -798,8 +787,6 @@ const $albumArtContainer: ViewStyle = {
   borderRadius: 24,
   backgroundColor: "#18181b",
   overflow: "hidden",
-  borderWidth: 1,
-  borderColor: "#27272a",
   shadowColor: "#000",
   shadowOffset: { width: 0, height: 12 },
   shadowOpacity: 0.4,
@@ -880,8 +867,6 @@ const $sourceText: TextStyle = {
 const $panel: ViewStyle = {
   backgroundColor: "rgba(24, 24, 27, 0.6)",
   borderRadius: 20,
-  borderWidth: 1,
-  borderColor: "#27272a",
   padding: 16,
   marginBottom: 16,
 };
@@ -921,8 +906,6 @@ const $controlButton: ViewStyle = {
   height: 48,
   borderRadius: 24,
   backgroundColor: "#18181b",
-  borderWidth: 1,
-  borderColor: "#27272a",
   justifyContent: "center",
   alignItems: "center",
 };
@@ -965,13 +948,10 @@ const $volumeButton: ViewStyle = {
   backgroundColor: "#18181b",
   justifyContent: "center",
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#27272a",
 };
 
 const $volumeButtonActive: ViewStyle = {
   backgroundColor: "rgba(239, 68, 68, 0.15)",
-  borderColor: "#ef4444",
 };
 
 const $volumeButtonText: TextStyle = {
@@ -1008,8 +988,6 @@ const $stepButton: ViewStyle = {
   backgroundColor: "#18181b",
   justifyContent: "center",
   alignItems: "center",
-  borderWidth: 1,
-  borderColor: "#27272a",
 };
 
 const $stepButtonText: TextStyle = {
@@ -1029,15 +1007,12 @@ const $presetCard: ViewStyle = {
   width: "48%",
   aspectRatio: 1.3,
   backgroundColor: "#18181b",
-  borderWidth: 1,
-  borderColor: "#27272a",
   borderRadius: 12,
   padding: 10,
   justifyContent: "space-between",
 };
 
 const $presetCardActive: ViewStyle = {
-  borderColor: "rgba(245, 158, 11, 0.4)",
   backgroundColor: "rgba(245, 158, 11, 0.03)",
 };
 
@@ -1103,8 +1078,6 @@ const $sourcesGrid: ViewStyle = {
 const $sourceCard: ViewStyle = {
   flex: 1,
   backgroundColor: "#18181b",
-  borderWidth: 1,
-  borderColor: "#27272a",
   borderRadius: 12,
   paddingVertical: 12,
   alignItems: "center",
@@ -1113,7 +1086,6 @@ const $sourceCard: ViewStyle = {
 
 const $sourceCardActive: ViewStyle = {
   backgroundColor: "rgba(37, 99, 235, 0.1)",
-  borderColor: "#2563eb",
 };
 
 const $sourceCardEmoji: TextStyle = {

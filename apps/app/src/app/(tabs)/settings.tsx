@@ -17,7 +17,7 @@ import { Card } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/config";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
-import { Header } from "@/ui/Header";
+import { PageHeader } from "@/ui/PageHeader";
 import { COLORS } from "@/ui/theme";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
@@ -29,7 +29,7 @@ export default function AppSettings() {
 
   return (
     <SafeAreaView style={$container}>
-      <Header />
+      <PageHeader title="Settings" hideIcon />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={$content}
@@ -53,68 +53,64 @@ export default function AppSettings() {
           <Text style={$heroSubtitle}>Version {version}</Text>
         </Card>
 
-        <Card
-          style={$linkCard}
-          render={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                void Linking.openURL(APP_CONFIG.WEBSITE_URL);
-              }}
-            />
-          }
-        >
-          <View style={$linkIconContainer}>
-            <SymbolView
-              name={{ ios: "globe", android: "language", web: "language" }}
-              tintColor={COLORS.textSecondary}
-              size={20}
-            />
-          </View>
-          <Text style={[$linkText, { flex: 1 }]}>Website</Text>
-          <SymbolView
-            name={{
-              ios: "chevron.right",
-              android: "chevron_right",
-              web: "chevron_right",
+        <Card style={{ paddingVertical: 4 }}>
+          <TouchableOpacity
+            style={$linkCard}
+            activeOpacity={0.7}
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.WEBSITE_URL);
             }}
-            tintColor={COLORS.textMuted}
-            size={20}
-          />
-        </Card>
-
-        <Card
-          style={$linkCard}
-          render={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                void Linking.openURL(APP_CONFIG.GITHUB_URL);
-              }}
-            />
-          }
-        >
-          <View style={$linkIconContainer}>
+          >
+            <View style={$linkIconContainer}>
+              <SymbolView
+                name={{ ios: "globe", android: "language", web: "language" }}
+                tintColor={COLORS.primary}
+                size={20}
+              />
+            </View>
+            <Text style={[$linkText, { flex: 1 }]}>Website</Text>
             <SymbolView
               name={{
-                ios: "chevron.left.forwardslash.chevron.right",
-                android: "code",
-                web: "code",
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
               }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.textMuted}
               size={20}
             />
-          </View>
-          <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
-          <SymbolView
-            name={{
-              ios: "chevron.right",
-              android: "chevron_right",
-              web: "chevron_right",
+          </TouchableOpacity>
+
+          <View style={$infoDivider} />
+
+          <TouchableOpacity
+            style={$linkCard}
+            activeOpacity={0.7}
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.GITHUB_URL);
             }}
-            tintColor={COLORS.textMuted}
-            size={20}
-          />
+          >
+            <View style={$linkIconContainer}>
+              <SymbolView
+                name={{
+                  ios: "chevron.left.forwardslash.chevron.right",
+                  android: "code",
+                  web: "code",
+                }}
+                tintColor={COLORS.primary}
+                size={20}
+              />
+            </View>
+            <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
+            <SymbolView
+              name={{
+                ios: "chevron.right",
+                android: "chevron_right",
+                web: "chevron_right",
+              }}
+              tintColor={COLORS.textMuted}
+              size={20}
+            />
+          </TouchableOpacity>
         </Card>
 
         <Text style={$sectionLabel}>Network</Text>
@@ -138,7 +134,7 @@ export default function AppSettings() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor={COLORS.textSecondary}
+                tintColor={COLORS.primary}
                 size={20}
               />
             )}
@@ -177,7 +173,7 @@ export default function AppSettings() {
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "terminal", android: "terminal", web: "terminal" }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -208,12 +204,12 @@ const $container: ViewStyle = {
 const $content: ViewStyle = {
   paddingHorizontal: 20,
   paddingBottom: 40,
-  gap: 12,
+  gap: 8,
 };
 
 const $heroCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 32,
+  paddingVertical: 24,
   marginBottom: 8,
 };
 
@@ -240,9 +236,11 @@ const $heroSubtitle: TextStyle = {
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 16,
+  fontSize: 13,
   fontWeight: "700",
-  color: COLORS.primary,
+  color: COLORS.textMuted,
+  textTransform: "uppercase",
+  letterSpacing: 1,
   marginTop: 16,
   marginBottom: 4,
   marginLeft: 4,
@@ -251,6 +249,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
+  paddingVertical: 12,
 };
 
 const $linkIconContainer: ViewStyle = {
@@ -273,4 +272,10 @@ const $linkSubText: TextStyle = {
   fontSize: 12,
   color: COLORS.textMuted,
   marginTop: 2,
+};
+
+const $infoDivider: ViewStyle = {
+  height: 1,
+  backgroundColor: COLORS.border,
+  marginVertical: 4,
 };

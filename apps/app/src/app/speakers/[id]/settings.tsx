@@ -1,4 +1,8 @@
-import { BottomSheet, Host, Slider } from "@expo/ui";
+import { Host, Slider } from "@expo/ui";
+import {
+  BottomSheetModal,
+  BottomSheetView,
+} from "@expo/ui/community/bottom-sheet";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, useEffect, useRef } from "react";
@@ -239,7 +243,7 @@ export default function SpeakerSettings() {
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "pencil", android: "edit", web: "edit" }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -573,6 +577,16 @@ function NativeSliderSetting({
   const [isOpen, setIsOpen] = useState(false);
   const { width } = useWindowDimensions();
 
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      bottomSheetRef.current?.present();
+    } else {
+      bottomSheetRef.current?.dismiss();
+    }
+  }, [isOpen]);
+
   // Local state to keep slider movement fluid
   const [localValue, setLocalValue] = useState(value);
 
@@ -641,14 +655,16 @@ function NativeSliderSetting({
           />
         </View>
       </TouchableOpacity>
-      <BottomSheet
-        isPresented={isOpen}
+      <BottomSheetModal
+        ref={bottomSheetRef}
         onDismiss={() => {
           setIsOpen(false);
         }}
-        snapPoints={["half"]}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: COLORS.card }}
+        handleIndicatorStyle={{ backgroundColor: COLORS.textMuted }}
       >
-        <View style={[$bottomSheetContent, { width }]}>
+        <BottomSheetView style={[$bottomSheetContent, { width }]}>
           <View style={$sliderHeader}>
             <Text style={$infoLabel}>{label}</Text>
             <View
@@ -679,8 +695,8 @@ function NativeSliderSetting({
             <Text style={$sliderLabelText}>{min}</Text>
             <Text style={$sliderLabelText}>{max}</Text>
           </View>
-        </View>
-      </BottomSheet>
+        </BottomSheetView>
+      </BottomSheetModal>
     </>
   );
 }
@@ -744,7 +760,7 @@ const $content: ViewStyle = {
   paddingHorizontal: 20,
   paddingTop: 20,
   paddingBottom: 40,
-  gap: 12,
+  gap: 8,
 };
 
 const $centerState: ViewStyle = {
@@ -776,7 +792,7 @@ const $backButtonText: TextStyle = {
 
 const $heroCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 32,
+  paddingVertical: 24,
   marginBottom: 8,
 };
 
@@ -804,9 +820,11 @@ const $heroSubtitle: TextStyle = {
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 16,
+  fontSize: 13,
   fontWeight: "700",
-  color: COLORS.primary,
+  color: COLORS.textMuted,
+  textTransform: "uppercase",
+  letterSpacing: 1,
   marginTop: 16,
   marginBottom: 4,
   marginLeft: 4,
@@ -815,6 +833,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
+  paddingVertical: 12,
 };
 
 const $linkIconContainer: ViewStyle = {
@@ -849,10 +868,7 @@ const $textInput: TextStyle = {
   color: COLORS.text,
 };
 
-const $textInputError: TextStyle = {
-  borderWidth: 1,
-  borderColor: COLORS.error,
-};
+const $textInputError: TextStyle = {};
 
 const $nameErrorText: TextStyle = {
   fontSize: 12,
@@ -941,8 +957,6 @@ const $pickerChip: ViewStyle = {
   paddingVertical: 6,
   borderRadius: 8,
   backgroundColor: COLORS.border,
-  borderWidth: 1,
-  borderColor: COLORS.transparent,
 };
 
 const $pickerChipActive: ViewStyle = {

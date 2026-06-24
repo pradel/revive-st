@@ -4,24 +4,32 @@ import { View, Text, type TextStyle, type ViewStyle } from "react-native";
 
 import { COLORS } from "@/ui/theme";
 
-interface HeaderProps {
+export interface PageHeaderProps {
+  title: string;
   rightComponent?: React.ReactNode;
+  hideIcon?: boolean;
 }
 
-export function Header({ rightComponent }: HeaderProps) {
+export function PageHeader({
+  title,
+  rightComponent,
+  hideIcon,
+}: PageHeaderProps) {
   return (
     <View style={$header}>
       <View style={$leftContent}>
-        <SymbolView
-          name={{
-            ios: "speaker.wave.2.fill",
-            android: "speaker",
-            web: "speaker",
-          }}
-          tintColor={COLORS.primary}
-          size={28}
-        />
-        <Text style={$appTitle}>Revive ST</Text>
+        {!hideIcon && (
+          <SymbolView
+            name={{
+              ios: "speaker.wave.2.fill",
+              android: "speaker",
+              web: "speaker",
+            }}
+            tintColor={COLORS.primary}
+            size={28}
+          />
+        )}
+        <Text style={$appTitle}>{title}</Text>
       </View>
       {rightComponent}
     </View>
@@ -33,7 +41,8 @@ const $header: ViewStyle = {
   alignItems: "center",
   justifyContent: "space-between",
   paddingHorizontal: 20,
-  paddingBottom: 8,
+  paddingTop: 8,
+  paddingBottom: 16,
 };
 
 const $leftContent: ViewStyle = {
