@@ -78,22 +78,6 @@ export class BoseSpeakerClient {
     return new Ok(undefined);
   }
 
-  private async postParse<TParsed>(
-    path: string,
-    body: string,
-    parse: (root: XmlNode) => TParsed,
-  ): Promise<Result<TParsed, BoseApiError>> {
-    const result = await this.fetchResult(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/xml" },
-      body,
-    });
-    if (!result.isOk()) {
-      return new Err(result.error);
-    }
-    return BoseSpeakerClient.parseBody(result.value, parse);
-  }
-
   private async fetchResult(
     path: string,
     init: RequestInit,
