@@ -1,4 +1,8 @@
-import { BottomSheet, Host, Slider } from "@expo/ui";
+import { Host, Slider } from "@expo/ui";
+import {
+  BottomSheetModal,
+  BottomSheetView,
+} from "@expo/ui/community/bottom-sheet";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, useEffect, useRef } from "react";
@@ -573,6 +577,16 @@ function NativeSliderSetting({
   const [isOpen, setIsOpen] = useState(false);
   const { width } = useWindowDimensions();
 
+  const bottomSheetRef = useRef<BottomSheetModal>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      bottomSheetRef.current?.present();
+    } else {
+      bottomSheetRef.current?.dismiss();
+    }
+  }, [isOpen]);
+
   // Local state to keep slider movement fluid
   const [localValue, setLocalValue] = useState(value);
 
@@ -641,14 +655,16 @@ function NativeSliderSetting({
           />
         </View>
       </TouchableOpacity>
-      <BottomSheet
-        isPresented={isOpen}
+      <BottomSheetModal
+        ref={bottomSheetRef}
         onDismiss={() => {
           setIsOpen(false);
         }}
-        snapPoints={["half"]}
+        enablePanDownToClose
+        backgroundStyle={{ backgroundColor: COLORS.card }}
+        handleIndicatorStyle={{ backgroundColor: COLORS.textMuted }}
       >
-        <View style={[$bottomSheetContent, { width }]}>
+        <BottomSheetView style={[$bottomSheetContent, { width }]}>
           <View style={$sliderHeader}>
             <Text style={$infoLabel}>{label}</Text>
             <View
@@ -679,8 +695,8 @@ function NativeSliderSetting({
             <Text style={$sliderLabelText}>{min}</Text>
             <Text style={$sliderLabelText}>{max}</Text>
           </View>
-        </View>
-      </BottomSheet>
+        </BottomSheetView>
+      </BottomSheetModal>
     </>
   );
 }
