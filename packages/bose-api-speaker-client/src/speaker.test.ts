@@ -198,9 +198,12 @@ describe("Speaker", () => {
         const url = input as string;
         if (url.includes("/info")) {
           return Promise.resolve(
-            new Response("<info><deviceID>TEST1234</deviceID></info>", {
-              status: 200,
-            }),
+            new Response(
+              "<info><deviceID>TEST1234</deviceID><name>Test Speaker</name><type>SoundTouch 10</type></info>",
+              {
+                status: 200,
+              },
+            ),
           );
         }
         if (url.includes("/nowPlaying")) {
@@ -272,20 +275,35 @@ describe("Speaker", () => {
         );
       });
     const result = await speaker.initialize();
-    expect(Result.isOk(result)).toBe(true);
-    // initialize() calls getInfo, getNowPlaying, getVolume, getPresets, getBass, getBassCapabilities, getCapabilities, getAudioDspControls, getAudioProductToneControls, getAudioProductLevelControls
-    // That's 10 requests. We'll just verify it made multiple GET requests.
-    expect(fetchMock).toHaveBeenCalled();
+    expect(result.isOk()).toBe(true);
+
     const calls = fetchMock.mock.calls;
-    expect(calls.some((call) => (call[0] as string).includes("/info"))).toBe(
-      true,
-    );
-    expect(
-      calls.some((call) => (call[0] as string).includes("/nowPlaying")),
-    ).toBe(true);
-    expect(calls.some((call) => (call[0] as string).includes("/volume"))).toBe(
-      true,
-    );
+    const endpoints = [
+      "/info",
+      "/nowPlaying",
+      "/volume",
+      "/presets",
+      "/bassCapabilities",
+      "/bass",
+      "/capabilities",
+      "/audiodspcontrols",
+      "/audioproducttonecontrols",
+      "/audioproductlevelcontrols",
+    ];
+    endpoints.forEach((ep) => {
+      expect(calls.some((call) => (call[0] as string).includes(ep))).toBe(true);
+    });
+
+    const state = speaker.getState();
+    expect(state.name).toBe("Test Speaker");
+    expect(state.type).toBe("SoundTouch 10");
+    expect(state.nowPlaying?.source).toBe("STANDBY");
+    expect(state.volume).toBe(50);
+    expect(state.isMuted).toBe(false);
+    expect(state.bassCapabilities?.bassAvailable).toBe(true);
+    expect(state.bassCapabilities?.bassMin).toBe(-9);
+    expect(state.bassCapabilities?.bassMax).toBe(9);
+    expect(state.bass).toBe(0);
   });
 
   it("handles 500 error correctly without throwing", async () => {

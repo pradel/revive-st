@@ -140,8 +140,10 @@ export function useBoseScanner(scanDurationMs = 5000) {
         }
 
         try {
-          // Fetch info using BoseHttpAdapter directly
-          const httpAdapter = new BoseHttpAdapter({ ip: service.host });
+          const httpAdapter = new BoseHttpAdapter({
+            ip: service.host,
+            port: service.port || 8090,
+          });
           const infoResult = await httpAdapter.getInfo();
           if (!isMounted.current) {
             return;
@@ -403,9 +405,23 @@ export function useBoseScanner(scanDurationMs = 5000) {
       return;
     }
 
+    if (
+      presetId !== 1 &&
+      presetId !== 2 &&
+      presetId !== 3 &&
+      presetId !== 4 &&
+      presetId !== 5 &&
+      presetId !== 6
+    ) {
+      logger.warn(
+        `[BoseScanner] Invalid preset ID ${presetId} for ${deviceID}`,
+      );
+      return;
+    }
+
     setUpdating(deviceID, true);
     try {
-      const res = await speaker.savePreset(presetId as 1 | 2 | 3 | 4 | 5 | 6);
+      const res = await speaker.savePreset(presetId);
       if (res.isOk()) {
         void speaker.initialize();
       } else {
@@ -457,14 +473,23 @@ export function useBoseScanner(scanDurationMs = 5000) {
         // For now, doing it here since buildMargeRadioPayload is in apps/app
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 5000);
+
         const response = await fetch(
           `http://${speakerIp}:${speakerPort}/select`,
           {
             method: "POST",
             headers: { "Content-Type": "text/xml" },
             body: payload,
+            signal: controller.signal,
           },
         );
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           const errorText = await response
@@ -483,10 +508,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
         setTimeout(async () => speaker.initialize(), 1500);
       } catch (err) {
-        logger.error(
-          `[useBoseScanner] Failed to play stream on ${deviceID}:`,
-          err,
-        );
+        if (err instanceof Error && err.name === "AbortError") {
+          logger.error(
+            `[useBoseScanner] Stream play request timed out for ${deviceID}`,
+          );
+        } else {
+          logger.error(
+            `[useBoseScanner] Failed to play stream on ${deviceID}:`,
+            err,
+          );
+        }
         throw err;
       } finally {
         setUpdating(deviceID, false);

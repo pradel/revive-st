@@ -26,7 +26,7 @@ import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMuta
 import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
-  value: string;
+  value: AudioMode;
   label: string;
   description: string;
 }
@@ -298,7 +298,7 @@ export default function SpeakerSettings() {
             onChange={(mode) => {
               setAudioDspControlsMutation.mutate({
                 host: speaker.host,
-                audiomode: mode as AudioMode,
+                audiomode: mode,
               });
             }}
           />
@@ -712,7 +712,7 @@ function PickerSetting({
   label: string;
   value: string;
   options: AudioModeDisplay[];
-  onChange: (value: string) => void;
+  onChange: (value: AudioMode) => void;
   withDivider?: boolean;
 }) {
   return (
