@@ -26,9 +26,9 @@ export default function ScanningScreen() {
 
   useEffect(() => {
     if (state.step === "CONNECTING_TO_HOTSPOT") {
-      router.replace("/onboarding/connecting" as any);
+      router.replace("/onboarding/connecting");
     } else if (state.step === "WIFI_DISABLED") {
-      router.replace("/onboarding/wifi-enable" as any);
+      router.replace("/onboarding/wifi-enable");
     }
   }, [state.step, router]);
 

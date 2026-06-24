@@ -20,9 +20,9 @@ export default function PermissionsScreen() {
 
   useEffect(() => {
     if (state.step === "SCANNING_FOR_HOTSPOT") {
-      router.replace("/onboarding/scanning" as any);
+      router.replace("/onboarding/scanning");
     } else if (state.step === "WIFI_DISABLED") {
-      router.replace("/onboarding/wifi-enable" as any);
+      router.replace("/onboarding/wifi-enable");
     }
   }, [state.step, router]);
 

@@ -23,7 +23,7 @@ export default function WifiEnableScreen() {
 
   useEffect(() => {
     if (state.step === "SCANNING_FOR_HOTSPOT") {
-      router.replace("/onboarding/scanning" as any);
+      router.replace("/onboarding/scanning");
     }
   }, [state.step, router]);
 
