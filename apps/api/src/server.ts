@@ -29,6 +29,12 @@ const presetsPayloadSchema = z.object({
   presets: z.array(presetSchema),
 });
 
+const bmxStationPayloadSchema = z.object({
+  streamUrl: z.string(),
+  name: z.string().optional(),
+  imageUrl: z.string().optional(),
+});
+
 const app = new Hono({ strict: false });
 
 app.use(logger());
@@ -186,11 +192,7 @@ app
         bytes[i] = binaryString.charCodeAt(i);
       }
       const jsonStr = new TextDecoder().decode(bytes);
-      const jsonObj = JSON.parse(jsonStr) as {
-        streamUrl: string;
-        name?: string;
-        imageUrl?: string;
-      };
+      const jsonObj = bmxStationPayloadSchema.parse(JSON.parse(jsonStr));
 
       const streamUrl = jsonObj.streamUrl;
       const name = jsonObj.name ?? "Custom Stream";
