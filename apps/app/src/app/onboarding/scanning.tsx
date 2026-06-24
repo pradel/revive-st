@@ -1,4 +1,3 @@
-import { Button, Host } from "@expo/ui";
 import { openWifiSettings } from "expo-bose-wifi";
 import { Stack, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -203,81 +202,53 @@ function NotFoundState({
 
       {/* Action Buttons */}
       <View style={$buttonContainer}>
-        <Host
-          style={{
-            width: "100%",
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={$primaryButton}
+          onPress={() => {
+            dispatch({ type: "RETRY" });
           }}
         >
-          <Button
-            variant="filled"
-            onPress={() => {
-              dispatch({ type: "RETRY" });
+          <SymbolView
+            name={{
+              ios: "arrow.clockwise",
+              android: "refresh",
+              web: "refresh",
             }}
-          >
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                width: "100%",
-              }}
-            >
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={COLORS.background}
-                size={18}
-              />
-              <Text
-                style={{
-                  color: COLORS.background,
-                  fontSize: 15,
-                  fontWeight: "600",
-                }}
-              >
-                Scan Again
-              </Text>
-            </View>
-          </Button>
+            tintColor={COLORS.background}
+            size={18}
+          />
+          <Text style={$primaryButtonText}>Scan Again</Text>
+        </TouchableOpacity>
 
-          <Button variant="text" onPress={onOpenSettings}>
-            <View
+        <Card
+          style={$secondaryButton}
+          render={
+            <TouchableOpacity
+              activeOpacity={0.8}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
                 gap: 8,
+                height: "100%",
                 width: "100%",
               }}
-            >
-              <SymbolView
-                name={{
-                  ios: "gearshape",
-                  android: "settings",
-                  web: "settings",
-                }}
-                tintColor={COLORS.textSecondary}
-                size={18}
-              />
-              <Text
-                style={{
-                  color: COLORS.textSecondary,
-                  fontSize: 15,
-                  fontWeight: "600",
-                }}
-              >
-                Open Wi-Fi Settings
-              </Text>
-            </View>
-          </Button>
-        </Host>
+              onPress={onOpenSettings}
+            />
+          }
+        >
+          <SymbolView
+            name={{
+              ios: "gearshape",
+              android: "settings",
+              web: "settings",
+            }}
+            tintColor={COLORS.textSecondary}
+            size={18}
+          />
+          <Text style={$secondaryButtonText}>Open Wi-Fi Settings</Text>
+        </Card>
       </View>
     </>
   );
@@ -374,26 +345,15 @@ function SelectingState({
 
       {/* Action Buttons */}
       <View style={$buttonContainer}>
-        <Host style={{ width: "100%", height: 52 }}>
-          <Button
-            variant="text"
-            onPress={() => {
-              dispatch({ type: "RETRY" });
-            }}
-          >
-            <Text
-              style={{
-                color: COLORS.textSecondary,
-                fontWeight: "600",
-                fontSize: 15,
-                textAlign: "center",
-                width: "100%",
-              }}
-            >
-              Rescan
-            </Text>
-          </Button>
-        </Host>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={$secondaryButton}
+          onPress={() => {
+            dispatch({ type: "RETRY" });
+          }}
+        >
+          <Text style={$secondaryButtonText}>Rescan</Text>
+        </TouchableOpacity>
       </View>
     </>
   );
@@ -498,6 +458,39 @@ const $buttonContainer: ViewStyle = {
   width: "100%",
   gap: 12,
   marginTop: 16,
+};
+
+const $primaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  backgroundColor: COLORS.primary,
+  height: 52,
+  borderRadius: 16,
+  width: "100%",
+};
+
+const $primaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.background,
+  fontWeight: "600",
+};
+
+const $secondaryButton: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  height: 52,
+  width: "100%",
+  padding: 0,
+};
+
+const $secondaryButtonText: TextStyle = {
+  fontSize: 15,
+  color: COLORS.textSecondary,
+  fontWeight: "600",
 };
 
 const $listContainer: ViewStyle = {
