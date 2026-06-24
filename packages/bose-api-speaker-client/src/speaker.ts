@@ -241,47 +241,30 @@ export class Speaker {
   // --- Domain Actions ---
 
   async play(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "PLAY",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("PLAY");
   }
 
   async pause(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "PAUSE",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("PAUSE");
   }
 
   async playPause(): Promise<Result<void, BoseApiError>> {
-    return this.triggerKey("PLAY_PAUSE");
+    if (this.state.nowPlaying?.playStatus === "PLAY_STATE") {
+      return this.triggerKey("PAUSE");
+    }
+    return this.triggerKey("PLAY");
   }
 
   async stop(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "STOP",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("STOP");
   }
 
   async skip(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "NEXT_TRACK",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("NEXT_TRACK");
   }
 
   async previous(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "PREV_TRACK",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("PREV_TRACK");
   }
 
   async playPreset(
