@@ -1,6 +1,12 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
 
+import { getPresets, savePresets } from "./db";
 import app from "./server";
+
+vi.mock("./db", () => ({
+  getPresets: vi.fn().mockResolvedValue([]),
+  savePresets: vi.fn().mockResolvedValue(undefined),
+}));
 
 describe("API server routes", () => {
   it("GET /streaming/sourceproviders returns the provider list", async () => {
@@ -32,7 +38,21 @@ describe("API server routes", () => {
     expect(text).toContain("<sourceSettings/>");
   });
 
-  it("GET /streaming/account/:accountId/device/:deviceId/presets returns empty presets", async () => {
+  it("GET /streaming/account/:accountId/device/:deviceId/presets returns presets from db", async () => {
+    // Mock getPresets to return a preset
+    vi.mocked(getPresets).mockResolvedValueOnce([
+      {
+        id: 1,
+        contentItem: {
+          source: "SPOTIFY",
+          location: "spotify:playlist:123",
+          sourceAccount: "user",
+          isPresetable: true,
+          itemName: "My Playlist",
+        },
+      },
+    ]);
+
     const res = await app.request(
       "/streaming/account/test-account/device/dev-1/presets",
     );
@@ -43,7 +63,34 @@ describe("API server routes", () => {
     expect(res.headers.get("ETag")).toBe("1");
     const text = await res.text();
     expect(text).toContain('standalone="yes"');
-    expect(text).toContain("<presets/>");
+    expect(text).toContain('<preset id="1">');
+    expect(text).toContain('source="SPOTIFY"');
+    expect(text).toContain("My Playlist");
+  });
+
+  it("POST /api/internal/device/:deviceId/presets saves presets to db", async () => {
+    const res = await app.request("/api/internal/device/dev-1/presets", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        presets: [
+          {
+            id: 1,
+            contentItem: {
+              source: "TUNEIN",
+              location: "123",
+              sourceAccount: "",
+              isPresetable: true,
+              itemName: "Radio",
+            },
+          },
+        ],
+      }),
+    });
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as { success: boolean };
+    expect(json).toEqual({ success: true });
+    expect(savePresets).toHaveBeenCalledWith("dev-1", expect.any(Array));
   });
 
   it("GET /streaming/software/update/account/:accountId returns empty software update", async () => {

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { logger } from "hono/logger";
 
+import { getPresets, savePresets } from "./db";
 import {
   createAccountFullXml,
   createSourceProvidersXml,
@@ -52,12 +53,27 @@ app
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
     });
   })
-  .get("/streaming/account/:accountId/device/:deviceId/presets", (ctx) =>
-    ctx.body(createPresetsXml(), 200, {
-      "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
-      ETag: "1",
-    }),
+  .get(
+    "/streaming/account/:accountId/device/:deviceId/presets",
+    async (ctx) => {
+      const deviceId = ctx.req.param("deviceId");
+      const presets = await getPresets(deviceId);
+      return ctx.body(createPresetsXml(presets), 200, {
+        "Content-Type": "application/vnd.bose.streaming-v1.2+xml",
+        ETag: "1",
+      });
+    },
   )
+  .post("/api/internal/device/:deviceId/presets", async (ctx) => {
+    const deviceId = ctx.req.param("deviceId");
+    try {
+      const { presets } = (await ctx.req.json()) as { presets: any[] };
+      await savePresets(deviceId, presets);
+      return ctx.json({ success: true });
+    } catch (err) {
+      return ctx.json({ success: false, error: String(err) }, 500);
+    }
+  })
   .get("/streaming/software/update/account/:accountId", (ctx) =>
     ctx.body(createSoftwareUpdateXml(), 200, {
       "Content-Type": "application/vnd.bose.streaming-v1.2+xml",

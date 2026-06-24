@@ -9,10 +9,12 @@
     "preview": "vp preview"
   },
   "dependencies": {
+    "@libsql/client": "^0.17.4",
     "hono": "4.12.26",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@types/node": "25.9.3",
     "nitro": "3.0.260610-beta",
     "typescript": "6.0.3",
     "vite": "catalog:",

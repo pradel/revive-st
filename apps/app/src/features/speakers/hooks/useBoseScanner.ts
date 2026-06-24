@@ -15,6 +15,7 @@ import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
 
+import { syncPresetsToMarge } from "../lib/marge-api";
 import { buildMargeRadioPayload } from "../lib/radio";
 
 export interface BoseSpeaker {
@@ -205,6 +206,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
       setSpeakers((prev) =>
         prev.map((item) => {
           if (item.deviceID === speaker.deviceID) {
+            if (presetsResult) {
+              syncPresetsToMarge(speaker.deviceID, presetsResult.presets).catch(
+                (err: unknown) => {
+                  logger.warn("[useBoseScanner] Error syncing presets:", err);
+                },
+              );
+            }
             return {
               ...item,
               playStatus: nowPlaying?.playStatus ?? item.playStatus,
@@ -306,6 +314,34 @@ export function useBoseScanner(scanDurationMs = 5000) {
               } else {
                 refreshIfAvailable();
               }
+            } else if (update.type === "presets") {
+              // Fetch the latest presets and sync them to the Marge API
+              const speakerClient = createClient({ ip: speaker.host });
+              speakerClient
+                .getPresets()
+                .then((result) => {
+                  if (result.isOk() && result.value.presets) {
+                    const presets = result.value.presets;
+                    setSpeakers((prev) =>
+                      prev.map((item) =>
+                        item.deviceID === update.deviceID
+                          ? { ...item, presets }
+                          : item,
+                      ),
+                    );
+                    syncPresetsToMarge(update.deviceID, presets).catch(
+                      (err: unknown) => {
+                        logger.warn(
+                          "[useBoseScanner] Error syncing presets:",
+                          err,
+                        );
+                      },
+                    );
+                  }
+                })
+                .catch((err: unknown) => {
+                  logger.warn("[useBoseScanner] Error fetching presets:", err);
+                });
             } else if (update.type === "nowPlaying") {
               const np = update.nowPlaying;
               if (np) {
@@ -777,6 +813,13 @@ export function useBoseScanner(scanDurationMs = 5000) {
       const result = await client.getPresets();
       if (!isMounted.current) {
         return;
+      }
+      if (result.isOk()) {
+        syncPresetsToMarge(deviceID, result.value.presets).catch(
+          (err: unknown) => {
+            logger.warn("[useBoseScanner] Error syncing presets:", err);
+          },
+        );
       }
       setSpeakers((prev) =>
         prev.map((item) =>

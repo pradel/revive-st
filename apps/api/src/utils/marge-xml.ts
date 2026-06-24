@@ -1,3 +1,5 @@
+import type { Preset } from "../db";
+
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
 
@@ -44,8 +46,28 @@ export function createAccountFullXml(accountId: string): string {
 </account>`;
 }
 
-export function createPresetsXml(): string {
-  return `${XML_HEADER}\n<presets/>`;
+export function createPresetsXml(presets: Preset[] = []): string {
+  if (!presets || presets.length === 0) {
+    return `${XML_HEADER}\n<presets/>`;
+  }
+
+  let xml = `${XML_HEADER}\n<presets>\n`;
+  for (const preset of presets) {
+    const createdOnAttr = preset.createdOn
+      ? ` createdOn="${preset.createdOn}"`
+      : "";
+    const updatedOnAttr = preset.updatedOn
+      ? ` updatedOn="${preset.updatedOn}"`
+      : "";
+
+    xml += `  <preset id="${preset.id}"${createdOnAttr}${updatedOnAttr}>\n`;
+    xml += `    <ContentItem source="${escapeXml(preset.contentItem.source)}" location="${escapeXml(preset.contentItem.location)}" sourceAccount="${escapeXml(preset.contentItem.sourceAccount)}" isPresetable="${preset.contentItem.isPresetable}">\n`;
+    xml += `      <itemName>${escapeXml(preset.contentItem.itemName)}</itemName>\n`;
+    xml += `    </ContentItem>\n`;
+    xml += `  </preset>\n`;
+  }
+  xml += `</presets>`;
+  return xml;
 }
 
 export function createStatusOkXml(): string {
