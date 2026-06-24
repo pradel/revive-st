@@ -7,12 +7,11 @@ import {
   TextInput,
   ActivityIndicator,
   TouchableOpacity,
-  KeyboardAvoidingView,
   ScrollView,
-  Platform,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import WifiManager from "react-native-wifi-reborn";
 
 import { Card } from "@/components/ui/Card";
@@ -63,6 +62,7 @@ export default function NetworkPickerScreen() {
 
   const s = state as {
     ssid?: string;
+    bssid?: string;
     speakerIP?: string;
     homeSSID?: string;
     step: string;
@@ -122,14 +122,12 @@ export default function NetworkPickerScreen() {
   }, [selectedSSID, password, dispatch]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      style={$container}
-    >
-      <ScrollView
+    <View style={$container}>
+      <KeyboardAwareScrollView
         contentContainerStyle={$scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        bottomOffset={40}
       >
         <View style={$content}>
           <View style={$headerContainer}>
@@ -317,8 +315,8 @@ export default function NetworkPickerScreen() {
             </View>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
+    </View>
   );
 }
 
