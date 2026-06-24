@@ -143,6 +143,9 @@ export function useBoseScanner(scanDurationMs = 5000) {
           // Fetch info using BoseHttpAdapter directly
           const httpAdapter = new BoseHttpAdapter({ ip: service.host });
           const infoResult = await httpAdapter.getInfo();
+          if (!isMounted.current) {
+            return;
+          }
           if (!infoResult.isOk()) {
             return;
           }
@@ -154,6 +157,19 @@ export function useBoseScanner(scanDurationMs = 5000) {
           const deviceID = info.deviceID;
 
           let speaker = speakersMapRef.current.get(deviceID);
+          if (speaker) {
+            const currentIp = speaker.options.ip;
+            const currentPort = speaker.options.port;
+            if (
+              currentIp !== service.host ||
+              currentPort !== (service.port || 8090) ||
+              speaker.getState().connectionState === "disconnected"
+            ) {
+              speaker.disconnect();
+              speaker = undefined;
+            }
+          }
+
           if (!speaker) {
             speaker = new Speaker({
               ip: service.host,
@@ -247,10 +263,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     setUpdating(deviceID, true);
     try {
-      await speaker.powerToggle();
-      setTimeout(async () => speaker.initialize(), 800);
-    } catch (err) {
-      logger.error(`[BoseScanner] Failed to toggle power on ${deviceID}:`, err);
+      const res = await speaker.powerToggle();
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 800);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to toggle power on ${deviceID}:`,
+          res.error,
+        );
+      }
     } finally {
       setUpdating(deviceID, false);
     }
@@ -269,10 +292,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
     );
 
     try {
-      await speaker.setVolume(vol);
-    } catch (err) {
-      logger.error(`[BoseScanner] Failed to set volume on ${deviceID}:`, err);
-      void speaker.initialize();
+      const res = await speaker.setVolume(vol);
+      if (!res.isOk()) {
+        logger.error(
+          `[BoseScanner] Failed to set volume on ${deviceID}:`,
+          res.error,
+        );
+        void speaker.initialize();
+      }
+    } finally {
+      // Intentionally kept finally to match style if we add more state handling
     }
   }, []);
 
@@ -284,13 +313,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     setUpdating(deviceID, true);
     try {
-      await speaker.playPause();
-      setTimeout(async () => speaker.initialize(), 500);
-    } catch (err) {
-      logger.error(
-        `[BoseScanner] Failed to send play/pause to ${deviceID}:`,
-        err,
-      );
+      const res = await speaker.playPause();
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to send play/pause to ${deviceID}:`,
+          res.error,
+        );
+      }
     } finally {
       setUpdating(deviceID, false);
     }
@@ -304,13 +337,17 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     setUpdating(deviceID, true);
     try {
-      await speaker.triggerKey(key as any);
-      setTimeout(async () => speaker.initialize(), 500);
-    } catch (err) {
-      logger.error(
-        `[BoseScanner] Failed to send key ${key} to ${deviceID}:`,
-        err,
-      );
+      const res = await speaker.triggerKey(key as any);
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to send key ${key} to ${deviceID}:`,
+          res.error,
+        );
+      }
     } finally {
       setUpdating(deviceID, false);
     }
@@ -325,13 +362,20 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
       setUpdating(deviceID, true);
       try {
-        await speaker.selectSource(source, sourceAccount || undefined);
-        setTimeout(async () => speaker.initialize(), 500);
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to select source ${source} on ${deviceID}:`,
-          err,
+        const res = await speaker.selectSource(
+          source,
+          sourceAccount || undefined,
         );
+        if (res.isOk()) {
+          setTimeout(() => {
+            void speaker.initialize();
+          }, 500);
+        } else {
+          logger.error(
+            `[BoseScanner] Failed to select source ${source} on ${deviceID}:`,
+            res.error,
+          );
+        }
       } finally {
         setUpdating(deviceID, false);
       }
@@ -361,13 +405,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     setUpdating(deviceID, true);
     try {
-      await speaker.savePreset(presetId as 1 | 2 | 3 | 4 | 5 | 6);
-      void speaker.initialize();
-    } catch (err) {
-      logger.error(
-        `[BoseScanner] Failed to save preset ${presetId} on ${deviceID}:`,
-        err,
-      );
+      const res = await speaker.savePreset(presetId as 1 | 2 | 3 | 4 | 5 | 6);
+      if (res.isOk()) {
+        void speaker.initialize();
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to save preset ${presetId} on ${deviceID}:`,
+          res.error,
+        );
+      }
     } finally {
       setUpdating(deviceID, false);
     }
@@ -381,10 +427,15 @@ export function useBoseScanner(scanDurationMs = 5000) {
 
     setUpdating(deviceID, true);
     try {
-      await speaker.setBass(value);
-      void speaker.initialize();
-    } catch (err) {
-      logger.error(`[BoseScanner] Failed to set bass on ${deviceID}:`, err);
+      const res = await speaker.setBass(value);
+      if (res.isOk()) {
+        void speaker.initialize();
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to set bass on ${deviceID}:`,
+          res.error,
+        );
+      }
     } finally {
       setUpdating(deviceID, false);
     }
@@ -404,13 +455,16 @@ export function useBoseScanner(scanDurationMs = 5000) {
         // Fallback to manual HTTP request for custom Marge radio payload
         // Alternatively, we could add this custom playStream to Speaker module.
         // For now, doing it here since buildMargeRadioPayload is in apps/app
-        const speakerIp = (speaker as unknown as { options: { ip: string } })
-          .options.ip;
-        const response = await fetch(`http://${speakerIp}:8090/select`, {
-          method: "POST",
-          headers: { "Content-Type": "text/xml" },
-          body: payload,
-        });
+        const speakerIp = speaker.options.ip;
+        const speakerPort = speaker.options.port ?? 8090;
+        const response = await fetch(
+          `http://${speakerIp}:${speakerPort}/select`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "text/xml" },
+            body: payload,
+          },
+        );
 
         if (!response.ok) {
           const errorText = await response

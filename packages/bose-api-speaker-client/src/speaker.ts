@@ -1,4 +1,4 @@
-import { Ok, type Result } from "better-result";
+import { Err, Ok, type Result } from "better-result";
 
 import type { BoseApiError } from "./errors.ts";
 import { BoseHttpAdapter } from "./http-adapter.ts";
@@ -57,7 +57,7 @@ export class Speaker {
   private readonly http: BoseHttpAdapter;
   private ws: BoseWebSocketClient | null = null;
   private readonly state: SpeakerState;
-  private readonly options: SpeakerOptions;
+  public readonly options: SpeakerOptions;
 
   constructor(options: SpeakerOptions) {
     this.options = options;
@@ -83,66 +83,101 @@ export class Speaker {
       this.state.macAddress = info.networkInfo?.macAddress;
     }
 
-    const [
-      nowPlaying,
-      volumeInfo,
-      presetsResult,
-      bassResult,
-      bassCaps,
-      capabilities,
-      dspControls,
-      toneControls,
-      levelControls,
-    ] = await Promise.all([
-      this.http.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
-      this.http.getVolume().then((res) => (res.isOk() ? res.value : null)),
-      this.http.getPresets().then((res) => (res.isOk() ? res.value : null)),
-      this.http.getBass().then((res) => (res.isOk() ? res.value : null)),
-      this.http
-        .getBassCapabilities()
-        .then((res) => (res.isOk() ? res.value : null)),
-      this.http
-        .getCapabilities()
-        .then((res) => (res.isOk() ? res.value : null)),
-      this.http
-        .getAudioDspControls()
-        .then((res) => (res.isOk() ? res.value : null)),
-      this.http
-        .getAudioProductToneControls()
-        .then((res) => (res.isOk() ? res.value : null)),
-      this.http
-        .getAudioProductLevelControls()
-        .then((res) => (res.isOk() ? res.value : null)),
-    ]);
+    try {
+      const [
+        nowPlaying,
+        volumeInfo,
+        presetsResult,
+        bassResult,
+        bassCaps,
+        capabilities,
+        dspControls,
+        toneControls,
+        levelControls,
+      ] = await Promise.all([
+        this.http
+          .getNowPlaying()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getVolume()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getPresets()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getBass()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getBassCapabilities()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getCapabilities()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getAudioDspControls()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getAudioProductToneControls()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+        this.http
+          .getAudioProductLevelControls()
+          .then((res) => (res.isOk() ? res.value : null))
+          .catch(() => null),
+      ]);
 
-    if (nowPlaying) {
-      this.state.nowPlaying = {
-        source: nowPlaying.source,
-        playStatus: nowPlaying.playStatus,
-        track: nowPlaying.track,
-        artist: nowPlaying.artist,
-        album: nowPlaying.album,
-        artUrl: nowPlaying.art?.url,
-      };
-      this.state.powerState =
-        nowPlaying.source === "STANDBY" ? "standby" : "on";
+      if (nowPlaying) {
+        this.state.nowPlaying = {
+          source: nowPlaying.source,
+          playStatus: nowPlaying.playStatus,
+          track: nowPlaying.track,
+          artist: nowPlaying.artist,
+          album: nowPlaying.album,
+          artUrl: nowPlaying.art?.url,
+        };
+        this.state.powerState =
+          nowPlaying.source === "STANDBY" ? "standby" : "on";
+      }
+
+      if (volumeInfo) {
+        this.state.volume = volumeInfo.actualvolume;
+        this.state.isMuted = volumeInfo.muteenabled;
+      }
+
+      if (presetsResult) {
+        this.state.presets = presetsResult.presets;
+      }
+      if (bassResult) {
+        this.state.bass = bassResult.actualbass;
+      }
+      if (bassCaps) {
+        this.state.bassCapabilities = bassCaps;
+      }
+      if (capabilities) {
+        this.state.capabilities = capabilities;
+      }
+      if (dspControls) {
+        this.state.audioDspControls = dspControls;
+      }
+      if (toneControls) {
+        this.state.audioProductToneControls = toneControls;
+      }
+      if (levelControls) {
+        this.state.audioProductLevelControls = levelControls;
+      }
+
+      this.emitState();
+      return new Ok(undefined);
+    } catch (e) {
+      return new Err(e as BoseApiError);
     }
-
-    if (volumeInfo) {
-      this.state.volume = volumeInfo.actualvolume;
-      this.state.isMuted = volumeInfo.muteenabled;
-    }
-
-    this.state.presets = presetsResult?.presets;
-    this.state.bass = bassResult?.actualbass;
-    this.state.bassCapabilities = bassCaps;
-    this.state.capabilities = capabilities;
-    this.state.audioDspControls = dspControls;
-    this.state.audioProductToneControls = toneControls;
-    this.state.audioProductLevelControls = levelControls;
-
-    this.emitState();
-    return new Ok(undefined);
   }
 
   /**
@@ -200,7 +235,7 @@ export class Speaker {
    * Get the current state synchronously.
    */
   getState(): SpeakerState {
-    return { ...this.state };
+    return structuredClone(this.state);
   }
 
   // --- Domain Actions ---
@@ -222,11 +257,7 @@ export class Speaker {
   }
 
   async playPause(): Promise<Result<void, BoseApiError>> {
-    return this.http.pressKey({
-      key: "PLAY_PAUSE",
-      state: "press",
-      sender: "bose-client",
-    });
+    return this.triggerKey("PLAY_PAUSE");
   }
 
   async stop(): Promise<Result<void, BoseApiError>> {
@@ -451,7 +482,7 @@ export class Speaker {
 
   private emitState() {
     if (this.options.onStateUpdate) {
-      this.options.onStateUpdate({ ...this.state });
+      this.options.onStateUpdate(structuredClone(this.state));
     }
   }
 }

@@ -3,6 +3,7 @@ import {
   BottomSheetModal,
   BottomSheetView,
 } from "@expo/ui/community/bottom-sheet";
+import type { AudioMode } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, useEffect, useRef } from "react";
@@ -297,7 +298,7 @@ export default function SpeakerSettings() {
             onChange={(mode) => {
               setAudioDspControlsMutation.mutate({
                 host: speaker.host,
-                audiomode: mode,
+                audiomode: mode as AudioMode,
               });
             }}
           />

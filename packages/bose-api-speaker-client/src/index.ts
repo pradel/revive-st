@@ -9,7 +9,7 @@ export function boseSpeakerClient(opts: {
   return new BoseHttpAdapter(opts);
 }
 
-export type { BoseHttpAdapter as BoseSpeakerClient } from "./http-adapter.ts";
+export { BoseHttpAdapter as BoseSpeakerClient } from "./http-adapter.ts";
 export { BoseHttpAdapter } from "./http-adapter.ts";
 export { escapeXml } from "./http-adapter.ts";
 export { parseXml } from "./xml-parser.ts";

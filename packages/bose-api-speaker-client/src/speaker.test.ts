@@ -287,4 +287,13 @@ describe("Speaker", () => {
       true,
     );
   });
+
+  it("handles 500 error correctly without throwing", async () => {
+    mockFetch(500, "<error>Internal Server Error</error>");
+    const result = await speaker.powerToggle();
+    expect(result.isErr()).toBe(true);
+    if (result.isErr()) {
+      expect(result.error.name).toBe("HttpError");
+    }
+  });
 });

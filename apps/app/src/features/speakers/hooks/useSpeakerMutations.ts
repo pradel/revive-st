@@ -1,5 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Speaker, type SocketModuleLike } from "bose-api-speaker-client";
+import {
+  Speaker,
+  type SocketModuleLike,
+  type KeyValue,
+  type AudioMode,
+} from "bose-api-speaker-client";
 import TcpSocket from "react-native-tcp-socket";
 
 import { buildMargeRadioPayload } from "@/features/speakers/lib/radio";
@@ -63,9 +68,9 @@ export function useKeyMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ host, key }: { host: string; key: string }) => {
+    mutationFn: async ({ host, key }: { host: string; key: KeyValue }) => {
       const speaker = new Speaker({ ip: host, deviceID: "temp" });
-      const result = await speaker.triggerKey(key as any);
+      const result = await speaker.triggerKey(key);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -208,10 +213,10 @@ export function useSetAudioDspControlsMutation() {
       audiomode,
     }: {
       host: string;
-      audiomode: string;
+      audiomode: AudioMode;
     }) => {
       const speaker = new Speaker({ ip: host, deviceID: "temp" });
-      const result = await speaker.setAudioDspControls(audiomode as any);
+      const result = await speaker.setAudioDspControls(audiomode);
       if (!result.isOk()) {
         throw result.error;
       }
