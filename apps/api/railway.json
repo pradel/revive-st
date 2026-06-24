@@ -9,8 +9,7 @@
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "preDeployCommand": "pnpm --filter @revive-st/api db:migrate",
-    "startCommand": "pnpm --filter @revive-st/api preview --host",
+    "startCommand": "pnpm --filter @revive-st/api db:migrate && pnpm --filter @revive-st/api preview --host",
     "limitOverride": {
       "containers": {
         "cpu": 1,
