@@ -1,8 +1,19 @@
-import type { Result } from "better-result";
+import { Ok, type Result } from "better-result";
 
 import type { BoseApiError } from "./errors.ts";
 import { BoseHttpAdapter } from "./http-adapter.ts";
-import type { ZoneMember } from "./types/index.ts";
+import type {
+  ZoneMember,
+  AudioDspControlsResponse,
+  AudioProductLevelControlsResponse,
+  AudioProductToneControlsResponse,
+  BassCapabilitiesResponse,
+  CapabilitiesResponse,
+  DeviceComponent,
+  Preset,
+  AudioMode,
+  KeyValue,
+} from "./types/index.ts";
 import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
 
 export interface SpeakerOptions {
@@ -27,6 +38,19 @@ export interface SpeakerState {
   };
   connectionState: "connected" | "disconnected" | "connecting";
   powerState: "on" | "standby";
+
+  // Static or rarely changed profile data
+  name?: string;
+  type?: string;
+  presets?: Preset[];
+  bass?: number;
+  bassCapabilities?: BassCapabilitiesResponse | null;
+  capabilities?: CapabilitiesResponse | null;
+  audioDspControls?: AudioDspControlsResponse | null;
+  audioProductToneControls?: AudioProductToneControlsResponse | null;
+  audioProductLevelControls?: AudioProductLevelControlsResponse | null;
+  components?: DeviceComponent[];
+  macAddress?: string;
 }
 
 export class Speaker {
@@ -44,6 +68,81 @@ export class Speaker {
       connectionState: "disconnected",
       powerState: "standby",
     };
+  }
+
+  /**
+   * Initialize the speaker state by fetching all its static and current dynamic info.
+   */
+  async initialize(): Promise<Result<void, BoseApiError>> {
+    const infoResult = await this.http.getInfo();
+    if (infoResult.isOk()) {
+      const info = infoResult.value;
+      this.state.name = info.name;
+      this.state.type = info.type;
+      this.state.components = info.components;
+      this.state.macAddress = info.networkInfo?.macAddress;
+    }
+
+    const [
+      nowPlaying,
+      volumeInfo,
+      presetsResult,
+      bassResult,
+      bassCaps,
+      capabilities,
+      dspControls,
+      toneControls,
+      levelControls,
+    ] = await Promise.all([
+      this.http.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
+      this.http.getVolume().then((res) => (res.isOk() ? res.value : null)),
+      this.http.getPresets().then((res) => (res.isOk() ? res.value : null)),
+      this.http.getBass().then((res) => (res.isOk() ? res.value : null)),
+      this.http
+        .getBassCapabilities()
+        .then((res) => (res.isOk() ? res.value : null)),
+      this.http
+        .getCapabilities()
+        .then((res) => (res.isOk() ? res.value : null)),
+      this.http
+        .getAudioDspControls()
+        .then((res) => (res.isOk() ? res.value : null)),
+      this.http
+        .getAudioProductToneControls()
+        .then((res) => (res.isOk() ? res.value : null)),
+      this.http
+        .getAudioProductLevelControls()
+        .then((res) => (res.isOk() ? res.value : null)),
+    ]);
+
+    if (nowPlaying) {
+      this.state.nowPlaying = {
+        source: nowPlaying.source,
+        playStatus: nowPlaying.playStatus,
+        track: nowPlaying.track,
+        artist: nowPlaying.artist,
+        album: nowPlaying.album,
+        artUrl: nowPlaying.art?.url,
+      };
+      this.state.powerState =
+        nowPlaying.source === "STANDBY" ? "standby" : "on";
+    }
+
+    if (volumeInfo) {
+      this.state.volume = volumeInfo.actualvolume;
+      this.state.isMuted = volumeInfo.muteenabled;
+    }
+
+    this.state.presets = presetsResult?.presets;
+    this.state.bass = bassResult?.actualbass;
+    this.state.bassCapabilities = bassCaps;
+    this.state.capabilities = capabilities;
+    this.state.audioDspControls = dspControls;
+    this.state.audioProductToneControls = toneControls;
+    this.state.audioProductLevelControls = levelControls;
+
+    this.emitState();
+    return new Ok(undefined);
   }
 
   /**
@@ -157,7 +256,7 @@ export class Speaker {
   async playPreset(
     id: 1 | 2 | 3 | 4 | 5 | 6,
   ): Promise<Result<void, BoseApiError>> {
-    const key = `PRESET_${id}`;
+    const key = `PRESET_${id}` as KeyValue;
     return this.http.pressKey({ key, state: "press", sender: "bose-client" });
   }
 
@@ -203,6 +302,73 @@ export class Speaker {
       senderIpAddress: this.options.ip,
       members: [],
     });
+  }
+
+  async powerToggle(): Promise<Result<void, BoseApiError>> {
+    return this.triggerKey("POWER");
+  }
+
+  async triggerKey(key: KeyValue): Promise<Result<void, BoseApiError>> {
+    const res = await this.http.pressKey({
+      key,
+      state: "press",
+      sender: "bose-client",
+    });
+    if (!res.isOk()) {
+      return res;
+    }
+    return this.http.pressKey({ key, state: "release", sender: "bose-client" });
+  }
+
+  async selectSource(
+    source: string,
+    sourceAccount?: string,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.http.selectSource({ source, sourceAccount });
+  }
+
+  async setBass(value: number): Promise<Result<void, BoseApiError>> {
+    return this.http.setBass(value);
+  }
+
+  async setName(name: string): Promise<Result<void, BoseApiError>> {
+    return this.http.setName(name);
+  }
+
+  async setAudioDspControls(
+    audiomode: AudioMode,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.http.setAudioDspControls({ audiomode });
+  }
+
+  async setAudioProductToneControls(opts: {
+    bass?: { value: number };
+    treble?: { value: number };
+  }): Promise<Result<void, BoseApiError>> {
+    return this.http.setAudioProductToneControls(opts);
+  }
+
+  async setAudioProductLevelControls(opts: {
+    frontCenterSpeakerLevel?: { value: number };
+    rearSurroundSpeakersLevel?: { value: number };
+  }): Promise<Result<void, BoseApiError>> {
+    return this.http.setAudioProductLevelControls(opts);
+  }
+
+  async savePreset(
+    id: 1 | 2 | 3 | 4 | 5 | 6,
+  ): Promise<Result<void, BoseApiError>> {
+    const key = `PRESET_${id}` as KeyValue;
+    const res = await this.http.pressKey({
+      key,
+      state: "press",
+      sender: "bose-client",
+    });
+    if (!res.isOk()) {
+      return res;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    return this.http.pressKey({ key, state: "release", sender: "bose-client" });
   }
 
   private handleWSUpdate(update: BoseWSUpdate) {
@@ -253,6 +419,29 @@ export class Speaker {
         this.state.connectionState = newState;
         stateChanged = true;
       }
+    } else if (update.type === "nameUpdated" && update.name) {
+      if (this.state.name !== update.name) {
+        this.state.name = update.name;
+        stateChanged = true;
+      }
+    } else if (
+      update.type === "nowSelection" &&
+      update.nowSelection?.preset?.contentItem
+    ) {
+      const contentItem = update.nowSelection.preset.contentItem;
+      this.state.nowPlaying = {
+        source: contentItem.source,
+        track: contentItem.itemName,
+        playStatus: "BUFFERING_STATE",
+        artist: undefined,
+        album: undefined,
+        artUrl: undefined,
+      };
+      stateChanged = true;
+    } else if (update.type === "presets") {
+      // For presets update, we might want to refresh from HTTP since WS doesn't send the full list in the same format always.
+      // But actually, WS does not send the full preset list payload.
+      // Typically we'd fetch HTTP. But we can just emit an event to refresh if needed.
     }
 
     if (stateChanged) {
