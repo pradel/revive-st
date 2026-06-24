@@ -1,9 +1,10 @@
 import type { Preset } from "bose-api-speaker-client";
 
+import { APP_CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
 // The app knows the URL via telnet configuration, but we use the known domain here.
-const MARGE_API_BASE_URL = "https://api.revivest.app";
+const MARGE_API_BASE_URL = APP_CONFIG.API_URL;
 
 /**
  * Pushes updated presets to the Marge API server for a specific device.

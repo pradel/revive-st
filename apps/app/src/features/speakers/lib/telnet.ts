@@ -5,6 +5,8 @@ import {
   type SocketModuleLike,
 } from "bose-api-speaker-client";
 
+import { APP_CONFIG } from "@/config";
+
 export class MargeAPIConfigurationError extends TaggedError(
   "MargeAPIConfigurationError",
 )<{
@@ -19,7 +21,7 @@ export async function checkMargeAPIStatus(host: string): Promise<boolean> {
   const infoResult = await client.getInfo();
   if (infoResult.isOk()) {
     const isConfigured =
-      infoResult.value.margeURL?.includes("api.revivest.app") ?? false;
+      infoResult.value.margeURL?.includes(APP_CONFIG.API_URL) ?? false;
     return isConfigured;
   }
   throw infoResult.error;
@@ -60,11 +62,11 @@ export async function configureMargeAPI(
     // 2. Set bmxRegistryUrl
     options?.onStepStart?.("set_registry");
     options?.onLog?.(
-      "Executing: sys configuration bmxRegistryUrl https://api.revivest.app/v2/registry.json",
+      `Executing: sys configuration bmxRegistryUrl ${APP_CONFIG.API_URL}/v2/registry.json`,
       "info",
     );
     const regResult = await telnet.executeCommand(
-      "sys configuration bmxRegistryUrl https://api.revivest.app/v2/registry.json",
+      `sys configuration bmxRegistryUrl ${APP_CONFIG.API_URL}/v2/registry.json`,
       1200,
     );
     if (!regResult.isOk()) {
@@ -84,11 +86,11 @@ export async function configureMargeAPI(
     // 3. Set boseurls envswitch
     options?.onStepStart?.("set_redirect");
     options?.onLog?.(
-      "Executing: envswitch boseurls set https://api.revivest.app https://worldwide.bose.com/updates/soundtouch",
+      `Executing: envswitch boseurls set ${APP_CONFIG.API_URL} https://worldwide.bose.com/updates/soundtouch`,
       "info",
     );
     const redirectResult = await telnet.executeCommand(
-      "envswitch boseurls set https://api.revivest.app https://worldwide.bose.com/updates/soundtouch",
+      `envswitch boseurls set ${APP_CONFIG.API_URL} https://worldwide.bose.com/updates/soundtouch`,
       1200,
     );
     if (!redirectResult.isOk()) {

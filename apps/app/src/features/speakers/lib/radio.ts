@@ -1,5 +1,7 @@
 import { escapeXml } from "bose-api-speaker-client";
 
+import { APP_CONFIG } from "@/config";
+
 export function buildMargeRadioPayload(uri: string, name: string): string {
   const data = {
     streamUrl: uri,
@@ -13,7 +15,7 @@ export function buildMargeRadioPayload(uri: string, name: string): string {
   )
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
-  const locationUrl = `https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
+  const locationUrl = `${APP_CONFIG.API_URL}/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
     base64Data,
   )}`;
   return `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(
