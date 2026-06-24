@@ -121,9 +121,8 @@ export default function HomePage() {
                     <Image
                       src="/button-ios-download.png"
                       alt="Download on the App Store"
-                      width={150}
+                      width={135}
                       height={45}
-                      style={{ width: "auto", height: "45px" }}
                     />
                   </Link>
                   <Link
@@ -133,9 +132,8 @@ export default function HomePage() {
                     <Image
                       src="/button-android-download.png"
                       alt="Get it on Google Play"
-                      width={150}
+                      width={135}
                       height={45}
-                      style={{ width: "auto", height: "45px" }}
                     />
                   </Link>
                 </div>
@@ -395,9 +393,8 @@ export default function HomePage() {
                   <Image
                     src="/button-ios-download.png"
                     alt="Download on the App Store"
-                    width={150}
+                    width={135}
                     height={45}
-                    style={{ width: "auto", height: "45px" }}
                   />
                 </Link>
                 <Link
@@ -407,9 +404,8 @@ export default function HomePage() {
                   <Image
                     src="/button-android-download.png"
                     alt="Get it on Google Play"
-                    width={150}
+                    width={135}
                     height={45}
-                    style={{ width: "auto", height: "45px" }}
                   />
                 </Link>
               </div>
