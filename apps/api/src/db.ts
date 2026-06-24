@@ -57,26 +57,6 @@ const client = createClient({
 
 export const db = drizzle(client);
 
-// Initialize schema (auto-creation on local/Railway without separate migration steps)
-client
-  .execute(`
-  CREATE TABLE IF NOT EXISTS presets (
-    device_id TEXT,
-    preset_id INTEGER,
-    created_on INTEGER,
-    updated_on INTEGER,
-    source TEXT,
-    location TEXT,
-    source_account TEXT,
-    is_presetable INTEGER,
-    item_name TEXT,
-    PRIMARY KEY (device_id, preset_id)
-  )
-`)
-  .catch(() => {
-    // Ignored in tests or silent failures
-  });
-
 export async function getPresets(deviceId: string): Promise<Preset[]> {
   const result = await db
     .select()
