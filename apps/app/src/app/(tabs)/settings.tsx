@@ -67,7 +67,7 @@ export default function AppSettings() {
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "globe", android: "language", web: "language" }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -101,7 +101,7 @@ export default function AppSettings() {
                 android: "code",
                 web: "code",
               }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -138,7 +138,7 @@ export default function AppSettings() {
                   android: "refresh",
                   web: "refresh",
                 }}
-                tintColor={COLORS.textSecondary}
+                tintColor={COLORS.primary}
                 size={20}
               />
             )}
@@ -177,7 +177,7 @@ export default function AppSettings() {
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "terminal", android: "terminal", web: "terminal" }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -240,9 +240,11 @@ const $heroSubtitle: TextStyle = {
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 16,
+  fontSize: 13,
   fontWeight: "700",
-  color: COLORS.primary,
+  color: COLORS.textMuted,
+  textTransform: "uppercase",
+  letterSpacing: 1,
   marginTop: 16,
   marginBottom: 4,
   marginLeft: 4,

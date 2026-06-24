@@ -239,7 +239,7 @@ export default function SpeakerSettings() {
           <View style={$linkIconContainer}>
             <SymbolView
               name={{ ios: "pencil", android: "edit", web: "edit" }}
-              tintColor={COLORS.textSecondary}
+              tintColor={COLORS.primary}
               size={20}
             />
           </View>
@@ -804,9 +804,11 @@ const $heroSubtitle: TextStyle = {
 };
 
 const $sectionLabel: TextStyle = {
-  fontSize: 16,
+  fontSize: 13,
   fontWeight: "700",
-  color: COLORS.primary,
+  color: COLORS.textMuted,
+  textTransform: "uppercase",
+  letterSpacing: 1,
   marginTop: 16,
   marginBottom: 4,
   marginLeft: 4,
