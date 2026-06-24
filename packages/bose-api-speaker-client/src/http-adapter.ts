@@ -148,7 +148,7 @@ export class BoseHttpAdapter {
       );
     }
 
-    const apiErrors = tryParseApiErrorsFromNode(root);
+    const apiErrors = tryParseApiErrorsFromNode(root, body);
     if (apiErrors) {
       return new Err(apiErrors);
     }
@@ -593,13 +593,16 @@ function parseLevelControl(node: XmlNode | undefined) {
 function tryParseApiErrors(body: string): ApiError | null {
   try {
     const root = parseXml(body);
-    return tryParseApiErrorsFromNode(root);
+    return tryParseApiErrorsFromNode(root, body);
   } catch {
     return null;
   }
 }
 
-function tryParseApiErrorsFromNode(root: XmlNode): ApiError | null {
+function tryParseApiErrorsFromNode(
+  root: XmlNode,
+  rawXml: string,
+): ApiError | null {
   const errorsRoot = root.name === "errors" ? root : getChild(root, "errors");
   if (!errorsRoot) {
     return null;
@@ -612,6 +615,7 @@ function tryParseApiErrorsFromNode(root: XmlNode): ApiError | null {
       severity: errorEntry.attributes.severity ?? "",
       message: errorEntry.text,
     })),
+    rawXml,
   });
 }
 
