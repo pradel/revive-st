@@ -274,7 +274,7 @@ export default function RadioBrowser() {
 
   return (
     <SafeAreaView style={$container}>
-      <PageHeader title="Radio" />
+      <PageHeader title="Radio" hideIcon />
 
       <View style={$tabsContainer}>
         <View style={$tabsWrapper}>

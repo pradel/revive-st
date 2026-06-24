@@ -29,7 +29,7 @@ export default function AppSettings() {
 
   return (
     <SafeAreaView style={$container}>
-      <PageHeader title="Settings" />
+      <PageHeader title="Settings" hideIcon />
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={$content}
