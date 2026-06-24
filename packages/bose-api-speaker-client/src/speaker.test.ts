@@ -30,7 +30,7 @@ describe("Speaker", () => {
       expect.stringContaining("/key"),
       expect.objectContaining({
         method: "POST",
-        body: '<key state="press" sender="bose-client">PLAY</key>',
+        body: '<key state="press" sender="Gabbo">PLAY</key>',
       }),
     );
   });
@@ -43,7 +43,7 @@ describe("Speaker", () => {
       expect.stringContaining("/key"),
       expect.objectContaining({
         method: "POST",
-        body: '<key state="press" sender="bose-client">PAUSE</key>',
+        body: '<key state="press" sender="Gabbo">PAUSE</key>',
       }),
     );
   });
@@ -69,7 +69,7 @@ describe("Speaker", () => {
       expect.stringContaining("/key"),
       expect.objectContaining({
         method: "POST",
-        body: '<key state="press" sender="bose-client">MUTE</key>',
+        body: '<key state="press" sender="Gabbo">MUTE</key>',
       }),
     );
   });
@@ -82,7 +82,7 @@ describe("Speaker", () => {
       expect.stringContaining("/key"),
       expect.objectContaining({
         method: "POST",
-        body: '<key state="press" sender="bose-client">PRESET_3</key>',
+        body: '<key state="press" sender="Gabbo">PRESET_3</key>',
       }),
     );
   });
@@ -111,14 +111,14 @@ describe("Speaker", () => {
       1,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="press" sender="bose-client">POWER</key>',
+        body: '<key state="press" sender="Gabbo">POWER</key>',
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="release" sender="bose-client">POWER</key>',
+        body: '<key state="release" sender="Gabbo">POWER</key>',
       }),
     );
   });
@@ -132,14 +132,14 @@ describe("Speaker", () => {
       1,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="press" sender="bose-client">PRESET_1</key>',
+        body: '<key state="press" sender="Gabbo">PRESET_1</key>',
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="release" sender="bose-client">PRESET_1</key>',
+        body: '<key state="release" sender="Gabbo">PRESET_1</key>',
       }),
     );
   });
@@ -153,14 +153,14 @@ describe("Speaker", () => {
       1,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="press" sender="bose-client">PLAY_PAUSE</key>',
+        body: '<key state="press" sender="Gabbo">PLAY_PAUSE</key>',
       }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       expect.stringContaining("/key"),
       expect.objectContaining({
-        body: '<key state="release" sender="bose-client">PLAY_PAUSE</key>',
+        body: '<key state="release" sender="Gabbo">PLAY_PAUSE</key>',
       }),
     );
   });

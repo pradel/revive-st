@@ -271,7 +271,7 @@ export class Speaker {
     id: 1 | 2 | 3 | 4 | 5 | 6,
   ): Promise<Result<void, BoseApiError>> {
     const key = `PRESET_${id}` as KeyValue;
-    return this.http.pressKey({ key, state: "press", sender: "bose-client" });
+    return this.http.pressKey({ key, state: "press", sender: "Gabbo" });
   }
 
   async setVolume(volume: number): Promise<Result<void, BoseApiError>> {
@@ -282,7 +282,7 @@ export class Speaker {
     return this.http.pressKey({
       key: "MUTE",
       state: "press",
-      sender: "bose-client",
+      sender: "Gabbo",
     });
   }
 
@@ -290,7 +290,7 @@ export class Speaker {
     return this.http.pressKey({
       key: "POWER",
       state: "press",
-      sender: "bose-client",
+      sender: "Gabbo",
     });
   }
 
@@ -298,7 +298,7 @@ export class Speaker {
     return this.http.pressKey({
       key: "POWER",
       state: "press",
-      sender: "bose-client",
+      sender: "Gabbo",
     });
   }
 
@@ -326,12 +326,12 @@ export class Speaker {
     const res = await this.http.pressKey({
       key,
       state: "press",
-      sender: "bose-client",
+      sender: "Gabbo",
     });
     if (!res.isOk()) {
       return res;
     }
-    return this.http.pressKey({ key, state: "release", sender: "bose-client" });
+    return this.http.pressKey({ key, state: "release", sender: "Gabbo" });
   }
 
   async selectSource(
@@ -376,13 +376,13 @@ export class Speaker {
     const res = await this.http.pressKey({
       key,
       state: "press",
-      sender: "bose-client",
+      sender: "Gabbo",
     });
     if (!res.isOk()) {
       return res;
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    return this.http.pressKey({ key, state: "release", sender: "bose-client" });
+    return this.http.pressKey({ key, state: "release", sender: "Gabbo" });
   }
 
   private handleWSUpdate(update: BoseWSUpdate) {
