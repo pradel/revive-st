@@ -81,10 +81,18 @@ export function useSpeakerDiscovery({
 
     zeroconf.on("resolved", (service) => {
       const cleanName = service.name?.toLowerCase() || "";
-      const isMatch =
-        !expectedMacSuffix || cleanName.includes(expectedMacSuffix);
+      const cleanHost = service.host?.toLowerCase() || "";
+      const txtValues = service.txt
+        ? Object.values(service.txt).map((val) => val.toLowerCase())
+        : [];
 
-      if (service.name?.includes("SoundTouch") && isMatch) {
+      const isMatch =
+        !expectedMacSuffix ||
+        cleanName.includes(expectedMacSuffix) ||
+        cleanHost.includes(expectedMacSuffix) ||
+        txtValues.some((val) => val.includes(expectedMacSuffix));
+
+      if (isMatch) {
         if (timerRef.current) {
           clearTimeout(timerRef.current);
         }
@@ -97,7 +105,7 @@ export function useSpeakerDiscovery({
           port: service.port,
           name: service.name,
         });
-      } else if (service.name?.includes("SoundTouch")) {
+      } else {
         logger.log(
           `[Speaker Discovery] Ignored speaker "${service.name}" (${service.host}) because it does not match expected MAC suffix "${expectedMacSuffix}"`,
         );
