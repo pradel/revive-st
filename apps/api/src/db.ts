@@ -6,6 +6,14 @@ declare const process: {
 };
 
 import { createClient } from "@libsql/client";
+import { eq, sql } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/libsql";
+import {
+  sqliteTable,
+  text,
+  integer,
+  primaryKey,
+} from "drizzle-orm/sqlite-core";
 
 export interface ContentItem {
   source: string;
@@ -22,49 +30,69 @@ export interface Preset {
   contentItem: ContentItem;
 }
 
+export const presetsTable = sqliteTable(
+  "presets",
+  {
+    deviceId: text("device_id").notNull(),
+    presetId: integer("preset_id").notNull(),
+    createdOn: integer("created_on"),
+    updatedOn: integer("updated_on"),
+    source: text("source").notNull(),
+    location: text("location").notNull(),
+    sourceAccount: text("source_account").notNull(),
+    isPresetable: integer("is_presetable", { mode: "boolean" }).notNull(),
+    itemName: text("item_name").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.deviceId, table.presetId] })],
+);
+
 const dbUrl =
   process.env.DATABASE_URL ??
   (process.env.RAILWAY_VOLUME_MOUNT_PATH
     ? `file:${process.env.RAILWAY_VOLUME_MOUNT_PATH}/presets.db`
     : "file:presets.db");
-const db = createClient({
+const client = createClient({
   url: dbUrl,
 });
 
-// Initialize schema
-db.execute(`
+export const db = drizzle(client);
+
+// Initialize schema (auto-creation on local/Railway without separate migration steps)
+client
+  .execute(`
   CREATE TABLE IF NOT EXISTS presets (
-    device_id TEXT NOT NULL,
-    preset_id INTEGER NOT NULL,
+    device_id TEXT,
+    preset_id INTEGER,
     created_on INTEGER,
     updated_on INTEGER,
-    source TEXT NOT NULL,
-    location TEXT NOT NULL,
+    source TEXT,
+    location TEXT,
     source_account TEXT,
-    is_presetable BOOLEAN,
+    is_presetable INTEGER,
     item_name TEXT,
     PRIMARY KEY (device_id, preset_id)
   )
-`).catch(() => {
-  // Ignored in tests or silent failures
-});
-
-export async function getPresets(deviceId: string): Promise<Preset[]> {
-  const result = await db.execute({
-    sql: "SELECT * FROM presets WHERE device_id = ? ORDER BY preset_id ASC",
-    args: [deviceId],
+`)
+  .catch(() => {
+    // Ignored in tests or silent failures
   });
 
-  return result.rows.map((row) => ({
-    id: row.preset_id as number,
-    createdOn: row.created_on ? (row.created_on as number) : undefined,
-    updatedOn: row.updated_on ? (row.updated_on as number) : undefined,
+export async function getPresets(deviceId: string): Promise<Preset[]> {
+  const result = await db
+    .select()
+    .from(presetsTable)
+    .where(eq(presetsTable.deviceId, deviceId));
+
+  return result.map((row) => ({
+    id: row.presetId,
+    createdOn: row.createdOn ?? undefined,
+    updatedOn: row.updatedOn ?? undefined,
     contentItem: {
-      source: row.source as string,
-      location: row.location as string,
-      sourceAccount: row.source_account as string,
-      isPresetable: row.is_presetable === 1,
-      itemName: row.item_name as string,
+      source: row.source,
+      location: row.location,
+      sourceAccount: row.sourceAccount,
+      isPresetable: row.isPresetable,
+      itemName: row.itemName,
     },
   }));
 }
@@ -73,28 +101,36 @@ export async function savePresets(
   deviceId: string,
   presets: Preset[],
 ): Promise<void> {
-  const insertStatements = presets.map((preset) => ({
-    sql: `
-      INSERT INTO presets (device_id, preset_id, created_on, updated_on, source, location, source_account, is_presetable, item_name)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `,
-    args: [
-      deviceId,
-      preset.id,
-      preset.createdOn ?? null,
-      preset.updatedOn ?? null,
-      preset.contentItem.source,
-      preset.contentItem.location,
-      preset.contentItem.sourceAccount,
-      preset.contentItem.isPresetable ? 1 : 0,
-      preset.contentItem.itemName,
-    ],
+  if (!presets || presets.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+
+  const valuesToInsert = presets.map((preset) => ({
+    deviceId,
+    presetId: preset.id,
+    createdOn: preset.createdOn ?? now,
+    updatedOn: now,
+    source: preset.contentItem.source,
+    location: preset.contentItem.location,
+    sourceAccount: preset.contentItem.sourceAccount,
+    isPresetable: preset.contentItem.isPresetable,
+    itemName: preset.contentItem.itemName,
   }));
 
-  const allStatements = [
-    { sql: "DELETE FROM presets WHERE device_id = ?", args: [deviceId] },
-    ...insertStatements,
-  ];
-
-  await db.batch(allStatements, "write");
+  await db
+    .insert(presetsTable)
+    .values(valuesToInsert)
+    .onConflictDoUpdate({
+      target: [presetsTable.deviceId, presetsTable.presetId],
+      set: {
+        updatedOn: sql`excluded.updated_on`,
+        source: sql`excluded.source`,
+        location: sql`excluded.location`,
+        sourceAccount: sql`excluded.source_account`,
+        isPresetable: sql`excluded.is_presetable`,
+        itemName: sql`excluded.item_name`,
+      },
+    });
 }

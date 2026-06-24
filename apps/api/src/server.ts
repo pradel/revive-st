@@ -67,7 +67,8 @@ app
   .post("/api/internal/device/:deviceId/presets", async (ctx) => {
     const deviceId = ctx.req.param("deviceId");
     try {
-      const { presets } = (await ctx.req.json()) as { presets: any[] };
+      const payload: { presets: any[] } = await ctx.req.json();
+      const { presets } = payload;
       await savePresets(deviceId, presets);
       return ctx.json({ success: true });
     } catch (err) {
