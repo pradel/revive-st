@@ -12,6 +12,7 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { useWifiProvisioning } from "@/features/onboarding/hooks/useWifiProvisioning";
+import type { ProvisioningAction } from "@/features/onboarding/ProvisioningContext";
 import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
 
@@ -46,217 +47,304 @@ export default function ScanningScreen() {
       />
 
       <View style={$content}>
-        {/* Visual Header/Icon */}
-        <View style={$iconContainer}>
-          {isScanning && (
-            <>
-              <PulseRing delay={0} size={96} />
-              <PulseRing delay={800} size={96} />
-              <PulseRing delay={1600} size={96} />
-            </>
-          )}
-          <SymbolView
-            name={{
-              ios: isNotFound
-                ? "wifi.exclamationmark"
-                : isSelecting
-                  ? "speaker.wave.2"
-                  : "wifi",
-              android: isNotFound
-                ? "wifi_off"
-                : isSelecting
-                  ? "speaker"
-                  : "wifi",
-              web: isNotFound ? "wifi_off" : isSelecting ? "speaker" : "wifi",
-            }}
-            tintColor={isNotFound ? COLORS.error : COLORS.primary}
-            size={48}
+        {isScanning && <ScanningState />}
+        {isNotFound && (
+          <NotFoundState
+            dispatch={dispatch}
+            onOpenSettings={handleOpenWifiSettings}
           />
-        </View>
-
-        {/* Card */}
-        <Card style={$card}>
-          <View style={$badge}>
-            <Text style={$badgeText}>SETUP WIZARD</Text>
-          </View>
-
-          {isScanning && (
-            <>
-              <Text style={$cardTitle}>Searching for Speaker</Text>
-              <Text style={$cardDescription}>
-                Looking for your Bose SoundTouch speaker's setup network. Make
-                sure your speaker's Wi-Fi indicator is solid amber.
-              </Text>
-            </>
-          )}
-
-          {isSelecting && (
-            <>
-              <Text style={$cardTitle}>Select Speaker</Text>
-              <Text style={$cardDescription}>
-                We found the following Bose speakers in setup mode nearby.
-                Select the one you want to configure.
-              </Text>
-              <View style={$listContainer}>
-                {speakers.map((item) => (
-                  <TouchableOpacity
-                    key={item.bssid}
-                    style={$speakerItem}
-                    onPress={() => {
-                      dispatch({
-                        type: "HOTSPOT_FOUND",
-                        ssid: item.ssid,
-                        bssid: item.bssid,
-                      });
-                    }}
-                    activeOpacity={0.7}
-                  >
-                    <View style={$speakerRow}>
-                      <View style={$speakerIconSmall}>
-                        <SymbolView
-                          name={{
-                            ios: "speaker.wave.2.fill",
-                            android: "speaker",
-                            web: "speaker",
-                          }}
-                          tintColor={COLORS.primary}
-                          size={18}
-                        />
-                      </View>
-                      <Text style={$speakerText} numberOfLines={1}>
-                        {item.ssid}
-                      </Text>
-                      <SymbolView
-                        name={{
-                          ios: "chevron.right",
-                          android: "chevron_right",
-                          web: "chevron_right",
-                        }}
-                        tintColor={COLORS.textMuted}
-                        size={16}
-                      />
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </>
-          )}
-
-          {isNotFound && (
-            <>
-              <Text style={[$cardTitle, { color: COLORS.error }]}>
-                No Speaker Detected
-              </Text>
-              <Text style={$cardDescription}>
-                Follow these steps to put your speaker in setup mode and try
-                again:
-              </Text>
-
-              <View style={$stepsContainer}>
-                <View style={$stepRow}>
-                  <View style={$stepNumberBadge}>
-                    <Text style={$stepNumberText}>1</Text>
-                  </View>
-                  <View style={$stepTextContent}>
-                    <Text style={$stepTitleText}>Activate Setup Mode</Text>
-                    <Text style={$stepDescriptionText}>
-                      Press and hold the{" "}
-                      <Text style={{ fontWeight: "700" }}>2</Text> and{" "}
-                      <Text style={{ fontWeight: "700" }}>Volume Down (-)</Text>{" "}
-                      buttons on the speaker for 5 seconds until the Wi-Fi light
-                      is <Text style={{ fontWeight: "700" }}>solid amber</Text>.
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={$stepRow}>
-                  <View style={$stepNumberBadge}>
-                    <Text style={$stepNumberText}>2</Text>
-                  </View>
-                  <View style={$stepTextContent}>
-                    <Text style={$stepTitleText}>Move Phone Closer</Text>
-                    <Text style={$stepDescriptionText}>
-                      Ensure your phone is within 10 feet of the speaker for a
-                      strong signal.
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={$stepRow}>
-                  <View style={$stepNumberBadge}>
-                    <Text style={$stepNumberText}>3</Text>
-                  </View>
-                  <View style={$stepTextContent}>
-                    <Text style={$stepTitleText}>Verify Phone Settings</Text>
-                    <Text style={$stepDescriptionText}>
-                      Make sure your phone's Wi-Fi is enabled and Location
-                      services are turned on.
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </>
-          )}
-        </Card>
-
-        {/* Action Buttons */}
-        {(isNotFound || isSelecting) && (
-          <View style={$buttonContainer}>
-            <Card
-              style={isSelecting ? $secondaryButton : $primaryButton}
-              render={
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => {
-                    dispatch({ type: "RETRY" });
-                  }}
-                />
-              }
-            >
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={
-                  isSelecting ? COLORS.textSecondary : COLORS.background
-                }
-                size={18}
-              />
-              <Text
-                style={isSelecting ? $secondaryButtonText : $primaryButtonText}
-              >
-                {isSelecting ? "Rescan" : "Scan Again"}
-              </Text>
-            </Card>
-
-            {isNotFound && (
-              <Card
-                style={$secondaryButton}
-                render={
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={handleOpenWifiSettings}
-                  />
-                }
-              >
-                <SymbolView
-                  name={{
-                    ios: "gearshape",
-                    android: "settings",
-                    web: "settings",
-                  }}
-                  tintColor={COLORS.textSecondary}
-                  size={18}
-                />
-                <Text style={$secondaryButtonText}>Open Wi-Fi Settings</Text>
-              </Card>
-            )}
-          </View>
+        )}
+        {isSelecting && (
+          <SelectingState dispatch={dispatch} speakers={speakers} />
         )}
       </View>
     </View>
+  );
+}
+
+function ScanningState() {
+  return (
+    <>
+      <View style={$iconContainer}>
+        <PulseRing delay={0} size={96} />
+        <PulseRing delay={800} size={96} />
+        <PulseRing delay={1600} size={96} />
+        <SymbolView
+          name={{
+            ios: "wifi",
+            android: "wifi",
+            web: "wifi",
+          }}
+          tintColor={COLORS.primary}
+          size={48}
+        />
+      </View>
+
+      <Card style={$card}>
+        <View style={$badge}>
+          <Text style={$badgeText}>SETUP WIZARD</Text>
+        </View>
+
+        <Text style={$cardTitle}>Searching for Speaker</Text>
+
+        <View style={$dotsRow}>
+          <View style={[$dot, $dotActive]} />
+          <View style={$dot} />
+          <View style={$dot} />
+          <View style={$dot} />
+          <View style={$dot} />
+        </View>
+
+        <Text style={$cardDescription}>
+          Looking for your Bose SoundTouch speaker's setup network. Make sure
+          your speaker's Wi-Fi indicator is{" "}
+          <Text style={{ color: COLORS.warning, fontWeight: "700" }}>
+            solid amber
+          </Text>
+          .
+        </Text>
+      </Card>
+    </>
+  );
+}
+
+function NotFoundState({
+  dispatch,
+  onOpenSettings,
+}: {
+  dispatch: React.Dispatch<ProvisioningAction>;
+  onOpenSettings: () => void;
+}) {
+  return (
+    <>
+      <View style={[$iconContainer, $iconContainerError]}>
+        <SymbolView
+          name={{ ios: "wifi.slash", android: "wifi_off", web: "wifi_off" }}
+          tintColor={COLORS.error}
+          size={48}
+        />
+      </View>
+
+      <View style={$headerTextContainer}>
+        <Text style={[$cardTitle, { marginBottom: 4, color: COLORS.text }]}>
+          No Speaker Detected
+        </Text>
+
+        <Text style={[$cardDescription, { marginBottom: 20 }]}>
+          Let's get your speaker connected.
+        </Text>
+
+        <View style={[$badge, { marginBottom: 24 }]}>
+          <Text style={$badgeText}>SETUP WIZARD</Text>
+        </View>
+      </View>
+
+      <Card
+        style={[$card, { padding: 0, overflow: "hidden", marginBottom: 32 }]}
+      >
+        <View style={$stepsContainer}>
+          {/* Step 1 */}
+          <View style={$stepRow}>
+            <View style={$stepNumberBadge}>
+              <Text style={$stepNumberText}>1</Text>
+            </View>
+            <View style={$stepTextContent}>
+              <Text style={$stepTitleText}>Activate Setup Mode</Text>
+              <Text style={$stepDescriptionText}>
+                Press and hold the{" "}
+                <Text style={{ fontWeight: "700", color: COLORS.text }}>2</Text>{" "}
+                and{" "}
+                <Text style={{ fontWeight: "700", color: COLORS.text }}>
+                  Volume Down (-)
+                </Text>{" "}
+                buttons on the speaker for 5 seconds until the Wi-Fi light is{" "}
+                <Text style={{ color: COLORS.warning, fontWeight: "700" }}>
+                  solid amber
+                </Text>
+                .
+              </Text>
+            </View>
+          </View>
+
+          <View style={$stepDivider} />
+
+          {/* Step 2 */}
+          <View style={$stepRow}>
+            <View style={$stepNumberBadge}>
+              <Text style={$stepNumberText}>2</Text>
+            </View>
+            <View style={$stepTextContent}>
+              <Text style={$stepTitleText}>Move Phone Closer</Text>
+              <Text style={$stepDescriptionText}>
+                Ensure your phone is within 10 feet of the speaker for a strong
+                signal.
+              </Text>
+            </View>
+          </View>
+
+          <View style={$stepDivider} />
+
+          {/* Step 3 */}
+          <View style={$stepRow}>
+            <View style={$stepNumberBadge}>
+              <Text style={$stepNumberText}>3</Text>
+            </View>
+            <View style={$stepTextContent}>
+              <Text style={$stepTitleText}>Verify Phone Settings</Text>
+              <Text style={$stepDescriptionText}>
+                Make sure your phone's Wi-Fi is enabled and Location services
+                are turned on.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Card>
+
+      {/* Action Buttons */}
+      <View style={$buttonContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={$primaryButton}
+          onPress={() => {
+            dispatch({ type: "RETRY" });
+          }}
+        >
+          <SymbolView
+            name={{
+              ios: "arrow.clockwise",
+              android: "refresh",
+              web: "refresh",
+            }}
+            tintColor={COLORS.background}
+            size={18}
+          />
+          <Text style={$primaryButtonText}>Scan Again</Text>
+        </TouchableOpacity>
+
+        <Card
+          style={$secondaryButton}
+          render={
+            <TouchableOpacity activeOpacity={0.8} onPress={onOpenSettings} />
+          }
+        >
+          <SymbolView
+            name={{
+              ios: "gearshape",
+              android: "settings",
+              web: "settings",
+            }}
+            tintColor={COLORS.textSecondary}
+            size={18}
+          />
+          <Text style={$secondaryButtonText}>Open Wi-Fi Settings</Text>
+        </Card>
+      </View>
+    </>
+  );
+}
+
+function SelectingState({
+  dispatch,
+  speakers,
+}: {
+  dispatch: React.Dispatch<ProvisioningAction>;
+  speakers: { ssid: string; bssid: string }[];
+}) {
+  return (
+    <>
+      <View style={$iconContainer}>
+        <SymbolView
+          name={{
+            ios: "hifispeaker",
+            android: "speaker",
+            web: "speaker",
+          }}
+          tintColor={COLORS.primary}
+          size={48}
+        />
+      </View>
+
+      <View style={$headerTextContainer}>
+        <View style={[$badge, { marginBottom: 24 }]}>
+          <Text style={$badgeText}>SETUP WIZARD</Text>
+        </View>
+
+        <Text style={[$cardTitle, { marginBottom: 4, color: COLORS.text }]}>
+          Select Speaker
+        </Text>
+
+        <Text style={[$cardDescription, { marginBottom: 20 }]}>
+          {`We found the following Bose speaker${
+            speakers.length === 1 ? "" : "s"
+          } in setup mode nearby. Select the one you want to configure.`}
+        </Text>
+      </View>
+
+      <View style={$listContainer}>
+        {speakers.map((item) => (
+          <Card
+            key={item.bssid}
+            style={[$card, { padding: 16, marginBottom: 12, width: "100%" }]}
+          >
+            <TouchableOpacity
+              style={[$speakerRow, { width: "100%" }]}
+              onPress={() => {
+                dispatch({
+                  type: "HOTSPOT_FOUND",
+                  ssid: item.ssid,
+                  bssid: item.bssid,
+                });
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={$speakerIconSmall}>
+                <SymbolView
+                  name={{
+                    ios: "hifispeaker",
+                    android: "speaker",
+                    web: "speaker",
+                  }}
+                  tintColor={COLORS.primary}
+                  size={20}
+                />
+              </View>
+              <View style={$speakerTextCol}>
+                <Text style={$speakerText} numberOfLines={1}>
+                  {item.ssid}
+                </Text>
+                <Text style={$speakerSubtitle} numberOfLines={1}>
+                  {item.ssid.includes("ST 10")
+                    ? "SoundTouch 10"
+                    : "SoundTouch Speaker"}
+                </Text>
+              </View>
+              <SymbolView
+                name={{
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
+                }}
+                tintColor={COLORS.primary}
+                size={16}
+              />
+            </TouchableOpacity>
+          </Card>
+        ))}
+      </View>
+
+      {/* Action Buttons */}
+      <View style={$buttonContainer}>
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={$secondaryButton}
+          onPress={() => {
+            dispatch({ type: "RETRY" });
+          }}
+        >
+          <Text style={$secondaryButtonText}>Rescan</Text>
+        </TouchableOpacity>
+      </View>
+    </>
   );
 }
 
@@ -283,6 +371,16 @@ const $iconContainer: ViewStyle = {
   marginBottom: 32,
   borderWidth: 1,
   borderColor: COLORS.primary,
+};
+
+const $iconContainerError: ViewStyle = {
+  backgroundColor: `${COLORS.errorLight}10`,
+  borderColor: COLORS.error,
+};
+
+const $headerTextContainer: ViewStyle = {
+  alignItems: "center",
+  width: "100%",
 };
 
 const $card: ViewStyle = {
@@ -319,6 +417,24 @@ const $cardTitle: TextStyle = {
   textAlign: "center",
 };
 
+const $dotsRow: ViewStyle = {
+  flexDirection: "row",
+  gap: 8,
+  marginBottom: 20,
+  justifyContent: "center",
+};
+
+const $dot: ViewStyle = {
+  width: 6,
+  height: 6,
+  borderRadius: 3,
+  backgroundColor: COLORS.border,
+};
+
+const $dotActive: ViewStyle = {
+  backgroundColor: COLORS.primary,
+};
+
 const $cardDescription: TextStyle = {
   fontSize: 14,
   color: COLORS.textMuted,
@@ -330,6 +446,7 @@ const $cardDescription: TextStyle = {
 const $buttonContainer: ViewStyle = {
   width: "100%",
   gap: 12,
+  marginTop: 16,
 };
 
 const $primaryButton: ViewStyle = {
@@ -356,6 +473,7 @@ const $secondaryButton: ViewStyle = {
   gap: 8,
   height: 52,
   width: "100%",
+  padding: 0,
 };
 
 const $secondaryButtonText: TextStyle = {
@@ -366,18 +484,9 @@ const $secondaryButtonText: TextStyle = {
 
 const $listContainer: ViewStyle = {
   width: "100%",
-  gap: 10,
-  marginTop: 10,
-};
-
-const $speakerItem: ViewStyle = {
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-  borderRadius: 12,
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  width: "100%",
+  gap: 12,
+  marginTop: 12,
+  marginBottom: 24,
 };
 
 const $speakerRow: ViewStyle = {
@@ -386,67 +495,84 @@ const $speakerRow: ViewStyle = {
 };
 
 const $speakerIconSmall: ViewStyle = {
-  width: 32,
-  height: 32,
+  width: 44,
+  height: 44,
   borderRadius: 8,
-  backgroundColor: COLORS.primaryTransparent,
+  backgroundColor: COLORS.background,
   alignItems: "center",
   justifyContent: "center",
-  marginRight: 12,
+  marginRight: 16,
+};
+
+const $speakerTextCol: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+  marginRight: 16,
 };
 
 const $speakerText: TextStyle = {
-  fontSize: 15,
+  fontSize: 16,
   color: COLORS.text,
   fontWeight: "600",
-  flex: 1,
+  marginBottom: 2,
+};
+
+const $speakerSubtitle: TextStyle = {
+  fontSize: 13,
+  color: COLORS.textMuted,
 };
 
 const $stepsContainer: ViewStyle = {
   width: "100%",
-  gap: 16,
-  marginTop: 8,
-  paddingHorizontal: 4,
 };
 
 const $stepRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "flex-start",
-  gap: 12,
+  gap: 16,
   width: "100%",
+  paddingHorizontal: 20,
+  paddingVertical: 20,
+};
+
+const $stepDivider: ViewStyle = {
+  height: 1,
+  backgroundColor: COLORS.border,
+  width: "100%",
+  opacity: 0.5,
 };
 
 const $stepNumberBadge: ViewStyle = {
-  width: 24,
-  height: 24,
-  borderRadius: 12,
+  width: 28,
+  height: 28,
+  borderRadius: 14,
   backgroundColor: COLORS.primaryTransparent,
   borderWidth: 1,
   borderColor: COLORS.primary,
   alignItems: "center",
   justifyContent: "center",
-  marginTop: 2,
+  marginTop: 0,
 };
 
 const $stepNumberText: TextStyle = {
-  fontSize: 12,
+  fontSize: 13,
   fontWeight: "700",
   color: COLORS.primary,
 };
 
 const $stepTextContent: ViewStyle = {
   flex: 1,
-  gap: 2,
+  gap: 4,
 };
 
 const $stepTitleText: TextStyle = {
-  fontSize: 14,
+  fontSize: 15,
   fontWeight: "600",
   color: COLORS.text,
 };
 
 const $stepDescriptionText: TextStyle = {
-  fontSize: 12,
+  fontSize: 13,
   color: COLORS.textMuted,
-  lineHeight: 16,
+  lineHeight: 18,
 };

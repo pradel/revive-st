@@ -14,6 +14,8 @@ import {
   type ProvisioningState,
 } from "./types";
 
+export type { ProvisioningAction };
+
 interface ProvisioningContextValue {
   state: ProvisioningState;
   dispatch: React.Dispatch<ProvisioningAction>;
