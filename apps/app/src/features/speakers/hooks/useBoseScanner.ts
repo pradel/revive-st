@@ -322,8 +322,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
         }, 500);
       } else {
         logger.error(
-          `[BoseScanner] Failed to send play/pause to ${deviceID}:`,
-          res.error,
+          `[BoseScanner] Failed to send play/pause to ${deviceID}:\n${JSON.stringify(res.error, null, 2)}`,
         );
       }
     } finally {
