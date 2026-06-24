@@ -1,8 +1,8 @@
 // oxlint-disable no-inline-comments
 export const COLORS = {
   // Base
-  background: "#121414", // Deep charcoal surface
-  card: "#1a1c1c", // Slightly lighter surface-container-low
+  background: "#0F0F0F", // Deep charcoal surface
+  card: "#1A1A1A", // Slightly lighter surface-container-low
   border: "#38393a", // surface-bright for subtle outlines
 
   // Text & Icons

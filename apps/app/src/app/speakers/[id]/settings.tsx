@@ -744,7 +744,7 @@ const $content: ViewStyle = {
   paddingHorizontal: 20,
   paddingTop: 20,
   paddingBottom: 40,
-  gap: 12,
+  gap: 8,
 };
 
 const $centerState: ViewStyle = {
@@ -776,7 +776,7 @@ const $backButtonText: TextStyle = {
 
 const $heroCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 32,
+  paddingVertical: 24,
   marginBottom: 8,
 };
 
@@ -815,6 +815,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
+  paddingVertical: 12,
 };
 
 const $linkIconContainer: ViewStyle = {
@@ -849,10 +850,7 @@ const $textInput: TextStyle = {
   color: COLORS.text,
 };
 
-const $textInputError: TextStyle = {
-  borderWidth: 1,
-  borderColor: COLORS.error,
-};
+const $textInputError: TextStyle = {};
 
 const $nameErrorText: TextStyle = {
   fontSize: 12,
@@ -941,8 +939,6 @@ const $pickerChip: ViewStyle = {
   paddingVertical: 6,
   borderRadius: 8,
   backgroundColor: COLORS.border,
-  borderWidth: 1,
-  borderColor: COLORS.transparent,
 };
 
 const $pickerChipActive: ViewStyle = {

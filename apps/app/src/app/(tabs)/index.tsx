@@ -383,8 +383,6 @@ const $emptyIconContainer: ViewStyle = {
   alignItems: "center",
   justifyContent: "center",
   marginBottom: 20,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   position: "relative",
 };
 
@@ -597,8 +595,6 @@ const $addSpeakerButton: ViewStyle = {
   marginHorizontal: 20,
   paddingVertical: 14,
   borderRadius: 14,
-  borderWidth: 1,
-  borderColor: COLORS.border,
   borderStyle: "dashed",
 };
 

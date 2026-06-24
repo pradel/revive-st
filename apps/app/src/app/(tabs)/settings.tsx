@@ -208,12 +208,12 @@ const $container: ViewStyle = {
 const $content: ViewStyle = {
   paddingHorizontal: 20,
   paddingBottom: 40,
-  gap: 12,
+  gap: 8,
 };
 
 const $heroCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 32,
+  paddingVertical: 24,
   marginBottom: 8,
 };
 
@@ -251,6 +251,7 @@ const $sectionLabel: TextStyle = {
 const $linkCard: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
+  paddingVertical: 12,
 };
 
 const $linkIconContainer: ViewStyle = {

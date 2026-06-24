@@ -641,14 +641,11 @@ const $tagPill: ViewStyle = {
   paddingHorizontal: 24,
   paddingVertical: 8,
   borderRadius: 24,
-  backgroundColor: COLORS.background,
-  borderWidth: 1,
-  borderColor: COLORS.border,
+  backgroundColor: COLORS.card,
 };
 
 const $tagPillActive: ViewStyle = {
   backgroundColor: COLORS.primary,
-  borderColor: COLORS.primary,
 };
 
 const $tagText: TextStyle = {
