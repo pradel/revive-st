@@ -1,6 +1,7 @@
 declare const process: {
   env: {
     DATABASE_URL?: string;
+    RAILWAY_VOLUME_MOUNT_PATH?: string;
   };
 };
 
@@ -21,7 +22,11 @@ export interface Preset {
   contentItem: ContentItem;
 }
 
-const dbUrl = process.env.DATABASE_URL ?? "file:presets.db";
+const dbUrl =
+  process.env.DATABASE_URL ??
+  (process.env.RAILWAY_VOLUME_MOUNT_PATH
+    ? `file:${process.env.RAILWAY_VOLUME_MOUNT_PATH}/presets.db`
+    : "file:presets.db");
 const db = createClient({
   url: dbUrl,
 });
