@@ -710,7 +710,7 @@ function PickerSetting({
   withDivider,
 }: {
   label: string;
-  value: string;
+  value: AudioMode;
   options: AudioModeDisplay[];
   onChange: (value: AudioMode) => void;
   withDivider?: boolean;
