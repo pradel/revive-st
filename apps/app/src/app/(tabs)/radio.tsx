@@ -142,7 +142,7 @@ export default function RadioBrowser() {
         `[radio] Calling mutateAsync for ${speaker.host} with ${streamUrl}`,
       );
       await playStreamMutation.mutateAsync({
-        host: speaker.host,
+        deviceID: speaker.deviceID,
         uri: streamUrl,
         name: castingStation.name,
       });

@@ -38,7 +38,7 @@ export default function Index() {
       const volume = Math.round(
         Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
-      volumeMutation.mutate({ host: speaker.deviceID, volume });
+      volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
     },
     [volumeMutation],
   );

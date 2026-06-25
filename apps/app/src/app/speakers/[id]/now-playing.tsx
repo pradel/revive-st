@@ -36,7 +36,7 @@ export default function NowPlayingModal() {
       const volume = Math.round(
         Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
-      volumeMutation.mutate({ host: speaker.deviceID, volume });
+      volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
     },
     [speaker, volumeMutation],
   );
@@ -143,7 +143,7 @@ export default function NowPlayingModal() {
             style={$controlButton}
             onPress={() => {
               keyMutation.mutate({
-                host: speaker.deviceID,
+                deviceID: speaker.deviceID,
                 key: "PREV_TRACK",
               });
             }}
@@ -167,7 +167,7 @@ export default function NowPlayingModal() {
               !hasMusic && { backgroundColor: COLORS.border },
             ]}
             onPress={() => {
-              playPauseMutation.mutate({ host: speaker.deviceID });
+              playPauseMutation.mutate({ deviceID: speaker.deviceID });
             }}
             disabled={!hasMusic}
           >
@@ -186,7 +186,7 @@ export default function NowPlayingModal() {
             style={$controlButton}
             onPress={() => {
               keyMutation.mutate({
-                host: speaker.deviceID,
+                deviceID: speaker.deviceID,
                 key: "NEXT_TRACK",
               });
             }}

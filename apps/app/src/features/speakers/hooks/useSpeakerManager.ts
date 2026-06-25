@@ -265,72 +265,85 @@ export function useSpeakerManager(scanDurationMs = 5000) {
   };
 
   const powerToggleMutation = useMutation({
-    mutationFn: async ({ host: deviceID }: { host: string }) => {
+    mutationFn: async ({ deviceID }: { deviceID: string }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
         throw new Error("Speaker not connected");
       }
       setUpdating(deviceID, true);
-      const res = await speaker.powerToggle();
-      setUpdating(deviceID, false);
-      if (!res.isOk()) {
-        throw res.error;
+      try {
+        const res = await speaker.powerToggle();
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 800);
+      } finally {
+        setUpdating(deviceID, false);
       }
-      setTimeout(() => {
-        void speaker.initialize();
-      }, 800);
     },
   });
 
   const volumeMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       volume,
     }: {
-      host: string;
+      deviceID: string;
       volume: number;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
         throw new Error("Speaker not connected");
       }
-      setSpeakersData((prev) =>
-        prev[deviceID]
-          ? { ...prev, [deviceID]: { ...prev[deviceID], volume } }
-          : prev,
-      );
-      const res = await speaker.setVolume(volume);
-      if (!res.isOk()) {
-        void speaker.initialize();
-        throw res.error;
+      setUpdating(deviceID, true);
+      try {
+        setSpeakersData((prev) =>
+          prev[deviceID]
+            ? { ...prev, [deviceID]: { ...prev[deviceID], volume } }
+            : prev,
+        );
+        const res = await speaker.setVolume(volume);
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+      } finally {
+        setUpdating(deviceID, false);
       }
     },
   });
 
   const playPauseMutation = useMutation({
-    mutationFn: async ({ host: deviceID }: { host: string }) => {
+    mutationFn: async ({ deviceID }: { deviceID: string }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
         throw new Error("Speaker not connected");
       }
       setUpdating(deviceID, true);
-      const res = await speaker.playPause();
-      setUpdating(deviceID, false);
-      if (!res.isOk()) {
-        throw res.error;
+      try {
+        const res = await speaker.playPause();
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
       }
-      setTimeout(() => {
-        void speaker.initialize();
-      }, 500);
     },
   });
 
   const keyMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       key,
     }: {
-      host: string;
+      deviceID: string;
       key: KeyValue;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
@@ -338,24 +351,28 @@ export function useSpeakerManager(scanDurationMs = 5000) {
         throw new Error("Speaker not connected");
       }
       setUpdating(deviceID, true);
-      const res = await speaker.triggerKey(key);
-      setUpdating(deviceID, false);
-      if (!res.isOk()) {
-        throw res.error;
+      try {
+        const res = await speaker.triggerKey(key);
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
       }
-      setTimeout(() => {
-        void speaker.initialize();
-      }, 500);
     },
   });
 
   const selectSourceMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       source,
       sourceAccount,
     }: {
-      host: string;
+      deviceID: string;
       source: string;
       sourceAccount?: string;
     }) => {
@@ -364,17 +381,21 @@ export function useSpeakerManager(scanDurationMs = 5000) {
         throw new Error("Speaker not connected");
       }
       setUpdating(deviceID, true);
-      const res = await speaker.selectSource(
-        source,
-        sourceAccount ?? undefined,
-      );
-      setUpdating(deviceID, false);
-      if (!res.isOk()) {
-        throw res.error;
+      try {
+        const res = await speaker.selectSource(
+          source,
+          sourceAccount ?? undefined,
+        );
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
       }
-      setTimeout(() => {
-        void speaker.initialize();
-      }, 500);
     },
   });
 
@@ -394,10 +415,10 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const savePresetMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       presetId,
     }: {
-      host: string;
+      deviceID: string;
       presetId: number;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
@@ -419,10 +440,10 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const setBassMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       value,
     }: {
-      host: string;
+      deviceID: string;
       value: number;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
@@ -441,11 +462,11 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const playStreamMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       uri,
       name,
     }: {
-      host: string;
+      deviceID: string;
       uri: string;
       name: string;
     }) => {
@@ -495,10 +516,10 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const setNameMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       name,
     }: {
-      host: string;
+      deviceID: string;
       name: string;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
@@ -514,10 +535,10 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const setAudioDspControlsMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       audiomode,
     }: {
-      host: string;
+      deviceID: string;
       audiomode: AudioMode;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
@@ -533,11 +554,11 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const setAudioProductToneControlsMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       bass,
       treble,
     }: {
-      host: string;
+      deviceID: string;
       bass?: { value: number };
       treble?: { value: number };
     }) => {
@@ -554,11 +575,11 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
   const setAudioProductLevelControlsMutation = useMutation({
     mutationFn: async ({
-      host: deviceID,
+      deviceID,
       frontCenterSpeakerLevel,
       rearSurroundSpeakersLevel,
     }: {
-      host: string;
+      deviceID: string;
       frontCenterSpeakerLevel?: { value: number };
       rearSurroundSpeakersLevel?: { value: number };
     }) => {
@@ -577,19 +598,19 @@ export function useSpeakerManager(scanDurationMs = 5000) {
   });
 
   const configureMargeAPIMutation = useMutation({
-    mutationFn: async ({ host: deviceID }: { host: string }) => {
+    mutationFn: async ({ host }: { host: string }) => {
       const result = await configureMargeAPI(
-        deviceID,
+        host,
         TcpSocket as unknown as SocketModuleLike,
       );
       if (!result.isOk()) {
         throw result.error;
       }
     },
-    onSettled: (_data, _error, { host }) => {
-      void queryClient.invalidateQueries({
-        queryKey: ["marge-api-status", host],
-      });
+    onSettled: (_data, err, { host }) => {
+      if (!err) {
+        queryClient.setQueryData(["marge-api-status", host], true);
+      }
     },
   });
   useEffect(() => {

@@ -80,13 +80,13 @@ export default function SpeakerDetail() {
     const touchX = event.nativeEvent.locationX;
     const percentage = Math.max(0, Math.min(1, touchX / sliderWidth));
     const newVolume = Math.round(percentage * 100);
-    volumeMutation.mutate({ host: speaker.deviceID, volume: newVolume });
+    volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVolume });
   };
 
   const adjustVolumeStep = (delta: number) => {
     const currentVol = speaker.volume ?? 30;
     const newVol = Math.max(0, Math.min(100, currentVol + delta));
-    volumeMutation.mutate({ host: speaker.deviceID, volume: newVol });
+    volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVol });
   };
 
   const handleBassSliderPress = (event: GestureResponderEvent) => {
@@ -97,30 +97,30 @@ export default function SpeakerDetail() {
     const percentage = Math.max(0, Math.min(1, touchX / bassSliderWidth));
     // Bass goes from -9 to 0
     const newBass = -9 + Math.round(percentage * 9);
-    setBassMutation.mutate({ host: speaker.deviceID, value: newBass });
+    setBassMutation.mutate({ deviceID: speaker.deviceID, value: newBass });
   };
 
   const adjustBassStep = (delta: number) => {
     const currentBass = speaker.bass ?? -5;
     const newBass = Math.max(-9, Math.min(0, currentBass + delta));
-    setBassMutation.mutate({ host: speaker.deviceID, value: newBass });
+    setBassMutation.mutate({ deviceID: speaker.deviceID, value: newBass });
   };
 
   const handleToggleMute = () => {
-    keyMutation.mutate({ host: speaker.deviceID, key: "MUTE" });
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "MUTE" });
   };
 
   const handleNextTrack = () => {
-    keyMutation.mutate({ host: speaker.deviceID, key: "NEXT_TRACK" });
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "NEXT_TRACK" });
   };
 
   const handlePrevTrack = () => {
-    keyMutation.mutate({ host: speaker.deviceID, key: "PREV_TRACK" });
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "PREV_TRACK" });
   };
 
   const handlePresetPress = (presetId: number) => {
     keyMutation.mutate({
-      host: speaker.deviceID,
+      deviceID: speaker.deviceID,
       key: `PRESET_${presetId}` as KeyValue,
     });
   };
@@ -146,7 +146,7 @@ export default function SpeakerDetail() {
             try {
               setSavingPresetId(presetId);
               await savePresetMutation.mutateAsync({
-                host: speaker.deviceID,
+                deviceID: speaker.deviceID,
                 presetId,
               });
             } catch (err) {
@@ -237,7 +237,7 @@ export default function SpeakerDetail() {
         <Pressable
           style={[$headerPowerButton, isStandby ? $powerOff : $powerOn]}
           onPress={() => {
-            powerToggleMutation.mutate({ host: speaker.deviceID });
+            powerToggleMutation.mutate({ deviceID: speaker.deviceID });
           }}
           disabled={speaker.isUpdating}
         >
@@ -267,7 +267,7 @@ export default function SpeakerDetail() {
             <Pressable
               style={$wakeButton}
               onPress={() => {
-                powerToggleMutation.mutate({ host: speaker.deviceID });
+                powerToggleMutation.mutate({ deviceID: speaker.deviceID });
               }}
               disabled={speaker.isUpdating}
             >
@@ -333,7 +333,7 @@ export default function SpeakerDetail() {
                 <Pressable
                   style={$mainPlayButton}
                   onPress={() => {
-                    playPauseMutation.mutate({ host: speaker.deviceID });
+                    playPauseMutation.mutate({ deviceID: speaker.deviceID });
                   }}
                   disabled={speaker.isUpdating}
                 >
@@ -560,7 +560,7 @@ export default function SpeakerDetail() {
                   ]}
                   onPress={() => {
                     selectSourceMutation.mutate({
-                      host: speaker.deviceID,
+                      deviceID: speaker.deviceID,
                       source: "BLUETOOTH",
                     });
                   }}
@@ -577,7 +577,7 @@ export default function SpeakerDetail() {
                   ]}
                   onPress={() => {
                     selectSourceMutation.mutate({
-                      host: speaker.deviceID,
+                      deviceID: speaker.deviceID,
                       source: "AUX",
                       sourceAccount: "AUX",
                     });
@@ -597,7 +597,7 @@ export default function SpeakerDetail() {
                   ]}
                   onPress={() => {
                     selectSourceMutation.mutate({
-                      host: speaker.deviceID,
+                      deviceID: speaker.deviceID,
                       source: "TUNEIN",
                     });
                   }}
