@@ -111,7 +111,8 @@ export class BoseHttpAdapter {
     }
 
     if (!response.ok) {
-      const apiErrors = tryParseApiErrors(body);
+      const requestBody = typeof init.body === "string" ? init.body : undefined;
+      const apiErrors = tryParseApiErrors(body, requestBody);
       if (apiErrors) {
         return new Err(apiErrors);
       }
@@ -590,10 +591,10 @@ function parseLevelControl(node: XmlNode | undefined) {
   };
 }
 
-function tryParseApiErrors(body: string): ApiError | null {
+function tryParseApiErrors(body: string, requestXml?: string): ApiError | null {
   try {
     const root = parseXml(body);
-    return tryParseApiErrorsFromNode(root, body);
+    return tryParseApiErrorsFromNode(root, body, requestXml);
   } catch {
     return null;
   }
@@ -602,6 +603,7 @@ function tryParseApiErrors(body: string): ApiError | null {
 function tryParseApiErrorsFromNode(
   root: XmlNode,
   rawXml: string,
+  requestXml?: string,
 ): ApiError | null {
   const errorsRoot = root.name === "errors" ? root : getChild(root, "errors");
   if (!errorsRoot) {
@@ -616,6 +618,7 @@ function tryParseApiErrorsFromNode(
       message: errorEntry.text,
     })),
     rawXml,
+    requestXml,
   });
 }
 

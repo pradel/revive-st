@@ -25,6 +25,7 @@ export class ApiError extends TaggedError("ApiError")<{
     message: string;
   }[];
   rawXml: string;
+  requestXml?: string;
 }>() {}
 
 export type BoseApiError = NetworkError | HttpError | XmlParseError | ApiError;
