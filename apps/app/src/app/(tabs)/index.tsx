@@ -279,6 +279,7 @@ export default function Index() {
                         maximumValue={100}
                         trackHeight={4}
                         thumbSize={16}
+                        trackColor={COLORS.border}
                         onValueChange={(val) => {
                           setLocalVolumes((prev) => ({
                             ...prev,
