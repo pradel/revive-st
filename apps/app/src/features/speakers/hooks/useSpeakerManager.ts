@@ -1,3 +1,4 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Speaker,
   BoseHttpAdapter,
@@ -9,14 +10,19 @@ import {
   type AudioProductToneControlsResponse,
   type AudioProductLevelControlsResponse,
   type DeviceComponent,
+  type SocketModuleLike,
+  type KeyValue,
+  type AudioMode,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
+import TcpSocket from "react-native-tcp-socket";
 import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge } from "../lib/marge-api";
 import { buildMargeRadioPayload } from "../lib/radio";
+import { checkMargeAPIStatus, configureMargeAPI } from "../lib/telnet";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -78,7 +84,8 @@ function flattenSpeakerState(
   };
 }
 
-export function useBoseScanner(scanDurationMs = 5000) {
+export function useSpeakerManager(scanDurationMs = 5000) {
+  const queryClient = useQueryClient();
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
     {},
   );
@@ -257,138 +264,146 @@ export function useBoseScanner(scanDurationMs = 5000) {
     });
   };
 
-  const togglePower = useCallback(async (deviceID: string) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    setUpdating(deviceID, true);
-    try {
-      const res = await speaker.powerToggle();
-      if (res.isOk()) {
+  const powerToggleMutation = useMutation({
+    mutationFn: async ({ deviceID }: { deviceID: string }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      setUpdating(deviceID, true);
+      try {
+        const res = await speaker.powerToggle();
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
         setTimeout(() => {
           void speaker.initialize();
         }, 800);
-      } else {
-        logger.error(
-          `[BoseScanner] Failed to toggle power on ${deviceID}:`,
-          res.error,
-        );
+      } finally {
+        setUpdating(deviceID, false);
       }
-    } finally {
-      setUpdating(deviceID, false);
-    }
-  }, []);
+    },
+  });
 
-  const changeVolume = useCallback(async (deviceID: string, vol: number) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    setSpeakersData((prev) =>
-      prev[deviceID]
-        ? { ...prev, [deviceID]: { ...prev[deviceID], volume: vol } }
-        : prev,
-    );
-
-    try {
-      const res = await speaker.setVolume(vol);
-      if (!res.isOk()) {
-        logger.error(
-          `[BoseScanner] Failed to set volume on ${deviceID}:`,
-          res.error,
-        );
-        void speaker.initialize();
-      }
-    } finally {
-      // Intentionally kept finally to match style if we add more state handling
-    }
-  }, []);
-
-  const playPause = useCallback(async (deviceID: string) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    setUpdating(deviceID, true);
-    try {
-      const res = await speaker.playPause();
-      if (res.isOk()) {
-        setTimeout(() => {
-          void speaker.initialize();
-        }, 500);
-      } else {
-        logger.error(
-          `[BoseScanner] Failed to send play/pause to ${deviceID}:\n${JSON.stringify(res.error, null, 2)}`,
-        );
-      }
-    } finally {
-      setUpdating(deviceID, false);
-    }
-  }, []);
-
-  const triggerKey = useCallback(async (deviceID: string, key: string) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    setUpdating(deviceID, true);
-    try {
-      const res = await speaker.triggerKey(key as any);
-      if (res.isOk()) {
-        setTimeout(() => {
-          void speaker.initialize();
-        }, 500);
-      } else {
-        logger.error(
-          `[BoseScanner] Failed to send key ${key} to ${deviceID}:`,
-          res.error,
-        );
-      }
-    } finally {
-      setUpdating(deviceID, false);
-    }
-  }, []);
-
-  const selectSource = useCallback(
-    async (deviceID: string, source: string, sourceAccount = "") => {
+  const volumeMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      volume,
+    }: {
+      deviceID: string;
+      volume: number;
+    }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
-        return;
+        throw new Error("Speaker not connected");
       }
-
       setUpdating(deviceID, true);
       try {
-        const res = await speaker.selectSource(
-          source,
-          sourceAccount || undefined,
+        setSpeakersData((prev) =>
+          prev[deviceID]
+            ? { ...prev, [deviceID]: { ...prev[deviceID], volume } }
+            : prev,
         );
-        if (res.isOk()) {
-          setTimeout(() => {
-            void speaker.initialize();
-          }, 500);
-        } else {
-          logger.error(
-            `[BoseScanner] Failed to select source ${source} on ${deviceID}:`,
-            res.error,
-          );
+        const res = await speaker.setVolume(volume);
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
         }
       } finally {
         setUpdating(deviceID, false);
       }
     },
-    [],
-  );
+  });
+
+  const playPauseMutation = useMutation({
+    mutationFn: async ({ deviceID }: { deviceID: string }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      setUpdating(deviceID, true);
+      try {
+        const res = await speaker.playPause();
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
+      }
+    },
+  });
+
+  const keyMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      key,
+    }: {
+      deviceID: string;
+      key: KeyValue;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      setUpdating(deviceID, true);
+      try {
+        const res = await speaker.triggerKey(key);
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
+      }
+    },
+  });
+
+  const selectSourceMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      source,
+      sourceAccount,
+    }: {
+      deviceID: string;
+      source: string;
+      sourceAccount?: string;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      setUpdating(deviceID, true);
+      try {
+        const res = await speaker.selectSource(
+          source,
+          sourceAccount ?? undefined,
+        );
+        if (!res.isOk()) {
+          void speaker.initialize();
+          throw res.error;
+        }
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } finally {
+        setUpdating(deviceID, false);
+      }
+    },
+  });
 
   const loadPresets = useCallback(async (deviceID: string) => {
     const speaker = speakersMapRef.current.get(deviceID);
     if (speaker) {
       await speaker.initialize();
-    } // Initialize pulls everything including presets
+    }
   }, []);
 
   const loadBass = useCallback(async (deviceID: string) => {
@@ -398,86 +413,76 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }
   }, []);
 
-  const savePreset = useCallback(async (deviceID: string, presetId: number) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    if (
-      presetId !== 1 &&
-      presetId !== 2 &&
-      presetId !== 3 &&
-      presetId !== 4 &&
-      presetId !== 5 &&
-      presetId !== 6
-    ) {
-      logger.warn(
-        `[BoseScanner] Invalid preset ID ${presetId} for ${deviceID}`,
-      );
-      return;
-    }
-
-    setUpdating(deviceID, true);
-    try {
-      const res = await speaker.savePreset(presetId);
-      if (res.isOk()) {
-        void speaker.initialize();
-      } else {
-        logger.error(
-          `[BoseScanner] Failed to save preset ${presetId} on ${deviceID}:`,
-          res.error,
-        );
-      }
-    } finally {
-      setUpdating(deviceID, false);
-    }
-  }, []);
-
-  const setBass = useCallback(async (deviceID: string, value: number) => {
-    const speaker = speakersMapRef.current.get(deviceID);
-    if (!speaker) {
-      return;
-    }
-
-    setUpdating(deviceID, true);
-    try {
-      const res = await speaker.setBass(value);
-      if (res.isOk()) {
-        void speaker.initialize();
-      } else {
-        logger.error(
-          `[BoseScanner] Failed to set bass on ${deviceID}:`,
-          res.error,
-        );
-      }
-    } finally {
-      setUpdating(deviceID, false);
-    }
-  }, []);
-
-  const playStream = useCallback(
-    async (deviceID: string, options: { uri: string; name: string }) => {
-      const { uri, name } = options;
+  const savePresetMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      presetId,
+    }: {
+      deviceID: string;
+      presetId: number;
+    }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
-        return;
+        throw new Error("Speaker not connected");
       }
+      if (![1, 2, 3, 4, 5, 6].includes(presetId)) {
+        throw new Error(`Invalid preset ID ${presetId}`);
+      }
+      setUpdating(deviceID, true);
+      const res = await speaker.savePreset(presetId as any);
+      setUpdating(deviceID, false);
+      if (!res.isOk()) {
+        throw res.error;
+      }
+      void speaker.initialize();
+    },
+  });
 
+  const setBassMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      value,
+    }: {
+      deviceID: string;
+      value: number;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      setUpdating(deviceID, true);
+      const res = await speaker.setBass(value);
+      setUpdating(deviceID, false);
+      if (!res.isOk()) {
+        throw res.error;
+      }
+      void speaker.initialize();
+    },
+  });
+
+  const playStreamMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      uri,
+      name,
+    }: {
+      deviceID: string;
+      uri: string;
+      name: string;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
       setUpdating(deviceID, true);
       try {
         const payload = buildMargeRadioPayload(uri, name);
-        // Fallback to manual HTTP request for custom Marge radio payload
-        // Alternatively, we could add this custom playStream to Speaker module.
-        // For now, doing it here since buildMargeRadioPayload is in apps/app
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           controller.abort();
         }, 5000);
-
         const response = await fetch(
           `http://${speakerIp}:${speakerPort}/select`,
           {
@@ -487,9 +492,7 @@ export function useBoseScanner(scanDurationMs = 5000) {
             signal: controller.signal,
           },
         );
-
         clearTimeout(timeoutId);
-
         if (!response.ok) {
           const errorText = await response
             .text()
@@ -504,27 +507,112 @@ export function useBoseScanner(scanDurationMs = 5000) {
             `Failed to play URI: ${response.status} ${response.statusText} - ${errorText}`,
           );
         }
-
         setTimeout(async () => speaker.initialize(), 1500);
-      } catch (err) {
-        if (err instanceof Error && err.name === "AbortError") {
-          logger.error(
-            `[useBoseScanner] Stream play request timed out for ${deviceID}`,
-          );
-        } else {
-          logger.error(
-            `[useBoseScanner] Failed to play stream on ${deviceID}:`,
-            err,
-          );
-        }
-        throw err;
       } finally {
         setUpdating(deviceID, false);
       }
     },
-    [],
-  );
+  });
 
+  const setNameMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      name,
+    }: {
+      deviceID: string;
+      name: string;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.setName(name);
+      if (!res.isOk()) {
+        throw res.error;
+      }
+    },
+  });
+
+  const setAudioDspControlsMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      audiomode,
+    }: {
+      deviceID: string;
+      audiomode: AudioMode;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.setAudioDspControls(audiomode);
+      if (!res.isOk()) {
+        throw res.error;
+      }
+    },
+  });
+
+  const setAudioProductToneControlsMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      bass,
+      treble,
+    }: {
+      deviceID: string;
+      bass?: { value: number };
+      treble?: { value: number };
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.setAudioProductToneControls({ bass, treble });
+      if (!res.isOk()) {
+        throw res.error;
+      }
+    },
+  });
+
+  const setAudioProductLevelControlsMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      frontCenterSpeakerLevel,
+      rearSurroundSpeakersLevel,
+    }: {
+      deviceID: string;
+      frontCenterSpeakerLevel?: { value: number };
+      rearSurroundSpeakersLevel?: { value: number };
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.setAudioProductLevelControls({
+        frontCenterSpeakerLevel,
+        rearSurroundSpeakersLevel,
+      });
+      if (!res.isOk()) {
+        throw res.error;
+      }
+    },
+  });
+
+  const configureMargeAPIMutation = useMutation({
+    mutationFn: async ({ host }: { host: string }) => {
+      const result = await configureMargeAPI(
+        host,
+        TcpSocket as unknown as SocketModuleLike,
+      );
+      if (!result.isOk()) {
+        throw result.error;
+      }
+    },
+    onSettled: (_data, err, { host }) => {
+      if (!err) {
+        queryClient.setQueryData(["marge-api-status", host], true);
+      }
+    },
+  });
   useEffect(() => {
     isMounted.current = true;
     startScan();
@@ -546,16 +634,31 @@ export function useBoseScanner(scanDurationMs = 5000) {
     isScanning,
     error,
     rescan: startScan,
-    togglePower,
-    changeVolume,
-    playPause,
-    triggerKey,
-    selectSource,
     refreshStatus: refreshSpeakerStatus,
     loadPresets,
     loadBass,
-    savePreset,
-    setBass,
-    playStream,
+    powerToggleMutation,
+    volumeMutation,
+    playPauseMutation,
+    keyMutation,
+    selectSourceMutation,
+    savePresetMutation,
+    setBassMutation,
+    playStreamMutation,
+    setNameMutation,
+    setAudioDspControlsMutation,
+    setAudioProductToneControlsMutation,
+    setAudioProductLevelControlsMutation,
+    configureMargeAPIMutation,
   };
+}
+
+export function useMargeAPIStatusQuery(host: string) {
+  return useQuery({
+    queryKey: ["marge-api-status", host],
+    queryFn: async () => checkMargeAPIStatus(host),
+    enabled: host.length > 0,
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+  });
 }

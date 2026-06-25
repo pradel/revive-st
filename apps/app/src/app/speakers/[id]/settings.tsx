@@ -22,7 +22,7 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
+import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerManager";
 import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
@@ -100,7 +100,7 @@ export default function SpeakerSettings() {
       return;
     }
     setNameMutation.mutate(
-      { host: speaker.host, name: trimmed },
+      { deviceID: speaker.deviceID, name: trimmed },
       {
         onSuccess: () => {
           setNameValue("");
@@ -281,7 +281,7 @@ export default function SpeakerSettings() {
               const rounded = Math.round(value);
               setBassSliderValue(rounded);
               setBassMutation.mutate({
-                host: speaker.host,
+                deviceID: speaker.deviceID,
                 value: rounded,
               });
             }}
@@ -297,7 +297,7 @@ export default function SpeakerSettings() {
             options={AUDIO_MODES}
             onChange={(mode) => {
               setAudioDspControlsMutation.mutate({
-                host: speaker.host,
+                deviceID: speaker.deviceID,
                 audiomode: mode,
               });
             }}
@@ -317,7 +317,7 @@ export default function SpeakerSettings() {
               isSaving={setAudioProductToneControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
-                  host: speaker.host,
+                  deviceID: speaker.deviceID,
                   bass: { value: newValue },
                 });
               }}
@@ -332,7 +332,7 @@ export default function SpeakerSettings() {
               isSaving={setAudioProductToneControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductToneControlsMutation.mutate({
-                  host: speaker.host,
+                  deviceID: speaker.deviceID,
                   treble: { value: newValue },
                 });
               }}
@@ -353,7 +353,7 @@ export default function SpeakerSettings() {
               isSaving={setAudioProductLevelControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
-                  host: speaker.host,
+                  deviceID: speaker.deviceID,
                   frontCenterSpeakerLevel: { value: newValue },
                 });
               }}
@@ -368,7 +368,7 @@ export default function SpeakerSettings() {
               isSaving={setAudioProductLevelControlsMutation.isPending}
               onValueChange={(newValue) => {
                 setAudioProductLevelControlsMutation.mutate({
-                  host: speaker.host,
+                  deviceID: speaker.deviceID,
                   rearSurroundSpeakersLevel: { value: newValue },
                 });
               }}

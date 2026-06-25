@@ -1,122 +1,26 @@
 import React, { createContext, useContext, useMemo } from "react";
 
-import { useBoseScanner, type BoseSpeaker } from "../hooks/useBoseScanner";
 import {
-  useVolumeMutation,
-  usePowerToggleMutation,
-  usePlayPauseMutation,
-  useKeyMutation,
-  useSelectSourceMutation,
-  useSetBassMutation,
-  useSavePresetMutation,
-  usePlayStreamMutation,
-  useSetNameMutation,
-  useSetAudioDspControlsMutation,
-  useSetAudioProductToneControlsMutation,
-  useSetAudioProductLevelControlsMutation,
-  useConfigureMargeAPIMutation,
-} from "../hooks/useSpeakerMutations";
+  useSpeakerManager,
+  type BoseSpeaker,
+} from "../hooks/useSpeakerManager";
 
-interface BoseContextType {
-  speakers: BoseSpeaker[];
-  isScanning: boolean;
-  error: string | null;
-  rescan: () => void;
-  togglePower: (deviceID: string) => Promise<void>;
-  changeVolume: (deviceID: string, vol: number) => Promise<void>;
-  playPause: (deviceID: string) => Promise<void>;
-  triggerKey: (deviceID: string, key: string) => Promise<void>;
-  selectSource: (
-    deviceID: string,
-    source: string,
-    sourceAccount?: string,
-  ) => Promise<void>;
-  refreshStatus: (speaker: BoseSpeaker) => Promise<void>;
-  loadPresets: (deviceID: string) => Promise<void>;
-  loadBass: (deviceID: string) => Promise<void>;
-  savePreset: (deviceID: string, presetId: number) => Promise<void>;
-  setBass: (deviceID: string, value: number) => Promise<void>;
-  playStream: (
-    deviceID: string,
-    options: { uri: string; name: string },
-  ) => Promise<void>;
-  volumeMutation: ReturnType<typeof useVolumeMutation>;
-  powerToggleMutation: ReturnType<typeof usePowerToggleMutation>;
-  playPauseMutation: ReturnType<typeof usePlayPauseMutation>;
-  keyMutation: ReturnType<typeof useKeyMutation>;
-  selectSourceMutation: ReturnType<typeof useSelectSourceMutation>;
-  setBassMutation: ReturnType<typeof useSetBassMutation>;
-  savePresetMutation: ReturnType<typeof useSavePresetMutation>;
-  playStreamMutation: ReturnType<typeof usePlayStreamMutation>;
-  setNameMutation: ReturnType<typeof useSetNameMutation>;
-  setAudioDspControlsMutation: ReturnType<
-    typeof useSetAudioDspControlsMutation
-  >;
-  setAudioProductToneControlsMutation: ReturnType<
-    typeof useSetAudioProductToneControlsMutation
-  >;
-  setAudioProductLevelControlsMutation: ReturnType<
-    typeof useSetAudioProductLevelControlsMutation
-  >;
-  configureMargeAPIMutation: ReturnType<typeof useConfigureMargeAPIMutation>;
-}
+export type { BoseSpeaker };
+
+type BoseContextType = ReturnType<typeof useSpeakerManager>;
 
 const BoseContext = createContext<BoseContextType | null>(null);
 
 export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const scanner = useBoseScanner();
-  const volumeMutation = useVolumeMutation();
-  const powerToggleMutation = usePowerToggleMutation();
-  const playPauseMutation = usePlayPauseMutation();
-  const keyMutation = useKeyMutation();
-  const selectSourceMutation = useSelectSourceMutation();
-  const setBassMutation = useSetBassMutation();
-  const savePresetMutation = useSavePresetMutation();
-  const playStreamMutation = usePlayStreamMutation();
-  const setNameMutation = useSetNameMutation();
-  const setAudioDspControlsMutation = useSetAudioDspControlsMutation();
-  const setAudioProductToneControlsMutation =
-    useSetAudioProductToneControlsMutation();
-  const setAudioProductLevelControlsMutation =
-    useSetAudioProductLevelControlsMutation();
-  const configureMargeAPIMutation = useConfigureMargeAPIMutation();
+  const manager = useSpeakerManager();
 
-  const contextValue = useMemo(
-    () => ({
-      ...scanner,
-      volumeMutation,
-      powerToggleMutation,
-      playPauseMutation,
-      keyMutation,
-      selectSourceMutation,
-      setBassMutation,
-      savePresetMutation,
-      playStreamMutation,
-      setNameMutation,
-      setAudioDspControlsMutation,
-      setAudioProductToneControlsMutation,
-      setAudioProductLevelControlsMutation,
-      configureMargeAPIMutation,
-    }),
-    [
-      scanner,
-      volumeMutation,
-      powerToggleMutation,
-      playPauseMutation,
-      keyMutation,
-      selectSourceMutation,
-      setBassMutation,
-      savePresetMutation,
-      playStreamMutation,
-      setNameMutation,
-      setAudioDspControlsMutation,
-      setAudioProductToneControlsMutation,
-      setAudioProductLevelControlsMutation,
-      configureMargeAPIMutation,
-    ],
-  );
+  // We memoize the manager to avoid unnecessary re-renders.
+  // Note: manager itself contains functions that are stable or state that changes,
+  // so passing the whole object directly is fine, but we wrap it in useMemo
+  // to ensure object identity changes only when necessary if useSpeakerManager returns a new object.
+  const contextValue = useMemo(() => manager, [manager]);
 
   return (
     <BoseContext.Provider value={contextValue}>{children}</BoseContext.Provider>

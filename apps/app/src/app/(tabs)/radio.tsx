@@ -30,8 +30,10 @@ import {
   type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
-import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
+import {
+  useMargeAPIStatusQuery,
+  type BoseSpeaker,
+} from "@/features/speakers/hooks/useSpeakerManager";
 import { logger } from "@/lib/logger";
 import { PageHeader } from "@/ui/PageHeader";
 import { COLORS } from "@/ui/theme";
@@ -140,7 +142,7 @@ export default function RadioBrowser() {
         `[radio] Calling mutateAsync for ${speaker.host} with ${streamUrl}`,
       );
       await playStreamMutation.mutateAsync({
-        host: speaker.host,
+        deviceID: speaker.deviceID,
         uri: streamUrl,
         name: castingStation.name,
       });

@@ -1,3 +1,4 @@
+import type { KeyValue } from "bose-api-speaker-client";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useState, useEffect } from "react";
 import {
@@ -23,15 +24,15 @@ export default function SpeakerDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     speakers,
-    togglePower,
-    changeVolume,
-    playPause,
-    triggerKey,
-    selectSource,
+    powerToggleMutation,
+    volumeMutation,
+    playPauseMutation,
+    keyMutation,
+    selectSourceMutation,
     loadPresets,
     loadBass,
-    savePreset,
-    setBass,
+    savePresetMutation,
+    setBassMutation,
   } = useBose();
 
   const speaker = speakers.find((item) => item.deviceID === id);
@@ -79,13 +80,13 @@ export default function SpeakerDetail() {
     const touchX = event.nativeEvent.locationX;
     const percentage = Math.max(0, Math.min(1, touchX / sliderWidth));
     const newVolume = Math.round(percentage * 100);
-    void changeVolume(speaker.deviceID, newVolume);
+    volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVolume });
   };
 
   const adjustVolumeStep = (delta: number) => {
     const currentVol = speaker.volume ?? 30;
     const newVol = Math.max(0, Math.min(100, currentVol + delta));
-    void changeVolume(speaker.deviceID, newVol);
+    volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVol });
   };
 
   const handleBassSliderPress = (event: GestureResponderEvent) => {
@@ -96,29 +97,32 @@ export default function SpeakerDetail() {
     const percentage = Math.max(0, Math.min(1, touchX / bassSliderWidth));
     // Bass goes from -9 to 0
     const newBass = -9 + Math.round(percentage * 9);
-    void setBass(speaker.deviceID, newBass);
+    setBassMutation.mutate({ deviceID: speaker.deviceID, value: newBass });
   };
 
   const adjustBassStep = (delta: number) => {
     const currentBass = speaker.bass ?? -5;
     const newBass = Math.max(-9, Math.min(0, currentBass + delta));
-    void setBass(speaker.deviceID, newBass);
+    setBassMutation.mutate({ deviceID: speaker.deviceID, value: newBass });
   };
 
   const handleToggleMute = () => {
-    void triggerKey(speaker.deviceID, "MUTE");
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "MUTE" });
   };
 
   const handleNextTrack = () => {
-    void triggerKey(speaker.deviceID, "NEXT_TRACK");
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "NEXT_TRACK" });
   };
 
   const handlePrevTrack = () => {
-    void triggerKey(speaker.deviceID, "PREV_TRACK");
+    keyMutation.mutate({ deviceID: speaker.deviceID, key: "PREV_TRACK" });
   };
 
   const handlePresetPress = (presetId: number) => {
-    void triggerKey(speaker.deviceID, `PRESET_${presetId}`);
+    keyMutation.mutate({
+      deviceID: speaker.deviceID,
+      key: `PRESET_${presetId}` as KeyValue,
+    });
   };
 
   const handlePresetLongPress = (presetId: number) => {
@@ -141,7 +145,10 @@ export default function SpeakerDetail() {
           onPress: async () => {
             try {
               setSavingPresetId(presetId);
-              await savePreset(speaker.deviceID, presetId);
+              await savePresetMutation.mutateAsync({
+                deviceID: speaker.deviceID,
+                presetId,
+              });
             } catch (err) {
               logger.warn("[SpeakerDetail] Failed to save preset:", err);
               Alert.alert(
@@ -230,7 +237,7 @@ export default function SpeakerDetail() {
         <Pressable
           style={[$headerPowerButton, isStandby ? $powerOff : $powerOn]}
           onPress={() => {
-            void togglePower(speaker.deviceID);
+            powerToggleMutation.mutate({ deviceID: speaker.deviceID });
           }}
           disabled={speaker.isUpdating}
         >
@@ -260,7 +267,7 @@ export default function SpeakerDetail() {
             <Pressable
               style={$wakeButton}
               onPress={() => {
-                void togglePower(speaker.deviceID);
+                powerToggleMutation.mutate({ deviceID: speaker.deviceID });
               }}
               disabled={speaker.isUpdating}
             >
@@ -326,7 +333,7 @@ export default function SpeakerDetail() {
                 <Pressable
                   style={$mainPlayButton}
                   onPress={() => {
-                    void playPause(speaker.deviceID);
+                    playPauseMutation.mutate({ deviceID: speaker.deviceID });
                   }}
                   disabled={speaker.isUpdating}
                 >
@@ -551,9 +558,12 @@ export default function SpeakerDetail() {
                     $sourceCard,
                     speaker.source === "BLUETOOTH" && $sourceCardActive,
                   ]}
-                  onPress={() =>
-                    void selectSource(speaker.deviceID, "BLUETOOTH")
-                  }
+                  onPress={() => {
+                    selectSourceMutation.mutate({
+                      deviceID: speaker.deviceID,
+                      source: "BLUETOOTH",
+                    });
+                  }}
                 >
                   <Text style={$sourceCardEmoji}>📱</Text>
                   <Text style={$sourceCardText}>Bluetooth</Text>
@@ -565,9 +575,13 @@ export default function SpeakerDetail() {
                     $sourceCard,
                     speaker.source === "AUX" && $sourceCardActive,
                   ]}
-                  onPress={() =>
-                    void selectSource(speaker.deviceID, "AUX", "AUX")
-                  }
+                  onPress={() => {
+                    selectSourceMutation.mutate({
+                      deviceID: speaker.deviceID,
+                      source: "AUX",
+                      sourceAccount: "AUX",
+                    });
+                  }}
                 >
                   <Text style={$sourceCardEmoji}>🔌</Text>
                   <Text style={$sourceCardText}>Auxiliary</Text>
@@ -582,7 +596,10 @@ export default function SpeakerDetail() {
                       $sourceCardActive,
                   ]}
                   onPress={() => {
-                    void selectSource(speaker.deviceID, "TUNEIN");
+                    selectSourceMutation.mutate({
+                      deviceID: speaker.deviceID,
+                      source: "TUNEIN",
+                    });
                   }}
                 >
                   <Text style={$sourceCardEmoji}>🌐</Text>
