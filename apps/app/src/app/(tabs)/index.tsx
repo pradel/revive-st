@@ -18,14 +18,14 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import type { BoseSpeaker } from "@/features/speakers/hooks/useBoseScanner";
+import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
 import { PageHeader } from "@/ui/PageHeader";
 import { PulseRing } from "@/ui/PulseRing";
 import { COLORS } from "@/ui/theme";
 
 export default function Index() {
   const router = useRouter();
-  const { speakers, isScanning, rescan, changeVolume } = useBose();
+  const { speakers, isScanning, rescan, volumeMutation } = useBose();
   const sliderLayoutsRef = useRef<Record<string, number>>({});
 
   const handleVolumeTap = useCallback(
@@ -38,9 +38,9 @@ export default function Index() {
       const volume = Math.round(
         Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
-      void changeVolume(speaker.deviceID, volume);
+      volumeMutation.mutate({ host: speaker.deviceID, volume });
     },
-    [changeVolume],
+    [volumeMutation],
   );
 
   const handleSliderLayout = useCallback(

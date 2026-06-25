@@ -22,7 +22,7 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMutations";
+import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerManager";
 import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {

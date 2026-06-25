@@ -19,7 +19,8 @@ import { COLORS } from "@/ui/theme";
 export default function NowPlayingModal() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { speakers, changeVolume, playPause, triggerKey } = useBose();
+  const { speakers, volumeMutation, playPauseMutation, keyMutation } =
+    useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
   const sliderLayoutsRef = useRef<number>(0);
@@ -35,9 +36,9 @@ export default function NowPlayingModal() {
       const volume = Math.round(
         Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
       );
-      void changeVolume(speaker.deviceID, volume);
+      volumeMutation.mutate({ host: speaker.deviceID, volume });
     },
-    [speaker, changeVolume],
+    [speaker, volumeMutation],
   );
 
   const handleSliderLayout = useCallback((event: LayoutChangeEvent) => {
@@ -140,7 +141,12 @@ export default function NowPlayingModal() {
         <View style={$playbackControls}>
           <TouchableOpacity
             style={$controlButton}
-            onPress={async () => triggerKey(speaker.deviceID, "PREV_TRACK")}
+            onPress={() => {
+              keyMutation.mutate({
+                host: speaker.deviceID,
+                key: "PREV_TRACK",
+              });
+            }}
             disabled={!hasMusic}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
@@ -157,10 +163,12 @@ export default function NowPlayingModal() {
 
           <TouchableOpacity
             style={[
-              $playPauseButton,
+              $playPauseMutationButton,
               !hasMusic && { backgroundColor: COLORS.border },
             ]}
-            onPress={async () => playPause(speaker.deviceID)}
+            onPress={() => {
+              playPauseMutation.mutate({ host: speaker.deviceID });
+            }}
             disabled={!hasMusic}
           >
             <SymbolView
@@ -176,7 +184,12 @@ export default function NowPlayingModal() {
 
           <TouchableOpacity
             style={$controlButton}
-            onPress={async () => triggerKey(speaker.deviceID, "NEXT_TRACK")}
+            onPress={() => {
+              keyMutation.mutate({
+                host: speaker.deviceID,
+                key: "NEXT_TRACK",
+              });
+            }}
             disabled={!hasMusic}
             hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
           >
@@ -312,7 +325,7 @@ const $controlButton: ViewStyle = {
   padding: 8,
 };
 
-const $playPauseButton: ViewStyle = {
+const $playPauseMutationButton: ViewStyle = {
   width: 72,
   height: 72,
   borderRadius: 36,
