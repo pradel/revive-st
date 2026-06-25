@@ -1,14 +1,14 @@
 import {
-  BoseWebSocketClient,
-  boseSpeakerClient as createClient,
-  type AudioDspControlsResponse,
-  type AudioProductLevelControlsResponse,
-  type AudioProductToneControlsResponse,
+  Speaker,
+  BoseHttpAdapter,
+  type SpeakerState,
+  type Preset,
   type BassCapabilitiesResponse,
   type CapabilitiesResponse,
+  type AudioDspControlsResponse,
+  type AudioProductToneControlsResponse,
+  type AudioProductLevelControlsResponse,
   type DeviceComponent,
-  type KeyValue,
-  type Preset,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
@@ -44,88 +44,53 @@ export interface BoseSpeaker {
   macAddress?: string;
 }
 
-async function pressAndRelease(host: string, key: string) {
-  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
-  const client = createClient({ ip: host });
-  let result = await client.pressKey({
-    key: keyValue,
-    state: "press",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-  result = await client.pressKey({
-    key: keyValue,
-    state: "release",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-}
-
-async function longPress(host: string, key: string, durationMs = 2000) {
-  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
-  const client = createClient({ ip: host });
-  let result = await client.pressKey({
-    key: keyValue,
-    state: "press",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-  await new Promise<void>((resolve) => setTimeout(resolve, durationMs));
-  result = await client.pressKey({
-    key: keyValue,
-    state: "release",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-}
-
-async function playUri(host: string, options: { uri: string; name: string }) {
-  const payload = buildMargeRadioPayload(options.uri, options.name);
-
-  const response = await fetch(`http://${host}:8090/select`, {
-    method: "POST",
-    headers: { "Content-Type": "text/xml" },
-    body: payload,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "No response body");
-    if (
-      errorText.includes('"1005"') ||
-      errorText.includes("UNKNOWN_SOURCE_ERROR")
-    ) {
-      throw new Error("UNKNOWN_SOURCE_ERROR");
-    }
-    throw new Error(
-      `Failed to play URI on ${host}: ${response.status} ${response.statusText} - ${errorText}`,
-    );
-  }
+function flattenSpeakerState(
+  deviceID: string,
+  host: string,
+  port: number,
+  isUpdating: boolean,
+  state: SpeakerState,
+): BoseSpeaker {
+  return {
+    deviceID,
+    host,
+    port,
+    name: state.name ?? "Bose Speaker",
+    type: state.type ?? "SoundTouch",
+    playStatus: state.nowPlaying?.playStatus,
+    source: state.nowPlaying?.source,
+    track: state.nowPlaying?.track,
+    artist: state.nowPlaying?.artist,
+    album: state.nowPlaying?.album,
+    artUrl: state.nowPlaying?.artUrl,
+    volume: state.volume,
+    muteEnabled: state.isMuted,
+    isUpdating,
+    presets: state.presets,
+    bass: state.bass,
+    bassCapabilities: state.bassCapabilities,
+    capabilities: state.capabilities,
+    audioDspControls: state.audioDspControls,
+    audioProductToneControls: state.audioProductToneControls,
+    audioProductLevelControls: state.audioProductLevelControls,
+    components: state.components,
+    macAddress: state.macAddress,
+  };
 }
 
 export function useBoseScanner(scanDurationMs = 5000) {
-  const [speakers, setSpeakers] = useState<BoseSpeaker[]>([]);
+  const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
+    {},
+  );
   const [isScanning, setIsScanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const zeroconfRef = useRef<Zeroconf | null>(null);
   const scanTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMounted = useRef(true);
 
-  const speakersRef = useRef<BoseSpeaker[]>([]);
-  speakersRef.current = speakers;
-
-  const prevDeviceIdsRef = useRef<Set<string>>(new Set());
-
-  const wsClientsRef = useRef<Map<string, BoseWebSocketClient>>(new Map());
+  const speakersMapRef = useRef<Map<string, Speaker>>(new Map());
+  const isUpdatingRef = useRef<Record<string, boolean>>({});
 
   const stopScan = useCallback(() => {
     if (scanTimeoutRef.current) {
@@ -146,279 +111,12 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }
   }, []);
 
-  const refreshSpeakerStatus = useCallback(async (speaker: BoseSpeaker) => {
-    try {
-      const hasPresetsLoaded = speaker.presets !== undefined;
-      const hasBassLoaded = speaker.bass !== undefined;
-      const hasCapsLoaded = speaker.capabilities !== undefined;
-      const client = createClient({ ip: speaker.host });
-
-      const [
-        nowPlaying,
-        volumeInfo,
-        presetsResult,
-        bassResult,
-        bassCaps,
-        capabilities,
-        dspControls,
-        toneControls,
-        levelControls,
-      ] = await Promise.all([
-        client.getNowPlaying().then((res) => (res.isOk() ? res.value : null)),
-        client.getVolume().then((res) => (res.isOk() ? res.value : null)),
-        hasPresetsLoaded
-          ? client.getPresets().then((res) => (res.isOk() ? res.value : null))
-          : Promise.resolve(null),
-        hasBassLoaded
-          ? client.getBass().then((res) => (res.isOk() ? res.value : null))
-          : Promise.resolve(null),
-        hasCapsLoaded
-          ? Promise.resolve(null)
-          : client
-              .getBassCapabilities()
-              .then((res) => (res.isOk() ? res.value : null)),
-        hasCapsLoaded
-          ? Promise.resolve(null)
-          : client
-              .getCapabilities()
-              .then((res) => (res.isOk() ? res.value : null)),
-        hasCapsLoaded
-          ? Promise.resolve(null)
-          : client
-              .getAudioDspControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-        hasCapsLoaded
-          ? Promise.resolve(null)
-          : client
-              .getAudioProductToneControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-        hasCapsLoaded
-          ? Promise.resolve(null)
-          : client
-              .getAudioProductLevelControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-      ]);
-
-      if (!isMounted.current) {
-        return;
-      }
-
-      setSpeakers((prev) =>
-        prev.map((item) => {
-          if (item.deviceID === speaker.deviceID) {
-            if (presetsResult) {
-              syncPresetsToMarge(speaker.deviceID, presetsResult.presets).catch(
-                (err: unknown) => {
-                  logger.warn("[useBoseScanner] Error syncing presets:", err);
-                },
-              );
-            }
-            return {
-              ...item,
-              playStatus: nowPlaying?.playStatus ?? item.playStatus,
-              source: nowPlaying?.source ?? item.source,
-              track: nowPlaying?.track ?? item.track,
-              artist: nowPlaying?.artist ?? item.artist,
-              album: nowPlaying?.album ?? item.album,
-              artUrl: nowPlaying?.art?.url ?? item.artUrl,
-              volume: volumeInfo?.actualvolume ?? item.volume,
-              muteEnabled: volumeInfo?.muteenabled ?? item.muteEnabled,
-              presets: presetsResult ? presetsResult.presets : item.presets,
-              bass: bassResult ? bassResult.actualbass : item.bass,
-              bassCapabilities: bassCaps ?? item.bassCapabilities,
-              capabilities: capabilities ?? item.capabilities,
-              audioDspControls: dspControls ?? item.audioDspControls,
-              audioProductToneControls:
-                toneControls ?? item.audioProductToneControls,
-              audioProductLevelControls:
-                levelControls ?? item.audioProductLevelControls,
-            };
-          }
-          return item;
-        }),
-      );
-    } catch (err) {
-      logger.warn(
-        `[BoseScanner] Failed to refresh speaker ${speaker.name}:`,
-        err,
-      );
+  const refreshSpeakerStatus = useCallback(async (speakerInfo: BoseSpeaker) => {
+    const speaker = speakersMapRef.current.get(speakerInfo.deviceID);
+    if (speaker) {
+      await speaker.initialize();
     }
   }, []);
-
-  useEffect(() => {
-    const currentDeviceIds = new Set(speakers.map((item) => item.deviceID));
-
-    const hasDeviceChange =
-      currentDeviceIds.size !== prevDeviceIdsRef.current.size ||
-      ![...currentDeviceIds].every((id) => prevDeviceIdsRef.current.has(id)) ||
-      speakers.some((speaker) => {
-        const client = wsClientsRef.current.get(speaker.deviceID);
-        return !client || client.getHost() !== speaker.host;
-      });
-
-    if (!hasDeviceChange) {
-      return;
-    }
-
-    prevDeviceIdsRef.current = currentDeviceIds;
-
-    wsClientsRef.current.forEach((client, deviceID) => {
-      if (!currentDeviceIds.has(deviceID)) {
-        logger.log(
-          `[useBoseScanner] Stopping WebSocket client for lost device: ${deviceID}`,
-        );
-        client.close();
-        wsClientsRef.current.delete(deviceID);
-      }
-    });
-
-    speakers.forEach((speaker) => {
-      const client = wsClientsRef.current.get(speaker.deviceID);
-      if (!client) {
-        const newClient = new BoseWebSocketClient({
-          host: speaker.host,
-          deviceID: speaker.deviceID,
-          onUpdate: (update) => {
-            if (!isMounted.current) {
-              return;
-            }
-
-            logger.log(
-              `[useBoseScanner] Received WebSocket notification (${update.type}) for ${update.deviceID}`,
-            );
-
-            const refreshIfAvailable = () => {
-              const latest = speakersRef.current.find(
-                (item) => item.deviceID === update.deviceID,
-              );
-              if (latest) {
-                void refreshSpeakerStatus(latest);
-              }
-            };
-
-            if (update.type === "volume") {
-              const vol = update.volume;
-              if (vol) {
-                setSpeakers((prev) =>
-                  prev.map((item) => {
-                    if (item.deviceID === update.deviceID) {
-                      return {
-                        ...item,
-                        volume: vol.actualVolume,
-                        muteEnabled: vol.muteEnabled,
-                      };
-                    }
-                    return item;
-                  }),
-                );
-              } else {
-                refreshIfAvailable();
-              }
-            } else if (update.type === "presets") {
-              // Fetch the latest presets and sync them to the Marge API
-              const speakerClient = createClient({ ip: speaker.host });
-              speakerClient
-                .getPresets()
-                .then((result) => {
-                  if (result.isOk() && result.value.presets) {
-                    const presets = result.value.presets;
-                    setSpeakers((prev) =>
-                      prev.map((item) =>
-                        item.deviceID === update.deviceID
-                          ? { ...item, presets }
-                          : item,
-                      ),
-                    );
-                  }
-                })
-                .catch((err: unknown) => {
-                  logger.warn("[useBoseScanner] Error fetching presets:", err);
-                });
-            } else if (update.type === "nowPlaying") {
-              const np = update.nowPlaying;
-              if (np) {
-                setSpeakers((prev) =>
-                  prev.map((item) => {
-                    if (item.deviceID === update.deviceID) {
-                      return {
-                        ...item,
-                        playStatus: np.playStatus,
-                        source: np.source,
-                        track: np.track,
-                        artist: np.artist,
-                        album: np.album,
-                        artUrl: np.artUrl,
-                      };
-                    }
-                    return item;
-                  }),
-                );
-              } else {
-                refreshIfAvailable();
-              }
-            } else if (update.type === "nameUpdated") {
-              setSpeakers((prev) =>
-                prev.map((item) => {
-                  if (item.deviceID === update.deviceID) {
-                    return { ...item, name: update.name };
-                  }
-                  return item;
-                }),
-              );
-            } else if (update.type === "connectionState") {
-              // handled by the parser, no state update needed
-            } else if (update.type === "nowSelection") {
-              const ns = update.nowSelection;
-              const contentItem = ns?.preset?.contentItem;
-              if (contentItem) {
-                // Optimistic update: nowSelection fires immediately when a preset/source is selected,
-                // while internet radio may take several seconds to buffer. We update the UI to show
-                // the new selection and set the status to BUFFERING_STATE for immediate feedback.
-                // The speaker will naturally emit a nowPlayingUpdated event once buffering completes.
-                setSpeakers((prev) =>
-                  prev.map((item) => {
-                    if (item.deviceID === update.deviceID) {
-                      return {
-                        ...item,
-                        source: contentItem.source,
-                        track: contentItem.itemName,
-                        playStatus: "BUFFERING_STATE",
-                        artist: undefined,
-                        album: undefined,
-                        artUrl: undefined,
-                      };
-                    }
-                    return item;
-                  }),
-                );
-              } else {
-                refreshIfAvailable();
-              }
-            } else if (update.type === "recents") {
-              // No-op: recents updates are parsed by the client but not consumed by the app UI yet.
-            } else if (update.type === "siteSurveyResults") {
-              // No-op: siteSurveyResults updates are sent periodically by the device, we ignore them
-            } else {
-              refreshIfAvailable();
-            }
-          },
-          onDisconnect: () => {
-            logger.log(
-              `[useBoseScanner] WebSocket disconnected for ${speaker.deviceID}`,
-            );
-          },
-        });
-
-        wsClientsRef.current.set(speaker.deviceID, newClient);
-        newClient.connect();
-      } else if (client.getHost() !== speaker.host) {
-        logger.log(
-          `[useBoseScanner] Speaker IP changed from ${client.getHost()} to ${speaker.host}. Reconnecting.`,
-        );
-        client.updateHost(speaker.host);
-      }
-    });
-  }, [speakers, refreshSpeakerStatus]);
 
   const startScan = useCallback(() => {
     stopScan();
@@ -442,8 +140,14 @@ export function useBoseScanner(scanDurationMs = 5000) {
         }
 
         try {
-          const client = createClient({ ip: service.host });
-          const infoResult = await client.getInfo();
+          const httpAdapter = new BoseHttpAdapter({
+            ip: service.host,
+            port: service.port || 8090,
+          });
+          const infoResult = await httpAdapter.getInfo();
+          if (!isMounted.current) {
+            return;
+          }
           if (!infoResult.isOk()) {
             return;
           }
@@ -452,72 +156,61 @@ export function useBoseScanner(scanDurationMs = 5000) {
             return;
           }
 
-          const [
-            nowPlaying,
-            volumeInfo,
-            bassCaps,
-            capabilities,
-            dspControls,
-            toneControls,
-            levelControls,
-          ] = await Promise.all([
-            client
-              .getNowPlaying()
-              .then((res) => (res.isOk() ? res.value : null)),
-            client.getVolume().then((res) => (res.isOk() ? res.value : null)),
-            client
-              .getBassCapabilities()
-              .then((res) => (res.isOk() ? res.value : null)),
-            client
-              .getCapabilities()
-              .then((res) => (res.isOk() ? res.value : null)),
-            client
-              .getAudioDspControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-            client
-              .getAudioProductToneControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-            client
-              .getAudioProductLevelControls()
-              .then((res) => (res.isOk() ? res.value : null)),
-          ]);
+          const deviceID = info.deviceID;
 
-          if (!isMounted.current) {
-            return;
+          let speaker = speakersMapRef.current.get(deviceID);
+          if (speaker) {
+            const currentIp = speaker.options.ip;
+            const currentPort = speaker.options.port;
+            if (
+              currentIp !== service.host ||
+              currentPort !== (service.port || 8090) ||
+              speaker.getState().connectionState === "disconnected"
+            ) {
+              speaker.disconnect();
+              speaker = undefined;
+            }
           }
 
-          setSpeakers((prev) => {
-            const exists = prev.some((item) => item.deviceID === info.deviceID);
-            const newSpeaker: BoseSpeaker = {
-              deviceID: info.deviceID,
-              host: service.host,
+          if (!speaker) {
+            speaker = new Speaker({
+              ip: service.host,
               port: service.port || 8090,
-              name: info.name || service.name || "Bose Speaker",
-              type: info.type || "SoundTouch",
-              playStatus: nowPlaying?.playStatus,
-              source: nowPlaying?.source,
-              track: nowPlaying?.track,
-              artist: nowPlaying?.artist,
-              album: nowPlaying?.album,
-              artUrl: nowPlaying?.art?.url,
-              volume: volumeInfo?.actualvolume,
-              muteEnabled: volumeInfo?.muteenabled,
-              bassCapabilities: bassCaps,
-              capabilities,
-              audioDspControls: dspControls,
-              audioProductToneControls: toneControls,
-              audioProductLevelControls: levelControls,
-              components: info.components,
-              macAddress: info.networkInfo?.macAddress,
-            };
+              deviceID,
+              onStateUpdate: (state) => {
+                if (!isMounted.current) {
+                  return;
+                }
 
-            if (exists) {
-              return prev.map((item) =>
-                item.deviceID === info.deviceID ? newSpeaker : item,
-              );
-            }
-            return [...prev, newSpeaker];
-          });
+                if (state.presets) {
+                  syncPresetsToMarge(deviceID, state.presets).catch(
+                    (err: unknown) => {
+                      logger.warn(
+                        "[useBoseScanner] Error syncing presets:",
+                        err,
+                      );
+                    },
+                  );
+                }
+
+                setSpeakersData((prev) => ({
+                  ...prev,
+                  [deviceID]: flattenSpeakerState(
+                    deviceID,
+                    service.host,
+                    service.port || 8090,
+                    isUpdatingRef.current[deviceID] ?? false,
+                    state,
+                  ),
+                }));
+              },
+            });
+            speakersMapRef.current.set(deviceID, speaker);
+
+            // Connect to WebSocket and fetch initial state
+            speaker.connect();
+            await speaker.initialize();
+          }
         } catch (err) {
           logger.log(
             `[BoseScanner] Device found at ${service.host} but failed info verification:`,
@@ -548,397 +241,308 @@ export function useBoseScanner(scanDurationMs = 5000) {
     }, scanDurationMs);
   }, [scanDurationMs, stopScan]);
 
-  const togglePower = useCallback(
-    async (deviceID: string) => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
-      if (!speaker) {
-        return;
+  const setUpdating = (deviceID: string, isUpdating: boolean) => {
+    isUpdatingRef.current[deviceID] = isUpdating;
+    setSpeakersData((prev) => {
+      if (!prev[deviceID]) {
+        return prev;
       }
+      return {
+        ...prev,
+        [deviceID]: {
+          ...prev[deviceID],
+          isUpdating,
+        },
+      };
+    });
+  };
 
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-
-      try {
-        await pressAndRelease(speaker.host, "POWER");
-        setTimeout(() => {
-          void refreshSpeakerStatus(speaker);
-        }, 800);
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to toggle power on ${speaker.name}:`,
-          err,
-        );
-      } finally {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
-        );
-      }
-    },
-    [refreshSpeakerStatus],
-  );
-
-  const changeVolume = useCallback(
-    async (deviceID: string, vol: number) => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
-      if (!speaker) {
-        return;
-      }
-
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, volume: vol } : item,
-        ),
-      );
-
-      try {
-        const client = createClient({ ip: speaker.host });
-        const result = await client.setVolume({ volume: vol });
-        if (!result.isOk()) {
-          throw result.error;
-        }
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to set volume on ${speaker.name}:`,
-          err,
-        );
-        void refreshSpeakerStatus(speaker);
-      }
-    },
-    [refreshSpeakerStatus],
-  );
-
-  const playPause = useCallback(
-    async (deviceID: string) => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
-      if (!speaker) {
-        return;
-      }
-
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-
-      try {
-        await pressAndRelease(speaker.host, "PLAY_PAUSE");
-        setTimeout(() => {
-          void refreshSpeakerStatus(speaker);
-        }, 500);
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to send play/pause to ${speaker.name}:`,
-          err,
-        );
-      } finally {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
-        );
-      }
-    },
-    [refreshSpeakerStatus],
-  );
-
-  const triggerKey = useCallback(
-    async (deviceID: string, key: string) => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
-      if (!speaker) {
-        return;
-      }
-
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-
-      try {
-        await pressAndRelease(speaker.host, key);
-        setTimeout(() => {
-          void refreshSpeakerStatus(speaker);
-        }, 500);
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to send key ${key} to ${speaker.name}:`,
-          err,
-        );
-      } finally {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
-        );
-      }
-    },
-    [refreshSpeakerStatus],
-  );
-
-  const selectSource = useCallback(
-    async (deviceID: string, source: string, sourceAccount = "") => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
-      if (!speaker) {
-        return;
-      }
-
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-
-      try {
-        const client = createClient({ ip: speaker.host });
-        const result = await client.selectSource({
-          source,
-          sourceAccount: sourceAccount || undefined,
-        });
-        if (!result.isOk()) {
-          throw result.error;
-        }
-        setTimeout(() => {
-          void refreshSpeakerStatus(speaker);
-        }, 500);
-      } catch (err) {
-        logger.error(
-          `[BoseScanner] Failed to select source ${source} on ${speaker.name}:`,
-          err,
-        );
-      } finally {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
-        );
-      }
-    },
-    [refreshSpeakerStatus],
-  );
-
-  const loadPresets = useCallback(async (deviceID: string) => {
-    const speaker = speakersRef.current.find(
-      (item) => item.deviceID === deviceID,
-    );
+  const togglePower = useCallback(async (deviceID: string) => {
+    const speaker = speakersMapRef.current.get(deviceID);
     if (!speaker) {
       return;
     }
+
+    setUpdating(deviceID, true);
     try {
-      const client = createClient({ ip: speaker.host });
-      const result = await client.getPresets();
-      if (!result.isOk() || !isMounted.current) {
-        return;
+      const res = await speaker.powerToggle();
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 800);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to toggle power on ${deviceID}:`,
+          res.error,
+        );
       }
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID
-            ? { ...item, presets: result.value.presets }
-            : item,
-        ),
-      );
-    } catch (err) {
-      logger.warn(
-        `[useBoseScanner] Failed to load presets for ${speaker.name}:`,
-        err,
-      );
+    } finally {
+      setUpdating(deviceID, false);
     }
   }, []);
 
-  const loadBass = useCallback(async (deviceID: string) => {
-    const speaker = speakersRef.current.find(
-      (item) => item.deviceID === deviceID,
-    );
+  const changeVolume = useCallback(async (deviceID: string, vol: number) => {
+    const speaker = speakersMapRef.current.get(deviceID);
     if (!speaker) {
       return;
     }
+
+    setSpeakersData((prev) =>
+      prev[deviceID]
+        ? { ...prev, [deviceID]: { ...prev[deviceID], volume: vol } }
+        : prev,
+    );
+
     try {
-      const client = createClient({ ip: speaker.host });
-      const result = await client.getBass();
-      if (!result.isOk() || !isMounted.current) {
+      const res = await speaker.setVolume(vol);
+      if (!res.isOk()) {
+        logger.error(
+          `[BoseScanner] Failed to set volume on ${deviceID}:`,
+          res.error,
+        );
+        void speaker.initialize();
+      }
+    } finally {
+      // Intentionally kept finally to match style if we add more state handling
+    }
+  }, []);
+
+  const playPause = useCallback(async (deviceID: string) => {
+    const speaker = speakersMapRef.current.get(deviceID);
+    if (!speaker) {
+      return;
+    }
+
+    setUpdating(deviceID, true);
+    try {
+      const res = await speaker.playPause();
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to send play/pause to ${deviceID}:\n${JSON.stringify(res.error, null, 2)}`,
+        );
+      }
+    } finally {
+      setUpdating(deviceID, false);
+    }
+  }, []);
+
+  const triggerKey = useCallback(async (deviceID: string, key: string) => {
+    const speaker = speakersMapRef.current.get(deviceID);
+    if (!speaker) {
+      return;
+    }
+
+    setUpdating(deviceID, true);
+    try {
+      const res = await speaker.triggerKey(key as any);
+      if (res.isOk()) {
+        setTimeout(() => {
+          void speaker.initialize();
+        }, 500);
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to send key ${key} to ${deviceID}:`,
+          res.error,
+        );
+      }
+    } finally {
+      setUpdating(deviceID, false);
+    }
+  }, []);
+
+  const selectSource = useCallback(
+    async (deviceID: string, source: string, sourceAccount = "") => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
         return;
       }
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID
-            ? { ...item, bass: result.value.actualbass }
-            : item,
-        ),
-      );
-    } catch (err) {
-      logger.warn(
-        `[useBoseScanner] Failed to load bass for ${speaker.name}:`,
-        err,
-      );
+
+      setUpdating(deviceID, true);
+      try {
+        const res = await speaker.selectSource(
+          source,
+          sourceAccount || undefined,
+        );
+        if (res.isOk()) {
+          setTimeout(() => {
+            void speaker.initialize();
+          }, 500);
+        } else {
+          logger.error(
+            `[BoseScanner] Failed to select source ${source} on ${deviceID}:`,
+            res.error,
+          );
+        }
+      } finally {
+        setUpdating(deviceID, false);
+      }
+    },
+    [],
+  );
+
+  const loadPresets = useCallback(async (deviceID: string) => {
+    const speaker = speakersMapRef.current.get(deviceID);
+    if (speaker) {
+      await speaker.initialize();
+    } // Initialize pulls everything including presets
+  }, []);
+
+  const loadBass = useCallback(async (deviceID: string) => {
+    const speaker = speakersMapRef.current.get(deviceID);
+    if (speaker) {
+      await speaker.initialize();
     }
   }, []);
 
   const savePreset = useCallback(async (deviceID: string, presetId: number) => {
-    const speaker = speakersRef.current.find(
-      (item) => item.deviceID === deviceID,
-    );
+    const speaker = speakersMapRef.current.get(deviceID);
     if (!speaker) {
       return;
     }
+
+    if (
+      presetId !== 1 &&
+      presetId !== 2 &&
+      presetId !== 3 &&
+      presetId !== 4 &&
+      presetId !== 5 &&
+      presetId !== 6
+    ) {
+      logger.warn(
+        `[BoseScanner] Invalid preset ID ${presetId} for ${deviceID}`,
+      );
+      return;
+    }
+
+    setUpdating(deviceID, true);
     try {
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-      await longPress(speaker.host, `PRESET_${presetId}`);
-      const client = createClient({ ip: speaker.host });
-      const result = await client.getPresets();
-      if (!isMounted.current) {
-        return;
-      }
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID
-            ? {
-                ...item,
-                presets: result.isOk() ? result.value.presets : item.presets,
-                isUpdating: false,
-              }
-            : item,
-        ),
-      );
-    } catch (err) {
-      if (isMounted.current) {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
+      const res = await speaker.savePreset(presetId);
+      if (res.isOk()) {
+        void speaker.initialize();
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to save preset ${presetId} on ${deviceID}:`,
+          res.error,
         );
       }
-      logger.warn(
-        `[useBoseScanner] Failed to save preset for ${speaker.name}:`,
-        err,
-      );
-      throw err;
+    } finally {
+      setUpdating(deviceID, false);
     }
   }, []);
 
   const setBass = useCallback(async (deviceID: string, value: number) => {
-    const speaker = speakersRef.current.find(
-      (item) => item.deviceID === deviceID,
-    );
+    const speaker = speakersMapRef.current.get(deviceID);
     if (!speaker) {
       return;
     }
+
+    setUpdating(deviceID, true);
     try {
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-        ),
-      );
-      const client = createClient({ ip: speaker.host });
-      const result = await client.setBass(value);
-      if (!result.isOk()) {
-        throw result.error;
-      }
-      if (!isMounted.current) {
-        return;
-      }
-      setSpeakers((prev) =>
-        prev.map((item) =>
-          item.deviceID === deviceID
-            ? { ...item, bass: value, isUpdating: false }
-            : item,
-        ),
-      );
-    } catch (err) {
-      if (isMounted.current) {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
+      const res = await speaker.setBass(value);
+      if (res.isOk()) {
+        void speaker.initialize();
+      } else {
+        logger.error(
+          `[BoseScanner] Failed to set bass on ${deviceID}:`,
+          res.error,
         );
       }
-      logger.warn(
-        `[useBoseScanner] Failed to set bass for ${speaker.name}:`,
-        err,
-      );
-      throw err;
+    } finally {
+      setUpdating(deviceID, false);
     }
   }, []);
 
   const playStream = useCallback(
     async (deviceID: string, options: { uri: string; name: string }) => {
-      const speaker = speakersRef.current.find(
-        (item) => item.deviceID === deviceID,
-      );
+      const { uri, name } = options;
+      const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
         return;
       }
+
+      setUpdating(deviceID, true);
       try {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: true } : item,
-          ),
+        const payload = buildMargeRadioPayload(uri, name);
+        // Fallback to manual HTTP request for custom Marge radio payload
+        // Alternatively, we could add this custom playStream to Speaker module.
+        // For now, doing it here since buildMargeRadioPayload is in apps/app
+        const speakerIp = speaker.options.ip;
+        const speakerPort = speaker.options.port ?? 8090;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          controller.abort();
+        }, 5000);
+
+        const response = await fetch(
+          `http://${speakerIp}:${speakerPort}/select`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "text/xml" },
+            body: payload,
+            signal: controller.signal,
+          },
         );
-        await playUri(speaker.host, options);
-        setTimeout(() => {
-          void refreshSpeakerStatus(speaker);
-        }, 1000);
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          const errorText = await response
+            .text()
+            .catch(() => "No response body");
+          if (
+            errorText.includes('"1005"') ||
+            errorText.includes("UNKNOWN_SOURCE_ERROR")
+          ) {
+            throw new Error("UNKNOWN_SOURCE_ERROR");
+          }
+          throw new Error(
+            `Failed to play URI: ${response.status} ${response.statusText} - ${errorText}`,
+          );
+        }
+
+        setTimeout(async () => speaker.initialize(), 1500);
       } catch (err) {
-        logger.warn(
-          `[useBoseScanner] Failed to play stream on ${speaker.name}:`,
-          err,
-        );
+        if (err instanceof Error && err.name === "AbortError") {
+          logger.error(
+            `[useBoseScanner] Stream play request timed out for ${deviceID}`,
+          );
+        } else {
+          logger.error(
+            `[useBoseScanner] Failed to play stream on ${deviceID}:`,
+            err,
+          );
+        }
         throw err;
       } finally {
-        setSpeakers((prev) =>
-          prev.map((item) =>
-            item.deviceID === deviceID ? { ...item, isUpdating: false } : item,
-          ),
-        );
+        setUpdating(deviceID, false);
       }
     },
-    [refreshSpeakerStatus],
+    [],
   );
 
   useEffect(() => {
     isMounted.current = true;
     startScan();
 
-    pollIntervalRef.current = setInterval(() => {
-      speakersRef.current.forEach((speaker) => {
-        void refreshSpeakerStatus(speaker);
-      });
-    }, 15000);
-
-    const wsClients = wsClientsRef.current;
+    const wsClients = speakersMapRef.current;
 
     return () => {
       isMounted.current = false;
       stopScan();
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current);
-      }
       wsClients.forEach((client) => {
-        client.close();
+        client.disconnect();
       });
       wsClients.clear();
     };
-  }, [startScan, stopScan, refreshSpeakerStatus]);
+  }, [startScan, stopScan]);
 
   return {
-    speakers,
+    speakers: Object.values(speakersData),
     isScanning,
     error,
     rescan: startScan,

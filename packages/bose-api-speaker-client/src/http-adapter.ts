@@ -45,7 +45,7 @@ import {
   type XmlNode,
 } from "./xml-parser.ts";
 
-export class BoseSpeakerClient {
+export class BoseHttpAdapter {
   private readonly baseUrl: string;
 
   constructor(opts: { ip: string; port?: number }) {
@@ -60,7 +60,7 @@ export class BoseSpeakerClient {
     if (!result.isOk()) {
       return new Err(result.error);
     }
-    return BoseSpeakerClient.parseBody(result.value, parse);
+    return BoseHttpAdapter.parseBody(result.value, parse);
   }
 
   private async post(
@@ -111,7 +111,8 @@ export class BoseSpeakerClient {
     }
 
     if (!response.ok) {
-      const apiErrors = tryParseApiErrors(body);
+      const requestBody = typeof init.body === "string" ? init.body : undefined;
+      const apiErrors = tryParseApiErrors(body, requestBody);
       if (apiErrors) {
         return new Err(apiErrors);
       }
@@ -148,7 +149,7 @@ export class BoseSpeakerClient {
       );
     }
 
-    const apiErrors = tryParseApiErrorsFromNode(root);
+    const apiErrors = tryParseApiErrorsFromNode(root, body);
     if (apiErrors) {
       return new Err(apiErrors);
     }
@@ -590,16 +591,20 @@ function parseLevelControl(node: XmlNode | undefined) {
   };
 }
 
-function tryParseApiErrors(body: string): ApiError | null {
+function tryParseApiErrors(body: string, requestXml?: string): ApiError | null {
   try {
     const root = parseXml(body);
-    return tryParseApiErrorsFromNode(root);
+    return tryParseApiErrorsFromNode(root, body, requestXml);
   } catch {
     return null;
   }
 }
 
-function tryParseApiErrorsFromNode(root: XmlNode): ApiError | null {
+function tryParseApiErrorsFromNode(
+  root: XmlNode,
+  rawXml: string,
+  requestXml?: string,
+): ApiError | null {
   const errorsRoot = root.name === "errors" ? root : getChild(root, "errors");
   if (!errorsRoot) {
     return null;
@@ -612,6 +617,8 @@ function tryParseApiErrorsFromNode(root: XmlNode): ApiError | null {
       severity: errorEntry.attributes.severity ?? "",
       message: errorEntry.text,
     })),
+    rawXml,
+    requestXml,
   });
 }
 

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  type KeyValue,
-  boseSpeakerClient as createClient,
+  Speaker,
   type SocketModuleLike,
+  type KeyValue,
+  type AudioMode,
 } from "bose-api-speaker-client";
 import TcpSocket from "react-native-tcp-socket";
 
@@ -12,33 +13,13 @@ import {
   configureMargeAPI,
 } from "@/features/speakers/lib/telnet";
 
-async function pressAndRelease(host: string, key: string) {
-  const keyValue = key as (typeof KeyValue)[keyof typeof KeyValue];
-  const client = createClient({ ip: host });
-  let result = await client.pressKey({
-    key: keyValue,
-    state: "press",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-  result = await client.pressKey({
-    key: keyValue,
-    state: "release",
-    sender: "Gabbo",
-  });
-  if (!result.isOk()) {
-    throw result.error;
-  }
-}
-
 export function useVolumeMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ host, volume }: { host: string; volume: number }) => {
-      const result = await createClient({ ip: host }).setVolume({ volume });
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setVolume(volume);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -53,8 +34,13 @@ export function usePowerToggleMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ host }: { host: string }) =>
-      pressAndRelease(host, "POWER"),
+    mutationFn: async ({ host }: { host: string }) => {
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.powerToggle();
+      if (!result.isOk()) {
+        throw result.error;
+      }
+    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
     },
@@ -65,8 +51,13 @@ export function usePlayPauseMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ host }: { host: string }) =>
-      pressAndRelease(host, "PLAY_PAUSE"),
+    mutationFn: async ({ host }: { host: string }) => {
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.playPause();
+      if (!result.isOk()) {
+        throw result.error;
+      }
+    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
     },
@@ -77,8 +68,13 @@ export function useKeyMutation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ host, key }: { host: string; key: string }) =>
-      pressAndRelease(host, key),
+    mutationFn: async ({ host, key }: { host: string; key: KeyValue }) => {
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.triggerKey(key);
+      if (!result.isOk()) {
+        throw result.error;
+      }
+    },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ["speakers"] });
     },
@@ -98,10 +94,8 @@ export function useSelectSourceMutation() {
       source: string;
       sourceAccount?: string;
     }) => {
-      const result = await createClient({ ip: host }).selectSource({
-        source,
-        sourceAccount,
-      });
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.selectSource(source, sourceAccount);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -117,7 +111,8 @@ export function useSetBassMutation() {
 
   return useMutation({
     mutationFn: async ({ host, value }: { host: string; value: number }) => {
-      const result = await createClient({ ip: host }).setBass(value);
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setBass(value);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -139,23 +134,10 @@ export function useSavePresetMutation() {
       host: string;
       presetId: number;
     }) => {
-      const keyValue =
-        `PRESET_${presetId}` as (typeof KeyValue)[keyof typeof KeyValue];
-      const client = createClient({ ip: host });
-      let result = await client.pressKey({
-        key: keyValue,
-        state: "press",
-        sender: "Gabbo",
-      });
-      if (!result.isOk()) {
-        throw result.error;
-      }
-      await new Promise<void>((resolve) => setTimeout(resolve, 2000));
-      result = await client.pressKey({
-        key: keyValue,
-        state: "release",
-        sender: "Gabbo",
-      });
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.savePreset(
+        presetId as 1 | 2 | 3 | 4 | 5 | 6,
+      );
       if (!result.isOk()) {
         throw result.error;
       }
@@ -210,7 +192,8 @@ export function useSetNameMutation() {
 
   return useMutation({
     mutationFn: async ({ host, name }: { host: string; name: string }) => {
-      const result = await createClient({ ip: host }).setName(name);
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setName(name);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -230,15 +213,10 @@ export function useSetAudioDspControlsMutation() {
       audiomode,
     }: {
       host: string;
-      audiomode: string;
+      audiomode: AudioMode;
     }) => {
-      const result = await createClient({ ip: host }).setAudioDspControls({
-        audiomode: audiomode as
-          | "AUDIO_MODE_DIRECT"
-          | "AUDIO_MODE_NORMAL"
-          | "AUDIO_MODE_DIALOG"
-          | "AUDIO_MODE_NIGHT",
-      });
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setAudioDspControls(audiomode);
       if (!result.isOk()) {
         throw result.error;
       }
@@ -262,9 +240,11 @@ export function useSetAudioProductToneControlsMutation() {
       bass?: { value: number };
       treble?: { value: number };
     }) => {
-      const result = await createClient({
-        ip: host,
-      }).setAudioProductToneControls({ bass, treble });
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setAudioProductToneControls({
+        bass,
+        treble,
+      });
       if (!result.isOk()) {
         throw result.error;
       }
@@ -288,9 +268,8 @@ export function useSetAudioProductLevelControlsMutation() {
       frontCenterSpeakerLevel?: { value: number };
       rearSurroundSpeakersLevel?: { value: number };
     }) => {
-      const result = await createClient({
-        ip: host,
-      }).setAudioProductLevelControls({
+      const speaker = new Speaker({ ip: host, deviceID: "temp" });
+      const result = await speaker.setAudioProductLevelControls({
         frontCenterSpeakerLevel,
         rearSurroundSpeakersLevel,
       });

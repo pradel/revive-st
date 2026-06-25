@@ -22,7 +22,7 @@ export default function ConnectingScreen() {
 
   useEffect(() => {
     if (state.step === "CONNECTED_TO_HOTSPOT") {
-      router.replace("/onboarding/network-picker" as any);
+      router.replace("/onboarding/network-picker");
     }
   }, [state.step, router]);
 

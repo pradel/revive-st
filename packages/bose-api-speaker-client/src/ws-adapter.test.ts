@@ -9,7 +9,7 @@ import {
   afterEach,
 } from "vite-plus/test";
 
-import { BoseWebSocketClient, parseWebSocketMessage } from "./ws-client.ts";
+import { BoseWebSocketClient, parseWebSocketMessage } from "./ws-adapter.ts";
 
 function createMockWS() {
   return {

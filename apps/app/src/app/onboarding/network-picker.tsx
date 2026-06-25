@@ -70,7 +70,7 @@ export default function NetworkPickerScreen() {
 
   useEffect(() => {
     if (state.step === "SENDING_CREDENTIALS") {
-      router.replace("/onboarding/progress" as any);
+      router.replace("/onboarding/progress");
     }
   }, [state.step, router]);
 

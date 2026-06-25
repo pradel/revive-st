@@ -1,18 +1,21 @@
-import { BoseSpeakerClient } from "./client.ts";
+import { BoseHttpAdapter } from "./http-adapter.ts";
+export { Speaker } from "./speaker.ts";
+export type { SpeakerOptions, SpeakerState } from "./speaker.ts";
 
 export function boseSpeakerClient(opts: {
   ip: string;
   port?: number;
-}): BoseSpeakerClient {
-  return new BoseSpeakerClient(opts);
+}): BoseHttpAdapter {
+  return new BoseHttpAdapter(opts);
 }
 
-export type { BoseSpeakerClient } from "./client.ts";
-export { escapeXml } from "./client.ts";
+export { BoseHttpAdapter as BoseSpeakerClient } from "./http-adapter.ts";
+export { BoseHttpAdapter } from "./http-adapter.ts";
+export { escapeXml } from "./http-adapter.ts";
 export { parseXml } from "./xml-parser.ts";
 export type { XmlNode } from "./xml-parser.ts";
 
-export { BoseWebSocketClient } from "./ws-client.ts";
+export { BoseWebSocketClient } from "./ws-adapter.ts";
 export {
   TelnetClient,
   TelnetConnectionError,
@@ -22,7 +25,7 @@ export type {
   BoseWebSocketClientOptions,
   BoseWSUpdate,
   BoseConnectionState,
-} from "./ws-client.ts";
+} from "./ws-adapter.ts";
 export type {
   TcpSocketLike,
   SocketModuleLike,

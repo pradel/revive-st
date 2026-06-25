@@ -3,6 +3,7 @@ import {
   BottomSheetModal,
   BottomSheetView,
 } from "@expo/ui/community/bottom-sheet";
+import type { AudioMode } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState, useEffect, useRef } from "react";
@@ -25,7 +26,7 @@ import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerMuta
 import { COLORS } from "@/ui/theme";
 
 interface AudioModeDisplay {
-  value: string;
+  value: AudioMode;
   label: string;
   description: string;
 }
@@ -709,9 +710,9 @@ function PickerSetting({
   withDivider,
 }: {
   label: string;
-  value: string;
+  value: AudioMode;
   options: AudioModeDisplay[];
-  onChange: (value: string) => void;
+  onChange: (value: AudioMode) => void;
   withDivider?: boolean;
 }) {
   return (
