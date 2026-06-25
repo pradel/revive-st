@@ -1,6 +1,7 @@
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import {
   Text,
   TouchableOpacity,
@@ -21,6 +22,7 @@ export default function NowPlayingModal() {
     useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
+  const [localVolume, setLocalVolume] = useState<number | null>(null);
 
   if (!speaker) {
     return (
@@ -34,6 +36,7 @@ export default function NowPlayingModal() {
     speaker.playStatus === "PLAY_STATE" ||
     speaker.playStatus === "BUFFERING_STATE";
   const volume = speaker.volume ?? 0;
+  const displayVolume = localVolume ?? volume;
 
   const hasMusic = Boolean(
     speaker.track ?? speaker.artUrl ?? speaker.artist ?? isPlaying,
@@ -214,7 +217,11 @@ export default function NowPlayingModal() {
               value={volume}
               minimumValue={0}
               maximumValue={100}
+              onValueChange={(val) => {
+                setLocalVolume(Math.round(val));
+              }}
               onSlidingComplete={(val) => {
+                setLocalVolume(null);
                 volumeMutation.mutate({
                   deviceID: speaker.deviceID,
                   volume: val,
@@ -222,7 +229,7 @@ export default function NowPlayingModal() {
               }}
             />
           </View>
-          <Text style={$volumeText}>{volume}</Text>
+          <Text style={$volumeText}>{displayVolume}</Text>
         </View>
 
         <View style={$actionsRow} />

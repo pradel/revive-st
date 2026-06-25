@@ -38,6 +38,9 @@ export default function SpeakerDetail() {
   const speaker = speakers.find((item) => item.deviceID === id);
   const [savingPresetId, setSavingPresetId] = useState<number | null>(null);
 
+  const [localVolume, setLocalVolume] = useState<number | null>(null);
+  const [localBass, setLocalBass] = useState<number | null>(null);
+
   useEffect(() => {
     if (speaker) {
       void loadPresets(speaker.deviceID);
@@ -335,7 +338,9 @@ export default function SpeakerDetail() {
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Volume</Text>
                 <Text style={$panelValue}>
-                  {speaker.muteEnabled ? "Muted" : `${speaker.volume ?? 0}%`}
+                  {speaker.muteEnabled
+                    ? "Muted"
+                    : `${localVolume ?? speaker.volume ?? 0}%`}
                 </Text>
               </View>
 
@@ -359,7 +364,11 @@ export default function SpeakerDetail() {
                     value={speaker.muteEnabled ? 0 : (speaker.volume ?? 30)}
                     minimumValue={0}
                     maximumValue={100}
+                    onValueChange={(val) => {
+                      setLocalVolume(Math.round(val));
+                    }}
                     onSlidingComplete={(val) => {
+                      setLocalVolume(null);
                       volumeMutation.mutate({
                         deviceID: speaker.deviceID,
                         volume: val,
@@ -394,7 +403,9 @@ export default function SpeakerDetail() {
             <View style={$panel}>
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Bass Tuning</Text>
-                <Text style={$panelValue}>{speaker.bass ?? "..."}</Text>
+                <Text style={$panelValue}>
+                  {localBass ?? speaker.bass ?? "..."}
+                </Text>
               </View>
 
               <View style={$volumeRow}>
@@ -404,7 +415,11 @@ export default function SpeakerDetail() {
                     minimumValue={-9}
                     maximumValue={0}
                     fillColor="#f59e0b"
+                    onValueChange={(val) => {
+                      setLocalBass(Math.round(val));
+                    }}
                     onSlidingComplete={(val) => {
+                      setLocalBass(null);
                       setBassMutation.mutate({
                         deviceID: speaker.deviceID,
                         value: val,

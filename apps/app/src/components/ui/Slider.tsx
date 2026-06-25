@@ -9,8 +9,6 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 
-import { COLORS } from "@/ui/theme";
-
 interface SliderProps {
   value: number;
   minimumValue?: number;
@@ -29,7 +27,7 @@ export function Slider({
   onValueChange,
   onSlidingComplete,
   trackColor = "#18181b", // match dark mode track
-  fillColor = COLORS.primary,
+  fillColor = "#fafafa",
   thumbColor = "#fafafa",
 }: SliderProps) {
   const isDragging = useSharedValue(false);

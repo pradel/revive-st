@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useRef } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   RefreshControl,
@@ -9,14 +9,13 @@ import {
   Text,
   TouchableOpacity,
   View,
-  type GestureResponderEvent,
   type ImageStyle,
-  type LayoutChangeEvent,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
 import { Card } from "@/components/ui/Card";
+import { Slider } from "@/components/ui/Slider";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
 import { PageHeader } from "@/ui/PageHeader";
@@ -26,29 +25,7 @@ import { COLORS } from "@/ui/theme";
 export default function Index() {
   const router = useRouter();
   const { speakers, isScanning, rescan, volumeMutation } = useBose();
-  const sliderLayoutsRef = useRef<Record<string, number>>({});
-
-  const handleVolumeTap = useCallback(
-    (speaker: BoseSpeaker, event: GestureResponderEvent) => {
-      const trackWidth = sliderLayoutsRef.current[speaker.deviceID];
-      if (!trackWidth) {
-        return;
-      }
-      const locationX = event.nativeEvent.locationX;
-      const volume = Math.round(
-        Math.min(100, Math.max(0, (locationX / trackWidth) * 100)),
-      );
-      volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
-    },
-    [volumeMutation],
-  );
-
-  const handleSliderLayout = useCallback(
-    (deviceID: string, event: LayoutChangeEvent) => {
-      sliderLayoutsRef.current[deviceID] = event.nativeEvent.layout.width;
-    },
-    [],
-  );
+  const [localVolumes, setLocalVolumes] = useState<Record<string, number>>({});
 
   const getPlayingStatus = (speaker: BoseSpeaker) => {
     if (!speaker.playStatus || speaker.playStatus === "STANDBY") {
@@ -295,20 +272,33 @@ export default function Index() {
                       tintColor={COLORS.text}
                       size={16}
                     />
-                    <TouchableOpacity
-                      style={$sliderTrack}
-                      activeOpacity={1}
-                      onPress={(event) => {
-                        handleVolumeTap(speaker, event);
-                      }}
-                      onLayout={(event) => {
-                        handleSliderLayout(speaker.deviceID, event);
-                      }}
-                    >
-                      <View style={[$sliderFill, { width: `${volume}%` }]} />
-                      <View style={[$sliderThumb, { left: `${volume}%` }]} />
-                    </TouchableOpacity>
-                    <Text style={$volumeText}>{volume}</Text>
+                    <View style={{ flex: 1, paddingHorizontal: 10 }}>
+                      <Slider
+                        value={volume}
+                        minimumValue={0}
+                        maximumValue={100}
+                        onValueChange={(val) => {
+                          setLocalVolumes((prev) => ({
+                            ...prev,
+                            [speaker.deviceID]: Math.round(val),
+                          }));
+                        }}
+                        onSlidingComplete={(val) => {
+                          setLocalVolumes((prev) => {
+                            const { [speaker.deviceID]: _ignored, ...rest } =
+                              prev;
+                            return rest;
+                          });
+                          volumeMutation.mutate({
+                            deviceID: speaker.deviceID,
+                            volume: val,
+                          });
+                        }}
+                      />
+                    </View>
+                    <Text style={$volumeText}>
+                      {localVolumes[speaker.deviceID] ?? volume}
+                    </Text>
                     <TouchableOpacity
                       style={$settingsButton}
                       onPress={() => {
@@ -546,31 +536,6 @@ const $volumeRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   gap: 12,
-};
-
-const $sliderTrack: ViewStyle = {
-  flex: 1,
-  height: 4,
-  backgroundColor: COLORS.border,
-  borderRadius: 2,
-  position: "relative",
-  overflow: "visible",
-};
-
-const $sliderFill: ViewStyle = {
-  height: "100%",
-  backgroundColor: COLORS.text,
-  borderRadius: 2,
-};
-
-const $sliderThumb: ViewStyle = {
-  position: "absolute",
-  top: -5,
-  width: 14,
-  height: 14,
-  borderRadius: 7,
-  backgroundColor: COLORS.text,
-  marginLeft: -7,
 };
 
 const $volumeText: TextStyle = {
