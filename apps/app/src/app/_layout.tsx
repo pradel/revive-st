@@ -1,6 +1,7 @@
 import { BottomSheetModalProvider } from "@expo/ui/community/bottom-sheet";
 import { Stack } from "expo-router";
 import { useEffect } from "react";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { BoseProvider } from "@/features/speakers/contexts/BoseContext";
@@ -14,27 +15,29 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <KeyboardProvider>
-      <QueryProvider>
-        <BoseProvider>
-          <BottomSheetModalProvider>
-            <Stack
-              screenOptions={{
-                headerShown: false,
-                contentStyle: { backgroundColor: COLORS.background },
-              }}
-            >
-              <Stack.Screen
-                name="speakers/[id]/now-playing"
-                options={{
-                  presentation: "formSheet",
-                  sheetGrabberVisible: true,
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <KeyboardProvider>
+        <QueryProvider>
+          <BoseProvider>
+            <BottomSheetModalProvider>
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                  contentStyle: { backgroundColor: COLORS.background },
                 }}
-              />
-            </Stack>
-          </BottomSheetModalProvider>
-        </BoseProvider>
-      </QueryProvider>
-    </KeyboardProvider>
+              >
+                <Stack.Screen
+                  name="speakers/[id]/now-playing"
+                  options={{
+                    presentation: "formSheet",
+                    sheetGrabberVisible: true,
+                  }}
+                />
+              </Stack>
+            </BottomSheetModalProvider>
+          </BoseProvider>
+        </QueryProvider>
+      </KeyboardProvider>
+    </GestureHandlerRootView>
   );
 }

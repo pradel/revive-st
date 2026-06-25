@@ -9,13 +9,13 @@ import {
   ScrollView,
   Image,
   Alert,
-  type GestureResponderEvent,
   type TextStyle,
   type ViewStyle,
   type ImageStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Slider } from "@/components/ui/Slider";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
 
@@ -36,9 +36,10 @@ export default function SpeakerDetail() {
   } = useBose();
 
   const speaker = speakers.find((item) => item.deviceID === id);
-  const [sliderWidth, setSliderWidth] = useState(0);
-  const [bassSliderWidth, setBassSliderWidth] = useState(0);
   const [savingPresetId, setSavingPresetId] = useState<number | null>(null);
+
+  const [localVolume, setLocalVolume] = useState<number | null>(null);
+  const [localBass, setLocalBass] = useState<number | null>(null);
 
   useEffect(() => {
     if (speaker) {
@@ -73,31 +74,10 @@ export default function SpeakerDetail() {
   const isStandby =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 
-  const handleSliderPress = (event: GestureResponderEvent) => {
-    if (sliderWidth <= 0) {
-      return;
-    }
-    const touchX = event.nativeEvent.locationX;
-    const percentage = Math.max(0, Math.min(1, touchX / sliderWidth));
-    const newVolume = Math.round(percentage * 100);
-    volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVolume });
-  };
-
   const adjustVolumeStep = (delta: number) => {
     const currentVol = speaker.volume ?? 30;
     const newVol = Math.max(0, Math.min(100, currentVol + delta));
     volumeMutation.mutate({ deviceID: speaker.deviceID, volume: newVol });
-  };
-
-  const handleBassSliderPress = (event: GestureResponderEvent) => {
-    if (bassSliderWidth <= 0) {
-      return;
-    }
-    const touchX = event.nativeEvent.locationX;
-    const percentage = Math.max(0, Math.min(1, touchX / bassSliderWidth));
-    // Bass goes from -9 to 0
-    const newBass = -9 + Math.round(percentage * 9);
-    setBassMutation.mutate({ deviceID: speaker.deviceID, value: newBass });
   };
 
   const adjustBassStep = (delta: number) => {
@@ -358,7 +338,9 @@ export default function SpeakerDetail() {
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Volume</Text>
                 <Text style={$panelValue}>
-                  {speaker.muteEnabled ? "Muted" : `${speaker.volume ?? 0}%`}
+                  {speaker.muteEnabled
+                    ? "Muted"
+                    : `${localVolume ?? speaker.volume ?? 0}%`}
                 </Text>
               </View>
 
@@ -378,22 +360,21 @@ export default function SpeakerDetail() {
 
                 {/* Volume Slider */}
                 <View style={$sliderContainer}>
-                  <Pressable
-                    style={$volTrack}
-                    onLayout={(event) => {
-                      setSliderWidth(event.nativeEvent.layout.width);
+                  <Slider
+                    value={speaker.muteEnabled ? 0 : (speaker.volume ?? 30)}
+                    minimumValue={0}
+                    maximumValue={100}
+                    onValueChange={(val) => {
+                      setLocalVolume(Math.round(val));
                     }}
-                    onPress={handleSliderPress}
-                  >
-                    <View
-                      style={[
-                        $volFill,
-                        {
-                          width: `${speaker.muteEnabled ? 0 : (speaker.volume ?? 30)}%`,
-                        },
-                      ]}
-                    />
-                  </Pressable>
+                    onSlidingComplete={(val) => {
+                      setLocalVolume(null);
+                      volumeMutation.mutate({
+                        deviceID: speaker.deviceID,
+                        volume: val,
+                      });
+                    }}
+                  />
                 </View>
 
                 {/* Precise Steppers */}
@@ -422,34 +403,29 @@ export default function SpeakerDetail() {
             <View style={$panel}>
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Bass Tuning</Text>
-                <Text style={$panelValue}>{speaker.bass ?? "..."}</Text>
+                <Text style={$panelValue}>
+                  {localBass ?? speaker.bass ?? "..."}
+                </Text>
               </View>
 
               <View style={$volumeRow}>
                 <View style={$sliderContainer}>
-                  <Pressable
-                    style={$volTrack}
-                    onLayout={(event) => {
-                      setBassSliderWidth(event.nativeEvent.layout.width);
+                  <Slider
+                    value={speaker.bass ?? -5}
+                    minimumValue={-9}
+                    maximumValue={0}
+                    fillColor="#f59e0b"
+                    onValueChange={(val) => {
+                      setLocalBass(Math.round(val));
                     }}
-                    onPress={handleBassSliderPress}
-                  >
-                    <View
-                      style={[
-                        $volFill,
-                        {
-                          // Amber accent color for bass tuning
-                          backgroundColor: "#f59e0b",
-                          // Bass range is -9 to 0. Mapped to percentage.
-                          width: `${
-                            speaker.bass !== undefined
-                              ? ((speaker.bass + 9) / 9) * 100
-                              : 50
-                          }%`,
-                        },
-                      ]}
-                    />
-                  </Pressable>
+                    onSlidingComplete={(val) => {
+                      setLocalBass(null);
+                      setBassMutation.mutate({
+                        deviceID: speaker.deviceID,
+                        value: val,
+                      });
+                    }}
+                  />
                 </View>
 
                 {/* Bass Steppers */}
@@ -978,19 +954,6 @@ const $volumeButtonText: TextStyle = {
 const $sliderContainer: ViewStyle = {
   flex: 1,
   justifyContent: "center",
-};
-
-const $volTrack: ViewStyle = {
-  height: 8,
-  backgroundColor: "#18181b",
-  borderRadius: 4,
-  overflow: "hidden",
-};
-
-const $volFill: ViewStyle = {
-  height: "100%",
-  backgroundColor: "#2563eb",
-  borderRadius: 4,
 };
 
 const $steppersContainer: ViewStyle = {
