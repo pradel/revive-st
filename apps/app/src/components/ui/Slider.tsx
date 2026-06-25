@@ -6,6 +6,7 @@ import Animated, {
   useAnimatedStyle,
   withTiming,
   withSpring,
+  runOnJS,
 } from "react-native-reanimated";
 
 import { COLORS } from "@/ui/theme";
@@ -38,7 +39,6 @@ export function Slider({
     (value - minimumValue) / (maximumValue - minimumValue);
   const progress = useSharedValue(Math.max(0, Math.min(1, initialProgress)));
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!isDragging.value) {
       const newProgress =
@@ -47,7 +47,8 @@ export function Slider({
         duration: 150,
       });
     }
-  }, [value, minimumValue, maximumValue, isDragging, progress.value]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, minimumValue, maximumValue]);
 
   const panGesture = Gesture.Pan()
     .onBegin((e) => {
@@ -62,7 +63,8 @@ export function Slider({
         if (onValueChange) {
           const val =
             minimumValue + progress.value * (maximumValue - minimumValue);
-          onValueChange(val);
+          // eslint-disable-next-line
+          runOnJS(onValueChange)(val);
         }
       }
     })
@@ -73,7 +75,8 @@ export function Slider({
           minimumValue + progress.value * (maximumValue - minimumValue);
         // The user wanted a fluid slide, but typically the backend API expects integer values
         // for volume (0-100) and bass (-9 to 0).
-        onSlidingComplete(Math.round(val));
+        // eslint-disable-next-line
+        runOnJS(onSlidingComplete)(Math.round(val));
       }
     });
 
