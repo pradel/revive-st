@@ -277,6 +277,8 @@ export default function Index() {
                         value={volume}
                         minimumValue={0}
                         maximumValue={100}
+                        trackHeight={4}
+                        thumbSize={16}
                         onValueChange={(val) => {
                           setLocalVolumes((prev) => ({
                             ...prev,
