@@ -87,7 +87,24 @@ export default function NowPlayingModal() {
             <Text style={$sourceText}>{speaker.source}</Text>
           </View>
         ) : null}
-        <View style={{ width: 24 }} />
+        <TouchableOpacity
+          onPress={() => {
+            router.push(
+              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+            );
+          }}
+          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
+        >
+          <SymbolView
+            name={{
+              ios: "gearshape.fill",
+              android: "settings",
+              web: "settings",
+            }}
+            tintColor={COLORS.text}
+            size={24}
+          />
+        </TouchableOpacity>
       </View>
 
       <View style={$content}>
