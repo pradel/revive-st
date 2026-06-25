@@ -18,6 +18,8 @@ interface SliderProps {
   trackColor?: string;
   fillColor?: string;
   thumbColor?: string;
+  trackHeight?: number;
+  thumbSize?: number;
 }
 
 export function Slider({
@@ -29,6 +31,8 @@ export function Slider({
   trackColor = "#18181b", // match dark mode track
   fillColor = "#fafafa",
   thumbColor = "#fafafa",
+  trackHeight = 8,
+  thumbSize = 24,
 }: SliderProps) {
   const isDragging = useSharedValue(false);
   const trackWidth = useSharedValue(0);
@@ -85,7 +89,7 @@ export function Slider({
   const animatedThumbStyle = useAnimatedStyle(() => ({
     left: `${progress.value * 100}%`,
     transform: [
-      { translateX: -12 },
+      { translateX: -thumbSize / 2 },
       { scale: withSpring(isDragging.value ? 1.2 : 1) },
     ],
   }));
@@ -99,11 +103,20 @@ export function Slider({
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <View style={[styles.track, { backgroundColor: trackColor }]}>
+        <View
+          style={[
+            styles.track,
+            {
+              backgroundColor: trackColor,
+              height: trackHeight,
+              borderRadius: trackHeight / 2,
+            },
+          ]}
+        >
           <Animated.View
             style={[
               styles.fill,
-              { backgroundColor: fillColor },
+              { backgroundColor: fillColor, borderRadius: trackHeight / 2 },
               animatedFillStyle,
             ]}
           />
@@ -111,7 +124,12 @@ export function Slider({
         <Animated.View
           style={[
             styles.thumb,
-            { backgroundColor: thumbColor },
+            {
+              backgroundColor: thumbColor,
+              width: thumbSize,
+              height: thumbSize,
+              borderRadius: thumbSize / 2,
+            },
             animatedThumbStyle,
           ]}
         />
