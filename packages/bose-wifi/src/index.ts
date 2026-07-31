@@ -6,9 +6,9 @@ export type BoseConnectionResult = Awaited<
 
 export async function connectToOpenNetwork(
   ssid: string,
-  bssid: string,
+  bssid?: string,
 ): Promise<BoseConnectionResult> {
-  return BoseWifiModule.connectToOpenNetwork(ssid, bssid);
+  return BoseWifiModule.connectToOpenNetwork(ssid, bssid ?? "");
 }
 
 export async function disconnect(): Promise<null> {
