@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { WEBSITE_CONFIG } from "@/config";
 
+const currentYear = new Date().getFullYear();
+
 export function Footer({ className }: { className?: string }) {
   return (
     <footer
@@ -9,8 +11,8 @@ export function Footer({ className }: { className?: string }) {
     >
       <div className="font-bold text-neutral-900 text-sm">Revive ST</div>
       <p>
-        &copy; {new Date().getFullYear()} Revive ST. Not affiliated with Bose
-        Corporation. Bose and SoundTouch are trademarks of Bose Corporation.
+        &copy; {currentYear} Revive ST. Not affiliated with Bose Corporation.
+        Bose and SoundTouch are trademarks of Bose Corporation.
       </p>
       <div className="flex items-center gap-4">
         <Link

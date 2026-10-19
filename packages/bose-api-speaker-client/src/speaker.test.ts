@@ -146,7 +146,7 @@ describe("Speaker", () => {
 
   it("triggerKey() sends custom key press and release", async () => {
     const fetchMock = mockFetch(200, "<status>OK</status>");
-    const result = await speaker.triggerKey("PLAY_PAUSE" as any);
+    const result = await speaker.triggerKey("PLAY_PAUSE");
     expect(Result.isOk(result)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(fetchMock).toHaveBeenNthCalledWith(

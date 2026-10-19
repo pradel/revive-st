@@ -592,9 +592,11 @@ function NativeSliderSetting({
   const [localValue, setLocalValue] = useState(value);
 
   // Sync with value prop when value updates
-  useEffect(() => {
+  const [syncedValue, setSyncedValue] = useState(value);
+  if (syncedValue !== value) {
+    setSyncedValue(value);
     setLocalValue(value);
-  }, [value]);
+  }
 
   // Sync with value prop when sheet opens
   useEffect(() => {
@@ -604,26 +606,32 @@ function NativeSliderSetting({
   }, [isOpen, value]);
 
   const onValueChangeRef = useRef(onValueChange);
-  onValueChangeRef.current = onValueChange;
-
-  const lastFiredValueRef = useRef<number | null>(null);
   useEffect(() => {
-    lastFiredValueRef.current = null;
-  }, [value]);
+    onValueChangeRef.current = onValueChange;
+  });
+
+  // Last value fired, keyed by the prop value it was fired against
+  const lastFiredRef = useRef<{ localValue: number; value: number } | null>(
+    null,
+  );
 
   // Debounced callback with immediate flush on close
   useEffect(() => {
-    if (localValue === value || localValue === lastFiredValueRef.current) {
+    if (
+      localValue === value ||
+      (lastFiredRef.current?.localValue === localValue &&
+        lastFiredRef.current.value === value)
+    ) {
       return;
     }
     if (!isOpen) {
       onValueChangeRef.current(localValue);
-      lastFiredValueRef.current = localValue;
+      lastFiredRef.current = { localValue, value };
       return;
     }
     const timer = setTimeout(() => {
       onValueChangeRef.current(localValue);
-      lastFiredValueRef.current = localValue;
+      lastFiredRef.current = { localValue, value };
     }, 400);
     return () => {
       clearTimeout(timer);

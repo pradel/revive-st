@@ -41,13 +41,13 @@ export default function SpeakerDetail() {
   const [localVolume, setLocalVolume] = useState<number | null>(null);
   const [localBass, setLocalBass] = useState<number | null>(null);
 
+  const speakerDeviceID = speaker?.deviceID;
   useEffect(() => {
-    if (speaker) {
-      void loadPresets(speaker.deviceID);
-      void loadBass(speaker.deviceID);
+    if (speakerDeviceID) {
+      void loadPresets(speakerDeviceID);
+      void loadBass(speakerDeviceID);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [speakerDeviceID, loadPresets, loadBass]);
 
   if (!speaker) {
     return (

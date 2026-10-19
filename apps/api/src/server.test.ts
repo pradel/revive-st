@@ -113,9 +113,8 @@ describe("API server routes", () => {
         id: 1,
         contentItem: {
           source: "LOCAL_INTERNET_RADIO",
-          location: expect.stringContaining(
-            "https://api.revivest.app/core02/",
-          ) as unknown as string,
+          // oxlint-disable-next-line typescript/no-unsafe-assignment
+          location: expect.stringContaining("https://api.revivest.app/core02/"),
           sourceAccount: "revivest-user",
           isPresetable: true,
           itemName: "Dance Wave!",

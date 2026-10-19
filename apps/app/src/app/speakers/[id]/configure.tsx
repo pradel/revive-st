@@ -251,13 +251,6 @@ export default function ConfigureSpeaker() {
     }
   };
 
-  useEffect(() => {
-    if (!speaker) {
-      addLog("Speaker not resolved.", "error");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
   if (!speaker) {
     return (
       <View style={$container}>

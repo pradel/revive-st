@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
 
 import {
   useSpeakerManager,
@@ -11,9 +11,7 @@ type BoseContextType = ReturnType<typeof useSpeakerManager>;
 
 const BoseContext = createContext<BoseContextType | null>(null);
 
-export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
+export function BoseProvider({ children }: { children: ReactNode }) {
   const manager = useSpeakerManager();
 
   // We memoize the manager to avoid unnecessary re-renders.
@@ -25,7 +23,7 @@ export const BoseProvider: React.FC<{ children: React.ReactNode }> = ({
   return (
     <BoseContext.Provider value={contextValue}>{children}</BoseContext.Provider>
   );
-};
+}
 
 export const useBose = () => {
   const context = useContext(BoseContext);

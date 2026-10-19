@@ -10,15 +10,15 @@ export const metadata: Metadata = {
   },
 };
 
+const lastUpdated = new Date().toLocaleDateString();
+
 export default function TermsPage() {
   return (
     <div className="flex flex-col min-h-screen bg-neutral-50 text-neutral-900 selection:bg-emerald-200">
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose prose-emerald prose-neutral max-w-none">
           <h1 className="mb-2">📱 Mobile App Terms and Conditions</h1>
-          <p className="text-neutral-500 mb-8">
-            Last updated: {new Date().toLocaleDateString()}
-          </p>
+          <p className="text-neutral-500 mb-8">Last updated: {lastUpdated}</p>
 
           <p>
             These Terms and Conditions (&quot;Terms&quot;) govern your use of{" "}

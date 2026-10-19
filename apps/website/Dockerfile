@@ -1,7 +1,7 @@
 # Stage 1: Build the next.js site
-FROM node:24-alpine AS builder
+FROM node:26-alpine AS builder
 RUN apk add --no-cache git
-RUN npm install -g pnpm@11.3.0
+RUN npm install -g pnpm@12.14.0
 
 WORKDIR /app
 

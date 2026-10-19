@@ -320,13 +320,17 @@ export function useWifiProvisioningSideEffects() {
     }
   }, [state.step, scanForHotspot]);
 
+  const hotspotTarget =
+    state.step === "CONNECTING_TO_HOTSPOT"
+      ? (state as { ssid: string; bssid: string })
+      : null;
+  const hotspotSsid = hotspotTarget?.ssid;
+  const hotspotBssid = hotspotTarget?.bssid;
   useEffect(() => {
-    if (state.step === "CONNECTING_TO_HOTSPOT") {
-      const s = state as { ssid: string; bssid: string };
-      void connectToHotspot(s.ssid, s.bssid);
+    if (hotspotSsid !== undefined && hotspotBssid !== undefined) {
+      void connectToHotspot(hotspotSsid, hotspotBssid);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.step, connectToHotspot]);
+  }, [hotspotSsid, hotspotBssid, connectToHotspot]);
 
   useEffect(() => {
     if (state.step === "SENDING_CREDENTIALS") {
@@ -343,12 +347,13 @@ export function useWifiProvisioningSideEffects() {
     }
   }, [currentStep, speakerSsid, reconnectPhone]);
 
-  useEffect(() => {
-    if (state.step !== "CONNECTED_TO_HOTSPOT") {
-      return;
-    }
+  const hotspotSpeakerIp =
+    currentStep === "CONNECTED_TO_HOTSPOT"
+      ? (state as { speakerIP?: string }).speakerIP
+      : undefined;
 
-    const speakerIp = (state as { speakerIP?: string }).speakerIP;
+  useEffect(() => {
+    const speakerIp = hotspotSpeakerIp;
     if (!speakerIp) {
       return;
     }
@@ -373,7 +378,7 @@ export function useWifiProvisioningSideEffects() {
       logger.log("[WiFi Keep-Alive] Stopping heartbeat loop");
       clearInterval(intervalId);
     };
-  }, [state.step, (state as { speakerIP?: string }).speakerIP]);
+  }, [hotspotSpeakerIp]);
 
   useEffect(() => {
     if (state.step === "CHECKING_WIFI") {
