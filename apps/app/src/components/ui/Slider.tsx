@@ -42,39 +42,42 @@ export function Slider({
   const progress = useSharedValue(Math.max(0, Math.min(1, initialProgress)));
 
   useEffect(() => {
-    if (!isDragging.value) {
+    if (!isDragging.get()) {
       const newProgress =
         (value - minimumValue) / (maximumValue - minimumValue);
-      progress.value = withTiming(Math.max(0, Math.min(1, newProgress)), {
-        duration: 150,
-      });
+      progress.set(
+        withTiming(Math.max(0, Math.min(1, newProgress)), {
+          duration: 150,
+        }),
+      );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value, minimumValue, maximumValue]);
+  }, [value, minimumValue, maximumValue, isDragging, progress]);
 
+  // Gesture.Pan() must stay a literal chain so Reanimated workletizes its callbacks
+  // oxlint-disable-next-line react/capitalized-calls
   const panGesture = Gesture.Pan()
     .onBegin((e) => {
-      isDragging.value = true;
-      if (trackWidth.value > 0) {
-        progress.value = Math.max(0, Math.min(1, e.x / trackWidth.value));
+      isDragging.set(true);
+      if (trackWidth.get() > 0) {
+        progress.set(Math.max(0, Math.min(1, e.x / trackWidth.get())));
       }
     })
     .onChange((e) => {
-      if (trackWidth.value > 0) {
-        progress.value = Math.max(0, Math.min(1, e.x / trackWidth.value));
+      if (trackWidth.get() > 0) {
+        progress.set(Math.max(0, Math.min(1, e.x / trackWidth.get())));
         if (onValueChange) {
           const val =
-            minimumValue + progress.value * (maximumValue - minimumValue);
+            minimumValue + progress.get() * (maximumValue - minimumValue);
           // eslint-disable-next-line
           runOnJS(onValueChange)(val);
         }
       }
     })
     .onFinalize(() => {
-      isDragging.value = false;
+      isDragging.set(false);
       if (onSlidingComplete) {
         const val =
-          minimumValue + progress.value * (maximumValue - minimumValue);
+          minimumValue + progress.get() * (maximumValue - minimumValue);
         // The user wanted a fluid slide, but typically the backend API expects integer values
         // for volume (0-100) and bass (-9 to 0).
         // eslint-disable-next-line
@@ -83,14 +86,14 @@ export function Slider({
     });
 
   const animatedFillStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
+    width: `${progress.get() * 100}%`,
   }));
 
   const animatedThumbStyle = useAnimatedStyle(() => ({
-    left: `${progress.value * 100}%`,
+    left: `${progress.get() * 100}%`,
     transform: [
       { translateX: -thumbSize / 2 },
-      { scale: withSpring(isDragging.value ? 1.2 : 1) },
+      { scale: withSpring(isDragging.get() ? 1.2 : 1) },
     ],
   }));
 
@@ -99,7 +102,7 @@ export function Slider({
       <Animated.View
         style={styles.container}
         onLayout={(e) => {
-          trackWidth.value = e.nativeEvent.layout.width;
+          trackWidth.set(e.nativeEvent.layout.width);
         }}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >

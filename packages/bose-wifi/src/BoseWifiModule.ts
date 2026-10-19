@@ -1,4 +1,4 @@
-import { NativeModule, requireNativeModule } from "expo";
+import { type NativeModule, requireNativeModule } from "expo";
 
 export interface BoseConnectionResult {
   success: boolean;

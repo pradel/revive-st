@@ -26,7 +26,7 @@ export default function SuccessScreen() {
     if (s.speakerName) {
       await SecureStore.setItemAsync("speaker_name", s.speakerName);
     }
-    router.replace("/" as any);
+    router.replace("/");
   };
 
   return (

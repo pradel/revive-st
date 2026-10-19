@@ -47,9 +47,11 @@ export function useSpeakerDiscovery({
   const onTimeoutRef = useRef(onTimeout);
   const onErrorRef = useRef(onError);
 
-  onDiscoveredRef.current = onDiscovered;
-  onTimeoutRef.current = onTimeout;
-  onErrorRef.current = onError;
+  useEffect(() => {
+    onDiscoveredRef.current = onDiscovered;
+    onTimeoutRef.current = onTimeout;
+    onErrorRef.current = onError;
+  });
 
   const stop = useCallback(() => {
     if (timerRef.current) {

@@ -11,8 +11,8 @@ pnpm add bose-api-speaker-client
 ## Quick start
 
 ```ts
-import { boseSpeakerClient } from "bose-api-speaker-client";
 import { Result } from "better-result";
+import { boseSpeakerClient } from "bose-api-speaker-client";
 
 const client = boseSpeakerClient({ ip: "192.168.1.100" });
 

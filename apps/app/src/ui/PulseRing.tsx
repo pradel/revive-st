@@ -19,10 +19,12 @@ export function PulseRing({ delay, size = 80 }: PulseRingProps) {
   const animatedValue = useSharedValue(0);
 
   useEffect(() => {
-    animatedValue.value = 0;
-    animatedValue.value = withDelay(
-      delay,
-      withRepeat(withTiming(1, { duration: 2400 }), -1, false),
+    animatedValue.set(0);
+    animatedValue.set(
+      withDelay(
+        delay,
+        withRepeat(withTiming(1, { duration: 2400 }), -1, false),
+      ),
     );
   }, [animatedValue, delay]);
 

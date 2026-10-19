@@ -81,11 +81,14 @@ export default defineConfig({
       "no-misused-promises": "off",
       "no-nested-ternary": "off",
       "no-non-null-assertion": "off",
+      "one-var": "off",
       "typescript/consistent-return": "off",
       "typescript/no-unsafe-enum-comparison": "off",
       "typescript/switch-exhaustiveness-check": "off",
       "typescript/no-unsafe-argument": "off",
-      "react/react-compiler": "off",
+      "react/set-state-in-effect": "off",
+      "no-redeclare": "off",
+      "react/todo": "off",
     },
     overrides: [
       {

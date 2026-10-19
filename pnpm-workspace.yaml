@@ -6,9 +6,9 @@ allowBuilds:
   msgpackr-extract: false
   sharp: false
 catalog:
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.1
-  vitest: 4.1.9
-  vite-plus: 0.2.1
+  vite: npm:@voidzero-dev/vite-plus-core@1.3.0
+  vitest: 5.0.5
+  vite-plus: 1.3.0
 peerDependencyRules:
   allowAny:
     - vite
@@ -16,3 +16,6 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
     vitest: "*"
+overrides:
+  vite@*: "catalog:"
+  vitest@*: "catalog:"
