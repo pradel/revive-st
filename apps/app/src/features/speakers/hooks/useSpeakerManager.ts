@@ -16,7 +16,7 @@ import {
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import TcpSocket from "react-native-tcp-socket";
-import Zeroconf, { type ZeroconfService } from "react-native-zeroconf";
+import Zeroconf, { type Service } from "react-native-zeroconf";
 
 import { logger } from "@/lib/logger";
 
@@ -137,18 +137,21 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     const zeroconf = new Zeroconf();
     zeroconfRef.current = zeroconf;
 
-    zeroconf.on("resolved", (service: ZeroconfService) => {
+    zeroconf.on("resolved", (service: Service) => {
       void (async () => {
         if (!isMounted.current) {
           return;
         }
-        if (!service.host) {
+        // Since react-native-zeroconf 0.17, `host` is the mDNS hostname on Android 16+;
+        // prefer the resolved IPv4 address.
+        const address = service.ipv4[0] ?? service.host;
+        if (!address) {
           return;
         }
 
         try {
           const httpAdapter = new BoseHttpAdapter({
-            ip: service.host,
+            ip: address,
             port: service.port || 8090,
           });
           const infoResult = await httpAdapter.getInfo();
@@ -170,7 +173,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
             const currentIp = speaker.options.ip;
             const currentPort = speaker.options.port;
             if (
-              currentIp !== service.host ||
+              currentIp !== address ||
               currentPort !== (service.port || 8090) ||
               speaker.getState().connectionState === "disconnected"
             ) {
@@ -181,7 +184,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
 
           if (!speaker) {
             speaker = new Speaker({
-              ip: service.host,
+              ip: address,
               port: service.port || 8090,
               deviceID,
               onStateUpdate: (state) => {
@@ -204,7 +207,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
                   ...prev,
                   [deviceID]: flattenSpeakerState(
                     deviceID,
-                    service.host,
+                    address,
                     service.port || 8090,
                     isUpdatingRef.current[deviceID] ?? false,
                     state,
@@ -220,23 +223,31 @@ export function useSpeakerManager(scanDurationMs = 5000) {
           }
         } catch (err) {
           logger.log(
-            `[BoseScanner] Device found at ${service.host} but failed info verification:`,
+            `[BoseScanner] Device found at ${address} but failed info verification:`,
             err,
           );
         }
       })();
     });
 
-    zeroconf.on("error", (err: unknown) => {
+    zeroconf.on("error", (err) => {
+      // Per-service failures (e.g. resolve TIMEOUT) are non-fatal; the scan keeps running.
+      if (err.serviceName) {
+        logger.warn(
+          `[BoseScanner] Ignoring non-fatal zeroconf error for "${err.serviceName}":`,
+          err,
+        );
+        return;
+      }
       logger.error("[BoseScanner] Zeroconf error:", err);
       if (isMounted.current) {
-        setError(err instanceof Error ? err.message : String(err));
+        setError(err.message);
         setIsScanning(false);
       }
     });
 
     try {
-      zeroconf.scan("soundtouch", "tcp", "local.");
+      zeroconf.scan({ type: "soundtouch", protocol: "tcp", domain: "local." });
     } catch (err) {
       logger.error("[BoseScanner] Scan exception:", err);
       setError(err instanceof Error ? err.message : String(err));

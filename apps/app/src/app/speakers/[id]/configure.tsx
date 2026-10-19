@@ -9,6 +9,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  type ScrollViewInstance,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
@@ -80,7 +81,7 @@ export default function ConfigureSpeaker() {
     status: "idle",
   });
 
-  const logsEndRef = useRef<ScrollView | null>(null);
+  const logsEndRef = useRef<ScrollViewInstance | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {

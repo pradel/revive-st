@@ -6,13 +6,13 @@ export class TelnetConnectionError extends TaggedError(
   host: string;
   message: string;
   cause?: unknown;
-}>() {}
+}> {}
 
 export class TelnetCommandError extends TaggedError("TelnetCommandError")<{
   command: string;
   message: string;
   cause?: unknown;
-}>() {}
+}> {}
 
 export interface TcpSocketLike {
   write: (data: string) => void;

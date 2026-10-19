@@ -95,15 +95,16 @@ export function useSpeakerDiscovery({
         txtValues.some((val) => val.includes(expectedMacSuffix));
 
       if (isMatch) {
-        if (timerRef.current) {
-          clearTimeout(timerRef.current);
-        }
+        clearTimeout(timerRef.current);
         zeroconf.stop();
+        // Since react-native-zeroconf 0.17, `host` is the mDNS hostname on Android 16+;
+        // prefer the resolved IPv4 address.
+        const address = service.ipv4[0] ?? service.host;
         logger.log(
-          `[Speaker Discovery] Successfully resolved speaker: "${service.name}" at ${service.host}:${service.port}`,
+          `[Speaker Discovery] Successfully resolved speaker: "${service.name}" at ${address}:${service.port}`,
         );
         onDiscoveredRef.current({
-          host: service.host,
+          host: address,
           port: service.port,
           name: service.name,
         });
@@ -114,7 +115,14 @@ export function useSpeakerDiscovery({
       }
     });
 
-    zeroconf.on("error", (err: unknown) => {
+    zeroconf.on("error", (err) => {
+      // Per-service failures (e.g. resolve TIMEOUT) are non-fatal; the scan keeps running.
+      if (err.serviceName) {
+        logger.log(
+          `[Speaker Discovery] Ignoring non-fatal mDNS error for "${err.serviceName}": ${err.message}`,
+        );
+        return;
+      }
       if (timerRef.current) {
         clearTimeout(timerRef.current);
       }
@@ -134,7 +142,7 @@ export function useSpeakerDiscovery({
       onTimeoutRef.current();
     }, timeoutMs);
 
-    zeroconf.scan("soundtouch", "tcp", "local.");
+    zeroconf.scan({ type: "soundtouch", protocol: "tcp", domain: "local." });
   }, [ssid, timeoutMs, stop]);
 
   useEffect(() => stop, [stop]);

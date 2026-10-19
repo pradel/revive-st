@@ -14,7 +14,7 @@ export class MargeAPIConfigurationError extends TaggedError(
   message: string;
   step?: string;
   cause?: unknown;
-}>() {}
+}> {}
 
 export async function checkMargeAPIStatus(host: string): Promise<boolean> {
   const client = createClient({ ip: host });
