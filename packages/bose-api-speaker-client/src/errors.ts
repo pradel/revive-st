@@ -3,18 +3,18 @@ import { TaggedError } from "better-result";
 export class NetworkError extends TaggedError("NetworkError")<{
   message: string;
   cause?: unknown;
-}>() {}
+}> {}
 
 export class HttpError extends TaggedError("HttpError")<{
   statusCode: number;
   statusText: string;
   body: string;
-}>() {}
+}> {}
 
 export class XmlParseError extends TaggedError("XmlParseError")<{
   message: string;
   rawXml: string;
-}>() {}
+}> {}
 
 export class ApiError extends TaggedError("ApiError")<{
   deviceID: string;
@@ -26,6 +26,6 @@ export class ApiError extends TaggedError("ApiError")<{
   }[];
   rawXml: string;
   requestXml?: string;
-}>() {}
+}> {}
 
 export type BoseApiError = NetworkError | HttpError | XmlParseError | ApiError;

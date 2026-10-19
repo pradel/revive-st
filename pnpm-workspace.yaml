@@ -19,3 +19,5 @@ peerDependencyRules:
 overrides:
   vite@*: "catalog:"
   vitest@*: "catalog:"
+patchedDependencies:
+  react-native-wifi-reborn@4.13.6: patches/react-native-wifi-reborn@4.13.6.patch

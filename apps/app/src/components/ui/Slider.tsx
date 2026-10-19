@@ -1,13 +1,13 @@
 import React, { useEffect } from "react";
 import { View, StyleSheet } from "react-native";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { GestureDetector, usePanGesture } from "react-native-gesture-handler";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSpring,
-  runOnJS,
 } from "react-native-reanimated";
+import { scheduleOnRN } from "react-native-worklets";
 
 interface SliderProps {
   value: number;
@@ -53,37 +53,35 @@ export function Slider({
     }
   }, [value, minimumValue, maximumValue, isDragging, progress]);
 
-  // Gesture.Pan() must stay a literal chain so Reanimated workletizes its callbacks
-  // oxlint-disable-next-line react/capitalized-calls
-  const panGesture = Gesture.Pan()
-    .onBegin((e) => {
+  // Callbacks are passed inline so the Worklets Babel plugin workletizes them
+  const panGesture = usePanGesture({
+    onBegin: (e) => {
       isDragging.set(true);
       if (trackWidth.get() > 0) {
         progress.set(Math.max(0, Math.min(1, e.x / trackWidth.get())));
       }
-    })
-    .onChange((e) => {
+    },
+    onUpdate: (e) => {
       if (trackWidth.get() > 0) {
         progress.set(Math.max(0, Math.min(1, e.x / trackWidth.get())));
         if (onValueChange) {
           const val =
             minimumValue + progress.get() * (maximumValue - minimumValue);
-          // eslint-disable-next-line
-          runOnJS(onValueChange)(val);
+          scheduleOnRN(onValueChange, val);
         }
       }
-    })
-    .onFinalize(() => {
+    },
+    onFinalize: () => {
       isDragging.set(false);
       if (onSlidingComplete) {
         const val =
           minimumValue + progress.get() * (maximumValue - minimumValue);
         // The user wanted a fluid slide, but typically the backend API expects integer values
         // for volume (0-100) and bass (-9 to 0).
-        // eslint-disable-next-line
-        runOnJS(onSlidingComplete)(Math.round(val));
+        scheduleOnRN(onSlidingComplete, Math.round(val));
       }
-    });
+    },
+  });
 
   const animatedFillStyle = useAnimatedStyle(() => ({
     width: `${progress.get() * 100}%`,

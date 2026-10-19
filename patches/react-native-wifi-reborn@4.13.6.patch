@@ -1,0 +1,24 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index d27b03be47805a983e6dd9ff935987b08309df57..bf7fb4523f4d4abb5561bd6adbaa909b80b44650 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -18,7 +18,7 @@ apply plugin: 'com.android.library'
+ android {
+     namespace = "com.reactlibrary.rnwifi"
+ 
+-    compileSdkVersion safeExtGet(compileSdkVersion, 31)
++    compileSdkVersion safeExtGet('compileSdkVersion', 31)
+ 
+     compileOptions {
+         sourceCompatibility JavaVersion.VERSION_1_8
+@@ -26,8 +26,8 @@ android {
+     }
+ 
+     defaultConfig {
+-        minSdkVersion safeExtGet(minSdkVersion, 21)
+-        targetSdkVersion safeExtGet(targetSdkVersion, 31)
++        minSdkVersion safeExtGet('minSdkVersion', 21)
++        targetSdkVersion safeExtGet('targetSdkVersion', 31)
+         versionCode 1
+         versionName '1.0'
+     }

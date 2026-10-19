@@ -690,16 +690,20 @@ function NativeSliderSetting({
               <Text style={$infoValue}>{localValue}</Text>
             </View>
           </View>
-          <Host style={{ height: 40 }}>
-            <Slider
-              value={localValue}
-              onValueChange={setLocalValue}
-              min={min}
-              max={max}
-              step={step}
-              disabled={isSaving}
-            />
-          </Host>
+          {/* @expo/ui 58 top-aligns Host content on iOS; size Host to the
+              slider and center it in the 40pt track to keep the old layout */}
+          <View style={$sliderTrack}>
+            <Host matchContents={{ vertical: true }}>
+              <Slider
+                value={localValue}
+                onValueChange={setLocalValue}
+                min={min}
+                max={max}
+                step={step}
+                disabled={isSaving}
+              />
+            </Host>
+          </View>
           <View style={$sliderLabels}>
             <Text style={$sliderLabelText}>{min}</Text>
             <Text style={$sliderLabelText}>{max}</Text>
@@ -929,6 +933,11 @@ const $sliderHeader: ViewStyle = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 10,
+};
+
+const $sliderTrack: ViewStyle = {
+  height: 40,
+  justifyContent: "center",
 };
 
 const $sliderLabels: ViewStyle = {
