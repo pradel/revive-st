@@ -72,3 +72,7 @@ export const ArtImageStatus = {
 
 export type ArtImageStatus =
   (typeof ArtImageStatus)[keyof typeof ArtImageStatus];
+
+export interface RequestOptions {
+  signal?: AbortSignal;
+}

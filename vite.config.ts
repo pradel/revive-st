@@ -16,6 +16,10 @@ export default defineConfig({
     env: {
       browser: true,
     },
+    globals: {
+      // React Native's dev-build flag.
+      __DEV__: "readonly",
+    },
     categories: {
       correctness: "error",
       suspicious: "error",
@@ -98,6 +102,37 @@ export default defineConfig({
       {
         files: ["packages/**/*.ts"],
         rules: { "no-console": "off" },
+      },
+      {
+        // The onboarding session is pure TS so it runs under node `vp test`.
+        files: ["apps/app/src/features/onboarding/session/**"],
+        rules: {
+          "no-restricted-imports": [
+            "error",
+            {
+              patterns: [
+                {
+                  group: [
+                    "react",
+                    "react/*",
+                    "react-native",
+                    "react-native/*",
+                    "react-native-*",
+                    "expo",
+                    "expo/*",
+                    "expo-*",
+                    "@/lib/logger",
+                    "**/lib/logger",
+                    "bose-api-speaker-client",
+                    "bose-api-speaker-client/*",
+                  ],
+                  message:
+                    "session/ is pure TS: reach native code, React and the speaker client through the ports in session/ports.ts (adapters/ map them).",
+                },
+              ],
+            },
+          ],
+        },
       },
     ],
   },

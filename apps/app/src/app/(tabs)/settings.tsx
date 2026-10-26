@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { Card } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/config";
+import { SimulateSetupCard } from "@/features/onboarding/components/SimulateSetupCard";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
 import { PageHeader } from "@/ui/PageHeader";
@@ -191,6 +192,7 @@ export default function AppSettings() {
             size={20}
           />
         </Card>
+        {__DEV__ && <SimulateSetupCard />}
       </ScrollView>
     </SafeAreaView>
   );

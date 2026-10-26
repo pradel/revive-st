@@ -1,22 +1,15 @@
 import { type NativeModule, requireNativeModule } from "expo";
 
-export interface BoseConnectionResult {
-  success: boolean;
-  ip: string;
-  telnetPort: number;
-  apiPort: number;
-  message: string;
-}
+export type LinkEvent = "onLinkLost" | "onLinkRestored";
 
-declare class BoseWifiModule extends NativeModule {
-  connectToOpenNetwork(
-    ssid: string,
-    bssid: string,
-  ): Promise<BoseConnectionResult>;
-  disconnect(): Promise<null>;
-  isConnected(): Promise<boolean>;
+export type BoseWifiModuleEvents = Record<LinkEvent, () => void>;
+
+declare class BoseWifiModule extends NativeModule<BoseWifiModuleEvents> {
+  join(ssid: string, bssid: string, timeoutMs: number): Promise<null>;
+  release(): Promise<null>;
+  bindToConnectedWifi(): Promise<boolean>;
+  openWifiPanel(): Promise<null>;
   openWifiSettings(): Promise<null>;
-  openWifiSettingsPanel(): Promise<null>;
 }
 
 export default requireNativeModule<BoseWifiModule>("BoseWifi");

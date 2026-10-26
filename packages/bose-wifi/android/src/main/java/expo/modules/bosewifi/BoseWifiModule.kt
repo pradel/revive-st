@@ -3,179 +3,80 @@ package expo.modules.bosewifi
 import android.content.Context
 import android.content.Intent
 import android.net.ConnectivityManager
-import android.net.MacAddress
 import android.net.Network
-import android.net.NetworkCapabilities
-import android.net.NetworkRequest
-import android.net.wifi.WifiNetworkSpecifier
-import android.os.Build
 import android.provider.Settings
-import android.util.Log
-import androidx.annotation.RequiresApi
+import expo.modules.kotlin.Promise
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
-import expo.modules.kotlin.Promise
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 class BoseWifiModule : Module() {
 
-  private var networkCallback: ConnectivityManager.NetworkCallback? = null
-  private var currentNetwork: Network? = null
-  private var connectivityManager: ConnectivityManager? = null
-  private var pendingPromise: Promise? = null
+  private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+  @Volatile private var link: LinkController<Network>? = null
+
+  private val events = object : LinkEvents {
+    override fun onLinkLost() = sendEvent("onLinkLost", mapOf<String, Any?>())
+    override fun onLinkRestored() = sendEvent("onLinkRestored", mapOf<String, Any?>())
+  }
+
+  @Synchronized
+  private fun linkController(promise: Promise): LinkController<Network>? {
+    link?.let { return it }
+    val context = appContext.reactContext ?: run {
+      promise.reject("NO_CONTEXT", "No Android context available", null)
+      return null
+    }
+    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+    return LinkController(AndroidConnectivityApi(cm), executor, events).also { link = it }
+  }
+
+  private fun startSettings(action: String, promise: Promise) {
+    val ctx = appContext.reactContext ?: run {
+      promise.reject("NO_CONTEXT", "No Android context available", null)
+      return
+    }
+    ctx.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    promise.resolve(null)
+  }
 
   override fun definition() = ModuleDefinition {
     Name("BoseWifi")
 
-    AsyncFunction("connectToOpenNetwork") { ssid: String, bssid: String, promise: Promise ->
-      if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-        promise.reject("UNSUPPORTED", "Android 10 (API 29) or higher is required", null)
+    Events("onLinkLost", "onLinkRestored")
+
+    AsyncFunction("join") { ssid: String, bssid: String, timeoutMs: Int, promise: Promise ->
+      val controller = linkController(promise) ?: return@AsyncFunction
+      controller.join(ssid, bssid, timeoutMs) { failure ->
+        if (failure == null) promise.resolve(null) else promise.reject(failure.error.code, failure.message, null)
+      }
+    }
+
+    AsyncFunction("release") { promise: Promise ->
+      val controller = link ?: run {
+        promise.resolve(null)
         return@AsyncFunction
       }
-      connectWithSpecifier(ssid, bssid, promise)
+      controller.release { promise.resolve(null) }
     }
 
-    AsyncFunction("disconnect") { promise: Promise ->
-      releaseNetwork()
-      promise.resolve(null)
+    AsyncFunction("bindToConnectedWifi") { promise: Promise ->
+      val controller = linkController(promise) ?: return@AsyncFunction
+      controller.bindToConnectedWifi { bound -> promise.resolve(bound) }
     }
 
-    AsyncFunction("isConnected") { promise: Promise ->
-      promise.resolve(currentNetwork != null)
+    AsyncFunction("openWifiPanel") { promise: Promise ->
+      startSettings(Settings.Panel.ACTION_WIFI, promise)
     }
 
     AsyncFunction("openWifiSettings") { promise: Promise ->
-      val ctx = appContext.reactContext ?: run {
-        promise.reject("NO_CONTEXT", "No Android context available", null)
-        return@AsyncFunction
-      }
-      val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-      ctx.startActivity(intent)
-      promise.resolve(null)
+      startSettings(Settings.ACTION_WIFI_SETTINGS, promise)
     }
 
-    AsyncFunction("openWifiSettingsPanel") { promise: Promise ->
-      val ctx = appContext.reactContext ?: run {
-        promise.reject("NO_CONTEXT", "No Android context available", null)
-        return@AsyncFunction
-      }
-      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-        val intent = Intent(Settings.Panel.ACTION_WIFI)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(intent)
-      } else {
-        val intent = Intent(Settings.ACTION_WIFI_SETTINGS)
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(intent)
-      }
-      promise.resolve(null)
+    OnDestroy {
+      link?.release {}
+      executor.shutdown()
     }
-  }
-
-  @RequiresApi(Build.VERSION_CODES.Q)
-  private fun connectWithSpecifier(ssid: String, bssid: String, promise: Promise) {
-    val context = appContext.reactContext ?: run {
-      promise.reject("NO_CONTEXT", "No Android context available", null)
-      return
-    }
-
-    Log.d("BoseWifi", "connectWithSpecifier: SSID=\"$ssid\" BSSID=\"$bssid\"")
-
-    val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-    connectivityManager = cm
-
-    pendingPromise?.let {
-      Log.d("BoseWifi", "connectWithSpecifier: cancelling previous pending promise")
-      it.reject("CONNECTION_CANCELLED", "Superseded by a new connection request", null)
-    }
-    pendingPromise = promise
-
-    releaseNetwork()
-
-    Log.d("BoseWifi", "Building WifiNetworkSpecifier...")
-    val specifier = WifiNetworkSpecifier.Builder()
-      .setSsid(ssid)
-      .setBssid(MacAddress.fromString(bssid))
-      .build()
-
-    Log.d("BoseWifi", "Building NetworkRequest (no internet capability)...")
-    val request = NetworkRequest.Builder()
-      .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-      .removeCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-      .setNetworkSpecifier(specifier)
-      .build()
-
-    var settled = false
-
-    Log.d("BoseWifi", "Registering network callback with 90s timeout...")
-    networkCallback = object : ConnectivityManager.NetworkCallback() {
-
-      override fun onAvailable(network: Network) {
-        Log.d("BoseWifi", "onAvailable: network=$network settled=$settled")
-        if (settled) return
-        settled = true
-        currentNetwork = network
-        cm.bindProcessToNetwork(network)
-
-        Log.d("BoseWifi", "onAvailable: bound to network, resolving promise")
-        pendingPromise = null
-        promise.resolve(
-          mapOf(
-            "success" to true,
-            "ip" to "192.0.2.1",
-            "telnetPort" to 17000,
-            "apiPort" to 8090,
-            "message" to "Connected — traffic bound to Bose AP",
-          ),
-        )
-      }
-
-      override fun onUnavailable() {
-        Log.d("BoseWifi", "onUnavailable: settled=$settled")
-        if (settled) return
-        settled = true
-        currentNetwork = null
-        pendingPromise = null
-        Log.d("BoseWifi", "onUnavailable: rejecting promise with CONNECTION_FAILED")
-        promise.reject(
-          "CONNECTION_FAILED",
-          "Could not connect to Bose AP. Make sure the speaker is in setup mode (LED amber).",
-          null,
-        )
-      }
-
-      override fun onLost(network: Network) {
-        Log.d("BoseWifi", "onLost: network=$network currentNetwork=$currentNetwork")
-        if (network == currentNetwork) {
-          currentNetwork = null
-          cm.bindProcessToNetwork(null)
-          Log.d("BoseWifi", "onLost: unbound, currentNetwork cleared")
-        }
-      }
-    }
-
-    try {
-      Log.d("BoseWifi", "Calling requestNetwork with 90s timeout...")
-      cm.requestNetwork(request, networkCallback!!, 90_000)
-      Log.d("BoseWifi", "requestNetwork returned — waiting for callback")
-    } catch (e: Exception) {
-      Log.e("BoseWifi", "requestNetwork threw: ${e.message}", e)
-      settled = true
-      pendingPromise = null
-      promise.reject("REQUEST_FAILED", e.message ?: "Unknown error", e)
-    }
-  }
-
-  private fun releaseNetwork() {
-    val cm = connectivityManager ?: return
-    networkCallback?.let {
-      try {
-        cm.unregisterNetworkCallback(it)
-      } catch (_: Exception) { /* already unregistered */ }
-    }
-    cm.bindProcessToNetwork(null)
-    networkCallback = null
-    currentNetwork = null
-    pendingPromise = null
   }
 }
