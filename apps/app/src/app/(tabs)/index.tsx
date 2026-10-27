@@ -149,7 +149,7 @@ export default function Index() {
               render={
                 <TouchableOpacity
                   onPress={() => {
-                    router.push("/onboarding/permissions");
+                    router.push("/onboarding");
                   }}
                   activeOpacity={0.8}
                 />
@@ -330,7 +330,7 @@ export default function Index() {
           <TouchableOpacity
             style={$addSpeakerButton}
             onPress={() => {
-              router.push("/onboarding/permissions");
+              router.push("/onboarding");
             }}
             activeOpacity={0.8}
           >

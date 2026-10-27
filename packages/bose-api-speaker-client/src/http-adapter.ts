@@ -11,6 +11,7 @@ import type {
   ArtImageStatus,
   AudioMode,
   PlayStatus,
+  RequestOptions,
   SourceStatus,
 } from "./types/common.ts";
 import type {
@@ -22,12 +23,14 @@ import type {
   CapabilitiesResponse,
   InfoResponse,
   KeyPressRequest,
+  NetworkInfoResponse,
   NowPlayingResponse,
   PresetsResponse,
   SelectSourceRequest,
   SetAudioDspControlsRequest,
   SetLevelControlsRequest,
   SetToneControlsRequest,
+  SetupStateResponse,
   SetVolumeRequest,
   SetZoneRequest,
   SourcesResponse,
@@ -55,8 +58,12 @@ export class BoseHttpAdapter {
   private async get<TParsed>(
     path: string,
     parse: (root: XmlNode) => TParsed,
+    options: RequestOptions | undefined,
   ): Promise<Result<TParsed, BoseApiError>> {
-    const result = await this.fetchResult(path, { method: "GET" });
+    const result = await this.fetchResult(path, {
+      method: "GET",
+      signal: options?.signal,
+    });
     if (!result.isOk()) {
       return new Err(result.error);
     }
@@ -66,11 +73,13 @@ export class BoseHttpAdapter {
   private async post(
     path: string,
     body: string,
+    options: RequestOptions | undefined,
   ): Promise<Result<void, BoseApiError>> {
     const result = await this.fetchResult(path, {
       method: "POST",
       headers: { "Content-Type": "application/xml" },
       body,
+      signal: options?.signal,
     });
     if (!result.isOk()) {
       return new Err(result.error);
@@ -154,99 +163,145 @@ export class BoseHttpAdapter {
       return new Err(apiErrors);
     }
 
-    return new Ok(parse(root));
+    try {
+      return new Ok(parse(root));
+    } catch (shapeError) {
+      return new Err(
+        new XmlParseError({
+          message:
+            shapeError instanceof Error
+              ? shapeError.message
+              : String(shapeError),
+          rawXml: body,
+        }),
+      );
+    }
   }
 
-  async pressKey(params: KeyPressRequest): Promise<Result<void, BoseApiError>> {
+  async pressKey(
+    params: KeyPressRequest,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
     const xml = `<key state="${escapeXml(params.state)}" sender="${escapeXml(params.sender)}">${escapeXml(params.key)}</key>`;
-    return this.post("/key", xml);
+    return this.post("/key", xml, options);
   }
 
   async selectSource(
     params: SelectSourceRequest,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const account = params.sourceAccount
       ? ` sourceAccount="${escapeXml(params.sourceAccount)}"`
       : "";
     const xml = `<ContentItem source="${escapeXml(params.source)}"${account}></ContentItem>`;
-    return this.post("/select", xml);
+    return this.post("/select", xml, options);
   }
 
-  async getSources(): Promise<Result<SourcesResponse, BoseApiError>> {
-    return this.get("/sources", (root) => {
-      const sources =
-        root.name === "sources" ? root : getChild(root, "sources");
-      if (!sources) {
-        throw new Error("Missing <sources> element");
-      }
-      return {
-        deviceID: sources.attributes.deviceID ?? "",
-        sourceItems: getChildren(sources, "sourceItem").map((si) => ({
-          source: si.attributes.source ?? "",
-          sourceAccount: si.attributes.sourceAccount ?? "",
-          status: (si.attributes.status as SourceStatus) ?? "",
-          name: si.text,
-        })),
-      };
-    });
+  async getSources(
+    options?: RequestOptions,
+  ): Promise<Result<SourcesResponse, BoseApiError>> {
+    return this.get(
+      "/sources",
+      (root) => {
+        const sources =
+          root.name === "sources" ? root : getChild(root, "sources");
+        if (!sources) {
+          throw new Error("Missing <sources> element");
+        }
+        return {
+          deviceID: sources.attributes.deviceID ?? "",
+          sourceItems: getChildren(sources, "sourceItem").map((si) => ({
+            source: si.attributes.source ?? "",
+            sourceAccount: si.attributes.sourceAccount ?? "",
+            status: (si.attributes.status as SourceStatus) ?? "",
+            name: si.text,
+          })),
+        };
+      },
+      options,
+    );
   }
 
-  async getBassCapabilities(): Promise<
-    Result<BassCapabilitiesResponse, BoseApiError>
-  > {
-    return this.get("/bassCapabilities", (root) => {
-      const bc =
-        root.name === "bassCapabilities"
-          ? root
-          : getChild(root, "bassCapabilities");
-      if (!bc) {
-        throw new Error("Missing <bassCapabilities> element");
-      }
-      return {
-        deviceID: bc.attributes.deviceID ?? "",
-        bassAvailable: parseBool(getChildText(bc, "bassAvailable") ?? "false"),
-        bassMin: parseIntSafe(getChildText(bc, "bassMin") ?? "0"),
-        bassMax: parseIntSafe(getChildText(bc, "bassMax") ?? "0"),
-        bassDefault: parseIntSafe(getChildText(bc, "bassDefault") ?? "0"),
-      };
-    });
+  async getBassCapabilities(
+    options?: RequestOptions,
+  ): Promise<Result<BassCapabilitiesResponse, BoseApiError>> {
+    return this.get(
+      "/bassCapabilities",
+      (root) => {
+        const bc =
+          root.name === "bassCapabilities"
+            ? root
+            : getChild(root, "bassCapabilities");
+        if (!bc) {
+          throw new Error("Missing <bassCapabilities> element");
+        }
+        return {
+          deviceID: bc.attributes.deviceID ?? "",
+          bassAvailable: parseBool(
+            getChildText(bc, "bassAvailable") ?? "false",
+          ),
+          bassMin: parseIntSafe(getChildText(bc, "bassMin") ?? "0"),
+          bassMax: parseIntSafe(getChildText(bc, "bassMax") ?? "0"),
+          bassDefault: parseIntSafe(getChildText(bc, "bassDefault") ?? "0"),
+        };
+      },
+      options,
+    );
   }
 
-  async getBass(): Promise<Result<BassResponse, BoseApiError>> {
-    return this.get("/bass", (root) => {
-      const bassNode = root.name === "bass" ? root : getChild(root, "bass");
-      if (!bassNode) {
-        throw new Error("Missing <bass> element");
-      }
-      return {
-        deviceID: bassNode.attributes.deviceID ?? "",
-        targetbass: parseIntSafe(getChildText(bassNode, "targetbass") ?? "0"),
-        actualbass: parseIntSafe(getChildText(bassNode, "actualbass") ?? "0"),
-      };
-    });
+  async getBass(
+    options?: RequestOptions,
+  ): Promise<Result<BassResponse, BoseApiError>> {
+    return this.get(
+      "/bass",
+      (root) => {
+        const bassNode = root.name === "bass" ? root : getChild(root, "bass");
+        if (!bassNode) {
+          throw new Error("Missing <bass> element");
+        }
+        return {
+          deviceID: bassNode.attributes.deviceID ?? "",
+          targetbass: parseIntSafe(getChildText(bassNode, "targetbass") ?? "0"),
+          actualbass: parseIntSafe(getChildText(bassNode, "actualbass") ?? "0"),
+        };
+      },
+      options,
+    );
   }
 
-  async setBass(value: number): Promise<Result<void, BoseApiError>> {
-    return this.post("/bass", `<bass>${value}</bass>`);
+  async setBass(
+    value: number,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.post("/bass", `<bass>${value}</bass>`, options);
   }
 
-  async getZone(): Promise<Result<ZoneResponse, BoseApiError>> {
-    return this.get("/getZone", (root) => {
-      const zone = root.name === "zone" ? root : getChild(root, "zone");
-      if (!zone) {
-        throw new Error("Missing <zone> element");
-      }
-      return {
-        master: zone.attributes.master ?? "",
-        members: getChildren(zone, "member").map((member) => ({
-          ipaddress: member.attributes.ipaddress ?? "",
-          macAddress: member.text,
-        })),
-      };
-    });
+  async getZone(
+    options?: RequestOptions,
+  ): Promise<Result<ZoneResponse, BoseApiError>> {
+    return this.get(
+      "/getZone",
+      (root) => {
+        const zone = root.name === "zone" ? root : getChild(root, "zone");
+        if (!zone) {
+          throw new Error("Missing <zone> element");
+        }
+        return {
+          master: zone.attributes.master ?? "",
+          members: getChildren(zone, "member").map((member) => ({
+            ipaddress: member.attributes.ipaddress ?? "",
+            macAddress: member.text,
+          })),
+        };
+      },
+      options,
+    );
   }
 
-  async setZone(params: SetZoneRequest): Promise<Result<void, BoseApiError>> {
+  async setZone(
+    params: SetZoneRequest,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
     const members = params.members
       .map(
         (member) =>
@@ -254,13 +309,16 @@ export class BoseHttpAdapter {
       )
       .join("");
     const xml = `<zone master="${escapeXml(params.master)}" senderIPAddress="${escapeXml(params.senderIpAddress)}">${members}</zone>`;
-    return this.post("/setZone", xml);
+    return this.post("/setZone", xml, options);
   }
 
-  async addZoneSlave(params: {
-    master: string;
-    members: ZoneMember[];
-  }): Promise<Result<void, BoseApiError>> {
+  async addZoneSlave(
+    params: {
+      master: string;
+      members: ZoneMember[];
+    },
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
     const members = params.members
       .map(
         (member) =>
@@ -268,13 +326,16 @@ export class BoseHttpAdapter {
       )
       .join("");
     const xml = `<zone master="${escapeXml(params.master)}">${members}</zone>`;
-    return this.post("/addZoneSlave", xml);
+    return this.post("/addZoneSlave", xml, options);
   }
 
-  async removeZoneSlave(params: {
-    master: string;
-    members: ZoneMember[];
-  }): Promise<Result<void, BoseApiError>> {
+  async removeZoneSlave(
+    params: {
+      master: string;
+      members: ZoneMember[];
+    },
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
     const members = params.members
       .map(
         (member) =>
@@ -282,163 +343,269 @@ export class BoseHttpAdapter {
       )
       .join("");
     const xml = `<zone master="${escapeXml(params.master)}">${members}</zone>`;
-    return this.post("/removeZoneSlave", xml);
+    return this.post("/removeZoneSlave", xml, options);
   }
 
-  // The speaker shuts down its access point after receiving credentials, which
-  // may cause a NetworkError on this call. Callers should treat NetworkError
-  // as a successful delivery.
+  // The reply is held back while the speaker tries to join the network
+  // (`timeout="30"` is the join timeout in seconds): OK once it joined, or an
+  // ApiError WIFI_PROFILE_SETUP_FAILED (value 1035) when it could not, e.g.
+  // NO_IP_ADDRESS_ASSIGNED for a wrong password. A NetworkError means the
+  // outcome is unknown, not that the credentials were delivered.
   async sendCredentials(
     ssid: string,
     password: string,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const securityType = password ? "wpa_or_wpa2" : "none";
     const xml = `<AddWirelessProfile timeout="30"><profile ssid="${escapeXml(ssid)}" password="${escapeXml(password)}" securityType="${securityType}"></profile></AddWirelessProfile>`;
-    return this.post("/addWirelessProfile", xml);
+    return this.post("/addWirelessProfile", xml, options);
   }
 
-  async getNowPlaying(): Promise<Result<NowPlayingResponse, BoseApiError>> {
-    return this.get("/nowPlaying", parseNowPlaying);
+  async getNowPlaying(
+    options?: RequestOptions,
+  ): Promise<Result<NowPlayingResponse, BoseApiError>> {
+    return this.get("/nowPlaying", parseNowPlaying, options);
   }
 
-  async getTrackInfo(): Promise<Result<NowPlayingResponse, BoseApiError>> {
-    return this.get("/trackInfo", parseNowPlaying);
+  async getTrackInfo(
+    options?: RequestOptions,
+  ): Promise<Result<NowPlayingResponse, BoseApiError>> {
+    return this.get("/trackInfo", parseNowPlaying, options);
   }
 
-  async getVolume(): Promise<Result<VolumeResponse, BoseApiError>> {
-    return this.get("/volume", (root) => {
-      const volumeNode =
-        root.name === "volume" ? root : getChild(root, "volume");
-      if (!volumeNode) {
-        throw new Error("Missing <volume> element");
-      }
-      return {
-        deviceID: volumeNode.attributes.deviceID ?? "",
-        targetvolume: parseIntSafe(
-          getChildText(volumeNode, "targetvolume") ?? "0",
-        ),
-        actualvolume: parseIntSafe(
-          getChildText(volumeNode, "actualvolume") ?? "0",
-        ),
-        muteenabled: parseBool(
-          getChildText(volumeNode, "muteenabled") ?? "false",
-        ),
-      };
-    });
+  async getVolume(
+    options?: RequestOptions,
+  ): Promise<Result<VolumeResponse, BoseApiError>> {
+    return this.get(
+      "/volume",
+      (root) => {
+        const volumeNode =
+          root.name === "volume" ? root : getChild(root, "volume");
+        if (!volumeNode) {
+          throw new Error("Missing <volume> element");
+        }
+        return {
+          deviceID: volumeNode.attributes.deviceID ?? "",
+          targetvolume: parseIntSafe(
+            getChildText(volumeNode, "targetvolume") ?? "0",
+          ),
+          actualvolume: parseIntSafe(
+            getChildText(volumeNode, "actualvolume") ?? "0",
+          ),
+          muteenabled: parseBool(
+            getChildText(volumeNode, "muteenabled") ?? "false",
+          ),
+        };
+      },
+      options,
+    );
   }
 
   async setVolume(
     params: SetVolumeRequest,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const mute =
       params.muteEnabled !== undefined
         ? `<muteenabled>${params.muteEnabled}</muteenabled>`
         : "";
     const xml = `<volume>${params.volume}${mute}</volume>`;
-    return this.post("/volume", xml);
+    return this.post("/volume", xml, options);
   }
 
-  async getPresets(): Promise<Result<PresetsResponse, BoseApiError>> {
-    return this.get("/presets", (root) => {
-      const presets =
-        root.name === "presets" ? root : getChild(root, "presets");
-      if (!presets) {
-        throw new Error("Missing <presets> element");
-      }
-      return {
-        presets: getChildren(presets, "preset").map((pr) => ({
-          id: parseIntSafe(pr.attributes.id ?? "0"),
-          createdOn: pr.attributes.createdOn
-            ? parseIntSafe(pr.attributes.createdOn)
-            : undefined,
-          updatedOn: pr.attributes.updatedOn
-            ? parseIntSafe(pr.attributes.updatedOn)
-            : undefined,
-          contentItem: parseContentItem(getChild(pr, "ContentItem")),
-        })),
-      };
-    });
+  async getPresets(
+    options?: RequestOptions,
+  ): Promise<Result<PresetsResponse, BoseApiError>> {
+    return this.get(
+      "/presets",
+      (root) => {
+        const presets =
+          root.name === "presets" ? root : getChild(root, "presets");
+        if (!presets) {
+          throw new Error("Missing <presets> element");
+        }
+        return {
+          presets: getChildren(presets, "preset").map((pr) => ({
+            id: parseIntSafe(pr.attributes.id ?? "0"),
+            createdOn: pr.attributes.createdOn
+              ? parseIntSafe(pr.attributes.createdOn)
+              : undefined,
+            updatedOn: pr.attributes.updatedOn
+              ? parseIntSafe(pr.attributes.updatedOn)
+              : undefined,
+            contentItem: parseContentItem(getChild(pr, "ContentItem")),
+          })),
+        };
+      },
+      options,
+    );
   }
 
-  async getInfo(): Promise<Result<InfoResponse, BoseApiError>> {
-    return this.get("/info", (root) => {
-      const info = root.name === "info" ? root : getChild(root, "info");
-      if (!info) {
-        throw new Error("Missing <info> element");
-      }
-      const netInfo = getChild(info, "networkInfo");
-      return {
-        deviceID: info.attributes.deviceID ?? "",
-        name: getChildText(info, "name") ?? "",
-        type: getChildText(info, "type") ?? "",
-        margeAccountUUID: getChildText(info, "margeAccountUUID") ?? "",
-        components: getChildren(
-          getChild(info, "components") ?? info,
-          "component",
-        ).map((component) => ({
-          componentCategory: getChildText(component, "componentCategory") ?? "",
-          softwareVersion: getChildText(component, "softwareVersion") ?? "",
-          serialNumber: getChildText(component, "serialNumber") ?? "",
-        })),
-        margeURL: getChildText(info, "margeURL") ?? "",
-        networkInfo: netInfo
-          ? {
-              type: netInfo.attributes.type ?? "",
-              macAddress: getChildText(netInfo, "macAddress") ?? "",
-              ipAddress: getChildText(netInfo, "ipAddress") ?? "",
-            }
-          : { type: "", macAddress: "", ipAddress: "" },
-      };
-    });
+  async getInfo(
+    options?: RequestOptions,
+  ): Promise<Result<InfoResponse, BoseApiError>> {
+    return this.get(
+      "/info",
+      (root) => {
+        const info = root.name === "info" ? root : getChild(root, "info");
+        if (!info) {
+          throw new Error("Missing <info> element");
+        }
+        const netInfo = getChild(info, "networkInfo");
+        return {
+          deviceID: info.attributes.deviceID ?? "",
+          name: getChildText(info, "name") ?? "",
+          type: getChildText(info, "type") ?? "",
+          margeAccountUUID: getChildText(info, "margeAccountUUID") ?? "",
+          components: getChildren(
+            getChild(info, "components") ?? info,
+            "component",
+          ).map((component) => ({
+            componentCategory:
+              getChildText(component, "componentCategory") ?? "",
+            softwareVersion: getChildText(component, "softwareVersion") ?? "",
+            serialNumber: getChildText(component, "serialNumber") ?? "",
+          })),
+          margeURL: getChildText(info, "margeURL") ?? "",
+          networkInfo: netInfo
+            ? {
+                type: netInfo.attributes.type ?? "",
+                macAddress: getChildText(netInfo, "macAddress") ?? "",
+                ipAddress: getChildText(netInfo, "ipAddress") ?? "",
+              }
+            : { type: "", macAddress: "", ipAddress: "" },
+        };
+      },
+      options,
+    );
   }
 
-  async setName(name: string): Promise<Result<void, BoseApiError>> {
-    return this.post("/name", `<name>${escapeXml(name)}</name>`);
+  async getNetworkInfo(
+    options?: RequestOptions,
+  ): Promise<Result<NetworkInfoResponse, BoseApiError>> {
+    return this.get(
+      "/networkInfo",
+      (root) => {
+        const networkInfo =
+          root.name === "networkInfo" ? root : getChild(root, "networkInfo");
+        if (!networkInfo) {
+          throw new Error("Missing <networkInfo> element");
+        }
+        return {
+          wifiProfileCount: optionalInt(
+            networkInfo.attributes.wifiProfileCount,
+          ),
+          interfaces: getChildren(
+            getChild(networkInfo, "interfaces") ?? networkInfo,
+            "interface",
+          ).map(({ attributes }) => ({
+            name: attributes.name ?? "",
+            type: optionalString(attributes.type),
+            macAddress: optionalString(attributes.macAddress),
+            ipAddress: optionalString(attributes.ipAddress),
+            ssid: optionalString(attributes.ssid),
+            frequencyKHz: optionalInt(attributes.frequencyKHz),
+            state: optionalString(attributes.state),
+            mode: optionalString(attributes.mode),
+            signal: optionalString(attributes.signal),
+          })),
+        };
+      },
+      options,
+    );
   }
 
-  async getCapabilities(): Promise<Result<CapabilitiesResponse, BoseApiError>> {
-    return this.get("/capabilities", (root) => {
-      const caps =
-        root.name === "capabilities" ? root : getChild(root, "capabilities");
-      if (!caps) {
-        throw new Error("Missing <capabilities> element");
-      }
-      return {
-        deviceID: caps.attributes.deviceID ?? "",
-        capabilities: getChildren(caps, "capability").map((capability) => ({
-          name: capability.attributes.name ?? "",
-          url: capability.attributes.url ?? "",
-          info: capability.attributes.info ?? "",
-        })),
-      };
-    });
+  async getSetupState(
+    options?: RequestOptions,
+  ): Promise<Result<SetupStateResponse, BoseApiError>> {
+    return this.get(
+      "/setup",
+      (root) => {
+        const response =
+          root.name === "setupStateResponse"
+            ? root
+            : getChild(root, "setupStateResponse");
+        const state = optionalString(response?.attributes.state);
+        if (!response || state === undefined) {
+          throw new Error("Missing <setupStateResponse state> element");
+        }
+        return {
+          state,
+          systemState: optionalString(response.attributes.systemstate),
+        };
+      },
+      options,
+    );
   }
 
-  async getAudioDspControls(): Promise<
-    Result<AudioDspControlsResponse, BoseApiError>
-  > {
-    return this.get("/audiodspcontrols", (root) => {
-      const adc =
-        root.name === "audiodspcontrols"
-          ? root
-          : getChild(root, "audiodspcontrols");
-      if (!adc) {
-        throw new Error("Missing <audiodspcontrols> element");
-      }
-      return {
-        audiomode: (adc.attributes.audiomode ?? "") as AudioMode,
-        videosyncaudiodelay: parseIntSafe(
-          adc.attributes.videosyncaudiodelay ?? "0",
-        ),
-        supportedaudiomodes: (adc.attributes.supportedaudiomodes ?? "")
-          .split("|")
-          .filter(Boolean) as AudioMode[],
-      };
-    });
+  async setSetupState(
+    state: "SETUP_LEAVE",
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.post("/setup", `<setupState state="${state}"/>`, options);
+  }
+
+  async setName(
+    name: string,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.post("/name", `<name>${escapeXml(name)}</name>`, options);
+  }
+
+  async getCapabilities(
+    options?: RequestOptions,
+  ): Promise<Result<CapabilitiesResponse, BoseApiError>> {
+    return this.get(
+      "/capabilities",
+      (root) => {
+        const caps =
+          root.name === "capabilities" ? root : getChild(root, "capabilities");
+        if (!caps) {
+          throw new Error("Missing <capabilities> element");
+        }
+        return {
+          deviceID: caps.attributes.deviceID ?? "",
+          capabilities: getChildren(caps, "capability").map((capability) => ({
+            name: capability.attributes.name ?? "",
+            url: capability.attributes.url ?? "",
+            info: capability.attributes.info ?? "",
+          })),
+        };
+      },
+      options,
+    );
+  }
+
+  async getAudioDspControls(
+    options?: RequestOptions,
+  ): Promise<Result<AudioDspControlsResponse, BoseApiError>> {
+    return this.get(
+      "/audiodspcontrols",
+      (root) => {
+        const adc =
+          root.name === "audiodspcontrols"
+            ? root
+            : getChild(root, "audiodspcontrols");
+        if (!adc) {
+          throw new Error("Missing <audiodspcontrols> element");
+        }
+        return {
+          audiomode: (adc.attributes.audiomode ?? "") as AudioMode,
+          videosyncaudiodelay: parseIntSafe(
+            adc.attributes.videosyncaudiodelay ?? "0",
+          ),
+          supportedaudiomodes: (adc.attributes.supportedaudiomodes ?? "")
+            .split("|")
+            .filter(Boolean) as AudioMode[],
+        };
+      },
+      options,
+    );
   }
 
   async setAudioDspControls(
     params: SetAudioDspControlsRequest,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const attrs: string[] = [];
     if (params.audiomode !== undefined) {
@@ -448,29 +615,34 @@ export class BoseHttpAdapter {
       attrs.push(`videosyncaudiodelay="${params.videosyncaudiodelay}"`);
     }
     const xml = `<audiodspcontrols ${attrs.join(" ")}/>`;
-    return this.post("/audiodspcontrols", xml);
+    return this.post("/audiodspcontrols", xml, options);
   }
 
-  async getAudioProductToneControls(): Promise<
-    Result<AudioProductToneControlsResponse, BoseApiError>
-  > {
-    return this.get("/audioproducttonecontrols", (root) => {
-      const aptc =
-        root.name === "audioproducttonecontrols"
-          ? root
-          : getChild(root, "audioproducttonecontrols");
-      if (!aptc) {
-        throw new Error("Missing <audioproducttonecontrols> element");
-      }
-      return {
-        bass: parseToneControl(getChild(aptc, "bass")),
-        treble: parseToneControl(getChild(aptc, "treble")),
-      };
-    });
+  async getAudioProductToneControls(
+    options?: RequestOptions,
+  ): Promise<Result<AudioProductToneControlsResponse, BoseApiError>> {
+    return this.get(
+      "/audioproducttonecontrols",
+      (root) => {
+        const aptc =
+          root.name === "audioproducttonecontrols"
+            ? root
+            : getChild(root, "audioproducttonecontrols");
+        if (!aptc) {
+          throw new Error("Missing <audioproducttonecontrols> element");
+        }
+        return {
+          bass: parseToneControl(getChild(aptc, "bass")),
+          treble: parseToneControl(getChild(aptc, "treble")),
+        };
+      },
+      options,
+    );
   }
 
   async setAudioProductToneControls(
     params: SetToneControlsRequest,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const parts: string[] = [];
     if (params.bass) {
@@ -480,33 +652,38 @@ export class BoseHttpAdapter {
       parts.push(`<treble value="${params.treble.value}" />`);
     }
     const xml = `<audioproducttonecontrols>${parts.join("")}</audioproducttonecontrols>`;
-    return this.post("/audioproducttonecontrols", xml);
+    return this.post("/audioproducttonecontrols", xml, options);
   }
 
-  async getAudioProductLevelControls(): Promise<
-    Result<AudioProductLevelControlsResponse, BoseApiError>
-  > {
-    return this.get("/audioproductlevelcontrols", (root) => {
-      const aplc =
-        root.name === "audioproductlevelcontrols"
-          ? root
-          : getChild(root, "audioproductlevelcontrols");
-      if (!aplc) {
-        throw new Error("Missing <audioproductlevelcontrols> element");
-      }
-      return {
-        frontCenterSpeakerLevel: parseLevelControl(
-          getChild(aplc, "frontCenterSpeakerLevel"),
-        ),
-        rearSurroundSpeakersLevel: parseLevelControl(
-          getChild(aplc, "rearSurroundSpeakersLevel"),
-        ),
-      };
-    });
+  async getAudioProductLevelControls(
+    options?: RequestOptions,
+  ): Promise<Result<AudioProductLevelControlsResponse, BoseApiError>> {
+    return this.get(
+      "/audioproductlevelcontrols",
+      (root) => {
+        const aplc =
+          root.name === "audioproductlevelcontrols"
+            ? root
+            : getChild(root, "audioproductlevelcontrols");
+        if (!aplc) {
+          throw new Error("Missing <audioproductlevelcontrols> element");
+        }
+        return {
+          frontCenterSpeakerLevel: parseLevelControl(
+            getChild(aplc, "frontCenterSpeakerLevel"),
+          ),
+          rearSurroundSpeakersLevel: parseLevelControl(
+            getChild(aplc, "rearSurroundSpeakersLevel"),
+          ),
+        };
+      },
+      options,
+    );
   }
 
   async setAudioProductLevelControls(
     params: SetLevelControlsRequest,
+    options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
     const parts: string[] = [];
     if (params.frontCenterSpeakerLevel) {
@@ -520,7 +697,7 @@ export class BoseHttpAdapter {
       );
     }
     const xml = `<audioproductlevelcontrols>${parts.join("")}</audioproductlevelcontrols>`;
-    return this.post("/audioproductlevelcontrols", xml);
+    return this.post("/audioproductlevelcontrols", xml, options);
   }
 }
 
@@ -589,6 +766,15 @@ function parseLevelControl(node: XmlNode | undefined) {
     maxValue: parseIntSafe(node.attributes.maxValue ?? "0"),
     step: parseIntSafe(node.attributes.step ?? "0"),
   };
+}
+
+function optionalString(value: string | undefined): string | undefined {
+  return value === undefined || value === "" ? undefined : value;
+}
+
+function optionalInt(value: string | undefined): number | undefined {
+  const parsed = parseIntSafe(value ?? "");
+  return Number.isNaN(parsed) ? undefined : parsed;
 }
 
 function tryParseApiErrors(body: string, requestXml?: string): ApiError | null {

@@ -1,7 +1,13 @@
 import { Result } from "better-result";
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
 
-import { ApiError, HttpError, NetworkError, XmlParseError } from "./errors.ts";
+import {
+  ApiError,
+  HttpError,
+  NetworkError,
+  XmlParseError,
+  type BoseApiError,
+} from "./errors.ts";
 import {
   boseSpeakerClient,
   type BassCapabilitiesResponse,
@@ -9,8 +15,10 @@ import {
   type BoseSpeakerClient,
   type CapabilitiesResponse,
   type InfoResponse,
+  type NetworkInfoResponse,
   type NowPlayingResponse,
   type PresetsResponse,
+  type SetupStateResponse,
   type SourcesResponse,
   type VolumeResponse,
   type ZoneResponse,
@@ -33,6 +41,13 @@ function unwrapOk<TParsed>(result: unknown): TParsed {
   }
   // oxlint-disable-next-line typescript/no-unsafe-member-access, typescript/no-explicit-any
   return (result as any).value as TParsed;
+}
+
+function unwrapErr(result: Result<unknown, BoseApiError>): BoseApiError {
+  if (!result.isErr()) {
+    throw new Error("Expected Err but got Ok");
+  }
+  return result.error;
 }
 
 describe("boseSpeakerClient", () => {
@@ -653,7 +668,7 @@ describe("boseSpeakerClient", () => {
       );
     });
 
-    it("returns NetworkError on network failure (speaker AP may shut down)", async () => {
+    it("returns NetworkError on network failure", async () => {
       vi.spyOn(globalThis, "fetch").mockRejectedValue(
         new DOMException("The operation was aborted", "AbortError"),
       );
@@ -668,6 +683,188 @@ describe("boseSpeakerClient", () => {
       expect(Result.isError(result)).toBe(true);
       const err = (result as { error: unknown }).error;
       expect(err instanceof HttpError || err instanceof ApiError).toBe(true);
+    });
+
+    it("returns ApiError WIFI_PROFILE_SETUP_FAILED when the speaker cannot join", async () => {
+      const reply =
+        '<errors deviceID="AABBCCDDEEFF"><error value="1035" name="WIFI_PROFILE_SETUP_FAILED" severity="Unknown">NO_IP_ADDRESS_ASSIGNED</error></errors>';
+      mockFetch(400, reply);
+      const result = await client.sendCredentials("HomeWiFi", "wrong");
+      const err = unwrapErr(result);
+      expect(err).toBeInstanceOf(ApiError);
+      expect(err).toMatchObject({
+        deviceID: "AABBCCDDEEFF",
+        errors: [
+          {
+            value: 1035,
+            name: "WIFI_PROFILE_SETUP_FAILED",
+            severity: "Unknown",
+            message: "NO_IP_ADDRESS_ASSIGNED",
+          },
+        ],
+        rawXml: reply,
+      });
+    });
+  });
+
+  describe("/networkInfo", () => {
+    it("parses networkInfo during setup mode", async () => {
+      const fetchMock = mockFetch(
+        200,
+        `<networkInfo wifiProfileCount="1"><interfaces>
+  <interface type="WIFI_INTERFACE" name="wlan0" macAddress="001122334455" ipAddress="192.168.1.20" ssid="HomeWiFi" state="NETWORK_WIFI_DISCONNECTED" />
+  <interface type="WIFI_INTERFACE" name="wlan1" macAddress="001122334456" ipAddress="192.0.2.1" ssid="Bose ST 10 (DDEEFF)" frequencyKHz="2412000" state="NETWORK_WIFI_CONNECTED" mode="ACCESS_POINT" />
+  <interface name="wlan0:avahi" macAddress="001122334455" ipAddress="" />
+</interfaces></networkInfo>`,
+      );
+      const result = await client.getNetworkInfo();
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/networkInfo`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(unwrapOk<NetworkInfoResponse>(result)).toEqual({
+        wifiProfileCount: 1,
+        interfaces: [
+          {
+            name: "wlan0",
+            type: "WIFI_INTERFACE",
+            macAddress: "001122334455",
+            ipAddress: "192.168.1.20",
+            ssid: "HomeWiFi",
+            state: "NETWORK_WIFI_DISCONNECTED",
+          },
+          {
+            name: "wlan1",
+            type: "WIFI_INTERFACE",
+            macAddress: "001122334456",
+            ipAddress: "192.0.2.1",
+            ssid: "Bose ST 10 (DDEEFF)",
+            frequencyKHz: 2_412_000,
+            state: "NETWORK_WIFI_CONNECTED",
+            mode: "ACCESS_POINT",
+          },
+          {
+            name: "wlan0:avahi",
+            macAddress: "001122334455",
+          },
+        ],
+      });
+    });
+
+    it("parses networkInfo after leaving setup mode", async () => {
+      mockFetch(
+        200,
+        `<networkInfo wifiProfileCount="1"><interfaces>
+  <interface type="WIFI_INTERFACE" name="wlan0" macAddress="001122334455" ipAddress="192.168.1.20" ssid="HomeWiFi" frequencyKHz="5200000" state="NETWORK_WIFI_CONNECTED" signal="GOOD_SIGNAL" mode="STATION" />
+  <interface type="WIFI_INTERFACE" name="wlan1" macAddress="001122334456" state="NETWORK_WIFI_DISCONNECTED" />
+</interfaces></networkInfo>`,
+      );
+      const result = await client.getNetworkInfo();
+      const val = unwrapOk<NetworkInfoResponse>(result);
+      expect(val.interfaces).toEqual([
+        {
+          name: "wlan0",
+          type: "WIFI_INTERFACE",
+          macAddress: "001122334455",
+          ipAddress: "192.168.1.20",
+          ssid: "HomeWiFi",
+          frequencyKHz: 5_200_000,
+          state: "NETWORK_WIFI_CONNECTED",
+          signal: "GOOD_SIGNAL",
+          mode: "STATION",
+        },
+        {
+          name: "wlan1",
+          type: "WIFI_INTERFACE",
+          macAddress: "001122334456",
+          state: "NETWORK_WIFI_DISCONNECTED",
+        },
+      ]);
+      expect(val.interfaces[1].ipAddress).toBeUndefined();
+    });
+  });
+
+  describe("/setup", () => {
+    it("parses setup state during setup mode", async () => {
+      const fetchMock = mockFetch(
+        200,
+        '<setupStateResponse state="SETUP_AP_OOB" systemstate="SETUP_LANG_NOT_SET" />',
+      );
+      const result = await client.getSetupState();
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/setup`,
+        expect.objectContaining({ method: "GET" }),
+      );
+      expect(unwrapOk<SetupStateResponse>(result)).toEqual({
+        state: "SETUP_AP_OOB",
+        systemState: "SETUP_LANG_NOT_SET",
+      });
+    });
+
+    it("parses setup state after leaving setup mode", async () => {
+      mockFetch(200, '<setupStateResponse state="SETUP_INACTIVE" />');
+      const result = await client.getSetupState();
+      expect(unwrapOk<SetupStateResponse>(result)).toEqual({
+        state: "SETUP_INACTIVE",
+      });
+    });
+
+    it("returns XmlParseError when the reply is not a setup state", async () => {
+      mockFetch(200, "<status>OK</status>");
+      const result = await client.getSetupState();
+      expect(unwrapErr(result)).toBeInstanceOf(XmlParseError);
+    });
+
+    it("sends SETUP_LEAVE POST", async () => {
+      const fetchMock = mockFetch(200, '<setupState state="SETUP_LEAVE" />');
+      const result = await client.setSetupState("SETUP_LEAVE");
+      expect(Result.isOk(result)).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/setup`,
+        expect.objectContaining({
+          method: "POST",
+          headers: { "Content-Type": "application/xml" },
+          body: '<setupState state="SETUP_LEAVE"/>',
+        }),
+      );
+    });
+  });
+
+  describe("abort signal", () => {
+    // Behaves like fetch: settles only when the signal aborts.
+    function mockHangingFetch() {
+      vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+        const { promise, reject } = Promise.withResolvers<Response>();
+        const signal = init?.signal;
+        if (signal?.aborted) {
+          reject(signal.reason);
+        }
+        signal?.addEventListener("abort", () => {
+          reject(signal.reason);
+        });
+        return promise;
+      });
+    }
+
+    it("returns NetworkError for an already-aborted signal", async () => {
+      mockHangingFetch();
+      const controller = new AbortController();
+      controller.abort();
+      const result = await client.getNetworkInfo({
+        signal: controller.signal,
+      });
+      expect(unwrapErr(result)).toBeInstanceOf(NetworkError);
+    });
+
+    it("returns NetworkError when aborted while the speaker holds the reply", async () => {
+      mockHangingFetch();
+      const controller = new AbortController();
+      const pending = client.sendCredentials("HomeWiFi", "secret", {
+        signal: controller.signal,
+      });
+      controller.abort();
+      const result = await pending;
+      expect(unwrapErr(result)).toBeInstanceOf(NetworkError);
     });
   });
 });

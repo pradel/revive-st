@@ -4,6 +4,7 @@ export type {
   KeyState,
   KeyValue,
   PlayStatus,
+  RequestOptions,
   SourceStatus,
 } from "./common.ts";
 export type { KeyPressRequest } from "./key.ts";
@@ -30,3 +31,8 @@ export type {
   SetToneControlsRequest,
   ToneControl,
 } from "./audio.ts";
+export type {
+  NetworkInfoResponse,
+  NetworkInterfaceInfo,
+} from "./network-info.ts";
+export type { SetupStateResponse } from "./setup.ts";
