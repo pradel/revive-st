@@ -1,4 +1,3 @@
-import { RootProvider } from "fumadocs-ui/provider/next";
 import type { Metadata } from "next";
 
 // eslint-disable-next-line no-undef
@@ -15,6 +14,7 @@ import "./global.css";
 import { Inter } from "next/font/google";
 
 import { FathomAnalytics } from "@/components/fathom";
+import { Provider } from "@/components/provider";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,9 +44,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
       </head>
       <body className="flex flex-col min-h-screen">
         <FathomAnalytics />
-        <RootProvider search={{ options: { type: "static" } }}>
-          {children}
-        </RootProvider>
+        <Provider>{children}</Provider>
       </body>
     </html>
   );
