@@ -13,6 +13,9 @@ COPY apps/website/package.json ./apps/website/
 COPY packages/bose-api-speaker-client/package.json ./packages/bose-api-speaker-client/
 COPY packages/bose-wifi/package.json ./packages/bose-wifi/
 
+# Copy pnpm patches referenced by patchedDependencies in pnpm-workspace.yaml
+COPY patches ./patches/
+
 # Remove root prepare script to prevent VP command requirement during build
 RUN npm pkg delete scripts.prepare
 
