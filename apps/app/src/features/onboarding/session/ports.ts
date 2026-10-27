@@ -91,6 +91,12 @@ export interface SpeakerHttp {
     ip: string,
     signal: AbortSignal,
   ) => Promise<Result<void, SpeakerError>>;
+  /** POST /name. */
+  setName: (
+    ip: string,
+    name: string,
+    signal: AbortSignal,
+  ) => Promise<Result<void, SpeakerError>>;
 }
 
 /** A resolved `_soundtouch._tcp` service. `mac` is the TXT `MAC` record (upper-case, no separators). */

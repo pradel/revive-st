@@ -1,7 +1,14 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, usePreventRemove, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useState } from "react";
+import {
+  type ComponentRef,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   Alert,
   Text,
@@ -17,12 +24,19 @@ import { isScenarioName } from "@/features/onboarding/adapters/simulated";
 import { CredentialsForm } from "@/features/onboarding/components/CredentialsForm";
 import { DoneView } from "@/features/onboarding/components/DoneView";
 import { FailedView } from "@/features/onboarding/components/FailedView";
+import { NameSpeakerView } from "@/features/onboarding/components/NameSpeakerView";
 import {
   ChooseSpeakerView,
   ManualJoinView,
   RationaleView,
 } from "@/features/onboarding/components/PromptViews";
+import { SetupScrollContext } from "@/features/onboarding/components/SetupLayout";
+import {
+  SetupUnavailableView,
+  SPEAKER_SETUP_SUPPORTED,
+} from "@/features/onboarding/components/SetupUnavailable";
 import { WorkingView } from "@/features/onboarding/components/WorkingView";
+import type { ScenarioName } from "@/features/onboarding/session/testing/scenarios";
 import type { Prompt, SetupView } from "@/features/onboarding/session/types";
 import {
   type SetupSessionHandle,
@@ -79,6 +93,9 @@ function SetupContent({ view, session, lastCredentials }: SetupContentProps) {
           onEnableWifi={() => {
             respond({ kind: "action", action: "openWifiPanel" });
           }}
+          onManualJoin={() => {
+            respond({ kind: "action", action: "manualJoin" });
+          }}
         />
       );
     }
@@ -119,6 +136,17 @@ function SetupContent({ view, session, lastCredentials }: SetupContentProps) {
             />
           );
         }
+        case "nameSpeaker": {
+          return (
+            <NameSpeakerView
+              currentName={prompt.currentName}
+              suggestions={prompt.suggestions}
+              onSubmit={(name) => {
+                respond({ kind: "name", name });
+              }}
+            />
+          );
+        }
         default: {
           return prompt satisfies never;
         }
@@ -139,7 +167,9 @@ function SetupContent({ view, session, lastCredentials }: SetupContentProps) {
       );
     }
     case "done": {
-      return <DoneView speaker={view.speaker} host={view.host} />;
+      return (
+        <DoneView speaker={view.speaker} renameFailed={view.renameFailed} />
+      );
     }
     default: {
       return view satisfies never;
@@ -147,13 +177,68 @@ function SetupContent({ view, session, lastCredentials }: SetupContentProps) {
   }
 }
 
-export default function OnboardingScreen() {
+/** Close button and scrolling content shared by the setup screens. */
+function SetupChrome({
+  scenario,
+  children,
+}: {
+  scenario: ScenarioName | undefined;
+  children: ReactNode;
+}) {
   const router = useRouter();
-  const { simulate } = useLocalSearchParams<{ simulate?: string }>();
-  const scenario =
-    __DEV__ && simulate !== undefined && isScenarioName(simulate)
-      ? simulate
-      : undefined;
+  const scrollRef = useRef<ComponentRef<typeof KeyboardAwareScrollView>>(null);
+  const scroll = useMemo(
+    () => ({
+      scrollToEnd: () => {
+        scrollRef.current?.scrollToEnd({ animated: true });
+      },
+    }),
+    [],
+  );
+  return (
+    <SafeAreaView style={$container}>
+      <View style={$topBar}>
+        {scenario !== undefined && (
+          <Text style={$simulated} numberOfLines={1}>
+            Simulated: {scenario}
+          </Text>
+        )}
+        <TouchableOpacity
+          onPress={() => {
+            if (router.canGoBack()) {
+              router.back();
+            } else {
+              router.replace("/");
+            }
+          }}
+          style={$closeButton}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Close setup"
+        >
+          <SymbolView
+            name={{ ios: "xmark", android: "close", web: "close" }}
+            tintColor={COLORS.textSecondary}
+            size={22}
+          />
+        </TouchableOpacity>
+      </View>
+      <SetupScrollContext.Provider value={scroll}>
+        <KeyboardAwareScrollView
+          ref={scrollRef}
+          contentContainerStyle={$content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bottomOffset={40}
+        >
+          {children}
+        </KeyboardAwareScrollView>
+      </SetupScrollContext.Provider>
+    </SafeAreaView>
+  );
+}
+
+function SetupScreen({ scenario }: { scenario: ScenarioName | undefined }) {
   const session = useSetupSession(scenario);
   const { view } = session;
   const [leaving, setLeaving] = useState(false);
@@ -162,6 +247,10 @@ export default function OnboardingScreen() {
   useEffect(() => {
     if (view?.kind === "prompt" && view.prompt.kind === "credentials") {
       setLastCredentials(view.prompt);
+    } else if (view?.kind === "working" && view.step !== "credentials") {
+      // Credentials asked again after delivery (wrong password) start from a
+      // fresh form, not from the one that was sent.
+      setLastCredentials(undefined);
     }
   }, [view]);
 
@@ -191,50 +280,40 @@ export default function OnboardingScreen() {
   );
 
   return (
-    <SafeAreaView style={$container}>
+    <SetupChrome scenario={scenario}>
       {view?.kind === "working" && <KeepAwake />}
-      <View style={$topBar}>
-        {scenario !== undefined && (
-          <Text style={$simulated} numberOfLines={1}>
-            Simulated: {scenario}
-          </Text>
-        )}
-        <TouchableOpacity
-          onPress={() => {
-            if (router.canGoBack()) {
-              router.back();
-            } else {
-              router.replace("/");
-            }
-          }}
-          style={$closeButton}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Close setup"
-        >
-          <SymbolView
-            name={{ ios: "xmark", android: "close", web: "close" }}
-            tintColor={COLORS.textSecondary}
-            size={22}
-          />
-        </TouchableOpacity>
-      </View>
-      <KeyboardAwareScrollView
-        contentContainerStyle={$content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-        bottomOffset={40}
-      >
-        {view !== undefined && (
-          <SetupContent
-            view={view}
-            session={session}
-            lastCredentials={lastCredentials}
-          />
-        )}
-      </KeyboardAwareScrollView>
-    </SafeAreaView>
+      {view !== undefined && (
+        <SetupContent
+          view={view}
+          session={session}
+          lastCredentials={lastCredentials}
+        />
+      )}
+    </SetupChrome>
   );
+}
+
+export default function OnboardingScreen() {
+  const router = useRouter();
+  const { simulate } = useLocalSearchParams<{ simulate?: string }>();
+  const scenario =
+    __DEV__ && simulate !== undefined && isScenarioName(simulate)
+      ? simulate
+      : undefined;
+
+  // Simulated setup runs on fakes, so it stays available everywhere in dev builds.
+  if (!SPEAKER_SETUP_SUPPORTED && scenario === undefined) {
+    return (
+      <SetupChrome scenario={undefined}>
+        <SetupUnavailableView
+          onClose={() => {
+            router.dismissTo("/");
+          }}
+        />
+      </SetupChrome>
+    );
+  }
+  return <SetupScreen scenario={scenario} />;
 }
 
 const $container: ViewStyle = {

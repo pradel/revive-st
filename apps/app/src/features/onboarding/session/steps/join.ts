@@ -18,8 +18,6 @@ export const JOIN_TIMEOUT_MS = 90_000;
 export const JOIN_PROBE_BUDGET_MS = 10_000;
 export const JOIN_PROBE_INTERVAL_MS = 1000;
 
-export type JoinMode = "auto" | "manual";
-
 export interface Joined {
   identity: SpeakerIdentity;
   link: Link;
@@ -32,20 +30,29 @@ export type JoinError =
   | ManualJoinNotConnected;
 
 /**
+ * `auto` joins `target`; `manual` asks the user to connect in the Wi-Fi
+ * settings, then binds to that network. Without a target (scanning never found
+ * the speaker) the setup network is whatever the phone is connected to.
+ */
+export type JoinTarget =
+  | { mode: "auto"; target: ScanResult }
+  | { mode: "manual"; target?: ScanResult };
+
+/**
  * Binds to the setup network (`wifi.join`, or the manual prompt +
  * `bindToConnectedWifi`) and probes `/info` at `SETUP_IP`. Done when the
- * speaker answers and its deviceID ends with the setup SSID suffix.
+ * speaker answers and, when the setup SSID is known, its deviceID ends with
+ * the SSID suffix.
  */
 export async function join(
   env: StepEnv,
   signal: AbortSignal,
-  target: ScanResult,
-  mode: JoinMode,
+  request: JoinTarget,
 ): Promise<Result<Joined, JoinError>> {
   const { wifi, clock } = env.deps;
-  const { ssid, bssid } = target;
   let joined: Result<Link, JoinError>;
-  if (mode === "auto") {
+  if (request.mode === "auto") {
+    const { ssid, bssid } = request.target;
     env.working("join", { kind: "joining", ssid });
     joined = await withTimeout(
       clock,
@@ -64,6 +71,10 @@ export async function join(
   if (joined.isErr()) {
     return Result.err(joined.error);
   }
+  const { ssid, bssid } = request.target ?? {
+    ssid: (await wifi.currentNetwork()).ssid ?? "",
+    bssid: "",
+  };
 
   env.working("join", { kind: "probing", ssid });
   const info = await probeInfo(env.deps, signal, SETUP_IP, {
@@ -73,7 +84,7 @@ export async function join(
   if (info.isErr()) {
     return Result.err(new SpeakerUnreachable({ ssid, reason: "noAnswer" }));
   }
-  const suffix = setupSuffix(ssid);
+  const suffix = request.target ? setupSuffix(ssid) : null;
   if (suffix !== null && !info.value.deviceID.toUpperCase().endsWith(suffix)) {
     return Result.err(new SpeakerUnreachable({ ssid, reason: "wrongSpeaker" }));
   }

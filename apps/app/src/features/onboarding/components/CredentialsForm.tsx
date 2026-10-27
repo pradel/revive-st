@@ -1,7 +1,14 @@
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import {
+  type ComponentRef,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   ScrollView,
   Text,
   TextInput,
@@ -23,6 +30,7 @@ import {
   $setupNote,
   SetupButton,
   SetupHeader,
+  SetupScrollContext,
   signalStrength,
 } from "./SetupLayout";
 
@@ -32,6 +40,12 @@ const SECURITY_LABEL: Record<Security, string> = {
   wpa3: "WPA3",
   unsupported: "Not supported",
 };
+
+/**
+ * Focusing on mount opens the keyboard before the keyboard-aware scroll view has
+ * measured the field, which leaves the field hidden behind the keyboard.
+ */
+const REJECTED_FOCUS_DELAY_MS = 400;
 
 interface CredentialsFormProps {
   networks: HomeNetwork[];
@@ -67,6 +81,45 @@ export function CredentialsForm({
   const [showPassword, setShowPassword] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [focused, setFocused] = useState<"ssid" | "password" | null>(null);
+  const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
+  const { scrollToEnd } = useContext(SetupScrollContext);
+  const keyboardShown = useRef<ReturnType<typeof Keyboard.addListener> | null>(
+    null,
+  );
+
+  /** The inputs sit at the end of the form: scroll there once the keyboard is up. */
+  const revealInputs = () => {
+    keyboardShown.current?.remove();
+    keyboardShown.current = null;
+    if (Keyboard.isVisible()) {
+      scrollToEnd();
+      return;
+    }
+    keyboardShown.current = Keyboard.addListener("keyboardDidShow", () => {
+      keyboardShown.current?.remove();
+      keyboardShown.current = null;
+      scrollToEnd();
+    });
+  };
+
+  useEffect(
+    () => () => {
+      keyboardShown.current?.remove();
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (reason !== "rejected") {
+      return;
+    }
+    const timer = setTimeout(() => {
+      passwordRef.current?.focus();
+    }, REJECTED_FOCUS_DELAY_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [reason]);
 
   const ssid = manual ? manualSsid : (selected ?? "");
   const security = networks.find((network) => network.ssid === ssid)?.security;
@@ -94,25 +147,6 @@ export function CredentialsForm({
         title="Connect to Wi-Fi"
         description="Choose the Wi-Fi network the speaker should join and enter its password. 2.4 GHz and 5 GHz networks both work."
       />
-
-      {reason === "rejected" && (
-        <Card style={[$setupCard, $rejectedCard]}>
-          <SymbolView
-            name={{
-              ios: "exclamationmark.triangle",
-              android: "warning",
-              web: "warning",
-            }}
-            tintColor={COLORS.warning}
-            size={20}
-          />
-          <Text style={$rejectedText}>
-            The speaker couldn't join{" "}
-            <Text style={$setupEmphasis}>{suggested ?? "the network"}</Text>.
-            Check the password and try again.
-          </Text>
-        </Card>
-      )}
 
       <Card style={[$setupCard, $listCard]}>
         <View style={$listHeader}>
@@ -241,6 +275,7 @@ export function CredentialsForm({
               onChangeText={setManualSsid}
               onFocus={() => {
                 setFocused("ssid");
+                revealInputs();
               }}
               onBlur={() => {
                 setFocused(null);
@@ -252,6 +287,24 @@ export function CredentialsForm({
         </Card>
       )}
 
+      {reason === "rejected" && (
+        <Card style={[$setupCard, $rejectedCard]}>
+          <SymbolView
+            name={{
+              ios: "exclamationmark.triangle",
+              android: "warning",
+              web: "warning",
+            }}
+            tintColor={COLORS.error}
+            size={20}
+          />
+          <Text style={$rejectedText}>
+            The speaker couldn't join{" "}
+            <Text style={$setupEmphasis}>{suggested ?? "the network"}</Text>.
+            The password is probably wrong: check it and try again.
+          </Text>
+        </Card>
+      )}
       {needsPassword ? (
         <Card style={[$setupCard, $inputCard]}>
           <View style={[$inputRow, focused === "password" && $inputFocused]}>
@@ -261,6 +314,7 @@ export function CredentialsForm({
               size={20}
             />
             <TextInput
+              ref={passwordRef}
               style={$input}
               placeholder={
                 security === undefined
@@ -272,6 +326,7 @@ export function CredentialsForm({
               onChangeText={setPassword}
               onFocus={() => {
                 setFocused("password");
+                revealInputs();
               }}
               onBlur={() => {
                 setFocused(null);
@@ -354,13 +409,13 @@ const $rejectedCard: ViewStyle = {
   alignItems: "flex-start",
   gap: 12,
   borderWidth: 1,
-  borderColor: COLORS.warningBorder,
-  backgroundColor: COLORS.warningDarker,
+  borderColor: COLORS.errorDark,
+  backgroundColor: COLORS.errorDarker,
 };
 
 const $rejectedText: TextStyle = {
   flex: 1,
-  color: COLORS.warning,
+  color: COLORS.errorLight,
   fontSize: 14,
   lineHeight: 20,
 };

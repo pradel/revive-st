@@ -1,5 +1,5 @@
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import type { ReactNode } from "react";
+import { createContext, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Text,
@@ -12,6 +12,15 @@ import {
 import { COLORS } from "@/ui/theme";
 
 export type SymbolName = SymbolViewProps["name"];
+
+/**
+ * Lets setup views reveal content hidden behind the keyboard. The scroll view's
+ * own scroll-to-focused-input did not move the form's fields above the keyboard
+ * on Android 17 (Pixel), so the form scrolls explicitly.
+ */
+export const SetupScrollContext = createContext<{ scrollToEnd: () => void }>({
+  scrollToEnd: () => undefined,
+});
 
 interface SetupHeaderProps {
   icon: SymbolName;

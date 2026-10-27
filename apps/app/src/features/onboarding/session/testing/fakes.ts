@@ -230,6 +230,8 @@ export interface FakeSpeakerConfig {
   silentAfterLinkMs?: number;
   /** Announces itself over mDNS while on a home network. Default true. */
   announces?: boolean;
+  /** `POST /name` replies HTTP 500 and the name stays. */
+  renameFails?: boolean;
 }
 
 export type JoinOutcome = "ok" | "rejected" | "hang";
@@ -294,6 +296,12 @@ export class FakeSpeaker {
   readonly #world: FakeWorld;
   setupMode: boolean;
   apUp: boolean;
+  /** Current `/info` name; `POST /name` changes it. */
+  name: string;
+  /** `POST /name` fails while set (initially `config.renameFails`). */
+  renameFails: boolean;
+  /** Names received by `POST /name` that took effect. */
+  readonly renames: string[] = [];
   station: { ssid: string; ip: string } | null;
   wlan0VisibleAt = 0;
   pausedUntil = Number.NEGATIVE_INFINITY;
@@ -308,6 +316,8 @@ export class FakeSpeaker {
     this.config = config;
     this.setupMode = config.setupMode ?? true;
     this.apUp = this.setupMode;
+    this.name = config.name;
+    this.renameFails = config.renameFails ?? false;
     this.station = config.preconfigured
       ? { ssid: config.preconfigured.ssid, ip: config.homeIp }
       : null;
@@ -332,7 +342,7 @@ export class FakeSpeaker {
   info(): SpeakerInfo {
     return {
       deviceID: this.config.deviceID,
-      name: this.config.name,
+      name: this.name,
       type: this.config.type,
     };
   }
@@ -518,9 +528,21 @@ export class FakeWifi implements WifiPort {
     }
   }
 
+  /**
+   * The user connected the phone to `speaker`'s setup network in the Wi-Fi
+   * settings (manual path); the phone returns home when that network goes down.
+   */
+  connectManually(speaker: FakeSpeaker): void {
+    this.manualConnection = speaker.config.bssid;
+    this.setNetwork({ transport: "wifi", ssid: speaker.setupSsid });
+  }
+
   speakerApDown(speaker: FakeSpeaker): void {
     if (this.boundTo === speaker) {
       this.loseLink();
+    }
+    if (this.#network.ssid === speaker.setupSsid) {
+      this.setNetwork(this.#homeState());
     }
   }
 
@@ -811,6 +833,24 @@ export class FakeSpeakerHttp implements SpeakerHttp {
       );
     }
     route.speaker.leave(route.via);
+    return Result.ok(undefined);
+  }
+
+  async setName(
+    ip: string,
+    name: string,
+    signal: AbortSignal,
+  ): Promise<Result<void, SpeakerError>> {
+    this.#world.record("speaker", "setName");
+    const route = this.#reachable(ip);
+    if (!route) {
+      return hang(signal);
+    }
+    if (route.speaker.renameFails) {
+      return Result.err(new SpeakerResponseError({ message: "HTTP 500" }));
+    }
+    route.speaker.name = name;
+    route.speaker.renames.push(name);
     return Result.ok(undefined);
   }
 

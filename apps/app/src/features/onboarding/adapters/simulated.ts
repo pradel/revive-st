@@ -40,8 +40,8 @@ export function simulatedScenarios(): {
 /**
  * The Wi-Fi port of `world`, where the system screens the user is sent to
  * "fix" the fake phone: the Wi-Fi panel turns Wi-Fi on; the Wi-Fi settings
- * reconnect home Wi-Fi if it is gone, else connect to the setup network
- * (manual join).
+ * reconnect home Wi-Fi if it is gone, else connect the phone to the setup
+ * network (manual join).
  */
 function simulatedWifi(world: FakeWorld): WifiPort {
   const fake = world.wifi;
@@ -69,10 +69,13 @@ function simulatedWifi(world: FakeWorld): WifiPort {
         });
         return;
       }
-      const target =
-        fake.joins.at(-1)?.bssid ??
-        world.speakers.find((speaker) => speaker.apUp)?.config.bssid;
-      fake.manualConnection = target ?? null;
+      const joined = fake.joins.at(-1)?.bssid;
+      const speaker = world.speakers.find((entry) =>
+        joined === undefined ? entry.apUp : entry.config.bssid === joined,
+      );
+      if (speaker) {
+        fake.connectManually(speaker);
+      }
     },
   };
 }

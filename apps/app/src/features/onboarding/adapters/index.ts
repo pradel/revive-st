@@ -6,11 +6,14 @@ import { expoPermissions } from "./permissions";
 import { appLog, realClock } from "./runtime";
 import { boseSpeakerHttp } from "./speakerHttp";
 import { androidWifi } from "./wifi.android";
-import { iosWifi } from "./wifi.ios";
 
+/** Android only: iOS apps cannot scan for Wi-Fi networks, so setup is not offered there. */
 export function createSetupDeps(): SetupDeps {
+  if (Platform.OS !== "android") {
+    throw new Error("Speaker setup is only available on Android");
+  }
   return {
-    wifi: Platform.OS === "android" ? androidWifi : iosWifi,
+    wifi: androidWifi,
     speaker: boseSpeakerHttp,
     discovery: zeroconfDiscovery,
     permissions: expoPermissions,

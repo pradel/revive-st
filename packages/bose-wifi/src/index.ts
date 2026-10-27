@@ -1,4 +1,4 @@
-import BoseWifiModule, { type LinkEvent } from "./BoseWifiModule";
+import { boseWifiModule, type LinkEvent } from "./BoseWifiModule";
 
 export type { LinkEvent } from "./BoseWifiModule";
 
@@ -14,13 +14,13 @@ export async function join(
   bssid: string,
   timeoutMs: number,
 ): Promise<void> {
-  await BoseWifiModule.join(ssid, bssid, timeoutMs);
+  await boseWifiModule().join(ssid, bssid, timeoutMs);
 }
 
 /** Rejects a pending join, unregisters the request and unbinds. Idempotent; never rejects. */
 export async function release(): Promise<void> {
   try {
-    await BoseWifiModule.release();
+    await boseWifiModule().release();
   } catch {
     // Release is best-effort cleanup.
   }
@@ -28,20 +28,20 @@ export async function release(): Promise<void> {
 
 /** Binds the process to the currently connected Wi-Fi network; `false` if there is none. */
 export async function bindToConnectedWifi(): Promise<boolean> {
-  return BoseWifiModule.bindToConnectedWifi();
+  return boseWifiModule().bindToConnectedWifi();
 }
 
 export async function openWifiPanel(): Promise<void> {
-  await BoseWifiModule.openWifiPanel();
+  await boseWifiModule().openWifiPanel();
 }
 
 export function addLinkListener(
   event: LinkEvent,
   listener: () => void,
 ): { remove: () => void } {
-  return BoseWifiModule.addListener(event, listener);
+  return boseWifiModule().addListener(event, listener);
 }
 
 export async function openWifiSettings(): Promise<void> {
-  await BoseWifiModule.openWifiSettings();
+  await boseWifiModule().openWifiSettings();
 }

@@ -2,7 +2,6 @@ import { Result } from "better-result";
 
 import { retryWithin, withTimeout } from "../async";
 import {
-  CredentialsRejected,
   DeliveryFailed,
   LinkLost,
   SpeakerApiError,
@@ -23,10 +22,14 @@ export const NETWORK_INFO_INTERVAL_MS = 1000;
 /** `ApiError` name the speaker replies with when it could not join (wrong password or DHCP refused). */
 export const CREDENTIALS_REJECTED_NAME = "WIFI_PROFILE_SETUP_FAILED";
 
-export interface Delivered {
-  /** The speaker's home-network address (`wlan0`), when it reported one. */
-  homeIp?: string;
-}
+/**
+ * `joined`: the speaker is on the network; `homeIp` is its `wlan0` address when
+ * it reported one. `rejected`: `WIFI_PROFILE_SETUP_FAILED`, the user re-enters
+ * the credentials (not an error).
+ */
+export type Delivered =
+  | { kind: "joined"; homeIp?: string }
+  | { kind: "rejected" };
 
 /**
  * Sends the credentials over the link; the reply is the verdict. A transport
@@ -37,7 +40,7 @@ export async function deliver(
   env: StepEnv,
   signal: AbortSignal,
   credentials: Credentials,
-): Promise<Result<Delivered, CredentialsRejected | DeliveryFailed | LinkLost>> {
+): Promise<Result<Delivered, DeliveryFailed | LinkLost>> {
   const { speaker, clock, log } = env.deps;
   const { ssid } = credentials;
   env.working("deliver", { kind: "delivering", ssid });
@@ -56,7 +59,9 @@ export async function deliver(
     env.working("deliver", { kind: "confirming", ssid });
     const homeIp = await homeAddress(env, signal, ssid, "poll");
     log.event("deliver.homeIp", { found: homeIp !== undefined });
-    return Result.ok(homeIp === undefined ? {} : { homeIp });
+    return Result.ok(
+      homeIp === undefined ? { kind: "joined" } : { kind: "joined", homeIp },
+    );
   }
 
   const error = sent.error;
@@ -66,14 +71,15 @@ export async function deliver(
       errorName: error.errorName,
       value: error.value,
     });
+    if (error.errorName === CREDENTIALS_REJECTED_NAME) {
+      return Result.ok({ kind: "rejected" });
+    }
     return Result.err(
-      error.errorName === CREDENTIALS_REJECTED_NAME
-        ? new CredentialsRejected({ ssid })
-        : new DeliveryFailed({
-            ssid,
-            message: `${error.errorName} (${error.value})`,
-            cause: error,
-          }),
+      new DeliveryFailed({
+        ssid,
+        message: `${error.errorName} (${error.value})`,
+        cause: error,
+      }),
     );
   }
   if (SpeakerResponseError.is(error)) {
@@ -103,7 +109,7 @@ async function confirmAfterTransportError(
   const homeIp = await homeAddress(env, signal, ssid, "firstReply");
   log.event("deliver.confirm", { joined: homeIp !== undefined });
   if (homeIp !== undefined) {
-    return Result.ok({ homeIp });
+    return Result.ok({ kind: "joined", homeIp });
   }
   return Result.err(
     new DeliveryFailed({
