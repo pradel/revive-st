@@ -7,7 +7,7 @@ import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
 import {
-  findPlayingSpeaker,
+  findActiveSpeaker,
   hasLoadedMedia,
   isRadioSource,
   isSpeakerPlaying,
@@ -38,7 +38,7 @@ export default function Index() {
   } = useBose();
   const openSpeakerSetup = useOpenSpeakerSetup();
 
-  const presetSpeaker = findPlayingSpeaker(speakers) ?? speakers[0];
+  const presetSpeaker = findActiveSpeaker(speakers) ?? speakers[0];
 
   const openNowPlaying = (speaker: BoseSpeaker) => {
     router.push(

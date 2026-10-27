@@ -14,9 +14,10 @@ export const color = {
   textPrimary: "#FFFFFF",
   textSecondary: "rgba(255,255,255,0.68)",
   textTertiary: "rgba(255,255,255,0.45)",
-  accent: "#1DB954",
-  accentMuted: "rgba(29,185,84,0.16)",
-  onAccent: "#04140A",
+  /** Revive mint: the logo's neon green shifted towards teal, distinct from Spotify's brand green. */
+  accent: "#2EDCA0",
+  accentMuted: "rgba(46,220,160,0.16)",
+  onAccent: "#04160F",
   danger: "#FF5449",
   warning: "#FFB86C",
   scrim: "rgba(0,0,0,0.55)",

@@ -219,7 +219,7 @@ const $heroIconContainer: ViewStyle = {
   width: 64,
   height: 64,
   borderRadius: 32,
-  backgroundColor: "rgba(29, 185, 84, 0.1)",
+  backgroundColor: COLORS.primaryTransparent,
   justifyContent: "center",
   alignItems: "center",
   marginBottom: 16,

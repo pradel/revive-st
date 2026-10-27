@@ -11,13 +11,13 @@ export const COLORS = {
   textMuted: "#8e918f", // Muted variant for metadata
   textDisabled: "#444746", // Disabled state
 
-  // Primary - Luminous Emerald
-  primary: "#1DB954", // Signature Emerald Green
-  primaryTransparent: "rgba(29, 185, 84, 0.1)",
+  // Primary - Revive mint (shared with the new design tokens)
+  primary: "#2EDCA0",
+  primaryTransparent: "rgba(46, 220, 160, 0.1)",
 
   // Status - Success (Mapped to Primary as they share the green palette)
   successLight: "#2eff71",
-  success: "#1db954",
+  success: "#2EDCA0",
   successDark: "#00521c",
 
   // Status - Warning

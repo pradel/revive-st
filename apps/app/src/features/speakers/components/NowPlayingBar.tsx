@@ -3,13 +3,13 @@ import { useRouter } from "expo-router";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { MiniPlayer } from "@/ui/ds/MiniPlayer";
 
-import { findPlayingSpeaker } from "../lib/playback";
+import { findActiveSpeaker, isSpeakerPlaying } from "../lib/playback";
 
-/** `MiniPlayer` for the first playing speaker; renders nothing otherwise. */
+/** `MiniPlayer` for the playing (or paused) speaker; renders nothing otherwise. */
 export function NowPlayingBar() {
   const router = useRouter();
   const { speakers, playPauseMutation } = useBose();
-  const speaker = findPlayingSpeaker(speakers);
+  const speaker = findActiveSpeaker(speakers);
 
   if (!speaker) {
     return null;
@@ -20,7 +20,7 @@ export function NowPlayingBar() {
       title={speaker.track ?? speaker.album ?? "Unknown Track"}
       subtitle={[speaker.artist, speaker.name].filter(Boolean).join(" · ")}
       artworkUri={speaker.artUrl}
-      isPlaying
+      isPlaying={isSpeakerPlaying(speaker)}
       onPress={() => {
         router.push(
           `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
