@@ -8,7 +8,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { COLORS } from "./theme";
+import { color } from "./tokens";
 
 interface PulseRingProps {
   delay: number;
@@ -44,7 +44,7 @@ export function PulseRing({ delay, size = 80 }: PulseRingProps) {
 
 const $staticPulseRing: ViewStyle = {
   position: "absolute",
-  backgroundColor: COLORS.primaryTransparent,
+  backgroundColor: color.accentMuted,
   borderWidth: 1,
-  borderColor: COLORS.primary,
+  borderColor: color.accent,
 };

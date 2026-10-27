@@ -1,29 +1,19 @@
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import {
-  Text,
-  TextInput,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { View, type TextStyle, type ViewStyle } from "react-native";
 
-import { Card } from "@/components/ui/Card";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import type { IconName } from "@/ui/ds/Icon";
+import { Text } from "@/ui/ds/Text";
+import { TextField } from "@/ui/ds/TextField";
+import { space } from "@/ui/tokens";
 
 import { describeError, type SetupError } from "../session/errors";
 import type { RecoveryAction } from "../session/types";
-import {
-  $setupButtons,
-  $setupCard,
-  SetupButton,
-  SetupHeader,
-  type SymbolName,
-} from "./SetupLayout";
+import { $setupButtons, $setupCard, SetupHeader } from "./SetupLayout";
 
 const ACTIONS: Record<
   Exclude<RecoveryAction, "enterIp">,
-  { label: string; icon: SymbolName }
+  { label: string; icon: IconName }
 > = {
   retry: {
     label: "Try again",
@@ -109,20 +99,14 @@ export function FailedView({
       />
 
       {actions.includes("enterIp") && (
-        <Card style={$setupCard}>
-          <Text style={$ipLabel}>
+        <View style={$setupCard}>
+          <Text variant="body" color="textSecondary" style={$ipLabel}>
             Know the speaker's address? Find it in your router's device list.
           </Text>
-          <View style={$ipRow}>
-            <SymbolView
-              name={{ ios: "network", android: "lan", web: "lan" }}
-              tintColor={COLORS.primary}
-              size={20}
-            />
-            <TextInput
-              style={$ipInput}
+          <View style={$ipField}>
+            <TextField
+              icon={{ ios: "network", android: "lan", web: "lan" }}
               placeholder="192.168.1.20"
-              placeholderTextColor={COLORS.textMuted}
               value={ip}
               onChangeText={setIp}
               keyboardType="decimal-pad"
@@ -134,7 +118,7 @@ export function FailedView({
               }}
             />
           </View>
-          <SetupButton
+          <Button
             label="Check this address"
             variant="secondary"
             icon={{
@@ -147,12 +131,12 @@ export function FailedView({
               onEnterIp(ip);
             }}
           />
-        </Card>
+        </View>
       )}
 
       <View style={$setupButtons}>
         {buttons.map((action, index) => (
-          <SetupButton
+          <Button
             key={action}
             label={ACTIONS[action].label}
             icon={ACTIONS[action].icon}
@@ -168,26 +152,9 @@ export function FailedView({
 }
 
 const $ipLabel: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 14,
-  lineHeight: 20,
-  marginBottom: 12,
+  marginBottom: space.sm,
 };
 
-const $ipRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 12,
-  height: 52,
-  paddingHorizontal: 12,
-  borderRadius: 12,
-  backgroundColor: COLORS.background,
-  marginBottom: 12,
-};
-
-const $ipInput: TextStyle = {
-  flex: 1,
-  fontSize: 16,
-  color: COLORS.text,
-  height: "100%",
+const $ipField: ViewStyle = {
+  marginBottom: space.sm,
 };

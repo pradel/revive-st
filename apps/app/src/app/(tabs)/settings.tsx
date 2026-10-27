@@ -1,27 +1,28 @@
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
   Linking,
   ScrollView,
-  Text,
-  TouchableOpacity,
   View,
-  type TextStyle,
   type ViewStyle,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Card } from "@/components/ui/Card";
 import { APP_CONFIG } from "@/config";
 import { SimulateSetupCard } from "@/features/onboarding/components/SimulateSetupCard";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
-import { PageHeader } from "@/ui/PageHeader";
-import { COLORS } from "@/ui/theme";
+import { Icon, icons, type IconName } from "@/ui/ds/Icon";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Screen } from "@/ui/ds/Screen";
+import { SectionHeader } from "@/ui/ds/SectionHeader";
+import { color, radius, space } from "@/ui/tokens";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
+
+const chevron = (
+  <Icon name={icons.chevronRight} size={16} color="textTertiary" />
+);
 
 export default function AppSettings() {
   const router = useRouter();
@@ -29,255 +30,111 @@ export default function AppSettings() {
   const { isScanning, rescan } = useBose();
 
   return (
-    <SafeAreaView style={$container}>
-      <PageHeader title="Settings" hideIcon />
+    <Screen title="Settings">
       <ScrollView
-        style={{ flex: 1 }}
         contentContainerStyle={$content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={$sectionLabel}>About</Text>
-
-        <Card style={$heroCard}>
-          <View style={$heroIconContainer}>
-            <SymbolView
-              name={{
-                ios: "speaker.wave.2",
-                android: "speaker",
-                web: "speaker",
-              }}
-              tintColor={COLORS.primary}
-              size={32}
-            />
-          </View>
-          <Text style={$heroTitle}>Revive SoundTouch</Text>
-          <Text style={$heroSubtitle}>Version {version}</Text>
-        </Card>
-
-        <Card style={{ paddingVertical: 4 }}>
-          <TouchableOpacity
-            style={$linkCard}
-            activeOpacity={0.7}
-            onPress={() => {
-              void Linking.openURL(APP_CONFIG.WEBSITE_URL);
-            }}
-          >
-            <View style={$linkIconContainer}>
-              <SymbolView
-                name={{ ios: "globe", android: "language", web: "language" }}
-                tintColor={COLORS.primary}
-                size={20}
-              />
-            </View>
-            <Text style={[$linkText, { flex: 1 }]}>Website</Text>
-            <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
-              }}
-              tintColor={COLORS.textMuted}
-              size={20}
-            />
-          </TouchableOpacity>
-
-          <View style={$infoDivider} />
-
-          <TouchableOpacity
-            style={$linkCard}
-            activeOpacity={0.7}
-            onPress={() => {
-              void Linking.openURL(APP_CONFIG.GITHUB_URL);
-            }}
-          >
-            <View style={$linkIconContainer}>
-              <SymbolView
-                name={{
-                  ios: "chevron.left.forwardslash.chevron.right",
-                  android: "code",
-                  web: "code",
-                }}
-                tintColor={COLORS.primary}
-                size={20}
-              />
-            </View>
-            <Text style={[$linkText, { flex: 1 }]}>GitHub</Text>
-            <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
-              }}
-              tintColor={COLORS.textMuted}
-              size={20}
-            />
-          </TouchableOpacity>
-        </Card>
-
-        <Text style={$sectionLabel}>Network</Text>
-        <Card
-          style={[$linkCard, isScanning && { opacity: 0.6 }]}
-          render={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={rescan}
-              disabled={isScanning}
+        <SectionHeader title="About" />
+        <ListRow
+          title="Revive SoundTouch"
+          subtitle={`Version ${version}`}
+          leading={<RowIcon name={icons.speaker} />}
+        />
+        <ListRow
+          title="Website"
+          leading={
+            <RowIcon
+              name={{ ios: "globe", android: "language", web: "language" }}
             />
           }
-        >
-          <View style={$linkIconContainer}>
-            {isScanning ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={COLORS.primary}
-                size={20}
-              />
-            )}
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={$linkText}>Rescan Local Network</Text>
-            <Text style={$linkSubText}>
-              {isScanning
-                ? "Scanning network..."
-                : "Search for SoundTouch speakers"}
-            </Text>
-          </View>
-          <SymbolView
-            name={{
-              ios: "chevron.right",
-              android: "chevron_right",
-              web: "chevron_right",
-            }}
-            tintColor={COLORS.textMuted}
-            size={20}
-          />
-        </Card>
-
-        <Text style={$sectionLabel}>Developer</Text>
-        <Card
-          style={$linkCard}
-          render={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                router.push("/logs");
+          trailing={chevron}
+          onPress={() => {
+            void Linking.openURL(APP_CONFIG.WEBSITE_URL);
+          }}
+        />
+        <ListRow
+          title="GitHub"
+          leading={
+            <RowIcon
+              name={{
+                ios: "chevron.left.forwardslash.chevron.right",
+                android: "code",
+                web: "code",
               }}
             />
           }
-        >
-          <View style={$linkIconContainer}>
-            <SymbolView
+          trailing={chevron}
+          onPress={() => {
+            void Linking.openURL(APP_CONFIG.GITHUB_URL);
+          }}
+        />
+
+        <SectionHeader title="Network" />
+        <ListRow
+          title="Rescan local network"
+          subtitle={
+            isScanning ? "Scanning network…" : "Search for SoundTouch speakers"
+          }
+          leading={
+            <View style={$iconWell}>
+              {isScanning ? (
+                <ActivityIndicator size="small" color={color.textSecondary} />
+              ) : (
+                <Icon name={icons.refresh} />
+              )}
+            </View>
+          }
+          trailing={chevron}
+          onPress={rescan}
+          disabled={isScanning}
+        />
+
+        <SectionHeader title="Developer" />
+        <ListRow
+          title="Logs"
+          subtitle={`${logs.length} entries stored`}
+          leading={
+            <RowIcon
               name={{ ios: "terminal", android: "terminal", web: "terminal" }}
-              tintColor={COLORS.primary}
-              size={20}
             />
+          }
+          trailing={chevron}
+          onPress={() => {
+            router.push("/logs");
+          }}
+        />
+        {__DEV__ && (
+          <View style={$devSlot}>
+            <SimulateSetupCard />
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={$linkText}>Logs</Text>
-            <Text style={$linkSubText}>{logs.length} entries stored</Text>
-          </View>
-          <SymbolView
-            name={{
-              ios: "chevron.right",
-              android: "chevron_right",
-              web: "chevron_right",
-            }}
-            tintColor={COLORS.textMuted}
-            size={20}
-          />
-        </Card>
-        {__DEV__ && <SimulateSetupCard />}
+        )}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
-const $container: ViewStyle = {
-  flex: 1,
-  backgroundColor: COLORS.background,
-};
+function RowIcon({ name }: { name: IconName }) {
+  return (
+    <View style={$iconWell}>
+      <Icon name={name} />
+    </View>
+  );
+}
 
 const $content: ViewStyle = {
-  paddingHorizontal: 20,
-  paddingBottom: 40,
-  gap: 8,
+  paddingBottom: space.xxl,
 };
 
-const $heroCard: ViewStyle = {
+const $iconWell: ViewStyle = {
+  width: 40,
+  height: 40,
   alignItems: "center",
-  paddingVertical: 24,
-  marginBottom: 8,
-};
-
-const $heroIconContainer: ViewStyle = {
-  width: 64,
-  height: 64,
-  borderRadius: 32,
-  backgroundColor: COLORS.primaryTransparent,
   justifyContent: "center",
-  alignItems: "center",
-  marginBottom: 16,
+  borderRadius: radius.sm,
+  backgroundColor: color.surface1,
 };
 
-const $heroTitle: TextStyle = {
-  fontSize: 22,
-  fontWeight: "bold",
-  color: COLORS.text,
-  marginBottom: 4,
-};
-
-const $heroSubtitle: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-};
-
-const $sectionLabel: TextStyle = {
-  fontSize: 13,
-  fontWeight: "700",
-  color: COLORS.textMuted,
-  textTransform: "uppercase",
-  letterSpacing: 1,
-  marginTop: 16,
-  marginBottom: 4,
-  marginLeft: 4,
-};
-
-const $linkCard: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingVertical: 12,
-};
-
-const $linkIconContainer: ViewStyle = {
-  width: 36,
-  height: 36,
-  borderRadius: 8,
-  backgroundColor: "rgba(255, 255, 255, 0.05)",
-  justifyContent: "center",
-  alignItems: "center",
-  marginRight: 16,
-};
-
-const $linkText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $linkSubText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  marginTop: 2,
-};
-
-const $infoDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginVertical: 4,
+const $devSlot: ViewStyle = {
+  paddingHorizontal: space.screen,
 };

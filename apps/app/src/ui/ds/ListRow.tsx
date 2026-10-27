@@ -18,6 +18,8 @@ export interface ListRowProps {
   trailing?: ReactNode;
   onPress?: () => void;
   disabled?: boolean;
+  /** Makes the row a radio option; a selected row is tinted with the accent. */
+  selected?: boolean;
 }
 
 export function ListRow({
@@ -29,15 +31,18 @@ export function ListRow({
   trailing,
   onPress,
   disabled = false,
+  selected,
 }: ListRowProps) {
+  const isRadio = selected !== undefined;
   return (
     <Pressable
-      accessibilityRole={onPress ? "button" : undefined}
-      accessibilityState={{ disabled }}
+      accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
+      accessibilityState={isRadio ? { disabled, selected } : { disabled }}
       onPress={onPress}
       disabled={disabled || !onPress}
       style={({ pressed }) => [
         $row,
+        selected === true && $selected,
         pressed && $pressed,
         disabled && $disabled,
       ]}
@@ -52,7 +57,11 @@ export function ListRow({
         />
       )}
       <View style={$text}>
-        <Text variant="body" numberOfLines={1}>
+        <Text
+          variant="body"
+          color={selected === true ? "accent" : "textPrimary"}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
@@ -77,6 +86,10 @@ const $row: ViewStyle = {
 
 const $pressed: ViewStyle = {
   backgroundColor: color.surface2,
+};
+
+const $selected: ViewStyle = {
+  backgroundColor: color.accentMuted,
 };
 
 const $disabled: ViewStyle = {

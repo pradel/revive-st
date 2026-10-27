@@ -1,17 +1,14 @@
-import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import { createContext, type ReactNode } from "react";
 import {
-  ActivityIndicator,
-  Text,
-  TouchableOpacity,
+  Text as RNText,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
-import { COLORS } from "@/ui/theme";
-
-export type SymbolName = SymbolViewProps["name"];
+import { Icon, type IconName } from "@/ui/ds/Icon";
+import { Text } from "@/ui/ds/Text";
+import { color, radius, space, type ColorName } from "@/ui/tokens";
 
 /**
  * Lets setup views reveal content hidden behind the keyboard. The scroll view's
@@ -23,83 +20,48 @@ export const SetupScrollContext = createContext<{ scrollToEnd: () => void }>({
 });
 
 interface SetupHeaderProps {
-  icon: SymbolName;
+  icon: IconName;
   title: string;
   description?: ReactNode;
   tone?: "default" | "error" | "success";
 }
 
-/** Badge, icon, title and description shared by every setup view. */
+const TONE_COLOR: Record<NonNullable<SetupHeaderProps["tone"]>, ColorName> = {
+  default: "textSecondary",
+  error: "danger",
+  success: "accent",
+};
+
+/** Overline, icon, title and description shared by every setup view. */
 export function SetupHeader({
   icon,
   title,
   description,
   tone = "default",
 }: SetupHeaderProps) {
-  const tint =
-    tone === "error"
-      ? COLORS.error
-      : tone === "success"
-        ? COLORS.success
-        : COLORS.primary;
   return (
     <View style={$header}>
-      <View style={$badge}>
-        <Text style={$badgeText}>SPEAKER SETUP</Text>
+      <Text variant="overline" color="textSecondary" style={$overline}>
+        Speaker setup
+      </Text>
+      <View style={$iconWell}>
+        <Icon name={icon} size={40} color={TONE_COLOR[tone]} />
       </View>
-      <View style={$iconCircle}>
-        <SymbolView name={icon} tintColor={tint} size={40} />
-      </View>
-      <Text style={$title}>{title}</Text>
+      <Text variant="title" accessibilityRole="header" style={$centered}>
+        {title}
+      </Text>
       {description !== undefined && (
-        <Text style={$description}>{description}</Text>
+        <Text variant="body" color="textSecondary" style={$centered}>
+          {description}
+        </Text>
       )}
     </View>
   );
 }
 
-interface SetupButtonProps {
-  label: string;
-  onPress: () => void;
-  icon?: SymbolName;
-  variant?: "primary" | "secondary";
-  disabled?: boolean;
-  busy?: boolean;
-}
-
-export function SetupButton({
-  label,
-  onPress,
-  icon,
-  variant = "primary",
-  disabled = false,
-  busy = false,
-}: SetupButtonProps) {
-  const primary = variant === "primary";
-  const tint = primary ? COLORS.background : COLORS.text;
-  return (
-    <TouchableOpacity
-      style={[
-        primary ? $primaryButton : $secondaryButton,
-        (disabled || busy) && $buttonDisabled,
-      ]}
-      onPress={onPress}
-      disabled={disabled || busy}
-      activeOpacity={0.8}
-      accessibilityRole="button"
-    >
-      {busy ? (
-        <ActivityIndicator size="small" color={tint} />
-      ) : (
-        icon !== undefined && (
-          <SymbolView name={icon} tintColor={tint} size={18} />
-        )
-      )}
-      <Text style={primary ? $primaryButtonText : $secondaryButtonText}>
-        {label}
-      </Text>
-    </TouchableOpacity>
-  );
+/** Highlighted words inside a setup sentence; inherits the sentence's size. */
+export function Emphasis({ children }: { children: ReactNode }) {
+  return <RNText style={$emphasis}>{children}</RNText>;
 }
 
 /** A numbered instruction line. */
@@ -113,9 +75,11 @@ export function SetupInstruction({
   return (
     <View style={$instructionRow}>
       <View style={$instructionNumber}>
-        <Text style={$instructionNumberText}>{index}</Text>
+        <Text variant="caption">{index}</Text>
       </View>
-      <Text style={$instructionText}>{children}</Text>
+      <Text variant="body" color="textSecondary" style={$flex}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -133,7 +97,7 @@ const SIGNAL_LEVELS = [
 
 /** Symbol and label for a Wi-Fi RSSI in dBm. */
 export function signalStrength(level: number): {
-  symbol: SymbolName;
+  symbol: IconName;
   label: string;
 } {
   const entry =
@@ -145,155 +109,72 @@ export function signalStrength(level: number): {
   };
 }
 
-export const $setupEmphasis: TextStyle = {
-  color: COLORS.text,
-  fontWeight: "700",
-};
-
 export const $setupButtons: ViewStyle = {
   width: "100%",
-  gap: 12,
-  marginTop: 8,
+  gap: space.sm,
+  marginTop: space.xs,
 };
 
 export const $setupCard: ViewStyle = {
   width: "100%",
-  marginBottom: 20,
+  marginBottom: space.lg,
 };
 
+/** Bottom spacing of a card's `headline` title. */
 export const $setupCardTitle: TextStyle = {
-  color: COLORS.text,
-  fontSize: 15,
-  fontWeight: "700",
-  marginBottom: 12,
+  marginBottom: space.sm,
 };
 
-export const $setupBody: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 14,
-  lineHeight: 20,
-};
-
+/** Small print under the buttons, as `caption` in `textTertiary`. */
 export const $setupNote: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 12,
-  lineHeight: 16,
   textAlign: "center",
 };
 
 const $header: ViewStyle = {
   alignItems: "center",
-  marginBottom: 28,
+  gap: space.xs,
+  marginBottom: space.xl,
 };
 
-const $badge: ViewStyle = {
-  backgroundColor: COLORS.primaryTransparent,
-  paddingHorizontal: 12,
-  paddingVertical: 4,
-  borderRadius: 8,
-  borderWidth: 1,
-  borderColor: COLORS.primary,
-  marginBottom: 20,
+const $overline: TextStyle = {
+  marginBottom: space.sm,
 };
 
-const $badgeText: TextStyle = {
-  fontSize: 10,
-  fontWeight: "800",
-  color: COLORS.primary,
-  letterSpacing: 0.8,
-};
-
-const $iconCircle: ViewStyle = {
+const $iconWell: ViewStyle = {
   width: 80,
   height: 80,
-  borderRadius: 40,
-  backgroundColor: COLORS.card,
+  borderRadius: radius.pill,
+  backgroundColor: color.surface1,
   alignItems: "center",
   justifyContent: "center",
-  marginBottom: 20,
+  marginBottom: space.sm,
 };
 
-const $title: TextStyle = {
-  fontSize: 24,
+const $centered: TextStyle = {
+  textAlign: "center",
+};
+
+const $emphasis: TextStyle = {
+  color: color.textPrimary,
   fontWeight: "700",
-  color: COLORS.text,
-  letterSpacing: -0.3,
-  marginBottom: 12,
-  textAlign: "center",
-};
-
-const $description: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-  textAlign: "center",
-  lineHeight: 20,
-};
-
-const $primaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: COLORS.primary,
-  height: 52,
-  borderRadius: 16,
-  width: "100%",
-};
-
-const $secondaryButton: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  backgroundColor: COLORS.card,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  height: 52,
-  borderRadius: 16,
-  width: "100%",
-};
-
-const $buttonDisabled: ViewStyle = {
-  opacity: 0.5,
-};
-
-const $primaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.background,
-  fontWeight: "600",
-};
-
-const $secondaryButtonText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "600",
 };
 
 const $instructionRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "flex-start",
-  gap: 12,
-  marginBottom: 12,
+  gap: space.sm,
+  marginBottom: space.sm,
 };
 
 const $instructionNumber: ViewStyle = {
   width: 24,
   height: 24,
-  borderRadius: 12,
-  backgroundColor: COLORS.primaryTransparent,
+  borderRadius: radius.pill,
+  backgroundColor: color.surface2,
   alignItems: "center",
   justifyContent: "center",
 };
 
-const $instructionNumberText: TextStyle = {
-  color: COLORS.primary,
-  fontSize: 12,
-  fontWeight: "700",
-};
-
-const $instructionText: TextStyle = {
+const $flex: TextStyle = {
   flex: 1,
-  color: COLORS.textSecondary,
-  fontSize: 14,
-  lineHeight: 20,
 };

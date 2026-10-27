@@ -2,8 +2,10 @@ import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { color } from "@/ui/tokens";
+import { color, space } from "@/ui/tokens";
 
+import { icons } from "./Icon";
+import { IconButton } from "./IconButton";
 import { LargeTitleHeader } from "./LargeTitleHeader";
 
 export interface ScreenProps {
@@ -21,6 +23,8 @@ export interface ScreenProps {
    * status bar, so only the bottom (gesture bar) inset applies.
    */
   presentation?: "screen" | "sheet";
+  /** Pushed screens: renders a back button above the header. */
+  onBack?: () => void;
 }
 
 /**
@@ -34,6 +38,7 @@ export function Screen({
   footer,
   backdrop,
   presentation = "screen",
+  onBack,
 }: ScreenProps) {
   return (
     <View style={$root}>
@@ -44,6 +49,16 @@ export function Screen({
         style={$safeArea}
         edges={presentation === "sheet" ? ["bottom"] : ["top"]}
       >
+        {onBack ? (
+          <View style={$backRow}>
+            <IconButton
+              icon={icons.back}
+              accessibilityLabel="Back"
+              onPress={onBack}
+              tint="textPrimary"
+            />
+          </View>
+        ) : null}
         {title ? <LargeTitleHeader title={title} actions={actions} /> : null}
         <View style={$content}>{children}</View>
         {footer ? (
@@ -65,4 +80,9 @@ const $safeArea: ViewStyle = {
 
 const $content: ViewStyle = {
   flex: 1,
+};
+
+const $backRow: ViewStyle = {
+  flexDirection: "row",
+  paddingHorizontal: space.screen - space.xs,
 };

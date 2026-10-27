@@ -1,24 +1,19 @@
-import { SymbolView } from "expo-symbols";
 import { type ReactNode, useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Text,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { View, type TextStyle, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { Icon, type IconName } from "@/ui/ds/Icon";
+import { StepList } from "@/ui/ds/StepList";
+import { Text } from "@/ui/ds/Text";
+import { color, radius, space } from "@/ui/tokens";
 
 import type { StepId, WorkingDetail } from "../session/types";
 import {
   $setupCard,
   $setupCardTitle,
-  $setupEmphasis,
-  SetupButton,
+  Emphasis,
   SetupHeader,
-  type SymbolName,
 } from "./SetupLayout";
 
 /** The steps grouped into what the user sees as progress. */
@@ -47,7 +42,7 @@ const DELIVER_EXPECTED_MS = 40_000;
 const FIND_SPEAKER_HELP_MS = 30_000;
 
 interface DetailCopy {
-  icon: SymbolName;
+  icon: IconName;
   title: string;
   description: ReactNode;
 }
@@ -86,9 +81,8 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         title: "Connecting to the speaker",
         description: (
           <>
-            Connecting to <Text style={$setupEmphasis}>{detail.ssid}</Text>. If
-            Android asks whether to connect to a device, tap{" "}
-            <Text style={$setupEmphasis}>Connect</Text>.
+            Connecting to <Emphasis>{detail.ssid}</Emphasis>. If Android asks
+            whether to connect to a device, tap <Emphasis>Connect</Emphasis>.
           </>
         ),
       };
@@ -106,8 +100,8 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         title: "Connecting to the speaker",
         description: (
           <>
-            Connected to <Text style={$setupEmphasis}>{detail.ssid}</Text>.
-            Waiting for the speaker to answer…
+            Connected to <Emphasis>{detail.ssid}</Emphasis>. Waiting for the
+            speaker to answer…
           </>
         ),
       };
@@ -125,8 +119,8 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         title: "Joining your Wi-Fi",
         description: (
           <>
-            Speaker is joining <Text style={$setupEmphasis}>{detail.ssid}</Text>
-            … This can take up to 40 seconds.
+            Speaker is joining <Emphasis>{detail.ssid}</Emphasis>… This can take
+            up to 40 seconds.
           </>
         ),
       };
@@ -138,7 +132,7 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         description: (
           <>
             Checking whether the speaker joined{" "}
-            <Text style={$setupEmphasis}>{detail.ssid}</Text>…
+            <Emphasis>{detail.ssid}</Emphasis>…
           </>
         ),
       };
@@ -157,7 +151,7 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         description: (
           <>
             Waiting for your phone to reconnect to{" "}
-            <Text style={$setupEmphasis}>{detail.ssid}</Text>…
+            <Emphasis>{detail.ssid}</Emphasis>…
           </>
         ),
       };
@@ -179,8 +173,7 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         title: "Naming your speaker",
         description: (
           <>
-            Renaming the speaker to{" "}
-            <Text style={$setupEmphasis}>{detail.name}</Text>…
+            Renaming the speaker to <Emphasis>{detail.name}</Emphasis>…
           </>
         ),
       };
@@ -214,23 +207,22 @@ function useElapsed(startedAt: number): number {
 function FindSpeakerHelp({ onManualJoin }: { onManualJoin: () => void }) {
   return (
     <Card style={$setupCard}>
-      <Text style={$setupCardTitle}>Not showing up?</Text>
+      <Text variant="headline" style={$setupCardTitle}>
+        Not showing up?
+      </Text>
       <CheckItem>
-        The speaker's Wi-Fi light is{" "}
-        <Text style={$setupEmphasis}>solid amber</Text>. If not, hold{" "}
-        <Text style={$setupEmphasis}>2</Text> and{" "}
-        <Text style={$setupEmphasis}>Volume −</Text> for about 5 seconds.
+        The speaker's Wi-Fi light is <Emphasis>solid amber</Emphasis>. If not,
+        hold <Emphasis>2</Emphasis> and <Emphasis>Volume −</Emphasis> for about
+        5 seconds.
       </CheckItem>
       <CheckItem>The phone is within a few metres of the speaker.</CheckItem>
       <CheckItem>
-        A speaker that is already set up has a{" "}
-        <Text style={$setupEmphasis}>white</Text> light and won't appear here.
-        To start from scratch, factory reset it: hold{" "}
-        <Text style={$setupEmphasis}>1</Text> and{" "}
-        <Text style={$setupEmphasis}>Volume −</Text> for 10 seconds.
+        A speaker that is already set up has a <Emphasis>white</Emphasis> light
+        and won't appear here. To start from scratch, factory reset it: hold{" "}
+        <Emphasis>1</Emphasis> and <Emphasis>Volume −</Emphasis> for 10 seconds.
       </CheckItem>
       <View style={$helpButton}>
-        <SetupButton
+        <Button
           label="Connect manually"
           variant="secondary"
           icon={{ ios: "hand.tap", android: "touch_app", web: "touch_app" }}
@@ -244,16 +236,17 @@ function FindSpeakerHelp({ onManualJoin }: { onManualJoin: () => void }) {
 function CheckItem({ children }: { children: ReactNode }) {
   return (
     <View style={$checkRow}>
-      <SymbolView
+      <Icon
         name={{
           ios: "questionmark.circle",
           android: "help",
           web: "help",
         }}
-        tintColor={COLORS.textSecondary}
         size={18}
       />
-      <Text style={$checkText}>{children}</Text>
+      <Text variant="body" color="textSecondary" style={$flex}>
+        {children}
+      </Text>
     </View>
   );
 }
@@ -306,7 +299,7 @@ export function WorkingView({
 
       {detail.kind === "wifiOff" && (
         <View style={$wifiButton}>
-          <SetupButton
+          <Button
             label="Turn on Wi-Fi"
             icon={{ ios: "wifi", android: "wifi", web: "wifi" }}
             onPress={onEnableWifi}
@@ -323,56 +316,28 @@ export function WorkingView({
       {showFindHelp && <FindSpeakerHelp onManualJoin={onManualJoin} />}
 
       <Card style={$setupCard}>
-        {STAGES.map((stage, index) => {
-          const status =
-            index < current ? "done" : index === current ? "active" : "pending";
-          return (
-            <View key={stage.title} style={$stepRow}>
-              <View style={$stepIcon}>
-                {status === "active" ? (
-                  <ActivityIndicator size="small" color={COLORS.primary} />
-                ) : (
-                  <SymbolView
-                    name={
-                      status === "done"
-                        ? {
-                            ios: "checkmark.circle.fill",
-                            android: "check_circle",
-                            web: "check_circle",
-                          }
-                        : {
-                            ios: "circle",
-                            android: "radio_button_unchecked",
-                            web: "radio_button_unchecked",
-                          }
-                    }
-                    tintColor={
-                      status === "done" ? COLORS.primary : COLORS.textDisabled
-                    }
-                    size={20}
-                  />
-                )}
-              </View>
-              <View style={$stepText}>
-                <Text
-                  style={[
-                    $stepTitle,
-                    status === "active" && $stepTitleActive,
-                    status === "done" && $stepTitleDone,
-                  ]}
-                >
-                  {stage.title}
-                </Text>
-                {status !== "done" && (
-                  <Text style={$stepHint}>{stage.hint}</Text>
-                )}
-              </View>
-              {status === "active" && (
-                <Text style={$elapsed}>{formatElapsed(elapsed)}</Text>
-              )}
-            </View>
-          );
-        })}
+        <StepList
+          steps={STAGES.map((stage, index) => {
+            const status =
+              index < current
+                ? "done"
+                : index === current
+                  ? "active"
+                  : "pending";
+            return {
+              id: stage.title,
+              title: stage.title,
+              status,
+              description: status === "done" ? undefined : stage.hint,
+              trailing:
+                status === "active" ? (
+                  <Text variant="subhead" color="accent" style={$elapsed}>
+                    {formatElapsed(elapsed)}
+                  </Text>
+                ) : undefined,
+            };
+          })}
+        />
       </Card>
     </>
   );
@@ -380,83 +345,42 @@ export function WorkingView({
 
 const $wifiButton: ViewStyle = {
   width: "100%",
-  marginBottom: 20,
-};
-
-const $stepRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 12,
-  paddingVertical: 8,
-};
-
-const $stepIcon: ViewStyle = {
-  width: 24,
-  alignItems: "center",
-};
-
-const $stepText: ViewStyle = {
-  flex: 1,
-};
-
-const $stepTitle: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-};
-
-const $stepTitleActive: TextStyle = {
-  color: COLORS.text,
-  fontWeight: "600",
-};
-
-const $stepTitleDone: TextStyle = {
-  color: COLORS.textSecondary,
+  marginBottom: space.lg,
 };
 
 const $elapsed: TextStyle = {
-  fontSize: 13,
-  color: COLORS.primary,
   fontVariant: ["tabular-nums"],
-};
-
-const $stepHint: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  marginTop: 2,
 };
 
 const $progress: ViewStyle = {
   width: "100%",
-  marginBottom: 20,
+  marginBottom: space.lg,
 };
 
 const $progressTrack: ViewStyle = {
   height: 6,
-  borderRadius: 3,
-  backgroundColor: COLORS.border,
+  borderRadius: radius.pill,
+  backgroundColor: color.surface2,
   overflow: "hidden",
 };
 
 const $progressFill: ViewStyle = {
   height: "100%",
-  borderRadius: 3,
-  backgroundColor: COLORS.primary,
+  borderRadius: radius.pill,
+  backgroundColor: color.accent,
 };
 
 const $helpButton: ViewStyle = {
-  marginTop: 4,
+  marginTop: space.xxs,
 };
 
 const $checkRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "flex-start",
-  gap: 12,
-  marginBottom: 12,
+  gap: space.sm,
+  marginBottom: space.sm,
 };
 
-const $checkText: TextStyle = {
+const $flex: TextStyle = {
   flex: 1,
-  color: COLORS.textSecondary,
-  fontSize: 14,
-  lineHeight: 20,
 };

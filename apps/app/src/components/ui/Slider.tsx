@@ -9,6 +9,8 @@ import Animated, {
 } from "react-native-reanimated";
 import { scheduleOnRN } from "react-native-worklets";
 
+import { color } from "@/ui/tokens";
+
 interface SliderProps {
   value: number;
   minimumValue?: number;
@@ -28,9 +30,9 @@ export function Slider({
   maximumValue = 100,
   onValueChange,
   onSlidingComplete,
-  trackColor = "#18181b", // match dark mode track
-  fillColor = "#fafafa",
-  thumbColor = "#fafafa",
+  trackColor = color.surface3,
+  fillColor = color.textPrimary,
+  thumbColor = color.textPrimary,
   trackHeight = 8,
   thumbSize = 24,
 }: SliderProps) {
@@ -159,7 +161,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    shadowColor: "#000",
+    shadowColor: color.shadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 4,

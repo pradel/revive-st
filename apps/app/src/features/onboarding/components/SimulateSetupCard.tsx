@@ -1,16 +1,11 @@
 import { useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
-import {
-  Text,
-  TouchableOpacity,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, View, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
-import { COLORS } from "@/ui/theme";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { Text } from "@/ui/ds/Text";
+import { color, radius, space } from "@/ui/tokens";
 
 import { simulatedScenarios } from "../adapters/simulated";
 import { HOME_PASSWORD, HOME_SSID } from "../session/testing/scenarios";
@@ -22,42 +17,44 @@ export function SimulateSetupCard() {
 
   return (
     <Card style={$card}>
-      <TouchableOpacity
-        style={$row}
-        activeOpacity={0.7}
+      <Pressable
+        style={({ pressed }) => [$row, pressed && $pressed]}
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
         onPress={() => {
           setOpen((value) => !value);
         }}
       >
-        <View style={$iconContainer}>
-          <SymbolView
+        <View style={$iconWell}>
+          <Icon
             name={{ ios: "testtube.2", android: "science", web: "science" }}
-            tintColor={COLORS.primary}
-            size={20}
           />
         </View>
         <View style={$flex}>
-          <Text style={$title}>Simulate speaker setup</Text>
-          <Text style={$subtitle}>
+          <Text variant="body">Simulate speaker setup</Text>
+          <Text variant="caption" color="textSecondary">
             Fake speaker and phone; {HOME_SSID} password: {HOME_PASSWORD}
           </Text>
         </View>
-        <SymbolView
-          name={{
-            ios: open ? "chevron.up" : "chevron.down",
-            android: open ? "expand_less" : "expand_more",
-            web: open ? "expand_less" : "expand_more",
-          }}
-          tintColor={COLORS.textMuted}
-          size={20}
+        <Icon
+          name={
+            open
+              ? {
+                  ios: "chevron.up",
+                  android: "expand_less",
+                  web: "expand_less",
+                }
+              : icons.chevronDown
+          }
+          color="textTertiary"
         />
-      </TouchableOpacity>
+      </Pressable>
       {open &&
         simulatedScenarios().map(({ name, description }) => (
-          <TouchableOpacity
+          <Pressable
             key={name}
-            style={$scenario}
-            activeOpacity={0.7}
+            style={({ pressed }) => [$scenario, pressed && $pressed]}
+            accessibilityRole="button"
             onPress={() => {
               router.push({
                 pathname: "/onboarding",
@@ -65,60 +62,52 @@ export function SimulateSetupCard() {
               });
             }}
           >
-            <Text style={$scenarioName}>{name}</Text>
-            <Text style={$subtitle}>{description}</Text>
-          </TouchableOpacity>
+            <Text variant="subhead">{name}</Text>
+            <Text variant="caption" color="textSecondary">
+              {description}
+            </Text>
+          </Pressable>
         ))}
     </Card>
   );
 }
 
 const $card: ViewStyle = {
-  paddingVertical: 4,
-  marginTop: 12,
+  padding: 0,
+  paddingVertical: space.xxs,
+  marginTop: space.sm,
+  overflow: "hidden",
 };
 
 const $row: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  paddingVertical: 12,
+  gap: space.md,
+  paddingHorizontal: space.md,
+  paddingVertical: space.sm,
 };
 
-const $iconContainer: ViewStyle = {
+const $pressed: ViewStyle = {
+  backgroundColor: color.surface2,
+};
+
+const $iconWell: ViewStyle = {
   width: 36,
   height: 36,
-  borderRadius: 8,
-  backgroundColor: "rgba(255, 255, 255, 0.05)",
+  borderRadius: radius.sm,
+  backgroundColor: color.surface2,
   justifyContent: "center",
   alignItems: "center",
-  marginRight: 16,
 };
 
 const $flex: ViewStyle = {
   flex: 1,
-};
-
-const $title: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $subtitle: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  marginTop: 2,
+  gap: 2,
 };
 
 const $scenario: ViewStyle = {
-  paddingVertical: 10,
-  paddingLeft: 52,
-  borderTopWidth: 1,
-  borderTopColor: COLORS.border,
-};
-
-const $scenarioName: TextStyle = {
-  fontSize: 14,
-  color: COLORS.text,
-  fontWeight: "600",
+  gap: 2,
+  paddingVertical: space.sm,
+  paddingLeft: 68,
+  paddingRight: space.md,
 };

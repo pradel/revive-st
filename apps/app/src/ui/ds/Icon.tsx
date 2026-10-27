@@ -8,6 +8,7 @@ export type IconName = SymbolViewProps["name"];
 /** Shared icon vocabulary so screens don't repeat platform name triples. */
 export const icons = {
   add: { ios: "plus", android: "add", web: "add" },
+  back: { ios: "chevron.left", android: "arrow_back", web: "arrow_back" },
   chevronDown: {
     ios: "chevron.down",
     android: "keyboard_arrow_down",

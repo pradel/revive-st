@@ -22,6 +22,8 @@ export const color = {
   warning: "#FFB86C",
   scrim: "rgba(0,0,0,0.55)",
   shadow: "#000000",
+  /** Danger tint behind error banners. */
+  dangerMuted: "rgba(255,84,73,0.16)",
 } as const;
 
 export type ColorName = keyof typeof color;

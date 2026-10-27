@@ -1,13 +1,13 @@
 import { Stack } from "expo-router";
 
-import { COLORS } from "@/ui/theme";
+import { color } from "@/ui/tokens";
 
 export default function OnboardingLayout() {
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: COLORS.background },
+        contentStyle: { backgroundColor: color.bg },
       }}
     >
       <Stack.Screen name="index" />
