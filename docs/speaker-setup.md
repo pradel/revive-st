@@ -2,7 +2,7 @@
 
 What a SoundTouch speaker and an Android phone actually do during Wi-Fi setup, measured on hardware. The onboarding flow (`apps/app/src/features/onboarding/session/`) is based on this page. Anything not marked as measured is labelled **untested**.
 
-## Test setup (2026-10-26)
+## Test setup (2026-10-26, run E 2026-10-27)
 
 | Item         | Value                                                                                                       |
 | ------------ | ----------------------------------------------------------------------------------------------------------- |
@@ -20,6 +20,7 @@ Runs:
 | B   | Factory reset, in setup mode                                                          | Wrong password                                                |
 | A2  | Same speaker right after B, still in setup mode                                       | Correct password, then `POST /setup SETUP_LEAVE` from the Mac |
 | D   | Configured, on the home network                                                       | mDNS browse started with phone Wi-Fi off                      |
+| E   | Configured, put in setup mode (hold **2** + **Volume −**)                             | New onboarding flow end to end, correct password              |
 
 ## Identity and addresses
 
@@ -53,7 +54,7 @@ MAC addresses, SSIDs and home-network IP addresses on this page are placeholders
   - The reply echoes `<setupState state="SETUP_LEAVE" />`.
   - The HTTP API stopped answering for a few seconds (a request 3 s later timed out).
   - Within 20 s, the setup network was gone from scans, `/setup` reported `SETUP_INACTIVE`, and `wlan0` reported `NETWORK_WIFI_CONNECTED`.
-  - **Untested:** sending it over the setup network itself.
+  - **Sent over the setup network** (run E, new flow): the reply came back OK in 0.4 s, before the setup network dropped. 50 s later `/setup` reported `SETUP_INACTIVE`, `wlan0` `NETWORK_WIFI_CONNECTED` in `STATION` mode, and the setup network was gone from scans.
 
 LED states seen:
 
@@ -98,6 +99,7 @@ Body sent by `bose-api-speaker-client`:
 | ------------------------ | -------------- | -------------------------------------------------------------------------------------------- | -------- |
 | A (configured speaker)   | Correct        | HTTP OK                                                                                      | 15.4 s   |
 | A2 (after factory reset) | Correct        | HTTP OK                                                                                      | 6.8 s    |
+| E (configured speaker)   | Correct        | HTTP OK                                                                                      | 9.0 s    |
 | B (after factory reset)  | Wrong password | `ApiError`: name `WIFI_PROFILE_SETUP_FAILED`, value `1035`, message `NO_IP_ADDRESS_ASSIGNED` | 35.0 s   |
 
 - `timeout="30"` appears to be the join timeout in seconds: the wrong-password reply arrived about 30 s plus overhead after the request.
@@ -143,7 +145,6 @@ Example during setup mode, after the correct password (run A2):
 
 | Question                                                                                                                                                               | Why it matters                                                                                   |
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Does `SETUP_LEAVE` sent over the setup network work, and does the reply arrive before the setup network drops?                                                         | Ending setup mode from the phone before leaving the setup network                                |
 | Are `SETUP_START` / language / `SETUP_ENTER` required for anything (`systemstate` stays `SETUP_LANG_NOT_SET`, configuration status stays `SOUNDTOUCH_NOT_CONFIGURED`)? | Marge pairing and the speaker's "not configured" prompts; AfterTouch documents the full sequence |
 | `POST /performWirelessSiteSurvey` (networks as seen by the speaker)                                                                                                    | Better network list than the phone's scan                                                        |
 | 5 GHz-only home networks; WPA3; hidden SSIDs                                                                                                                           | Network picker filtering and security type                                                       |
