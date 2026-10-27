@@ -1,19 +1,35 @@
+import type { KeyValue } from "bose-api-speaker-client";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
-  Text,
-  TouchableOpacity,
+  Pressable,
+  StyleSheet,
   View,
   type TextStyle,
   type ViewStyle,
-  type ImageStyle,
 } from "react-native";
 
 import { Slider } from "@/components/ui/Slider";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { COLORS } from "@/ui/theme";
+import {
+  hasLoadedMedia,
+  isSpeakerPlaying,
+  playStatusLabel,
+  sourceLabel,
+  trackDetail,
+} from "@/features/speakers/lib/playback";
+import { Artwork } from "@/ui/ds/Artwork";
+import { Button } from "@/ui/ds/Button";
+import { Chip } from "@/ui/ds/Chip";
+import { EmptyState } from "@/ui/ds/EmptyState";
+import { icons } from "@/ui/ds/Icon";
+import { IconButton } from "@/ui/ds/IconButton";
+import { Screen } from "@/ui/ds/Screen";
+import { Text } from "@/ui/ds/Text";
+import { color, radius, space } from "@/ui/tokens";
+
+const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
 export default function NowPlayingModal() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -26,197 +42,160 @@ export default function NowPlayingModal() {
 
   if (!speaker) {
     return (
-      <View style={$container}>
-        <Text style={{ color: COLORS.text }}>Speaker not found.</Text>
-      </View>
+      <Screen>
+        <EmptyState
+          icon={icons.wifiOff}
+          title="Speaker not found"
+          description="This speaker is no longer detected on your local network."
+          actions={
+            <Button
+              label="Close"
+              variant="secondary"
+              onPress={() => {
+                router.back();
+              }}
+            />
+          }
+        />
+      </Screen>
     );
   }
 
-  const isPlaying =
-    speaker.playStatus === "PLAY_STATE" ||
-    speaker.playStatus === "BUFFERING_STATE";
+  const isPlaying = isSpeakerPlaying(speaker);
+  const hasMusic = hasLoadedMedia(speaker);
   const volume = speaker.volume ?? 0;
   const displayVolume = localVolume ?? volume;
+  const detail = trackDetail(speaker);
 
-  const hasMusic = Boolean(
-    speaker.track ?? speaker.artUrl ?? speaker.artist ?? isPlaying,
-  );
+  const sendKey = (key: KeyValue) => {
+    keyMutation.mutate({ deviceID: speaker.deviceID, key });
+  };
 
   return (
-    <View style={$container}>
-      {/* Top Header */}
+    <Screen
+      presentation="sheet"
+      backdrop={
+        speaker.artUrl ? (
+          <>
+            <Image
+              source={{ uri: speaker.artUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              blurRadius={60}
+              transition={300}
+            />
+            <View style={$scrim} />
+          </>
+        ) : null
+      }
+    >
       <View style={$header}>
-        <TouchableOpacity
+        <IconButton
+          icon={icons.chevronDown}
+          accessibilityLabel="Close player"
+          tint="textPrimary"
           onPress={() => {
             router.back();
           }}
-          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        >
-          <SymbolView
-            name={{
-              ios: "chevron.down",
-              android: "keyboard_arrow_down",
-              web: "keyboard_arrow_down",
-            }}
-            tintColor={COLORS.text}
-            size={24}
-          />
-        </TouchableOpacity>
-        {speaker.source ? (
-          <View style={$sourceContainer}>
-            <Text style={$sourceText}>{speaker.source}</Text>
-          </View>
-        ) : null}
-        <TouchableOpacity
+        />
+        <View style={$headerTitle}>
+          <Text variant="subhead" numberOfLines={1}>
+            {speaker.name}
+          </Text>
+          <Text variant="caption" color="textSecondary">
+            {playStatusLabel(speaker)}
+          </Text>
+        </View>
+        <IconButton
+          icon={icons.settings}
+          accessibilityLabel={`${speaker.name} settings`}
+          tint="textPrimary"
           onPress={() => {
             router.push(
               `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
             );
           }}
-          hitSlop={{ top: 16, bottom: 16, left: 16, right: 16 }}
-        >
-          <SymbolView
-            name={{
-              ios: "gearshape.fill",
-              android: "settings",
-              web: "settings",
-            }}
-            tintColor={COLORS.text}
-            size={24}
-          />
-        </TouchableOpacity>
+        />
       </View>
 
       <View style={$content}>
-        <View style={$albumContainer}>
-          {hasMusic && speaker.artUrl ? (
-            <Image
-              source={{ uri: speaker.artUrl }}
-              style={$albumArt}
-              contentFit="cover"
-              transition={300}
-            />
-          ) : (
-            <View style={$albumFallback}>
-              <SymbolView
-                name={{
-                  ios: "music.note",
-                  android: "music_note",
-                  web: "music_note",
-                }}
-                tintColor={COLORS.textMuted}
-                size={80}
-              />
-            </View>
-          )}
+        <View style={$artShadow}>
+          <Artwork
+            uri={hasMusic ? speaker.artUrl : null}
+            title={speaker.track ?? speaker.name}
+            size="fill"
+            radius={radius.lg}
+          />
         </View>
 
         <View style={$trackInfo}>
-          {hasMusic ? (
-            <>
-              <Text style={$trackTitle} numberOfLines={1}>
-                {speaker.track ?? "Unknown Track"}
-              </Text>
-              <Text style={$trackSubtitle} numberOfLines={1}>
-                {speaker.artist
-                  ? `${speaker.artist} ${speaker.album ? `• ${speaker.album}` : ""}`
-                  : (speaker.album ?? "Unknown Artist")}
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={$trackTitle} numberOfLines={1}>
-                No Music Selected
-              </Text>
-              <Text style={$trackSubtitle} numberOfLines={1}>
-                Ready to play
-              </Text>
-            </>
-          )}
+          {speaker.source && speaker.source !== "STANDBY" ? (
+            <Chip label={sourceLabel(speaker.source)} />
+          ) : null}
+          <Text variant="title" numberOfLines={1}>
+            {hasMusic ? (speaker.track ?? "Unknown Track") : "Nothing playing"}
+          </Text>
+          <Text variant="body" color="textSecondary" numberOfLines={1}>
+            {hasMusic ? detail || "Unknown Artist" : "Ready to play"}
+          </Text>
         </View>
 
-        <View style={$playbackControls}>
-          <TouchableOpacity
-            style={$controlButton}
-            onPress={() => {
-              keyMutation.mutate({
-                deviceID: speaker.deviceID,
-                key: "PREV_TRACK",
-              });
-            }}
+        <View style={$transport}>
+          <IconButton
+            icon={icons.previous}
+            accessibilityLabel="Previous track"
+            tint="textPrimary"
+            size={56}
+            iconSize={28}
             disabled={!hasMusic}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <SymbolView
-              name={{
-                ios: "backward.fill",
-                android: "skip_previous",
-                web: "skip_previous",
-              }}
-              tintColor={hasMusic ? COLORS.text : COLORS.border}
-              size={32}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              $playPauseMutationButton,
-              !hasMusic && { backgroundColor: COLORS.border },
-            ]}
+            onPress={() => {
+              sendKey("PREV_TRACK");
+            }}
+          />
+          <IconButton
+            icon={isPlaying ? icons.pause : icons.play}
+            accessibilityLabel={isPlaying ? "Pause" : "Play"}
+            variant="accent"
+            size={64}
+            iconSize={28}
+            disabled={!hasMusic}
             onPress={() => {
               playPauseMutation.mutate({ deviceID: speaker.deviceID });
             }}
+          />
+          <IconButton
+            icon={icons.next}
+            accessibilityLabel="Next track"
+            tint="textPrimary"
+            size={56}
+            iconSize={28}
             disabled={!hasMusic}
-          >
-            <SymbolView
-              name={{
-                ios: isPlaying ? "pause.fill" : "play.fill",
-                android: isPlaying ? "pause" : "play_arrow",
-                web: isPlaying ? "pause" : "play_arrow",
-              }}
-              tintColor={hasMusic ? COLORS.background : COLORS.textMuted}
-              size={36}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={$controlButton}
             onPress={() => {
-              keyMutation.mutate({
-                deviceID: speaker.deviceID,
-                key: "NEXT_TRACK",
-              });
+              sendKey("NEXT_TRACK");
             }}
-            disabled={!hasMusic}
-            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          >
-            <SymbolView
-              name={{
-                ios: "forward.fill",
-                android: "skip_next",
-                web: "skip_next",
-              }}
-              tintColor={hasMusic ? COLORS.text : COLORS.border}
-              size={32}
-            />
-          </TouchableOpacity>
+          />
         </View>
 
         <View style={$volumeRow}>
-          <SymbolView
-            name={{
-              ios: "speaker.fill",
-              android: "volume_down",
-              web: "volume_down",
+          <IconButton
+            icon={speaker.muteEnabled ? icons.volumeMuted : icons.volume}
+            accessibilityLabel={speaker.muteEnabled ? "Unmute" : "Mute"}
+            tint={speaker.muteEnabled ? "accent" : "textSecondary"}
+            iconSize={18}
+            onPress={() => {
+              sendKey("MUTE");
             }}
-            tintColor={COLORS.text}
-            size={18}
           />
-          <View style={{ flex: 1 }}>
+          <View style={$slider}>
             <Slider
               value={volume}
               minimumValue={0}
               maximumValue={100}
+              trackHeight={6}
+              thumbSize={18}
+              trackColor={color.surface3}
+              fillColor={color.textPrimary}
+              thumbColor={color.textPrimary}
               onValueChange={(val) => {
                 setLocalVolume(Math.round(val));
               }}
@@ -229,132 +208,129 @@ export default function NowPlayingModal() {
               }}
             />
           </View>
-          <Text style={$volumeText}>{displayVolume}</Text>
+          <Text variant="subhead" color="textSecondary" style={$volumeValue}>
+            {displayVolume}
+          </Text>
         </View>
 
-        <View style={$actionsRow} />
+        <View style={$presets}>
+          {PRESET_SLOTS.map((slot) => {
+            const preset = speaker.presets?.find((item) => item.id === slot);
+            return (
+              <Pressable
+                key={slot}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  preset
+                    ? `Preset ${slot}: ${preset.contentItem.itemName}`
+                    : `Preset ${slot}, empty`
+                }
+                disabled={!preset}
+                onPress={() => {
+                  sendKey(`PRESET_${slot}` as KeyValue);
+                }}
+                style={({ pressed }) => [
+                  $presetKey,
+                  preset ? $presetFilled : null,
+                  pressed && $presetPressed,
+                ]}
+              >
+                <Text
+                  variant="headline"
+                  color={preset ? "textPrimary" : "textTertiary"}
+                >
+                  {slot}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
-    </View>
+    </Screen>
   );
 }
 
-const $container: ViewStyle = {
-  flex: 1,
-  backgroundColor: COLORS.background, // Should match dark background from design
+const $scrim: ViewStyle = {
+  position: "absolute",
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  backgroundColor: color.scrim,
 };
 
 const $header: ViewStyle = {
   flexDirection: "row",
-  justifyContent: "space-between",
   alignItems: "center",
-  paddingHorizontal: 24,
-  paddingTop: 16,
-  paddingBottom: 8,
+  paddingHorizontal: space.xs,
+  paddingTop: space.xs,
 };
 
-const $sourceContainer: ViewStyle = {
+const $headerTitle: ViewStyle = {
   flex: 1,
   alignItems: "center",
-};
-
-const $sourceText: TextStyle = {
-  color: COLORS.success, // e.g. Spotify green, or generic text
-  fontSize: 14,
-  fontWeight: "600",
-  textTransform: "uppercase",
-  letterSpacing: 1,
 };
 
 const $content: ViewStyle = {
   flex: 1,
-  paddingHorizontal: 24,
-  justifyContent: "space-around", // distribute space evenly
-  paddingBottom: 40,
+  justifyContent: "space-evenly",
+  paddingHorizontal: space.screen,
+  paddingBottom: space.xl,
 };
 
-const $albumContainer: ViewStyle = {
-  width: "100%",
-  aspectRatio: 1, // Make it square
-  borderRadius: 12,
-  overflow: "hidden",
-  backgroundColor: COLORS.card,
-  shadowColor: "#000",
-  shadowOffset: { width: 0, height: 10 },
+const $artShadow: ViewStyle = {
+  borderRadius: radius.lg,
+  shadowColor: color.shadow,
+  shadowOffset: { width: 0, height: 16 },
   shadowOpacity: 0.5,
-  shadowRadius: 20,
-  elevation: 10,
-  alignItems: "center",
-  justifyContent: "center",
-  marginVertical: 24,
-};
-
-const $albumArt: ImageStyle = {
-  width: "100%",
-  height: "100%",
-};
-
-const $albumFallback: ViewStyle = {
-  width: "100%",
-  height: "100%",
-  backgroundColor: COLORS.border,
-  alignItems: "center",
-  justifyContent: "center",
+  shadowRadius: 24,
+  elevation: 12,
 };
 
 const $trackInfo: ViewStyle = {
-  alignItems: "flex-start",
-  marginBottom: 24,
+  gap: space.xxs,
 };
 
-const $trackTitle: TextStyle = {
-  fontSize: 24,
-  fontWeight: "bold",
-  color: COLORS.text,
-  marginBottom: 6,
-};
-
-const $trackSubtitle: TextStyle = {
-  fontSize: 16,
-  color: COLORS.textMuted,
-};
-
-const $playbackControls: ViewStyle = {
+const $transport: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
-  gap: 32,
-  marginBottom: 32,
-};
-
-const $controlButton: ViewStyle = {
-  padding: 8,
-};
-
-const $playPauseMutationButton: ViewStyle = {
-  width: 72,
-  height: 72,
-  borderRadius: 36,
-  backgroundColor: COLORS.text,
-  alignItems: "center",
-  justifyContent: "center",
+  gap: space.xxl,
 };
 
 const $volumeRow: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  gap: 16,
-  marginBottom: 24,
+  gap: space.xs,
 };
 
-const $volumeText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.text,
-  fontWeight: "500",
-  width: 28,
+const $slider: ViewStyle = {
+  flex: 1,
+};
+
+const $volumeValue: TextStyle = {
+  width: 32,
   textAlign: "right",
 };
 
-const $actionsRow: ViewStyle = {
-  height: 40,
-  // Placeholder for future bottom actions (like devices button)
+const $presets: ViewStyle = {
+  flexDirection: "row",
+  gap: space.xs,
+};
+
+const $presetKey: ViewStyle = {
+  flex: 1,
+  aspectRatio: 1,
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: radius.sm,
+  backgroundColor: color.surface1,
+};
+
+const $presetFilled: ViewStyle = {
+  backgroundColor: color.surface2,
+};
+
+const $presetPressed: ViewStyle = {
+  backgroundColor: color.surface3,
 };
