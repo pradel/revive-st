@@ -552,6 +552,22 @@ describe("session scenarios", () => {
     expect(flow.world.speaker(TARGET_ID).station?.ssid).toBe(OFFICE_SSID);
   });
 
+  it("S16b speaker set up for another network: the phone staying on its own Wi-Fi counts as rejoined", async () => {
+    const flow = scenario("happyPath");
+    await toCredentials(flow);
+    await submit(flow, OFFICE_SSID, OFFICE_PASSWORD);
+    await flow.untilWorking("rejoinHome");
+    const waitingSince = flow.clock.now();
+
+    await flow.untilWorking("verify");
+
+    expect(flow.world.wifi.network).toMatchObject({ ssid: HOME_SSID });
+    expect(flow.clock.now() - waitingSince).toBeLessThan(
+      REJOIN_HOME_TIMEOUT_MS,
+    );
+    expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
+  });
+
   it("S17 wrong password: CredentialsRejected after 35 s; edit on the same link; corrected → done", async () => {
     const flow = scenario("happyPath");
     await toCredentials(flow);

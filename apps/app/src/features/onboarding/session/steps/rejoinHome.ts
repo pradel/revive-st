@@ -7,21 +7,30 @@ import type { StepEnv } from "./env";
 
 export const REJOIN_HOME_TIMEOUT_MS = 45_000;
 
-function onHomeWifi(network: NetworkState, ssid: string): boolean {
+function onHomeWifi(
+  network: NetworkState,
+  ssid: string,
+  phoneSsid: string | null,
+): boolean {
   return (
     network.transport === "wifi" &&
-    (network.ssid === null || network.ssid === ssid)
+    (network.ssid === null ||
+      network.ssid === ssid ||
+      network.ssid === phoneSsid)
   );
 }
 
 /**
- * Done when the phone's default network is Wi-Fi on `ssid` (any Wi-Fi when the
- * SSID is unreadable). Usually immediate: the phone kept its home connection.
+ * Done when the phone's default network is Wi-Fi on `ssid` (the network the
+ * speaker joined) or `phoneSsid` (the one the phone was on before setup); any
+ * Wi-Fi when the SSID is unreadable. Usually immediate: the phone kept its home
+ * connection.
  */
 export async function rejoinHome(
   env: StepEnv,
   signal: AbortSignal,
   ssid: string,
+  phoneSsid: string | null,
 ): Promise<Result<void, HomeWifiNotRestored>> {
   const { wifi, clock } = env.deps;
   env.working("rejoinHome", { kind: "waitingForHomeWifi", ssid });
@@ -33,7 +42,7 @@ export async function rejoinHome(
       REJOIN_HOME_TIMEOUT_MS,
       signal,
       async (waiting): Promise<Result<void, never>> => {
-        while (!onHomeWifi(await wifi.currentNetwork(), ssid)) {
+        while (!onHomeWifi(await wifi.currentNetwork(), ssid, phoneSsid)) {
           await changed.wait(waiting);
         }
         return Result.ok(undefined);

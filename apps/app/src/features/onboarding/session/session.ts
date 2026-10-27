@@ -320,7 +320,12 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
         if (!ctx.credentials) {
           return next({ step: "credentials" });
         }
-        const rejoined = await rejoinHome(env, signal, ctx.credentials.ssid);
+        const rejoined = await rejoinHome(
+          env,
+          signal,
+          ctx.credentials.ssid,
+          ctx.homeSsid,
+        );
         return rejoined.isErr()
           ? failed(rejoined.error)
           : next({ step: "verify" });
