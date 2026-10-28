@@ -1,10 +1,26 @@
 import { NativeTabs } from "expo-router/native-tabs";
 
+import {
+  NowPlayingAccessory,
+  useNowPlaying,
+  usesTabBarAccessory,
+} from "@/features/speakers/components/NowPlayingBar";
 import { color } from "@/ui/tokens";
 
 export default function TabLayout() {
+  const nowPlaying = useNowPlaying();
+
   return (
-    <NativeTabs backgroundColor={color.bg} tintColor={color.accent}>
+    <NativeTabs
+      backgroundColor={color.bg}
+      tintColor={color.accent}
+      minimizeBehavior="onScrollDown"
+    >
+      {usesTabBarAccessory && nowPlaying ? (
+        <NativeTabs.BottomAccessory>
+          <NowPlayingAccessory {...nowPlaying} />
+        </NativeTabs.BottomAccessory>
+      ) : null}
       <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Icon
           sf={{ default: "house", selected: "house.fill" }}

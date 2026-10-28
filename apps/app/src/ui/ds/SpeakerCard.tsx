@@ -1,3 +1,5 @@
+import { Link, type Href } from "expo-router";
+import { useState } from "react";
 import { Pressable, View, type TextStyle, type ViewStyle } from "react-native";
 
 import { useSliderDraft } from "@/lib/useSliderDraft";
@@ -28,7 +30,8 @@ export interface SpeakerCardProps {
   /** Sends the volume when a drag ends. */
   onVolumeCommit: (volume: number) => void;
   onPlayPause: () => void;
-  onOpen: () => void;
+  /** The player; on iOS 18+ it zooms open from the artwork. */
+  playerHref: Href;
   onOpenSettings: () => void;
   /** Long-press menu on the speaker's artwork and name. */
   menu?: ContextMenuConfig;
@@ -44,47 +47,59 @@ export function SpeakerCard({
   volume,
   onVolumeCommit,
   onPlayPause,
-  onOpen,
+  playerHref,
   onOpenSettings,
   menu,
 }: SpeakerCardProps) {
   const volumeDraft = useSliderDraft(volume, onVolumeCommit);
+  // `Link asChild` takes only a flat style object (no function or array), so
+  // the pressed state is tracked here.
+  const [isPressed, setIsPressed] = useState(false);
 
   const renderMain = (triggerProps?: ContextMenuTriggerProps) => (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
-      accessibilityHint="Opens the player"
-      onPress={onOpen}
-      {...triggerProps}
-      style={({ pressed }) => [$main, pressed && $pressed]}
-    >
-      <Artwork
-        uri={artworkUri}
-        title={nowPlaying ?? name}
-        size={artwork.card}
-        radius={radius.sm}
-        fallbackIcon={nowPlaying ? icons.music : icons.speaker}
-      />
-      <View style={$text}>
-        <Text variant="headline" numberOfLines={1}>
-          {name}
-        </Text>
-        <Text
-          variant="subhead"
-          color={nowPlaying ? "textSecondary" : "textTertiary"}
-          numberOfLines={1}
-        >
-          {nowPlaying ?? "Nothing playing"}
-        </Text>
-        {detail ? (
-          <Text variant="caption" color="textTertiary" numberOfLines={1}>
-            {detail}
+    <Link href={playerHref} asChild>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
+        accessibilityHint="Opens the player"
+        {...triggerProps}
+        onPressIn={() => {
+          setIsPressed(true);
+        }}
+        onPressOut={() => {
+          setIsPressed(false);
+        }}
+        style={isPressed ? $mainPressed : $main}
+      >
+        <Link.AppleZoom>
+          <Artwork
+            uri={artworkUri}
+            title={nowPlaying ?? name}
+            size={artwork.card}
+            radius={radius.sm}
+            fallbackIcon={nowPlaying ? icons.music : icons.speaker}
+          />
+        </Link.AppleZoom>
+        <View style={$text}>
+          <Text variant="headline" numberOfLines={1}>
+            {name}
           </Text>
-        ) : null}
-      </View>
-      <Icon name={icons.chevronRight} size={14} color="textTertiary" />
-    </Pressable>
+          <Text
+            variant="subhead"
+            color={nowPlaying ? "textSecondary" : "textTertiary"}
+            numberOfLines={1}
+          >
+            {nowPlaying ?? "Nothing playing"}
+          </Text>
+          {detail ? (
+            <Text variant="caption" color="textTertiary" numberOfLines={1}>
+              {detail}
+            </Text>
+          ) : null}
+        </View>
+        <Icon name={icons.chevronRight} size={14} color="textTertiary" />
+      </Pressable>
+    </Link>
   );
 
   return (
@@ -151,7 +166,8 @@ const $main: ViewStyle = {
   borderRadius: radius.sm,
 };
 
-const $pressed: ViewStyle = {
+const $mainPressed: ViewStyle = {
+  ...$main,
   opacity: 0.7,
 };
 

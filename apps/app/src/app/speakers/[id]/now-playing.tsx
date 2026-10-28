@@ -1,6 +1,6 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Image } from "expo-image";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useLocalSearchParams, useRouter } from "expo-router";
 import {
   Pressable,
   StyleSheet,
@@ -124,14 +124,16 @@ export default function NowPlayingModal() {
       </View>
 
       <View style={$content}>
-        <View style={$artShadow}>
-          <Artwork
-            uri={hasMusic ? speaker.artUrl : null}
-            title={speaker.track ?? speaker.name}
-            size="fill"
-            radius={radius.lg}
-          />
-        </View>
+        <Link.AppleZoomTarget>
+          <View style={$artShadow}>
+            <Artwork
+              uri={hasMusic ? speaker.artUrl : null}
+              title={speaker.track ?? speaker.name}
+              size="fill"
+              radius={radius.lg}
+            />
+          </View>
+        </Link.AppleZoomTarget>
 
         <View style={$trackInfo}>
           {speaker.source && speaker.source !== "STANDBY" ? (
