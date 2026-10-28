@@ -12,10 +12,10 @@ import {
 } from "@expo/ui";
 import { weight } from "@expo/ui/jetpack-compose/modifiers";
 import { buttonStyle, textSelection } from "@expo/ui/swift-ui/modifiers";
-import { useEffect, useRef, useState } from "react";
 import { Platform, ToastAndroid } from "react-native";
 
 import { copyText } from "@/lib/clipboard";
+import { useDraftValue } from "@/lib/useDraftValue";
 import { color } from "@/ui/tokens";
 
 import type { FormIcon } from "./icons";
@@ -216,8 +216,7 @@ export function FormPickerRow<Value extends PickerItemValue>({
 
 /**
  * Inline slider with its label and current value. Dragging updates the value
- * shown immediately; `onCommit` fires once the value rests for 400 ms (and on
- * unmount), so a drag doesn't send a request per step.
+ * shown immediately; `onCommit` fires once it rests (see `useDraftValue`).
  */
 export function FormSliderRow({
   label,
@@ -236,45 +235,7 @@ export function FormSliderRow({
   saving?: boolean;
   onCommit: (value: number) => void;
 }) {
-  const [localValue, setLocalValue] = useState(value);
-
-  // Follow the speaker's value when it changes underneath us.
-  const [syncedValue, setSyncedValue] = useState(value);
-  if (syncedValue !== value) {
-    setSyncedValue(value);
-    setLocalValue(value);
-  }
-
-  const onCommitRef = useRef(onCommit);
-  useEffect(() => {
-    onCommitRef.current = onCommit;
-  });
-
-  const pendingRef = useRef<number | null>(null);
-  useEffect(() => {
-    if (localValue === value) {
-      pendingRef.current = null;
-      return;
-    }
-    pendingRef.current = localValue;
-    const timer = setTimeout(() => {
-      pendingRef.current = null;
-      onCommitRef.current(localValue);
-    }, 400);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [localValue, value]);
-
-  // Leaving the screen mid-drag still saves the last value.
-  useEffect(
-    () => () => {
-      if (pendingRef.current !== null) {
-        onCommitRef.current(pendingRef.current);
-      }
-    },
-    [],
-  );
+  const [localValue, setLocalValue] = useDraftValue(value, onCommit);
 
   return (
     <Column spacing={4}>

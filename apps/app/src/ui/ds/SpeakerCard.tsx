@@ -1,12 +1,12 @@
-import { useState } from "react";
 import { Pressable, View, type TextStyle, type ViewStyle } from "react-native";
 
-import { Slider } from "@/components/ui/Slider";
+import { useDraftValue } from "@/lib/useDraftValue";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
 import { Icon, icons } from "./Icon";
 import { IconButton } from "./IconButton";
+import { Slider } from "./Slider";
 import { Text } from "./Text";
 
 export interface SpeakerCardProps {
@@ -20,6 +20,7 @@ export interface SpeakerCardProps {
   /** Disables play/pause when the speaker has nothing to resume. */
   canPlayPause: boolean;
   volume: number;
+  /** Sends the volume once a drag settles. */
   onVolumeCommit: (volume: number) => void;
   onPlayPause: () => void;
   onOpen: () => void;
@@ -39,7 +40,7 @@ export function SpeakerCard({
   onOpen,
   onOpenSettings,
 }: SpeakerCardProps) {
-  const [dragVolume, setDragVolume] = useState<number | null>(null);
+  const [draftVolume, setDraftVolume] = useDraftValue(volume, onVolumeCommit);
 
   return (
     <View style={$card}>
@@ -94,27 +95,16 @@ export function SpeakerCard({
           iconSize={18}
         />
         <Icon name={icons.volume} size={16} />
-        <View style={$slider}>
-          <Slider
-            value={volume}
-            minimumValue={0}
-            maximumValue={100}
-            trackHeight={4}
-            thumbSize={16}
-            trackColor={color.surface3}
-            fillColor={color.textPrimary}
-            thumbColor={color.textPrimary}
-            onValueChange={(value) => {
-              setDragVolume(Math.round(value));
-            }}
-            onSlidingComplete={(value) => {
-              setDragVolume(null);
-              onVolumeCommit(value);
-            }}
-          />
-        </View>
+        <Slider
+          value={draftVolume}
+          minimumValue={0}
+          maximumValue={100}
+          accessibilityLabel={`${name} volume`}
+          style={$slider}
+          onValueChange={setDraftVolume}
+        />
         <Text variant="caption" color="textSecondary" style={$volumeValue}>
-          {dragVolume ?? volume}
+          {draftVolume}
         </Text>
       </View>
     </View>

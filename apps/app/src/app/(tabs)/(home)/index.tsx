@@ -16,6 +16,7 @@ import {
   isSpeakerPlaying,
   playStatusLabel,
 } from "@/features/speakers/lib/playback";
+import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -54,6 +55,7 @@ export default function Index() {
   };
 
   const playPreset = (speaker: BoseSpeaker, slot: number) => {
+    haptics.tap();
     keyMutation.mutate({
       deviceID: speaker.deviceID,
       key: `PRESET_${slot}` as KeyValue,
@@ -143,6 +145,7 @@ export default function Index() {
                       });
                     }}
                     onPlayPause={() => {
+                      haptics.tap();
                       playPauseMutation.mutate({ deviceID: speaker.deviceID });
                     }}
                     onOpen={() => {
