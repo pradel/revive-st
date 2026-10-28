@@ -1,0 +1,15 @@
+{
+  "name": "@revive-st/design",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/palette.ts",
+  "types": "src/palette.ts",
+  "scripts": {
+    "icons": "node scripts/export-icons.ts"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "2.6.2",
+    "@types/node": "26.6.5"
+  }
+}

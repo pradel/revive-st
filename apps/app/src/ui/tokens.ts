@@ -1,29 +1,14 @@
+import { palette } from "@revive-st/design";
 import type { TextStyle } from "react-native";
 
 /**
- * Design tokens for the redesigned screens. Structure comes from surface
- * steps, not borders; `accent` is reserved for the primary action and
- * active/selected states.
+ * Design tokens for the app. Colours come from the shared dark palette in
+ * `@revive-st/design` (also used by the website), plus app-only overlays.
  */
 export const color = {
-  bg: "#0B0B0C",
-  surface1: "#161618",
-  surface2: "#1F1F22",
-  surface3: "#2A2A2E",
-  separator: "rgba(255,255,255,0.08)",
-  textPrimary: "#FFFFFF",
-  textSecondary: "rgba(255,255,255,0.68)",
-  textTertiary: "rgba(255,255,255,0.45)",
-  /** Revive mint: the logo's neon green shifted towards teal, distinct from Spotify's brand green. */
-  accent: "#2EDCA0",
-  accentMuted: "rgba(46,220,160,0.16)",
-  onAccent: "#04160F",
-  danger: "#FF5449",
-  warning: "#FFB86C",
+  ...palette.dark,
   scrim: "rgba(0,0,0,0.55)",
   shadow: "#000000",
-  /** Danger tint behind error banners. */
-  dangerMuted: "rgba(255,84,73,0.16)",
 } as const;
 
 export type ColorName = keyof typeof color;

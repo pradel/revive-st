@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <title>Revive ST</title>
+  <!--
+    Source for the app icon, splash and favicons.
+    Colours: background = the first <rect>; logo colour = fill on <g id="art">.
+    Wordmark: Inter Bold (OFL), converted to outlines.
+  -->
+  <defs>
+    <!--
+      Every shape is a centreline; the mask turns it into neon "tubes".
+      Line 9, gap 11 (as measured on the original icon):
+        tube    = 49 wide outline + 31 wide hole + 9 wide centre line
+        capsule = 29 wide outline + 11 wide hole (no centre line)
+        wave    = single 9 wide line
+        crescent = filled sliver
+    -->
+    <!-- S → bar → stem, one tube starting at the S's lower tail. -->
+    <path id="tube-st" d="M410 499.5C410 524 431 541 457 541C484 541 506 523 506 500C506 478 488 463 458 450C430 438 411 415 411 390C411 362 432 340 457 340C483 340 497 355 500 372C503 388 512 394 530 394H556A30 30 0 0 1 586 424V569.5"/>
+    <!--
+      The bar's end right of the stem. The tube's own outer corner is erased and
+      replaced by one line: bar top → round end → back left → down into the stem's right line.
+    -->
+    <path id="t-outer-corner" d="M556 374.5A49.5 49.5 0 0 1 605.5 424"/>
+    <path id="t-end" d="M556 374H652.5A10 10 0 0 1 652.5 394H626Q606 394 606 414V430"/>
+    <!-- Left-side sound waves; the right side is the mirror image (axis x = 512). -->
+    <path id="capsule-wave" d="M342 396.5Q330 450 344 509.5"/>
+    <path id="squiggle" d="M264 454C263 438 281 431 284 452C287 478 300 486 304 470C307 455 308 430 311 412"/>
+    <path id="crescent-outer" d="M372 413Q352 450 372 487Q368 450 372 413Z"/>
+    <path id="crescent-inner" d="M391 440Q379 452.5 391 465Q395 452.5 391 440Z"/>
+    <g id="waves">
+      <g stroke="#fff" stroke-width="29"><use href="#capsule-wave"/></g>
+      <g stroke="#000" stroke-width="11"><use href="#capsule-wave"/></g>
+      <g stroke="#fff" stroke-width="9"><use href="#squiggle"/></g>
+      <g fill="#fff"><use href="#crescent-outer"/><use href="#crescent-inner"/></g>
+    </g>
+    <mask id="mark" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Outlines first, then holes, then centre lines, so crossing parts merge. -->
+        <g stroke="#fff" stroke-width="49"><use href="#tube-st"/></g>
+        <g stroke="#000" stroke-width="31"><use href="#tube-st"/></g>
+        <g stroke="#fff" stroke-width="9"><use href="#tube-st"/></g>
+        <use href="#t-outer-corner" stroke="#000" stroke-width="14" stroke-linecap="butt"/>
+        <use href="#t-end" stroke="#fff" stroke-width="9"/>
+        <use href="#waves"/>
+        <use href="#waves" transform="matrix(-1 0 0 1 1024 0)"/>
+      </g>
+    </mask>
+    <!-- Neon glow. Remove filter="url(#glow)" below for a flat logo. -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="9" result="blur"/>
+      <feComponentTransfer in="blur" result="halo"><feFuncA type="linear" slope="0.55"/></feComponentTransfer>
+      <feMerge><feMergeNode in="halo"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <rect width="1024" height="1024" fill="#141615"/>
+  <g id="art" fill="#2CE083" filter="url(#glow)">
+    <rect width="1024" height="1024" mask="url(#mark)"/>
+    <path id="wordmark" d="M296.94 707L284 707L284 644L308.90 644Q316.05 644 321.17 646.54Q326.28 649.07 329.01 653.68Q331.74 658.29 331.74 664.59L331.74 664.59Q331.74 670.85 328.90 675.37Q326.07 679.90 320.83 682.33Q315.58 684.76 308.35 684.76L308.35 684.76L291.70 684.76L291.70 674.32L307.42 674.32Q311.10 674.32 313.62 673.15Q316.13 671.99 317.44 669.81Q318.76 667.64 318.76 664.59L318.76 664.59Q318.76 661.50 317.44 659.31Q316.13 657.11 313.60 655.92Q311.06 654.74 307.38 654.74L307.38 654.74L296.94 654.74L296.94 707ZM333.51 707L319.39 707L304.59 678.46L318.42 678.46L333.51 707ZM386.97 707L343.08 707L343.08 644L386.93 644L386.93 654.95L356.02 654.95L356.02 669.83L384.60 669.83L384.60 680.53L356.02 680.53L356.02 696.05L386.97 696.05L386.97 707ZM432.94 707L416.24 707L394.17 644L408.42 644L418.56 674.53Q420.34 680.28 422.26 687.06Q424.19 693.85 426.39 701.88L426.39 701.88L423.09 701.88Q425.20 693.81 427.06 687.04Q428.92 680.28 430.66 674.53L430.66 674.53L440.47 644L454.59 644L432.94 707ZM463.35 644L476.29 644L476.29 707L463.35 707L463.35 644ZM523.87 707L507.17 707L485.09 644L499.34 644L509.49 674.53Q511.27 680.28 513.19 687.06Q515.12 693.85 517.31 701.88L517.31 701.88L514.02 701.88Q516.13 693.81 517.99 687.04Q519.85 680.28 521.58 674.53L521.58 674.53L531.39 644L545.52 644L523.87 707ZM598.17 707L554.28 707L554.28 644L598.13 644L598.13 654.95L567.22 654.95L567.22 669.83L595.80 669.83L595.80 680.53L567.22 680.53L567.22 696.05L598.17 696.05L598.17 707ZM654.81 707.97L654.81 707.97Q646.94 707.97 641.28 705.52Q635.61 703.07 632.54 698.33Q629.48 693.60 629.39 686.83L629.39 686.83L641.95 686.83Q642.08 690.17 643.71 692.48Q645.33 694.78 648.17 695.99Q651.00 697.19 654.81 697.19L654.81 697.19Q658.36 697.19 660.98 696.20Q663.60 695.20 665.08 693.39Q666.56 691.57 666.56 689.16L666.56 689.16Q666.56 687.04 665.33 685.56Q664.11 684.08 661.66 682.98Q659.20 681.88 655.44 681.04L655.44 681.04L648.67 679.47Q639.92 677.49 635.38 673.22Q630.83 668.95 630.83 662.14L630.83 662.14Q630.83 656.39 633.85 652.12Q636.88 647.85 642.25 645.46Q647.62 643.07 654.64 643.07L654.64 643.07Q661.78 643.07 667.03 645.48Q672.27 647.89 675.19 652.31Q678.10 656.73 678.27 662.73L678.27 662.73L665.93 662.73Q665.59 658.54 662.59 656.18Q659.58 653.81 654.59 653.81L654.59 653.81Q651.38 653.81 648.97 654.78Q646.56 655.75 645.25 657.47Q643.94 659.18 643.94 661.42L643.94 661.42Q643.94 663.53 645.17 664.99Q646.39 666.45 648.76 667.47Q651.13 668.48 654.47 669.24L654.47 669.24L660.34 670.60Q664.91 671.61 668.46 673.15Q672.01 674.70 674.47 676.90Q676.92 679.09 678.21 682.03Q679.50 684.97 679.50 688.69L679.50 688.69Q679.50 694.61 676.54 698.95Q673.58 703.28 668.04 705.63Q662.50 707.97 654.81 707.97ZM706.87 654.95L687.67 654.95L687.67 644L739 644L739 654.95L719.85 654.95L719.85 707L706.87 707L706.87 654.95Z"/>
+  </g>
+</svg>

@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="243 299 538 312" width="538" height="312">
+  <title>Revive ST mark</title>
+  <!-- Colour: fill on <rect id="art">. Same geometry as logo.svg. -->
+  <defs>
+    <!--
+      Every shape is a centreline; the mask turns it into neon "tubes".
+      Line 9, gap 11 (as measured on the original icon):
+        tube    = 49 wide outline + 31 wide hole + 9 wide centre line
+        capsule = 29 wide outline + 11 wide hole (no centre line)
+        wave    = single 9 wide line
+        crescent = filled sliver
+    -->
+    <!-- S → bar → stem, one tube starting at the S's lower tail. -->
+    <path id="tube-st" d="M410 499.5C410 524 431 541 457 541C484 541 506 523 506 500C506 478 488 463 458 450C430 438 411 415 411 390C411 362 432 340 457 340C483 340 497 355 500 372C503 388 512 394 530 394H556A30 30 0 0 1 586 424V569.5"/>
+    <!--
+      The bar's end right of the stem. The tube's own outer corner is erased and
+      replaced by one line: bar top → round end → back left → down into the stem's right line.
+    -->
+    <path id="t-outer-corner" d="M556 374.5A49.5 49.5 0 0 1 605.5 424"/>
+    <path id="t-end" d="M556 374H652.5A10 10 0 0 1 652.5 394H626Q606 394 606 414V430"/>
+    <!-- Left-side sound waves; the right side is the mirror image (axis x = 512). -->
+    <path id="capsule-wave" d="M342 396.5Q330 450 344 509.5"/>
+    <path id="squiggle" d="M264 454C263 438 281 431 284 452C287 478 300 486 304 470C307 455 308 430 311 412"/>
+    <path id="crescent-outer" d="M372 413Q352 450 372 487Q368 450 372 413Z"/>
+    <path id="crescent-inner" d="M391 440Q379 452.5 391 465Q395 452.5 391 440Z"/>
+    <g id="waves">
+      <g stroke="#fff" stroke-width="29"><use href="#capsule-wave"/></g>
+      <g stroke="#000" stroke-width="11"><use href="#capsule-wave"/></g>
+      <g stroke="#fff" stroke-width="9"><use href="#squiggle"/></g>
+      <g fill="#fff"><use href="#crescent-outer"/><use href="#crescent-inner"/></g>
+    </g>
+    <mask id="mark" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Outlines first, then holes, then centre lines, so crossing parts merge. -->
+        <g stroke="#fff" stroke-width="49"><use href="#tube-st"/></g>
+        <g stroke="#000" stroke-width="31"><use href="#tube-st"/></g>
+        <g stroke="#fff" stroke-width="9"><use href="#tube-st"/></g>
+        <use href="#t-outer-corner" stroke="#000" stroke-width="14" stroke-linecap="butt"/>
+        <use href="#t-end" stroke="#fff" stroke-width="9"/>
+        <use href="#waves"/>
+        <use href="#waves" transform="matrix(-1 0 0 1 1024 0)"/>
+      </g>
+    </mask>
+  </defs>
+  <rect id="art" x="243" y="299" width="538" height="312" fill="#2CE083" mask="url(#mark)"/>
+</svg>

@@ -11,10 +11,18 @@ export const metadata: Metadata = {
 };
 
 import "./global.css";
+import { cssVariables, palette } from "@revive-st/design";
 import { Inter } from "next/font/google";
 
 import { FathomAnalytics } from "@/components/fathom";
 import { Provider } from "@/components/provider";
+
+/**
+ * Theme colours from the shared palette: light on :root, dark under .dark
+ * (next-themes), plus the always-dark phone mockup colours.
+ */
+const paletteCss = `:root { ${cssVariables(palette.light)} --device-frame: ${palette.dark.surface3}; --device-bezel: ${palette.dark.bg}; --device-camera: ${palette.dark.surface2}; }
+.dark { ${cssVariables(palette.dark)} }`;
 
 const inter = Inter({
   subsets: ["latin"],
@@ -24,6 +32,7 @@ export default function Layout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={inter.className} suppressHydrationWarning>
       <head>
+        <style>{paletteCss}</style>
         <script
           type="application/ld+json"
           // oxlint-disable-next-line react/no-danger

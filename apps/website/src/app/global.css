@@ -3,44 +3,15 @@
 @import "fumadocs-ui/css/preset.css";
 
 /*
- * Brand palette. Dark mirrors apps/app/src/ui/tokens.ts (`color`) exactly.
- * Light keeps the same structure; its accent is a deeper Revive mint so text
- * and links stay WCAG AA on light surfaces (#0A7F5C: 5.0:1 on white,
- * 4.55:1 on surface-1; white on it 5.0:1).
+ * Colour variables (--bg, --surface-1, --text-primary, --accent, …) and the
+ * phone mockup's --device-* colours come from @revive-st/design and are
+ * written by the root layout (src/app/layout.tsx) for both themes.
  */
 :root {
-  --bg: #ffffff;
-  --surface-1: #f4f4f5;
-  --surface-2: #ebebed;
-  --surface-3: #e0e0e3;
-  --separator: rgba(11, 11, 12, 0.08);
-  --fg: #0b0b0c;
-  --fg-secondary: rgba(11, 11, 12, 0.68);
-  --fg-tertiary: rgba(11, 11, 12, 0.6);
-  --accent: #0a7f5c;
-  --accent-muted: rgba(46, 220, 160, 0.18);
-  --on-accent: #ffffff;
-  --danger: #c5221f;
-  --danger-muted: rgba(197, 34, 31, 0.1);
-  --warning: #a15c00;
   --phone-shadow: 0 30px 80px -12px rgba(11, 11, 12, 0.3);
 }
 
 .dark {
-  --bg: #0b0b0c;
-  --surface-1: #161618;
-  --surface-2: #1f1f22;
-  --surface-3: #2a2a2e;
-  --separator: rgba(255, 255, 255, 0.08);
-  --fg: #ffffff;
-  --fg-secondary: rgba(255, 255, 255, 0.68);
-  --fg-tertiary: rgba(255, 255, 255, 0.45);
-  --accent: #2edca0;
-  --accent-muted: rgba(46, 220, 160, 0.16);
-  --on-accent: #04160f;
-  --danger: #ff5449;
-  --danger-muted: rgba(255, 84, 73, 0.16);
-  --warning: #ffb86c;
   --phone-shadow: 0 30px 80px -12px rgba(0, 0, 0, 0.7);
 }
 
@@ -50,23 +21,19 @@
   --color-surface-2: var(--surface-2);
   --color-surface-3: var(--surface-3);
   --color-separator: var(--separator);
-  --color-fg: var(--fg);
-  --color-fg-secondary: var(--fg-secondary);
-  --color-fg-tertiary: var(--fg-tertiary);
+  --color-fg: var(--text-primary);
+  --color-fg-secondary: var(--text-secondary);
+  --color-fg-tertiary: var(--text-tertiary);
   --color-accent: var(--accent);
   --color-accent-muted: var(--accent-muted);
   --color-on-accent: var(--on-accent);
   --color-danger: var(--danger);
   --color-danger-muted: var(--danger-muted);
   --color-warning: var(--warning);
+  --color-device-frame: var(--device-frame);
+  --color-device-bezel: var(--device-bezel);
+  --color-device-camera: var(--device-camera);
   --shadow-phone: var(--phone-shadow);
-}
-
-/* The phone mockup is hardware: it stays dark in both themes. */
-@theme {
-  --color-device-frame: #2a2a2e;
-  --color-device-bezel: #0b0b0c;
-  --color-device-camera: #1f1f22;
 }
 
 /*
@@ -75,39 +42,39 @@
  */
 @theme {
   --color-fd-background: var(--bg);
-  --color-fd-foreground: var(--fg);
+  --color-fd-foreground: var(--text-primary);
   --color-fd-muted: var(--surface-1);
-  --color-fd-muted-foreground: var(--fg-secondary);
+  --color-fd-muted-foreground: var(--text-secondary);
   --color-fd-popover: var(--surface-1);
-  --color-fd-popover-foreground: var(--fg);
+  --color-fd-popover-foreground: var(--text-primary);
   --color-fd-card: var(--surface-1);
-  --color-fd-card-foreground: var(--fg);
+  --color-fd-card-foreground: var(--text-primary);
   --color-fd-border: var(--separator);
   --color-fd-primary: var(--accent);
   --color-fd-primary-foreground: var(--on-accent);
   --color-fd-secondary: var(--surface-2);
-  --color-fd-secondary-foreground: var(--fg);
+  --color-fd-secondary-foreground: var(--text-primary);
   --color-fd-accent: var(--surface-2);
-  --color-fd-accent-foreground: var(--fg);
+  --color-fd-accent-foreground: var(--text-primary);
   --color-fd-ring: var(--accent);
 }
 
 .dark {
   --color-fd-background: var(--bg);
-  --color-fd-foreground: var(--fg);
+  --color-fd-foreground: var(--text-primary);
   --color-fd-muted: var(--surface-1);
-  --color-fd-muted-foreground: var(--fg-secondary);
+  --color-fd-muted-foreground: var(--text-secondary);
   --color-fd-popover: var(--surface-2);
-  --color-fd-popover-foreground: var(--fg);
+  --color-fd-popover-foreground: var(--text-primary);
   --color-fd-card: var(--surface-1);
-  --color-fd-card-foreground: var(--fg);
+  --color-fd-card-foreground: var(--text-primary);
   --color-fd-border: var(--separator);
   --color-fd-primary: var(--accent);
   --color-fd-primary-foreground: var(--on-accent);
   --color-fd-secondary: var(--surface-2);
-  --color-fd-secondary-foreground: var(--fg);
+  --color-fd-secondary-foreground: var(--text-primary);
   --color-fd-accent: var(--surface-2);
-  --color-fd-accent-foreground: var(--fg);
+  --color-fd-accent-foreground: var(--text-primary);
   --color-fd-ring: var(--accent);
 }
 
@@ -120,7 +87,7 @@
 .dark #nd-sidebar {
   --color-fd-muted: var(--surface-2);
   --color-fd-secondary: var(--surface-3);
-  --color-fd-muted-foreground: var(--fg-secondary);
+  --color-fd-muted-foreground: var(--text-secondary);
 }
 
 html {

@@ -1,3 +1,4 @@
+import { palette } from "@revive-st/design";
 import { generate as DefaultImage } from "fumadocs-ui/og";
 import { notFound } from "next/navigation";
 import { ImageResponse } from "next/og";
@@ -22,8 +23,8 @@ export async function GET(
       title={page.data.title}
       description={page.data.description}
       site={appName}
-      primaryColor="rgba(46,220,160,0.3)"
-      primaryTextColor="#2EDCA0"
+      primaryColor={palette.dark.accentMuted}
+      primaryTextColor={palette.dark.accent}
     />,
     {
       width: 1200,
