@@ -1,66 +1,49 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
-import { color, space } from "@/ui/tokens";
-
-import { icons } from "./Icon";
-import { IconButton } from "./IconButton";
-import { LargeTitleHeader } from "./LargeTitleHeader";
+import { color } from "@/ui/tokens";
 
 export interface ScreenProps {
   children: ReactNode;
-  /** Renders a `LargeTitleHeader` above the content. */
-  title?: string;
-  /** Trailing header actions; only used with `title`. */
-  actions?: ReactNode;
   /** Pinned below the content and above the bottom inset (e.g. `MiniPlayer`). */
   footer?: ReactNode;
   /** Full-bleed layer drawn behind the safe area (e.g. blurred artwork). */
   backdrop?: ReactNode;
   /**
-   * `sheet`: the screen is presented as a sheet that already starts below the
-   * status bar, so only the bottom (gesture bar) inset applies.
+   * - `stack`: below a native stack header, which already clears the status
+   *   bar. Title and actions belong to the header (`Stack.Title`,
+   *   `Stack.Toolbar`).
+   * - `fullscreen`: headerless; content is kept clear of the status bar.
+   * - `sheet`: presented as a sheet that already starts below the status bar,
+   *   so only the bottom (gesture bar) inset applies.
    */
-  presentation?: "screen" | "sheet";
-  /** Pushed screens: renders a back button above the header. */
-  onBack?: () => void;
+  presentation?: "stack" | "fullscreen" | "sheet";
 }
 
+const edges: Record<NonNullable<ScreenProps["presentation"]>, Edge[]> = {
+  stack: [],
+  fullscreen: ["top"],
+  sheet: ["bottom"],
+};
+
 /**
- * Screen root: keeps content clear of the status bar (or, for sheets, of the
- * gesture bar) and lays out header → content → footer on the `bg` color.
+ * Screen root: lays out content → footer on the `bg` color, keeping clear of
+ * the system bars that no native header covers.
  */
 export function Screen({
   children,
-  title,
-  actions,
   footer,
   backdrop,
-  presentation = "screen",
-  onBack,
+  presentation = "stack",
 }: ScreenProps) {
   return (
     <View style={$root}>
       {backdrop ? (
         <View style={StyleSheet.absoluteFill}>{backdrop}</View>
       ) : null}
-      <SafeAreaView
-        style={$safeArea}
-        edges={presentation === "sheet" ? ["bottom"] : ["top"]}
-      >
-        {onBack ? (
-          <View style={$backRow}>
-            <IconButton
-              icon={icons.back}
-              accessibilityLabel="Back"
-              onPress={onBack}
-              tint="textPrimary"
-            />
-          </View>
-        ) : null}
-        {title ? <LargeTitleHeader title={title} actions={actions} /> : null}
-        <View style={$content}>{children}</View>
+      <SafeAreaView style={$fill} edges={edges[presentation]}>
+        <View style={$fill}>{children}</View>
         {footer ? (
           <SafeAreaView edges={["bottom"]}>{footer}</SafeAreaView>
         ) : null}
@@ -74,15 +57,6 @@ const $root: ViewStyle = {
   backgroundColor: color.bg,
 };
 
-const $safeArea: ViewStyle = {
+const $fill: ViewStyle = {
   flex: 1,
-};
-
-const $content: ViewStyle = {
-  flex: 1,
-};
-
-const $backRow: ViewStyle = {
-  flexDirection: "row",
-  paddingHorizontal: space.screen - space.xs,
 };

@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
-import { useEffect, useState } from "react";
+import { router, Stack } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,6 +13,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import type { SearchBarCommands } from "react-native-screens";
 
 import {
   useRadioFavorites,
@@ -36,7 +37,6 @@ import { Icon, icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { ListRow } from "@/ui/ds/ListRow";
 import { Screen } from "@/ui/ds/Screen";
-import { SearchField } from "@/ui/ds/SearchField";
 import { SectionHeader } from "@/ui/ds/SectionHeader";
 import { SegmentedControl } from "@/ui/ds/SegmentedControl";
 import { Shelf } from "@/ui/ds/Shelf";
@@ -79,6 +79,7 @@ export default function RadioBrowser() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
   const [selectedTag, setSelectedTag] = useState<string | null>("All");
+  const searchBarRef = useRef<SearchBarCommands>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -265,8 +266,37 @@ export default function RadioBrowser() {
     );
   };
 
+  const controls = (
+    <View style={$controls}>
+      <SegmentedControl
+        options={TABS}
+        value={activeTab}
+        onChange={setActiveTab}
+      />
+    </View>
+  );
+
   const browseHeader = (
     <>
+      {controls}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={$tags}
+      >
+        {GENRE_TAGS.map((tag) => (
+          <Chip
+            key={tag}
+            label={tag}
+            selected={selectedTag === tag}
+            onPress={() => {
+              const nextTag = selectedTag === tag ? "All" : tag;
+              searchBarRef.current?.clearText();
+              handleSearch("", nextTag);
+            }}
+          />
+        ))}
+      </ScrollView>
       {favorites.length > 0 && !isSearching && (
         <Shelf title="Your favorites">
           {favorites.map((station) => (
@@ -290,70 +320,50 @@ export default function RadioBrowser() {
   );
 
   return (
-    <Screen title="Radio" footer={<NowPlayingBar />}>
-      <View style={$controls}>
-        <SegmentedControl
-          options={TABS}
-          value={activeTab}
-          onChange={setActiveTab}
-        />
-      </View>
+    <Screen footer={<NowPlayingBar />}>
+      <Stack.SearchBar
+        ref={searchBarRef}
+        placeholder="Search stations"
+        autoCapitalize="none"
+        onChangeText={(event) => {
+          const text = event.nativeEvent.text;
+          setQuery(text);
+          // Clearing the field (including `clearText()` when a genre is
+          // picked) keeps the genre; typing a query searches all genres.
+          if (text !== "") {
+            setSelectedTag("All");
+            setActiveTab("search");
+          }
+        }}
+        onSearchButtonPress={(event) => {
+          handleSearch(event.nativeEvent.text, "All");
+        }}
+        onCancelButtonPress={() => {
+          setQuery("");
+        }}
+        onClose={() => {
+          setQuery("");
+        }}
+      />
 
       {activeTab === "search" ? (
-        <View style={$fill}>
-          <View style={$search}>
-            <SearchField
-              placeholder="Search stations"
-              value={query}
-              onChangeText={(text) => {
-                setQuery(text);
-                setSelectedTag("All");
-              }}
-              onSubmitEditing={() => {
-                handleSearch(query, "All");
-              }}
-              onClear={() => {
-                setQuery("");
-              }}
-            />
-          </View>
-
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={$tags}
-            style={$tagsScroll}
-          >
-            {GENRE_TAGS.map((tag) => (
-              <Chip
-                key={tag}
-                label={tag}
-                selected={selectedTag === tag}
-                onPress={() => {
-                  const nextTag = selectedTag === tag ? "All" : tag;
-                  handleSearch("", nextTag);
-                }}
-              />
-            ))}
-          </ScrollView>
-
-          <FlatList
-            data={isLoading || isError ? [] : (stations ?? [])}
-            keyExtractor={(item) => item.stationuuid}
-            renderItem={renderStationRow}
-            ListHeaderComponent={browseHeader}
-            ListEmptyComponent={renderBrowseEmpty()}
-            contentContainerStyle={$listContent}
-            contentInsetAdjustmentBehavior="automatic"
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-          />
-        </View>
+        <FlatList
+          data={isLoading || isError ? [] : (stations ?? [])}
+          keyExtractor={(item) => item.stationuuid}
+          renderItem={renderStationRow}
+          ListHeaderComponent={browseHeader}
+          ListEmptyComponent={renderBrowseEmpty()}
+          contentContainerStyle={$listContent}
+          contentInsetAdjustmentBehavior="automatic"
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        />
       ) : (
         <FlatList
           data={favorites}
           keyExtractor={(item) => item.stationuuid}
           renderItem={renderStationRow}
+          ListHeaderComponent={controls}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
           ListEmptyComponent={
@@ -495,23 +505,9 @@ function SpeakerCastItem({
   );
 }
 
-const $fill: ViewStyle = {
-  flex: 1,
-};
-
 const $controls: ViewStyle = {
   paddingHorizontal: space.screen,
   paddingBottom: space.sm,
-};
-
-const $search: ViewStyle = {
-  paddingHorizontal: space.screen,
-};
-
-const $tagsScroll: ViewStyle = {
-  flexGrow: 0,
-  // The station list below is flex: 1; without this the row shrinks and clips the chips.
-  flexShrink: 0,
 };
 
 const $tags: ViewStyle = {

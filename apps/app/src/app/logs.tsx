@@ -1,4 +1,4 @@
-import { useRouter } from "expo-router";
+import { Stack } from "expo-router";
 import {
   Alert,
   ScrollView,
@@ -9,15 +9,15 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { useLogger } from "@/lib/useLogger";
-import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { Screen } from "@/ui/ds/Screen";
 import { Text } from "@/ui/ds/Text";
 import { space, type ColorName } from "@/ui/tokens";
+import { toolbarIcons } from "@/ui/toolbarIcons";
 
 export default function LogsViewer() {
-  const router = useRouter();
-  const { logs, clearLogs, copyLogs } = useLogger();
+  const { logs, clearLogs, copyLogs, shareLogs } = useLogger();
+  const hasLogs = logs.length > 0;
 
   const handleClearLogs = () => {
     Alert.alert("Clear All Logs", "This cannot be undone.", [
@@ -33,27 +33,43 @@ export default function LogsViewer() {
   };
 
   return (
-    <Screen
-      title="Logs"
-      onBack={() => {
-        router.back();
-      }}
-      footer={
-        <View style={$bottomBar}>
-          <View style={$fill}>
-            <Button
-              label="Copy all"
-              onPress={() => {
-                void copyLogs();
-              }}
-            />
-          </View>
-          <Button label="Clear" variant="secondary" onPress={handleClearLogs} />
-        </View>
-      }
-    >
+    <Screen>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Menu
+          icon={toolbarIcons.more}
+          accessibilityLabel="Log actions"
+        >
+          <Stack.Toolbar.MenuAction
+            icon={toolbarIcons.copy}
+            disabled={!hasLogs}
+            onPress={() => {
+              void copyLogs();
+            }}
+          >
+            Copy all
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction
+            icon={toolbarIcons.share}
+            disabled={!hasLogs}
+            onPress={() => {
+              void shareLogs();
+            }}
+          >
+            Share
+          </Stack.Toolbar.MenuAction>
+          <Stack.Toolbar.MenuAction
+            icon={toolbarIcons.delete}
+            destructive
+            disabled={!hasLogs}
+            onPress={handleClearLogs}
+          >
+            Clear all
+          </Stack.Toolbar.MenuAction>
+        </Stack.Toolbar.Menu>
+      </Stack.Toolbar>
       <ScrollView
         contentContainerStyle={$scrollContent}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
         {logs.length === 0 ? (
@@ -122,15 +138,4 @@ const $logMeta: ViewStyle = {
 const $logMessage: TextStyle = {
   fontFamily: "monospace",
   fontWeight: "400",
-};
-
-const $bottomBar: ViewStyle = {
-  flexDirection: "row",
-  gap: space.xs,
-  paddingHorizontal: space.screen,
-  paddingVertical: space.sm,
-};
-
-const $fill: ViewStyle = {
-  flex: 1,
 };

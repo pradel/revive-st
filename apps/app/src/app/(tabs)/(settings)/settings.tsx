@@ -30,9 +30,10 @@ export default function AppSettings() {
   const { isScanning, rescan } = useBose();
 
   return (
-    <Screen title="Settings">
+    <Screen>
       <ScrollView
         contentContainerStyle={$content}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
         <SectionHeader title="About" />

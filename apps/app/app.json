@@ -3,7 +3,8 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "app",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B0B0C",
     "ios": {
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Required to scan for your Bose speaker on WiFi.",

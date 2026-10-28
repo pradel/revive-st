@@ -1,8 +1,11 @@
 import type { KeyValue } from "bose-api-speaker-client";
-import { useRouter } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { RefreshControl, ScrollView, View, type ViewStyle } from "react-native";
 
-import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
+import {
+  SPEAKER_SETUP_SUPPORTED,
+  useOpenSpeakerSetup,
+} from "@/features/onboarding/components/SetupUnavailable";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
@@ -16,13 +19,13 @@ import {
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
-import { IconButton } from "@/ui/ds/IconButton";
 import { Screen } from "@/ui/ds/Screen";
 import { Shelf } from "@/ui/ds/Shelf";
 import { SpeakerCard } from "@/ui/ds/SpeakerCard";
 import { Tile } from "@/ui/ds/Tile";
 import { PulseRing } from "@/ui/PulseRing";
 import { color, space } from "@/ui/tokens";
+import { toolbarIcons } from "@/ui/toolbarIcons";
 
 const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -58,20 +61,15 @@ export default function Index() {
   };
 
   return (
-    <Screen
-      title="Speakers"
-      actions={
-        <IconButton
-          icon={icons.add}
+    <Screen footer={<NowPlayingBar />}>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={toolbarIcons.add}
           accessibilityLabel="Add speaker"
-          variant="filled"
-          size={36}
-          iconSize={16}
+          hidden={!SPEAKER_SETUP_SUPPORTED}
           onPress={openSpeakerSetup}
         />
-      }
-      footer={<NowPlayingBar />}
-    >
+      </Stack.Toolbar>
       <ScrollView
         contentContainerStyle={[$content, speakers.length === 0 && $centered]}
         contentInsetAdjustmentBehavior="automatic"

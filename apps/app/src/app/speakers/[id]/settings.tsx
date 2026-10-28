@@ -4,7 +4,7 @@ import {
   BottomSheetView,
 } from "@expo/ui/community/bottom-sheet";
 import type { AudioMode } from "bose-api-speaker-client";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
@@ -125,7 +125,8 @@ export default function SpeakerSettings() {
 
   if (!speaker) {
     return (
-      <Screen title="Settings" onBack={goBack}>
+      <Screen>
+        <Stack.Title>Settings</Stack.Title>
         <EmptyState
           icon={icons.speaker}
           title="Speaker not found"
@@ -164,9 +165,11 @@ export default function SpeakerSettings() {
   })();
 
   return (
-    <Screen title={speaker.name} onBack={goBack}>
+    <Screen>
+      <Stack.Title>{speaker.name}</Stack.Title>
       <ScrollView
         contentContainerStyle={$content}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

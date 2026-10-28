@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { SocketModuleLike } from "bose-api-speaker-client";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
@@ -244,7 +244,8 @@ export default function ConfigureSpeaker() {
 
   if (!speaker) {
     return (
-      <Screen title="Configure" onBack={goBack}>
+      <Screen>
+        <Stack.Title>Configure</Stack.Title>
         <EmptyState
           icon={icons.speaker}
           title="Speaker not found"
@@ -300,9 +301,11 @@ export default function ConfigureSpeaker() {
   });
 
   return (
-    <Screen title="Configure" onBack={goBack}>
+    <Screen>
+      <Stack.Title>Configure</Stack.Title>
       <ScrollView
         contentContainerStyle={$content}
+        contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
       >
         {/* Header summary */}
