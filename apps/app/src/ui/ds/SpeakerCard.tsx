@@ -4,6 +4,7 @@ import { useDraftValue } from "@/lib/useDraftValue";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
+import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
 import { Icon, icons } from "./Icon";
 import { IconButton } from "./IconButton";
 import { Slider } from "./Slider";
@@ -25,6 +26,8 @@ export interface SpeakerCardProps {
   onPlayPause: () => void;
   onOpen: () => void;
   onOpenSettings: () => void;
+  /** Long-press menu on the speaker's artwork and name. */
+  menu?: ContextMenuConfig;
 }
 
 export function SpeakerCard({
@@ -39,45 +42,57 @@ export function SpeakerCard({
   onPlayPause,
   onOpen,
   onOpenSettings,
+  menu,
 }: SpeakerCardProps) {
   const [draftVolume, setDraftVolume] = useDraftValue(volume, onVolumeCommit);
+
+  const renderMain = (openMenu: (() => void) | undefined) => (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
+      accessibilityHint="Opens the player"
+      onPress={onOpen}
+      onLongPress={openMenu}
+      style={({ pressed }) => [$main, pressed && $pressed]}
+    >
+      <Artwork
+        uri={artworkUri}
+        title={nowPlaying ?? name}
+        size={artwork.card}
+        radius={radius.sm}
+        fallbackIcon={nowPlaying ? icons.music : icons.speaker}
+      />
+      <View style={$text}>
+        <Text variant="headline" numberOfLines={1}>
+          {name}
+        </Text>
+        <Text
+          variant="subhead"
+          color={nowPlaying ? "textSecondary" : "textTertiary"}
+          numberOfLines={1}
+        >
+          {nowPlaying ?? "Nothing playing"}
+        </Text>
+        {detail ? (
+          <Text variant="caption" color="textTertiary" numberOfLines={1}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+      <Icon name={icons.chevronRight} size={14} color="textTertiary" />
+    </Pressable>
+  );
 
   return (
     <View style={$card}>
       <View style={$top}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
-          accessibilityHint="Opens the player"
-          onPress={onOpen}
-          style={({ pressed }) => [$main, pressed && $pressed]}
-        >
-          <Artwork
-            uri={artworkUri}
-            title={nowPlaying ?? name}
-            size={artwork.card}
-            radius={radius.sm}
-            fallbackIcon={nowPlaying ? icons.music : icons.speaker}
-          />
-          <View style={$text}>
-            <Text variant="headline" numberOfLines={1}>
-              {name}
-            </Text>
-            <Text
-              variant="subhead"
-              color={nowPlaying ? "textSecondary" : "textTertiary"}
-              numberOfLines={1}
-            >
-              {nowPlaying ?? "Nothing playing"}
-            </Text>
-            {detail ? (
-              <Text variant="caption" color="textTertiary" numberOfLines={1}>
-                {detail}
-              </Text>
-            ) : null}
-          </View>
-          <Icon name={icons.chevronRight} size={14} color="textTertiary" />
-        </Pressable>
+        {menu ? (
+          <ContextMenu {...menu} fill>
+            {renderMain}
+          </ContextMenu>
+        ) : (
+          renderMain(undefined)
+        )}
         <IconButton
           icon={icons.settings}
           accessibilityLabel={`${name} settings`}

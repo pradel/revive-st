@@ -4,6 +4,7 @@ import { Pressable, View, type ViewStyle } from "react-native";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
+import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
 import type { IconName } from "./Icon";
 import { Text } from "./Text";
 
@@ -20,6 +21,8 @@ export interface ListRowProps {
   disabled?: boolean;
   /** Makes the row a radio option; a selected row is tinted with the accent. */
   selected?: boolean;
+  /** Long-press menu on the row's main area. */
+  menu?: ContextMenuConfig;
 }
 
 export function ListRow({
@@ -32,8 +35,48 @@ export function ListRow({
   onPress,
   disabled = false,
   selected,
+  menu,
 }: ListRowProps) {
   const isRadio = selected !== undefined;
+  const renderMain = (openMenu: (() => void) | undefined) => (
+    <Pressable
+      accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
+      accessibilityState={isRadio ? { disabled, selected } : { disabled }}
+      onPress={onPress}
+      onLongPress={openMenu}
+      disabled={disabled || (!onPress && !openMenu)}
+      style={({ pressed }) => [
+        $main,
+        trailing !== undefined && $mainWithTrailing,
+        pressed && $pressed,
+      ]}
+    >
+      {leading ?? (
+        <Artwork
+          uri={artworkUri}
+          title={title}
+          size={artwork.row}
+          radius={radius.xs}
+          fallbackIcon={fallbackIcon}
+        />
+      )}
+      <View style={$text}>
+        <Text
+          variant="body"
+          color={selected === true ? "accent" : "textPrimary"}
+          numberOfLines={1}
+        >
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text variant="subhead" color="textSecondary" numberOfLines={1}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+
   // `trailing` is a sibling of the pressable area so controls in it (e.g. a
   // favorite button) stay separately focusable by screen readers.
   return (
@@ -45,41 +88,13 @@ export function ListRow({
         disabled && $disabled,
       ]}
     >
-      <Pressable
-        accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
-        accessibilityState={isRadio ? { disabled, selected } : { disabled }}
-        onPress={onPress}
-        disabled={disabled || !onPress}
-        style={({ pressed }) => [
-          $main,
-          trailing !== undefined && $mainWithTrailing,
-          pressed && $pressed,
-        ]}
-      >
-        {leading ?? (
-          <Artwork
-            uri={artworkUri}
-            title={title}
-            size={artwork.row}
-            radius={radius.xs}
-            fallbackIcon={fallbackIcon}
-          />
-        )}
-        <View style={$text}>
-          <Text
-            variant="body"
-            color={selected === true ? "accent" : "textPrimary"}
-            numberOfLines={1}
-          >
-            {title}
-          </Text>
-          {subtitle ? (
-            <Text variant="subhead" color="textSecondary" numberOfLines={1}>
-              {subtitle}
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
+      {menu ? (
+        <ContextMenu {...menu} fill>
+          {renderMain}
+        </ContextMenu>
+      ) : (
+        renderMain(undefined)
+      )}
       {trailing}
     </View>
   );

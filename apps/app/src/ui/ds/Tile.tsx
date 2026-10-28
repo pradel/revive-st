@@ -3,6 +3,7 @@ import { Pressable, View, type ViewStyle } from "react-native";
 import { artwork, radius } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
+import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
 import type { IconName } from "./Icon";
 import { Text } from "./Text";
 
@@ -12,7 +13,8 @@ export interface TileProps {
   artworkUri?: string | null;
   fallbackIcon?: IconName;
   onPress?: () => void;
-  onLongPress?: () => void;
+  /** Long-press menu, e.g. to save a preset. */
+  menu?: ContextMenuConfig;
   /** Dims the tile, e.g. for an empty preset slot. */
   muted?: boolean;
 }
@@ -23,16 +25,16 @@ export function Tile({
   artworkUri,
   fallbackIcon,
   onPress,
-  onLongPress,
+  menu,
   muted = false,
 }: TileProps) {
-  return (
+  const renderTile = (openMenu: (() => void) | undefined) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       onPress={onPress}
-      onLongPress={onLongPress}
-      disabled={!onPress && !onLongPress}
+      onLongPress={openMenu}
+      disabled={!onPress && !openMenu}
       style={({ pressed }) => [$tile, (pressed || muted) && $dimmed]}
     >
       <Artwork
@@ -57,6 +59,12 @@ export function Tile({
         ) : null}
       </View>
     </Pressable>
+  );
+
+  return menu ? (
+    <ContextMenu {...menu}>{renderTile}</ContextMenu>
+  ) : (
+    renderTile(undefined)
   );
 }
 

@@ -33,6 +33,15 @@ export function findActiveSpeaker(speakers: BoseSpeaker[]) {
   );
 }
 
+export function isStandby(speaker: BoseSpeaker) {
+  return speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
+}
+
+/** A preset stores the current stream, so the speaker must be playing one. */
+export function canSavePreset(speaker: BoseSpeaker) {
+  return !isStandby(speaker) && Boolean(speaker.track);
+}
+
 export function playStatusLabel(speaker: BoseSpeaker) {
   switch (speaker.playStatus) {
     case undefined:

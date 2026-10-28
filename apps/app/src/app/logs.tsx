@@ -15,8 +15,8 @@ import { EmptyState } from "@/ui/ds/EmptyState";
 import { Icon } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Text } from "@/ui/ds/Text";
+import { nativeIcons } from "@/ui/nativeIcons";
 import { color, radius, space, type ColorName } from "@/ui/tokens";
-import { toolbarIcons } from "@/ui/toolbarIcons";
 
 export default function LogsViewer() {
   const { logs, clearLogs, copyLogs, shareLogs } = useLogger();
@@ -76,11 +76,11 @@ export default function LogsViewer() {
     >
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu
-          icon={toolbarIcons.more}
+          icon={nativeIcons.more}
           accessibilityLabel="Log actions"
         >
           <Stack.Toolbar.MenuAction
-            icon={toolbarIcons.copy}
+            icon={nativeIcons.copy}
             disabled={!hasLogs}
             onPress={() => {
               void handleCopyLogs();
@@ -89,7 +89,7 @@ export default function LogsViewer() {
             Copy all
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction
-            icon={toolbarIcons.share}
+            icon={nativeIcons.share}
             disabled={!hasLogs}
             onPress={() => {
               void shareLogs();
@@ -98,7 +98,7 @@ export default function LogsViewer() {
             Share
           </Stack.Toolbar.MenuAction>
           <Stack.Toolbar.MenuAction
-            icon={toolbarIcons.delete}
+            icon={nativeIcons.delete}
             destructive
             disabled={!hasLogs}
             onPress={handleClearLogs}
