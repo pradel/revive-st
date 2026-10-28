@@ -9,6 +9,7 @@ import { BoseProvider } from "@/features/speakers/contexts/BoseContext";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { navigationTheme, stackScreenOptions } from "@/ui/navigation";
+import { color } from "@/ui/tokens";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -44,6 +45,16 @@ export default function RootLayout() {
                       presentation: "formSheet",
                       sheetGrabberVisible: true,
                       headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="cast"
+                    options={{
+                      presentation: "formSheet",
+                      sheetAllowedDetents: "fitToContents",
+                      sheetGrabberVisible: true,
+                      headerShown: false,
+                      contentStyle: { backgroundColor: color.surface1 },
                     }}
                   />
                 </Stack>

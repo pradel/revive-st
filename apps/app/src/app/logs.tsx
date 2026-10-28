@@ -1,7 +1,11 @@
 import { Stack } from "expo-router";
+import { useEffect, useState } from "react";
 import {
+  AccessibilityInfo,
   Alert,
+  Platform,
   ScrollView,
+  ToastAndroid,
   View,
   type TextStyle,
   type ViewStyle,
@@ -10,14 +14,42 @@ import {
 import { Card } from "@/components/ui/Card";
 import { useLogger } from "@/lib/useLogger";
 import { EmptyState } from "@/ui/ds/EmptyState";
+import { Icon } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Text } from "@/ui/ds/Text";
-import { space, type ColorName } from "@/ui/tokens";
+import { color, radius, space, type ColorName } from "@/ui/tokens";
 import { toolbarIcons } from "@/ui/toolbarIcons";
 
 export default function LogsViewer() {
   const { logs, clearLogs, copyLogs, shareLogs } = useLogger();
   const hasLogs = logs.length > 0;
+  const [copiedCount, setCopiedCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (copiedCount === null) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      setCopiedCount(null);
+    }, 2000);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [copiedCount]);
+
+  const handleCopyLogs = async () => {
+    await copyLogs();
+    const message = `Copied ${logs.length} log entries`;
+    if (Platform.OS === "android") {
+      // Android 13+ confirms clipboard writes itself; a toast would repeat it.
+      if (Platform.Version < 33) {
+        ToastAndroid.show(message, ToastAndroid.SHORT);
+      }
+      return;
+    }
+    setCopiedCount(logs.length);
+    AccessibilityInfo.announceForAccessibility(message);
+  };
 
   const handleClearLogs = () => {
     Alert.alert("Clear All Logs", "This cannot be undone.", [
@@ -33,7 +65,23 @@ export default function LogsViewer() {
   };
 
   return (
-    <Screen>
+    <Screen
+      footer={
+        copiedCount !== null ? (
+          <View style={$copied}>
+            <Icon
+              name={{
+                ios: "checkmark.circle.fill",
+                android: "check_circle",
+                web: "check_circle",
+              }}
+              color="accent"
+            />
+            <Text variant="subhead">{`Copied ${copiedCount} log entries`}</Text>
+          </View>
+        ) : undefined
+      }
+    >
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Menu
           icon={toolbarIcons.more}
@@ -43,7 +91,7 @@ export default function LogsViewer() {
             icon={toolbarIcons.copy}
             disabled={!hasLogs}
             onPress={() => {
-              void copyLogs();
+              void handleCopyLogs();
             }}
           >
             Copy all
@@ -138,4 +186,16 @@ const $logMeta: ViewStyle = {
 const $logMessage: TextStyle = {
   fontFamily: "monospace",
   fontWeight: "400",
+};
+
+const $copied: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "center",
+  alignSelf: "center",
+  gap: space.xs,
+  marginBottom: space.sm,
+  paddingHorizontal: space.md,
+  paddingVertical: space.sm,
+  borderRadius: radius.pill,
+  backgroundColor: color.surface2,
 };

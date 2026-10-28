@@ -58,6 +58,8 @@ export class Speaker {
   private ws: BoseWebSocketClient | null = null;
   private readonly state: SpeakerState;
   public readonly options: SpeakerOptions;
+  /** Bumped by each `initialize()`; only the latest call may apply its reads. */
+  private initializeGeneration = 0;
 
   constructor(options: SpeakerOptions) {
     this.options = options;
@@ -72,9 +74,17 @@ export class Speaker {
 
   /**
    * Initialize the speaker state by fetching all its static and current dynamic info.
+   * When calls overlap, only the latest one applies its results and emits state;
+   * an earlier call that resolves later is discarded, so it can't overwrite
+   * fresher state.
    */
   async initialize(): Promise<Result<void, BoseApiError>> {
+    const generation = ++this.initializeGeneration;
+
     const infoResult = await this.http.getInfo();
+    if (generation !== this.initializeGeneration) {
+      return new Ok(undefined);
+    }
     if (infoResult.isOk()) {
       const info = infoResult.value;
       this.state.name = info.name;
@@ -133,6 +143,9 @@ export class Speaker {
           .catch(() => null),
       ]);
 
+      if (generation !== this.initializeGeneration) {
+        return new Ok(undefined);
+      }
       if (nowPlaying) {
         this.state.nowPlaying = {
           source: nowPlaying.source,

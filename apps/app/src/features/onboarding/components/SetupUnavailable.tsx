@@ -1,5 +1,5 @@
 import { useRouter } from "expo-router";
-import { Alert, Platform, View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { Button } from "@/ui/ds/Button";
 
@@ -12,15 +12,14 @@ const UNAVAILABLE_TITLE = "Setup not available";
 const UNAVAILABLE_MESSAGE =
   "Speaker setup is only available on Android for now. Set the speaker up from an Android phone, or the Bose app, then it will appear here.";
 
-/** Opens speaker setup, or explains why it isn't available on this platform. */
+/**
+ * Opens speaker setup. Where setup isn't supported, the setup route explains
+ * why (`SetupUnavailableView`).
+ */
 export function useOpenSpeakerSetup(): () => void {
   const router = useRouter();
   return () => {
-    if (SPEAKER_SETUP_SUPPORTED) {
-      router.push("/onboarding");
-    } else {
-      Alert.alert(UNAVAILABLE_TITLE, UNAVAILABLE_MESSAGE);
-    }
+    router.push("/onboarding");
   };
 }
 

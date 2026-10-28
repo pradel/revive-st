@@ -1,9 +1,15 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { SocketModuleLike } from "bose-api-speaker-client";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import {
+  Stack,
+  useLocalSearchParams,
+  usePreventRemove,
+  useRouter,
+} from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   View,
   type ScrollViewInstance,
@@ -12,6 +18,7 @@ import {
 } from "react-native";
 import TcpSocket from "react-native-tcp-socket";
 
+import { KeepAwake } from "@/components/KeepAwake";
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
@@ -242,6 +249,29 @@ export default function ConfigureSpeaker() {
     router.back();
   };
 
+  const isRunning = configState.status === "running";
+  const [leaving, setLeaving] = useState(false);
+
+  // Leaving doesn't undo the telnet steps or stop the reboot; it only hides
+  // their progress and outcome, so ask before going back mid-run.
+  usePreventRemove(isRunning && !leaving, ({ repeat }) => {
+    Alert.alert(
+      "Leave configuration?",
+      "The speaker is being configured and may be rebooting. Leaving won't stop it, but you won't see whether it worked.",
+      [
+        { text: "Stay", style: "cancel" },
+        {
+          text: "Leave",
+          style: "destructive",
+          onPress: () => {
+            setLeaving(true);
+            repeat();
+          },
+        },
+      ],
+    );
+  });
+
   if (!speaker) {
     return (
       <Screen>
@@ -258,7 +288,6 @@ export default function ConfigureSpeaker() {
   }
 
   // Derive helper variables and step checklist statuses from single state
-  const isRunning = configState.status === "running";
   const isFinished = configState.status === "success";
   const hasErrors = configState.status === "error";
   const rebootTimer =
@@ -303,6 +332,7 @@ export default function ConfigureSpeaker() {
   return (
     <Screen>
       <Stack.Title>Configure</Stack.Title>
+      {isRunning && <KeepAwake />}
       <ScrollView
         contentContainerStyle={$content}
         contentInsetAdjustmentBehavior="automatic"

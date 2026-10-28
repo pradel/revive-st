@@ -306,6 +306,40 @@ describe("Speaker", () => {
     expect(state.bass).toBe(0);
   });
 
+  it("initialize() discards an earlier call that resolves after a later one", async () => {
+    const staleBassRequested = Promise.withResolvers<undefined>();
+    const staleBass = Promise.withResolvers<Response>();
+    let bassCalls = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      const url = input as string;
+      if (url.endsWith("/bass")) {
+        bassCalls += 1;
+        if (bassCalls === 1) {
+          // The first refresh's read is slow and returns an outdated value.
+          staleBassRequested.resolve(undefined);
+          return staleBass.promise;
+        }
+        return new Response("<bass><actualbass>0</actualbass></bass>", {
+          status: 200,
+        });
+      }
+      return new Response("<status>OK</status>", { status: 200 });
+    });
+    const onStateUpdate = vi.fn();
+    speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+
+    const stale = speaker.initialize();
+    await staleBassRequested.promise;
+    await speaker.initialize();
+    staleBass.resolve(
+      new Response("<bass><actualbass>-5</actualbass></bass>", { status: 200 }),
+    );
+    await stale;
+
+    expect(speaker.getState().bass).toBe(0);
+    expect(onStateUpdate).toHaveBeenCalledTimes(1);
+  });
+
   it("handles 500 error correctly without throwing", async () => {
     mockFetch(500, "<error>Internal Server Error</error>");
     const result = await speaker.powerToggle();

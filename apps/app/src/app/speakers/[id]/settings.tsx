@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
+  RefreshControl,
   ScrollView,
   useWindowDimensions,
   View,
@@ -86,6 +87,23 @@ export default function SpeakerSettings() {
 
   const margeAPIStatus = useMargeAPIStatusQuery(speaker?.host ?? "");
 
+  // Re-reads the speaker's state (name, audio, presets, info) and re-checks
+  // the Marge API configuration.
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (!speaker) {
+      return;
+    }
+    setRefreshing(true);
+    await Promise.allSettled([
+      loadPresets(speaker.deviceID),
+      margeAPIStatus.refetch(),
+    ]);
+    // Show the bass the speaker just reported instead of the last local drag.
+    setBassSliderValue(null);
+    setRefreshing(false);
+  };
+
   const goBack = () => {
     router.back();
   };
@@ -149,7 +167,11 @@ export default function SpeakerSettings() {
   const showLevels = levelControls !== null && levelControls !== undefined;
 
   const bassValue =
-    bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
+    bassSliderValue ??
+    speaker.bass ??
+    bassCaps?.bassDefault ??
+    bassCaps?.bassMin ??
+    -9;
 
   const margeStatus = (() => {
     if (margeAPIStatus.isLoading) {
@@ -172,6 +194,14 @@ export default function SpeakerSettings() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={color.textSecondary}
+            colors={[color.accent]}
+          />
+        }
       >
         <Text variant="subhead" color="textSecondary" style={$subtitle}>
           {speaker.type} · {speaker.host}
