@@ -254,6 +254,15 @@ export const scenarios = {
         speakers: [targetSpeaker({ hideWlan0Address: true, announces: false })],
       }),
   },
+  speakerNeverScanned: {
+    description:
+      "Scans never show the speaker (manual join from the scanning view works)",
+    config: () => world({ scan: { missSetupScans: Number.MAX_SAFE_INTEGER } }),
+  },
+  renameFails: {
+    description: "Setup works but renaming the speaker fails",
+    config: () => world({ speakers: [targetSpeaker({ renameFails: true })] }),
+  },
   reconfiguredSpeaker: {
     description:
       "Configured speaker put back in setup mode (already on the home network)",

@@ -80,4 +80,8 @@ export const boseSpeakerHttp: SpeakerHttp = {
     );
     return result.mapError(toSpeakerError);
   },
+  async setName(ip, name, signal) {
+    const result = await boseSpeakerClient({ ip }).setName(name, { signal });
+    return result.mapError(toSpeakerError);
+  },
 };

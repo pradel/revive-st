@@ -58,11 +58,6 @@ export class ManualJoinNotConnected extends TaggedError(
 
 export class LinkLost extends TaggedError("LinkLost") {}
 
-/** `addWirelessProfile` replied `WIFI_PROFILE_SETUP_FAILED` (wrong password or DHCP refused). */
-export class CredentialsRejected extends TaggedError("CredentialsRejected")<{
-  ssid: string;
-}> {}
-
 export class DeliveryFailed extends TaggedError("DeliveryFailed")<{
   ssid: string;
   message: string;
@@ -94,7 +89,6 @@ export type SetupError =
   | SpeakerUnreachable
   | ManualJoinNotConnected
   | LinkLost
-  | CredentialsRejected
   | DeliveryFailed
   | HomeWifiNotRestored
   | NotVerified
@@ -114,7 +108,6 @@ export function recoveryActions(error: SetupError): RecoveryAction[] {
     SpeakerUnreachable: () => ["retry", "manualJoin"],
     ManualJoinNotConnected: () => ["openWifiSettings", "retry"],
     LinkLost: () => ["retry"],
-    CredentialsRejected: () => ["editCredentials"],
     DeliveryFailed: () => ["retry", "editCredentials"],
     HomeWifiNotRestored: () => ["openWifiSettings", "continueAnyway"],
     NotVerified: () => ["retry", "enterIp", "startOver"],
@@ -166,11 +159,6 @@ export function describeError(error: SetupError): ErrorCopy {
     LinkLost: () => ({
       title: "Lost the connection to the speaker",
       body: "The phone disconnected from the speaker's network. Try again to reconnect.",
-    }),
-    // The speaker reports the same error for a wrong password and a refused DHCP lease.
-    CredentialsRejected: (rejected) => ({
-      title: "The speaker couldn't join the network",
-      body: `The speaker couldn't join ${rejected.ssid}. Check the password.`,
     }),
     DeliveryFailed: (failed) => ({
       title: "Couldn't send the Wi-Fi details",

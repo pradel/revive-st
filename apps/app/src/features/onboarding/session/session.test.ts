@@ -85,8 +85,14 @@ function harness(world: FakeWorld, clock: ManualClock): Harness {
     });
     return found!;
   };
+  // The name prompt ends every successful run; `untilDone` keeps the name.
   const settled = async () =>
-    until((view) => view.kind === "failed" || view.kind === "done");
+    until(
+      (view) =>
+        view.kind === "failed" ||
+        view.kind === "done" ||
+        (view.kind === "prompt" && view.prompt.kind === "nameSpeaker"),
+    );
   const answer = async (reply: PromptAnswer) => {
     session.respond(reply);
     await flushPromises();
@@ -111,7 +117,7 @@ function harness(world: FakeWorld, clock: ManualClock): Harness {
     untilFailed: async (tag) => {
       const view = await settled();
       if (view.kind !== "failed") {
-        throw new Error(`Expected ${tag}, got done`);
+        throw new Error(`Expected ${tag}, got ${viewName(view)}`);
       }
       expect(view.error.name).toBe(tag);
       return view;
@@ -124,7 +130,11 @@ function harness(world: FakeWorld, clock: ManualClock): Harness {
           (detail === undefined || view.detail.kind === detail),
       ),
     untilDone: async () => {
-      const view = await settled();
+      let view = await settled();
+      if (view.kind === "prompt") {
+        await answer({ kind: "name", name: null });
+        view = await settled();
+      }
       if (view.kind !== "done") {
         throw new Error(`Expected done, got ${viewName(view)}`);
       }
@@ -184,8 +194,12 @@ function trail(views: readonly SetupView[]): string[] {
   return names.filter((name, index) => name !== names[index - 1]);
 }
 
+function callCount(world: FakeWorld, method: string): number {
+  return world.calls.filter((call) => call.method === method).length;
+}
+
 function sendCredentialsCalls(world: FakeWorld): number {
-  return world.calls.filter((call) => call.method === "sendCredentials").length;
+  return callCount(world, "sendCredentials");
 }
 
 const WRONG_PASSWORD = "wrong-password-xyz";
@@ -224,6 +238,7 @@ describe("session scenarios", () => {
       "leaveSetup",
       "rejoinHome",
       "verify",
+      "prompt:nameSpeaker",
       "done",
     ]);
     expect(speaker.profiles).toEqual([
@@ -568,27 +583,31 @@ describe("session scenarios", () => {
     expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
   });
 
-  it("S17 wrong password: CredentialsRejected after 35 s; edit on the same link; corrected → done", async () => {
+  it("S17 wrong password: credentials asked again (rejected, SSID kept) after 35 s on the same link, no failed view; corrected → done", async () => {
     const flow = scenario("happyPath");
     await toCredentials(flow);
-    await submit(flow, HOME_SSID, WRONG_PASSWORD);
+    await submit(flow, OFFICE_SSID, WRONG_PASSWORD);
     await flow.untilWorking("deliver", "delivering");
     const sentAt = flow.clock.now();
 
-    const failed = await flow.untilFailed("CredentialsRejected");
-    expect(flow.clock.now() - sentAt).toBeGreaterThanOrEqual(35_000);
-    expect(failed.actions).toEqual(["editCredentials"]);
-
-    await flow.action("editCredentials");
     const prompt = await flow.untilPrompt("credentials");
-    expect(prompt).toMatchObject({ reason: "rejected", suggested: HOME_SSID });
+    expect(flow.clock.now() - sentAt).toBeGreaterThanOrEqual(35_000);
+    expect(prompt).toMatchObject({
+      reason: "rejected",
+      suggested: OFFICE_SSID,
+    });
+    expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
 
     await submit(flow);
     const done = await flow.untilDone();
 
     expect(done.speaker.deviceID).toBe(TARGET_ID);
     expect(flow.world.wifi.joins).toHaveLength(1);
-    expect(flow.world.speaker(TARGET_ID).profiles).toHaveLength(2);
+    expect(flow.world.speaker(TARGET_ID).profiles).toEqual([
+      { ssid: OFFICE_SSID, password: WRONG_PASSWORD },
+      { ssid: HOME_SSID, password: HOME_PASSWORD },
+    ]);
+    expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
   });
 
   describe("S18 addWirelessProfile never replies", () => {
@@ -788,11 +807,10 @@ describe("session scenarios", () => {
     ]);
 
     await submit(flow, HOME_SSID, WRONG_PASSWORD);
-    await flow.untilFailed("CredentialsRejected");
+    await flow.untilWorking("deliver", "delivering");
+    await flow.untilPrompt("credentials");
     expect(trail(flow.views)).not.toContain("done");
 
-    await flow.action("editCredentials");
-    await flow.untilPrompt("credentials");
     await submit(flow);
     const done = await flow.untilDone();
     expect(done.speaker.deviceID).toBe(TARGET_ID);
@@ -931,12 +949,25 @@ describe("session scenarios", () => {
         },
       ],
       [
-        "credentials rejected",
+        "credentials asked again after a wrong password",
         async () => {
           const flow = scenario("happyPath");
           await toCredentials(flow);
           await submit(flow, HOME_SSID, WRONG_PASSWORD);
-          await flow.untilFailed("CredentialsRejected");
+          await flow.untilWorking("deliver", "delivering");
+          await flow.untilPrompt("credentials");
+          return flow;
+        },
+      ],
+      [
+        "manualJoin prompt after scanning",
+        async () => {
+          const flow = scenario("speakerNeverScanned");
+          await flow.untilPrompt("rationale");
+          await flow.answer({ kind: "continue" });
+          await flow.untilWorking("findSpeaker");
+          await flow.action("manualJoin");
+          await flow.untilPrompt("manualJoin");
           return flow;
         },
       ],
@@ -975,6 +1006,28 @@ describe("session scenarios", () => {
         },
       ],
       [
+        "name prompt",
+        async () => {
+          const flow = scenario("happyPath");
+          await toCredentials(flow);
+          await submit(flow);
+          await flow.untilPrompt("nameSpeaker");
+          return flow;
+        },
+      ],
+      [
+        "renaming",
+        async () => {
+          const flow = scenario("renameFails");
+          await toCredentials(flow);
+          await submit(flow);
+          await flow.untilPrompt("nameSpeaker");
+          await flow.answer({ kind: "name", name: "Kitchen" });
+          await flow.untilWorking("name", "renaming");
+          return flow;
+        },
+      ],
+      [
         "done",
         async () => {
           const flow = scenario("happyPath");
@@ -1009,6 +1062,7 @@ describe("session scenarios", () => {
         }
         await flow.answer({ kind: "continue" });
         await submit(flow);
+        await flow.answer({ kind: "name", name: "Kitchen" });
         await flow.session.cancel();
         expect(flow.world.calls).toHaveLength(calls);
         expect(flow.views).toHaveLength(views);
@@ -1125,11 +1179,6 @@ describe("session scenarios", () => {
         next: { retry: { working: "join" } },
       },
       {
-        tag: "CredentialsRejected",
-        reach: async () => afterSubmit("happyPath", WRONG_PASSWORD),
-        next: { editCredentials: { working: "credentials" } },
-      },
-      {
         tag: "DeliveryFailed",
         reach: async () => afterSubmit("otherApiError"),
         next: {
@@ -1181,7 +1230,6 @@ describe("session scenarios", () => {
           "SpeakerUnreachable",
           "ManualJoinNotConnected",
           "LinkLost",
-          "CredentialsRejected",
           "DeliveryFailed",
           "HomeWifiNotRestored",
           "NotVerified",
@@ -1248,10 +1296,36 @@ describe("session scenarios", () => {
         async (flow) => {
           await toCredentials(flow);
           await submit(flow, HOME_SSID, WRONG_PASSWORD);
-          await flow.untilFailed("CredentialsRejected");
-          await flow.action("editCredentials");
+          await flow.untilWorking("deliver", "delivering");
           await flow.untilPrompt("credentials");
           await submit(flow);
+          await flow.untilPrompt("nameSpeaker");
+          await flow.answer({ kind: "name", name: "Kitchen" });
+          await flow.untilDone();
+        },
+      ],
+      [
+        "speakerNeverScanned",
+        async (flow) => {
+          await flow.untilPrompt("rationale");
+          await flow.answer({ kind: "continue" });
+          await flow.untilWorking("findSpeaker");
+          await flow.action("manualJoin");
+          await flow.untilPrompt("manualJoin");
+          flow.world.wifi.connectManually(flow.world.speaker(TARGET_ID));
+          await flow.answer({ kind: "manualJoin", connected: true });
+          await flow.untilPrompt("credentials");
+          await submit(flow);
+          await flow.untilDone();
+        },
+      ],
+      [
+        "renameFails",
+        async (flow) => {
+          await toCredentials(flow);
+          await submit(flow);
+          await flow.untilPrompt("nameSpeaker");
+          await flow.answer({ kind: "name", name: "Kitchen" });
           await flow.untilDone();
         },
       ],
@@ -1281,5 +1355,139 @@ describe("session scenarios", () => {
       expect(published).not.toContain(HOME_PASSWORD);
       expect(published).not.toContain(WRONG_PASSWORD);
     }
+  });
+
+  describe("S31 manual join from the scanning view", () => {
+    it("scans keep missing: manualJoin → manual prompt → bindToConnectedWifi → credentials → done", async () => {
+      const flow = scenario("speakerNeverScanned");
+      await flow.untilPrompt("rationale");
+      await flow.answer({ kind: "continue" });
+      await flow.untilWorking("findSpeaker");
+      await flow.clock.advance(30_000);
+      expect(viewName(flow.view())).toBe("findSpeaker");
+
+      await flow.action("manualJoin");
+      await flow.untilPrompt("manualJoin");
+      const scans = flow.world.wifi.scanTimes.length;
+      await flow.clock.advance(4 * SCAN_INTERVAL_MS);
+      expect(flow.world.wifi.scanTimes).toHaveLength(scans);
+
+      const speaker = flow.world.speaker(TARGET_ID);
+      flow.world.wifi.connectManually(speaker);
+      await flow.answer({ kind: "manualJoin", connected: true });
+      await flow.untilPrompt("credentials");
+      expect(callCount(flow.world, "bindToConnectedWifi")).toBe(1);
+      expect(flow.world.wifi.joins).toHaveLength(0);
+
+      await submit(flow);
+      const done = await flow.untilDone();
+
+      expect(done.speaker).toMatchObject({
+        deviceID: TARGET_ID,
+        ssid: speaker.setupSsid,
+        bssid: "",
+      });
+      expect(done.host).toBe(TARGET_HOME_IP);
+      expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
+    });
+
+    it("ignored outside the scanning view (joining, credentials prompt)", async () => {
+      const flow = scenario("happyPath");
+      await flow.untilPrompt("rationale");
+      await flow.answer({ kind: "action", action: "manualJoin" });
+      await flow.answer({ kind: "continue" });
+      await flow.untilWorking("join", "joining");
+      await flow.action("manualJoin");
+      const prompt = await flow.untilPrompt("credentials");
+      const shown = flow.views.length;
+
+      await flow.action("manualJoin");
+
+      expect(flow.views).toHaveLength(shown);
+      expect(flow.view()).toMatchObject({ kind: "prompt", prompt });
+      expect(trail(flow.views)).not.toContain("prompt:manualJoin");
+      expect(callCount(flow.world, "bindToConnectedWifi")).toBe(0);
+      expect(flow.world.wifi.joins).toHaveLength(1);
+    });
+  });
+
+  describe("S32 naming the speaker after verify", () => {
+    const toNamePrompt = async (name: ScenarioName = "happyPath") => {
+      const flow = scenario(name);
+      await toCredentials(flow);
+      await submit(flow);
+      const prompt = await flow.untilPrompt("nameSpeaker");
+      return { flow, prompt };
+    };
+
+    it("prompt prefilled with the current name and suggestions", async () => {
+      const { flow, prompt } = await toNamePrompt();
+      expect(prompt).toEqual({
+        kind: "nameSpeaker",
+        currentName: flow.world.speaker(TARGET_ID).config.name,
+        suggestions: ["Living room", "Kitchen", "Bedroom", "Office"],
+      });
+    });
+
+    it("valid name: renamed over the home network; /info and done show it", async () => {
+      const { flow } = await toNamePrompt();
+      await flow.answer({ kind: "name", name: "  Living room " });
+      await flow.untilWorking("name", "renaming");
+
+      const done = await flow.untilDone();
+
+      const speaker = flow.world.speaker(TARGET_ID);
+      expect(speaker.renames).toEqual(["Living room"]);
+      expect(speaker.info().name).toBe("Living room");
+      expect(done.speaker.name).toBe("Living room");
+      expect(done.renameFailed).toBeUndefined();
+    });
+
+    it("keep current name: no /name request", async () => {
+      const { flow, prompt } = await toNamePrompt();
+      await flow.answer({ kind: "name", name: null });
+
+      const done = await flow.untilDone();
+
+      expect(callCount(flow.world, "setName")).toBe(0);
+      expect(done.speaker.name).toBe(prompt.currentName);
+      expect(done.renameFailed).toBeUndefined();
+    });
+
+    it("invalid names are ignored; the prompt stays", async () => {
+      const { flow } = await toNamePrompt();
+      const view = flow.view();
+      const shown = flow.views.length;
+
+      for (const name of ["", " K ", "x".repeat(51)]) {
+        await flow.answer({ kind: "name", name });
+      }
+      await flow.clock.advance(60_000);
+
+      expect(flow.views).toHaveLength(shown);
+      expect(flow.view()).toBe(view);
+      expect(callCount(flow.world, "setName")).toBe(0);
+
+      await flow.answer({ kind: "name", name: "Office" });
+      const done = await flow.untilDone();
+      expect(done.speaker.name).toBe("Office");
+    });
+
+    it("rename fails: done with the old name and renameFailed", async () => {
+      const { flow, prompt } = await toNamePrompt("renameFails");
+      await flow.answer({ kind: "name", name: "Kitchen" });
+
+      const done = await flow.untilDone();
+
+      expect(done.speaker.name).toBe(prompt.currentName);
+      expect(done.renameFailed).toBe(true);
+      expect(flow.world.speaker(TARGET_ID).info().name).toBe(
+        prompt.currentName,
+      );
+      expect(flow.world.log.events).toContainEqual(
+        expect.objectContaining({ name: "name.failed" }),
+      );
+      expect(flow.views.some((view) => view.kind === "failed")).toBe(false);
+    });
   });
 });

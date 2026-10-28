@@ -1,4 +1,4 @@
-import { type NativeModule, requireNativeModule } from "expo";
+import { type NativeModule, requireOptionalNativeModule } from "expo";
 
 export type LinkEvent = "onLinkLost" | "onLinkRestored";
 
@@ -12,4 +12,15 @@ declare class BoseWifiModule extends NativeModule<BoseWifiModuleEvents> {
   openWifiSettings(): Promise<null>;
 }
 
-export default requireNativeModule<BoseWifiModule>("BoseWifi");
+/** Android only: `null` elsewhere (iOS), so importing the package never crashes. */
+const nativeModule = requireOptionalNativeModule<BoseWifiModule>("BoseWifi");
+
+/** The native module; throws when it is not available on this platform. */
+export function boseWifiModule(): BoseWifiModule {
+  if (!nativeModule) {
+    throw new Error(
+      "expo-bose-wifi: the BoseWifi native module is not available (Android only)",
+    );
+  }
+  return nativeModule;
+}

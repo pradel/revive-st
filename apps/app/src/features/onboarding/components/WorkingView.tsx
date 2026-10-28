@@ -14,22 +14,37 @@ import { COLORS } from "@/ui/theme";
 import type { StepId, WorkingDetail } from "../session/types";
 import {
   $setupCard,
+  $setupCardTitle,
   $setupEmphasis,
   SetupButton,
   SetupHeader,
   type SymbolName,
 } from "./SetupLayout";
 
-const STEPS: { id: StepId; title: string }[] = [
-  { id: "preflight", title: "Checking permissions" },
-  { id: "findSpeaker", title: "Finding your speaker" },
-  { id: "join", title: "Connecting to the speaker" },
-  { id: "credentials", title: "Choosing your Wi-Fi" },
-  { id: "deliver", title: "Sending the Wi-Fi details" },
-  { id: "leaveSetup", title: "Leaving setup mode" },
-  { id: "rejoinHome", title: "Reconnecting your phone" },
-  { id: "verify", title: "Finding the speaker on your network" },
+/** The steps grouped into what the user sees as progress. */
+const STAGES: { title: string; hint: string; steps: StepId[] }[] = [
+  {
+    title: "Connect to speaker",
+    hint: "about 10 s",
+    steps: ["preflight", "findSpeaker", "join"],
+  },
+  {
+    title: "Send Wi-Fi details",
+    hint: "up to 40 s",
+    steps: ["credentials", "deliver"],
+  },
+  {
+    title: "Finish",
+    hint: "about 20 s",
+    steps: ["leaveSetup", "rejoinHome", "verify", "name"],
+  },
 ];
+
+/** The speaker gives up joining after 30 s and answers a few seconds later. */
+const DELIVER_EXPECTED_MS = 40_000;
+
+/** How long the speaker search runs before suggesting what to check. */
+const FIND_SPEAKER_HELP_MS = 30_000;
 
 interface DetailCopy {
   icon: SymbolName;
@@ -111,7 +126,7 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         description: (
           <>
             Speaker is joining <Text style={$setupEmphasis}>{detail.ssid}</Text>
-            … This can take up to 30 seconds.
+            … This can take up to 40 seconds.
           </>
         ),
       };
@@ -158,6 +173,18 @@ function detailCopy(detail: WorkingDetail): DetailCopy {
         description: "Looking for the speaker on your home network…",
       };
     }
+    case "renaming": {
+      return {
+        icon: { ios: "pencil", android: "edit", web: "edit" },
+        title: "Naming your speaker",
+        description: (
+          <>
+            Renaming the speaker to{" "}
+            <Text style={$setupEmphasis}>{detail.name}</Text>…
+          </>
+        ),
+      };
+    }
     default: {
       return detail satisfies never;
     }
@@ -183,11 +210,75 @@ function useElapsed(startedAt: number): number {
   return Math.max(0, now - startedAt);
 }
 
+/** What to check when no speaker shows up, and the manual way in. */
+function FindSpeakerHelp({ onManualJoin }: { onManualJoin: () => void }) {
+  return (
+    <Card style={$setupCard}>
+      <Text style={$setupCardTitle}>Not showing up?</Text>
+      <CheckItem>
+        The speaker's Wi-Fi light is{" "}
+        <Text style={$setupEmphasis}>solid amber</Text>. If not, hold{" "}
+        <Text style={$setupEmphasis}>2</Text> and{" "}
+        <Text style={$setupEmphasis}>Volume −</Text> for about 5 seconds.
+      </CheckItem>
+      <CheckItem>The phone is within a few metres of the speaker.</CheckItem>
+      <CheckItem>
+        A speaker that is already set up has a{" "}
+        <Text style={$setupEmphasis}>white</Text> light and won't appear here.
+        To start from scratch, factory reset it: hold{" "}
+        <Text style={$setupEmphasis}>1</Text> and{" "}
+        <Text style={$setupEmphasis}>Volume −</Text> for 10 seconds.
+      </CheckItem>
+      <View style={$helpButton}>
+        <SetupButton
+          label="Connect manually"
+          variant="secondary"
+          icon={{ ios: "hand.tap", android: "touch_app", web: "touch_app" }}
+          onPress={onManualJoin}
+        />
+      </View>
+    </Card>
+  );
+}
+
+function CheckItem({ children }: { children: ReactNode }) {
+  return (
+    <View style={$checkRow}>
+      <SymbolView
+        name={{
+          ios: "questionmark.circle",
+          android: "help",
+          web: "help",
+        }}
+        tintColor={COLORS.textSecondary}
+        size={18}
+      />
+      <Text style={$checkText}>{children}</Text>
+    </View>
+  );
+}
+
+/** Determinate bar for a wait with a known upper bound. */
+function ProgressBar({ fraction }: { fraction: number }) {
+  const clamped = Math.min(1, Math.max(0, fraction));
+  return (
+    <View
+      style={$progressTrack}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
+    >
+      <View style={[$progressFill, { width: `${clamped * 100}%` }]} />
+    </View>
+  );
+}
+
 interface WorkingViewProps {
   step: StepId;
   detail: WorkingDetail;
   startedAt: number;
   onEnableWifi: () => void;
+  /** Only offered while looking for the speaker. */
+  onManualJoin: () => void;
 }
 
 export function WorkingView({
@@ -195,10 +286,15 @@ export function WorkingView({
   detail,
   startedAt,
   onEnableWifi,
+  onManualJoin,
 }: WorkingViewProps) {
   const elapsed = useElapsed(startedAt);
   const copy = detailCopy(detail);
-  const current = STEPS.findIndex((entry) => entry.id === step);
+  const current = STAGES.findIndex((stage) => stage.steps.includes(step));
+  const showFindHelp =
+    step === "findSpeaker" &&
+    detail.kind !== "wifiOff" &&
+    elapsed >= FIND_SPEAKER_HELP_MS;
 
   return (
     <>
@@ -218,12 +314,20 @@ export function WorkingView({
         </View>
       )}
 
+      {detail.kind === "delivering" && (
+        <View style={$progress}>
+          <ProgressBar fraction={elapsed / DELIVER_EXPECTED_MS} />
+        </View>
+      )}
+
+      {showFindHelp && <FindSpeakerHelp onManualJoin={onManualJoin} />}
+
       <Card style={$setupCard}>
-        {STEPS.map((entry, index) => {
+        {STAGES.map((stage, index) => {
           const status =
             index < current ? "done" : index === current ? "active" : "pending";
           return (
-            <View key={entry.id} style={$stepRow}>
+            <View key={stage.title} style={$stepRow}>
               <View style={$stepIcon}>
                 {status === "active" ? (
                   <ActivityIndicator size="small" color={COLORS.primary} />
@@ -249,15 +353,20 @@ export function WorkingView({
                   />
                 )}
               </View>
-              <Text
-                style={[
-                  $stepTitle,
-                  status === "active" && $stepTitleActive,
-                  status === "done" && $stepTitleDone,
-                ]}
-              >
-                {entry.title}
-              </Text>
+              <View style={$stepText}>
+                <Text
+                  style={[
+                    $stepTitle,
+                    status === "active" && $stepTitleActive,
+                    status === "done" && $stepTitleDone,
+                  ]}
+                >
+                  {stage.title}
+                </Text>
+                {status !== "done" && (
+                  <Text style={$stepHint}>{stage.hint}</Text>
+                )}
+              </View>
               {status === "active" && (
                 <Text style={$elapsed}>{formatElapsed(elapsed)}</Text>
               )}
@@ -286,8 +395,11 @@ const $stepIcon: ViewStyle = {
   alignItems: "center",
 };
 
-const $stepTitle: TextStyle = {
+const $stepText: ViewStyle = {
   flex: 1,
+};
+
+const $stepTitle: TextStyle = {
   fontSize: 14,
   color: COLORS.textMuted,
 };
@@ -305,4 +417,46 @@ const $elapsed: TextStyle = {
   fontSize: 13,
   color: COLORS.primary,
   fontVariant: ["tabular-nums"],
+};
+
+const $stepHint: TextStyle = {
+  fontSize: 12,
+  color: COLORS.textMuted,
+  marginTop: 2,
+};
+
+const $progress: ViewStyle = {
+  width: "100%",
+  marginBottom: 20,
+};
+
+const $progressTrack: ViewStyle = {
+  height: 6,
+  borderRadius: 3,
+  backgroundColor: COLORS.border,
+  overflow: "hidden",
+};
+
+const $progressFill: ViewStyle = {
+  height: "100%",
+  borderRadius: 3,
+  backgroundColor: COLORS.primary,
+};
+
+const $helpButton: ViewStyle = {
+  marginTop: 4,
+};
+
+const $checkRow: ViewStyle = {
+  flexDirection: "row",
+  alignItems: "flex-start",
+  gap: 12,
+  marginBottom: 12,
+};
+
+const $checkText: TextStyle = {
+  flex: 1,
+  color: COLORS.textSecondary,
+  fontSize: 14,
+  lineHeight: 20,
 };

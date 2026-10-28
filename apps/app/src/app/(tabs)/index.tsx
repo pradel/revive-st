@@ -16,6 +16,7 @@ import {
 
 import { Card } from "@/components/ui/Card";
 import { Slider } from "@/components/ui/Slider";
+import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
 import { PageHeader } from "@/ui/PageHeader";
@@ -25,6 +26,7 @@ import { COLORS } from "@/ui/theme";
 export default function Index() {
   const router = useRouter();
   const { speakers, isScanning, rescan, volumeMutation } = useBose();
+  const openSpeakerSetup = useOpenSpeakerSetup();
   const [localVolumes, setLocalVolumes] = useState<Record<string, number>>({});
 
   const getPlayingStatus = (speaker: BoseSpeaker) => {
@@ -148,9 +150,7 @@ export default function Index() {
               style={$ctaCard}
               render={
                 <TouchableOpacity
-                  onPress={() => {
-                    router.push("/onboarding");
-                  }}
+                  onPress={openSpeakerSetup}
                   activeOpacity={0.8}
                 />
               }
@@ -329,9 +329,7 @@ export default function Index() {
           {/* Add New Speaker Button */}
           <TouchableOpacity
             style={$addSpeakerButton}
-            onPress={() => {
-              router.push("/onboarding");
-            }}
+            onPress={openSpeakerSetup}
             activeOpacity={0.8}
           >
             <SymbolView

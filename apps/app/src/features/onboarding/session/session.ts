@@ -7,7 +7,6 @@ import {
   throwIfAborted,
 } from "./async";
 import {
-  CredentialsRejected,
   HomeWifiNotRestored,
   LinkLost,
   recoveryActions,
@@ -19,9 +18,10 @@ import { askCredentials } from "./steps/credentials";
 import { deliver } from "./steps/deliver";
 import type { StepEnv } from "./steps/env";
 import { findSpeaker } from "./steps/findSpeaker";
-import { join, type JoinMode } from "./steps/join";
+import { join } from "./steps/join";
 import { leaveSetup } from "./steps/leaveSetup";
 import { LinkWatch } from "./steps/link";
+import { nameSpeaker } from "./steps/name";
 import { preflight } from "./steps/preflight";
 import { rejoinHome } from "./steps/rejoinHome";
 import { verify } from "./steps/verify";
@@ -37,21 +37,28 @@ import type {
 type Entry =
   | { step: "preflight"; request: boolean; rationale: boolean }
   | { step: "findSpeaker" }
-  | { step: "join"; mode: JoinMode }
+  | { step: "join"; mode: "auto" | "manual" }
   | { step: "credentials"; reason?: "rejected" }
   | { step: "deliver" }
   | { step: "leaveSetup" }
   | { step: "rejoinHome" }
-  | { step: "verify"; ip?: string };
+  | { step: "verify"; ip?: string }
+  | { step: "name"; host: string };
 
 type Outcome =
   | { kind: "next"; entry: Entry }
-  | { kind: "done"; speaker: SpeakerIdentity; host: string }
+  | {
+      kind: "done";
+      speaker: SpeakerIdentity;
+      host: string;
+      renameFailed: boolean;
+    }
   | { kind: "failed"; error: SetupError };
 
 /** Survives recovery actions; `startOver` clears everything but `homeSsid`. */
 interface Context {
   homeSsid: string | null;
+  /** Unset on the manual path when scanning never found the speaker. */
   target?: ScanResult;
   identity?: SpeakerIdentity;
   /** In memory only: never published or logged. */
@@ -114,6 +121,8 @@ function guardDeps(raw: SetupDeps, signal: AbortSignal): SetupDeps {
         call(async () => speaker.setupState(ip, requestSignal)),
       leaveSetup: async (ip, requestSignal) =>
         call(async () => speaker.leaveSetup(ip, requestSignal)),
+      setName: async (ip, name, requestSignal) =>
+        call(async () => speaker.setName(ip, name, requestSignal)),
     },
     discovery: {
       browse: (browseSignal) => ({
@@ -261,18 +270,30 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
         return next({ step: "findSpeaker" });
       }
       case "findSpeaker": {
-        ctx.target = await findSpeaker(env, signal);
+        const found = await findSpeaker(env, signal);
+        if (found.kind === "manual") {
+          ctx.target = undefined;
+          return next({ step: "join", mode: "manual" });
+        }
+        ctx.target = found.target;
         log.event("findSpeaker.found", { level: ctx.target.level });
         return next({ step: "join", mode: "auto" });
       }
       case "join": {
-        if (!ctx.target) {
+        const { target } = ctx;
+        if (entry.mode === "auto" && !target) {
           return next({ step: "findSpeaker" });
         }
         watch?.dispose();
         watch = undefined;
         needsRelease = true;
-        const joined = await join(env, signal, ctx.target, entry.mode);
+        const joined = await join(
+          env,
+          signal,
+          target && entry.mode === "auto"
+            ? { mode: "auto", target }
+            : { mode: "manual", target },
+        );
         if (joined.isErr()) {
           return failed(joined.error);
         }
@@ -308,6 +329,10 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
         if (delivered.isErr()) {
           return failed(delivered.error);
         }
+        if (delivered.value.kind === "rejected") {
+          // Wrong password (or DHCP refused): ask again on the same link.
+          return next({ step: "credentials", reason: "rejected" });
+        }
         ctx.homeIp = delivered.value.homeIp;
         return next({ step: "leaveSetup" });
       }
@@ -342,10 +367,24 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
         if (verified.isErr()) {
           return failed(verified.error);
         }
+        return next({ step: "name", host: verified.value.host });
+      }
+      case "name": {
+        if (!ctx.identity) {
+          return next({ step: "findSpeaker" });
+        }
+        const named = await nameSpeaker(
+          env,
+          signal,
+          entry.host,
+          ctx.identity.name,
+        );
+        ctx.identity = { ...ctx.identity, name: named.name };
         return {
           kind: "done",
           speaker: ctx.identity,
-          host: verified.value.host,
+          host: entry.host,
+          renameFailed: named.renameFailed,
         };
       }
       default: {
@@ -356,7 +395,7 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
 
   const retryEntry = (error: SetupError, failedEntry: Entry): Entry => {
     if (LinkLost.is(error)) {
-      return { step: "join", mode: "auto" };
+      return { step: "join", mode: ctx.target ? "auto" : "manual" };
     }
     switch (failedEntry.step) {
       case "preflight": {
@@ -407,9 +446,7 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
         return { step: "join", mode: "manual" };
       }
       case "editCredentials": {
-        return CredentialsRejected.is(error)
-          ? { step: "credentials", reason: "rejected" }
-          : { step: "credentials" };
+        return { step: "credentials" };
       }
       case "continueAnyway": {
         return { step: "verify" };
@@ -493,6 +530,7 @@ export function createSetupSession(rawDeps: SetupDeps): SetupSession {
             kind: "done",
             speaker: outcome.speaker,
             host: outcome.host,
+            ...(outcome.renameFailed ? { renameFailed: true } : {}),
           });
           return;
         }

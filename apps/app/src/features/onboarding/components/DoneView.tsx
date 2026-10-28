@@ -25,15 +25,18 @@ const HANDOFF_TIMEOUT_MS = 15_000;
  */
 export function DoneView({
   speaker,
-  host,
+  renameFailed = false,
 }: {
   speaker: SpeakerIdentity;
-  host: string;
+  /** The new name couldn't be saved; the speaker kept its old one. */
+  renameFailed?: boolean;
 }) {
   const router = useRouter();
   const { speakers, rescan } = useBose();
   const [timedOut, setTimedOut] = useState(false);
   const listed = speakers.some((entry) => entry.deviceID === speaker.deviceID);
+  // A failed rename is shown until the user moves on, instead of flashing past.
+  const [acknowledged, setAcknowledged] = useState(!renameFailed);
 
   useEffect(() => {
     rescan();
@@ -46,12 +49,12 @@ export function DoneView({
   }, [rescan]);
 
   useEffect(() => {
-    if (listed) {
+    if (listed && acknowledged) {
       router.replace(
         `/speakers/${encodeURIComponent(speaker.deviceID)}/configure`,
       );
     }
-  }, [listed, router, speaker.deviceID]);
+  }, [listed, acknowledged, router, speaker.deviceID]);
 
   return (
     <>
@@ -63,10 +66,34 @@ export function DoneView({
         }}
         tone="success"
         title="Speaker connected"
-        description={`${speaker.name} is on your Wi-Fi at ${host}.`}
+        description={`${speaker.name} is on your Wi-Fi.`}
       />
 
-      {!timedOut || listed ? (
+      {renameFailed && (
+        <Card style={$setupCard}>
+          <Text style={$setupCardTitle}>Name not changed</Text>
+          <Text style={$setupBody}>
+            The speaker couldn't be renamed, so it kept its current name. You
+            can change it later in the speaker's settings.
+          </Text>
+        </Card>
+      )}
+
+      {!acknowledged ? (
+        <View style={$setupButtons}>
+          <SetupButton
+            label="Continue"
+            icon={{
+              ios: "arrow.right",
+              android: "arrow_forward",
+              web: "arrow_forward",
+            }}
+            onPress={() => {
+              setAcknowledged(true);
+            }}
+          />
+        </View>
+      ) : !timedOut || listed ? (
         <View style={$waiting}>
           <ActivityIndicator size="small" color={COLORS.primary} />
           <Text style={$setupBody}>Opening the speaker…</Text>
