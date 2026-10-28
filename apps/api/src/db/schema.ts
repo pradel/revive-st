@@ -5,21 +5,6 @@ import {
   text,
 } from "drizzle-orm/sqlite-core";
 
-export interface ContentItem {
-  source: string;
-  location: string;
-  sourceAccount: string;
-  isPresetable: boolean;
-  itemName: string;
-}
-
-export interface Preset {
-  id: number;
-  createdOn?: number;
-  updatedOn?: number;
-  contentItem: ContentItem;
-}
-
 export const presetsTable = sqliteTable(
   "presets",
   {

@@ -1,4 +1,4 @@
-import type { Preset } from "../db/schema.js";
+import type { Preset } from "../presets/preset.ts";
 
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -46,8 +46,8 @@ export function createAccountFullXml(accountId: string): string {
 </account>`;
 }
 
-export function createPresetsXml(presets: Preset[] = []): string {
-  if (!presets || presets.length === 0) {
+export function createPresetsXml(presets: readonly Preset[]): string {
+  if (presets.length === 0) {
     return `${XML_HEADER}\n<presets/>`;
   }
 

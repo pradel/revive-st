@@ -4,26 +4,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "tsc && vp build",
-    "preview": "vp preview",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate"
+    "dev": "node --watch src/main.ts",
+    "build": "tsc",
+    "start": "node src/main.ts",
+    "test": "vp test run",
+    "test:watch": "vp test watch",
+    "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@hono/standard-validator": "0.4.0",
-    "@libsql/client": "0.18.0",
+    "@effect/platform-node": "4.0.6",
+    "@effect/sql-libsql": "4.0.6",
     "bose-api-speaker-client": "workspace:*",
-    "drizzle-orm": "0.45.4",
-    "hono": "4.13.13",
-    "zod": "4.6.7"
+    "drizzle-orm": "1.0.0-rc.5",
+    "effect": "4.0.6"
   },
   "devDependencies": {
+    "@effect/vitest": "4.0.6",
     "@types/node": "26.6.5",
-    "drizzle-kit": "0.31.11",
-    "nitro": "3.0.260903-beta",
+    "drizzle-kit": "1.0.0-rc.5",
     "typescript": "7.0.2",
-    "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
   }
 }
