@@ -1,4 +1,3 @@
-import { useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 
@@ -21,7 +20,6 @@ export const usesTabBarAccessory =
 
 /** Mini player props for the playing (or paused) speaker, if any. */
 export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
-  const router = useRouter();
   const { speakers, playPauseMutation } = useBose();
   const speaker = findActiveSpeaker(speakers);
 
@@ -33,11 +31,7 @@ export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
     subtitle: [speaker.artist, speaker.name].filter(Boolean).join(" · "),
     artworkUri: speaker.artUrl,
     isPlaying: isSpeakerPlaying(speaker),
-    onPress: () => {
-      router.push(
-        `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
-      );
-    },
+    playerHref: `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
     onPlayPause: () => {
       haptics.tap();
       playPauseMutation.mutate({ deviceID: speaker.deviceID });

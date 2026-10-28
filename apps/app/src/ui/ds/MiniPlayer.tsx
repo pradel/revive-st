@@ -1,3 +1,5 @@
+import { Link, type Href } from "expo-router";
+import { useState } from "react";
 import { Pressable, View, type ViewStyle } from "react-native";
 
 import { artwork, color, radius, space } from "@/ui/tokens";
@@ -12,7 +14,8 @@ export interface MiniPlayerProps {
   subtitle: string;
   artworkUri?: string | null;
   isPlaying: boolean;
-  onPress: () => void;
+  /** The player; on iOS 18+ it zooms open from the artwork. */
+  playerHref: Href;
   onPlayPause: () => void;
   /**
    * `floating` draws its own card above the tabs; `accessory` and `inline`
@@ -29,46 +32,58 @@ export function MiniPlayer({
   subtitle,
   artworkUri,
   isPlaying,
-  onPress,
+  playerHref,
   onPlayPause,
   variant = "floating",
 }: MiniPlayerProps) {
   const floating = variant === "floating";
+  // `Link asChild` takes only a flat style object, so the pressed state is
+  // tracked here.
+  const [isPressed, setIsPressed] = useState(false);
   // The open-player area and the play/pause button are siblings so screen
   // readers can focus each one.
   return (
     <View style={floating ? $wrapper : $accessoryWrapper}>
       <View style={[$row, floating && $bar]}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`Now playing: ${title}, ${subtitle}`}
-          accessibilityHint="Opens the player"
-          onPress={onPress}
-          style={({ pressed }) => [
-            $open,
-            !floating && $openAccessory,
-            pressed && $pressed,
-          ]}
-        >
-          {variant === "inline" ? null : (
-            <Artwork
-              uri={artworkUri}
-              title={title}
-              size={floating ? artwork.row : accessoryArtwork}
-              radius={floating ? radius.xs : accessoryArtwork / 2}
-            />
-          )}
-          <View style={$text}>
-            <Text variant="subhead" color="textPrimary" numberOfLines={1}>
-              {title}
-            </Text>
+        <Link href={playerHref} asChild>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`Now playing: ${title}, ${subtitle}`}
+            accessibilityHint="Opens the player"
+            onPressIn={() => {
+              setIsPressed(true);
+            }}
+            onPressOut={() => {
+              setIsPressed(false);
+            }}
+            style={{
+              ...$open,
+              ...(floating ? undefined : $openAccessory),
+              ...(isPressed ? $pressed : undefined),
+            }}
+          >
             {variant === "inline" ? null : (
-              <Text variant="caption" color="textSecondary" numberOfLines={1}>
-                {subtitle}
-              </Text>
+              <Link.AppleZoom>
+                <Artwork
+                  uri={artworkUri}
+                  title={title}
+                  size={floating ? artwork.row : accessoryArtwork}
+                  radius={floating ? radius.xs : accessoryArtwork / 2}
+                />
+              </Link.AppleZoom>
             )}
-          </View>
-        </Pressable>
+            <View style={$text}>
+              <Text variant="subhead" color="textPrimary" numberOfLines={1}>
+                {title}
+              </Text>
+              {variant === "inline" ? null : (
+                <Text variant="caption" color="textSecondary" numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              )}
+            </View>
+          </Pressable>
+        </Link>
         <IconButton
           icon={isPlaying ? icons.pause : icons.play}
           accessibilityLabel={isPlaying ? "Pause" : "Play"}
