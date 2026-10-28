@@ -22,6 +22,8 @@ export async function GET(
       title={page.data.title}
       description={page.data.description}
       site={appName}
+      primaryColor="rgba(46,220,160,0.3)"
+      primaryTextColor="#2EDCA0"
     />,
     {
       width: 1200,

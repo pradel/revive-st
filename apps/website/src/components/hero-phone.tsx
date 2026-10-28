@@ -20,22 +20,22 @@ export function HeroPhone() {
   return (
     <div className="relative mx-auto w-full max-w-[280px] sm:max-w-[320px] aspect-[19.5/40]">
       {/* Decorative concentric circles behind the phone */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] aspect-square border border-neutral-200/60 rounded-full -z-10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] aspect-square border border-neutral-200/60 rounded-full -z-10" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[290%] aspect-square border border-neutral-200/60 rounded-full -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] aspect-square border border-separator rounded-full -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[220%] aspect-square border border-separator rounded-full -z-10" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[290%] aspect-square border border-separator rounded-full -z-10" />
 
       {/* Phone Hardware Mockup */}
-      <div className="absolute inset-0 rounded-[3rem] border-[12px] border-white bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.15)] overflow-hidden ring-1 ring-neutral-200">
-        {/* Inner black bezel */}
-        <div className="absolute inset-0 rounded-[2.25rem] border-[4px] border-neutral-900 bg-neutral-900 overflow-hidden">
+      <div className="absolute inset-0 rounded-[3rem] border-[12px] border-device-frame bg-device-frame shadow-phone overflow-hidden ring-1 ring-separator">
+        {/* Inner bezel */}
+        <div className="absolute inset-0 rounded-[2.25rem] border-[4px] border-device-bezel bg-device-bezel overflow-hidden">
           {/* Notch */}
-          <div className="absolute top-0 inset-x-0 h-6 bg-neutral-900 z-50 rounded-b-3xl mx-[20%] flex justify-center items-center">
+          <div className="absolute top-0 inset-x-0 h-6 bg-device-bezel z-50 rounded-b-3xl mx-[20%] flex justify-center items-center">
             {/* Camera dot */}
-            <div className="w-1.5 h-1.5 rounded-full bg-neutral-800 border border-neutral-700/50" />
+            <div className="w-1.5 h-1.5 rounded-full bg-device-camera border border-device-frame/50" />
           </div>
 
           {/* Screen Content */}
-          <div className="relative w-full h-full bg-neutral-950 rounded-[2rem] overflow-hidden">
+          <div className="relative w-full h-full bg-device-bezel rounded-[2rem] overflow-hidden">
             {IMAGES.map((src, index) => (
               <div
                 key={src}
