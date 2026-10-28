@@ -34,44 +34,54 @@ export function ListRow({
   selected,
 }: ListRowProps) {
   const isRadio = selected !== undefined;
+  // `trailing` is a sibling of the pressable area so controls in it (e.g. a
+  // favorite button) stay separately focusable by screen readers.
   return (
-    <Pressable
-      accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
-      accessibilityState={isRadio ? { disabled, selected } : { disabled }}
-      onPress={onPress}
-      disabled={disabled || !onPress}
-      style={({ pressed }) => [
+    <View
+      style={[
         $row,
+        trailing !== undefined && $rowWithTrailing,
         selected === true && $selected,
-        pressed && $pressed,
         disabled && $disabled,
       ]}
     >
-      {leading ?? (
-        <Artwork
-          uri={artworkUri}
-          title={title}
-          size={artwork.row}
-          radius={radius.xs}
-          fallbackIcon={fallbackIcon}
-        />
-      )}
-      <View style={$text}>
-        <Text
-          variant="body"
-          color={selected === true ? "accent" : "textPrimary"}
-          numberOfLines={1}
-        >
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text variant="subhead" color="textSecondary" numberOfLines={1}>
-            {subtitle}
+      <Pressable
+        accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
+        accessibilityState={isRadio ? { disabled, selected } : { disabled }}
+        onPress={onPress}
+        disabled={disabled || !onPress}
+        style={({ pressed }) => [
+          $main,
+          trailing !== undefined && $mainWithTrailing,
+          pressed && $pressed,
+        ]}
+      >
+        {leading ?? (
+          <Artwork
+            uri={artworkUri}
+            title={title}
+            size={artwork.row}
+            radius={radius.xs}
+            fallbackIcon={fallbackIcon}
+          />
+        )}
+        <View style={$text}>
+          <Text
+            variant="body"
+            color={selected === true ? "accent" : "textPrimary"}
+            numberOfLines={1}
+          >
+            {title}
           </Text>
-        ) : null}
-      </View>
+          {subtitle ? (
+            <Text variant="subhead" color="textSecondary" numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : null}
+        </View>
+      </Pressable>
       {trailing}
-    </Pressable>
+    </View>
   );
 }
 
@@ -79,11 +89,25 @@ const $row: ViewStyle = {
   minHeight: 64,
   flexDirection: "row",
   alignItems: "center",
+};
+
+const $rowWithTrailing: ViewStyle = {
+  paddingRight: space.screen,
+};
+
+const $main: ViewStyle = {
+  flex: 1,
+  alignSelf: "stretch",
+  flexDirection: "row",
+  alignItems: "center",
   gap: space.sm,
   paddingHorizontal: space.screen,
   paddingVertical: space.xs,
 };
 
+const $mainWithTrailing: ViewStyle = {
+  paddingRight: space.sm,
+};
 const $pressed: ViewStyle = {
   backgroundColor: color.surface2,
 };

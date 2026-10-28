@@ -8,13 +8,13 @@ export function isSpeakerPlaying(speaker: BoseSpeaker) {
   );
 }
 
-/** Something is loaded that transport controls can act on. */
+/** Something is loaded that transport controls can act on (empty strings count as nothing). */
 export function hasLoadedMedia(speaker: BoseSpeaker) {
-  return Boolean(
-    speaker.track ??
-    speaker.artUrl ??
-    speaker.artist ??
-    isSpeakerPlaying(speaker),
+  return (
+    Boolean(speaker.track) ||
+    Boolean(speaker.artUrl) ||
+    Boolean(speaker.artist) ||
+    isSpeakerPlaying(speaker)
   );
 }
 

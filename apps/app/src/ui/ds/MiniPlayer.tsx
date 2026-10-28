@@ -24,29 +24,33 @@ export function MiniPlayer({
   onPress,
   onPlayPause,
 }: MiniPlayerProps) {
+  // The open-player area and the play/pause button are siblings so screen
+  // readers can focus each one.
   return (
     <View style={$wrapper}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Now playing: ${title}, ${subtitle}`}
-        accessibilityHint="Opens the player"
-        onPress={onPress}
-        style={({ pressed }) => [$bar, pressed && $pressed]}
-      >
-        <Artwork
-          uri={artworkUri}
-          title={title}
-          size={artwork.row}
-          radius={radius.xs}
-        />
-        <View style={$text}>
-          <Text variant="subhead" color="textPrimary" numberOfLines={1}>
-            {title}
-          </Text>
-          <Text variant="caption" color="textSecondary" numberOfLines={1}>
-            {subtitle}
-          </Text>
-        </View>
+      <View style={$bar}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Now playing: ${title}, ${subtitle}`}
+          accessibilityHint="Opens the player"
+          onPress={onPress}
+          style={({ pressed }) => [$open, pressed && $pressed]}
+        >
+          <Artwork
+            uri={artworkUri}
+            title={title}
+            size={artwork.row}
+            radius={radius.xs}
+          />
+          <View style={$text}>
+            <Text variant="subhead" color="textPrimary" numberOfLines={1}>
+              {title}
+            </Text>
+            <Text variant="caption" color="textSecondary" numberOfLines={1}>
+              {subtitle}
+            </Text>
+          </View>
+        </Pressable>
         <IconButton
           icon={isPlaying ? icons.pause : icons.play}
           accessibilityLabel={isPlaying ? "Pause" : "Play"}
@@ -54,7 +58,7 @@ export function MiniPlayer({
           tint="textPrimary"
           iconSize={22}
         />
-      </Pressable>
+      </View>
     </View>
   );
 }
@@ -67,8 +71,8 @@ const $wrapper: ViewStyle = {
 const $bar: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  gap: space.sm,
-  padding: space.xs,
+  gap: space.xxs,
+  paddingRight: space.xs,
   borderRadius: radius.md,
   backgroundColor: color.surface2,
   shadowColor: color.shadow,
@@ -76,6 +80,15 @@ const $bar: ViewStyle = {
   shadowOpacity: 0.4,
   shadowRadius: 12,
   elevation: 8,
+};
+
+const $open: ViewStyle = {
+  flex: 1,
+  flexDirection: "row",
+  alignItems: "center",
+  gap: space.sm,
+  padding: space.xs,
+  borderRadius: radius.md,
 };
 
 const $pressed: ViewStyle = {
