@@ -191,7 +191,7 @@ function SetupChrome({
     [],
   );
   return (
-    <Screen>
+    <Screen presentation="fullscreen">
       <View style={$topBar}>
         {scenario !== undefined && (
           <Text

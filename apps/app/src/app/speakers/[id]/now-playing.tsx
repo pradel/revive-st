@@ -42,7 +42,7 @@ export default function NowPlayingModal() {
 
   if (!speaker) {
     return (
-      <Screen>
+      <Screen presentation="sheet">
         <EmptyState
           icon={icons.wifiOff}
           title="Speaker not found"
