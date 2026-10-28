@@ -195,6 +195,7 @@ export default function NowPlayingModal() {
             }}
           />
           <Slider
+            size="regular"
             value={draftVolume}
             minimumValue={0}
             maximumValue={100}

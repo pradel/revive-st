@@ -1,22 +1,15 @@
 import { Slider as NativeSlider } from "@expo/ui/community/slider";
-import type { StyleProp, ViewStyle } from "react-native";
 
-import { color, type ColorName } from "@/ui/tokens";
+import { color } from "@/ui/tokens";
 
-export interface SliderProps {
-  value: number;
-  minimumValue: number;
-  maximumValue: number;
-  /** Called with whole numbers while dragging. */
-  onValueChange: (value: number) => void;
-  accessibilityLabel: string;
-  /** Active track color. */
-  tint?: ColorName;
-  style?: StyleProp<ViewStyle>;
-}
+import type { SliderProps } from "./Slider.types";
+
+export type { SliderProps } from "./Slider.types";
 
 /**
- * Native slider (SwiftUI on iOS, Material 3 on Android) in the app's colors.
+ * Native slider in the app's colors: SwiftUI on iOS, where the thumb and
+ * track can't be restyled (`size` has no effect). `Slider.android.tsx` draws
+ * the app's thin track and round thumb into Material 3's slider.
  * Pair with `useDraftValue` to send the value once a drag settles.
  */
 export function Slider({
