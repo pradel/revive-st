@@ -21,6 +21,11 @@ export interface StepListItem {
   description?: string;
   /** Right-aligned content, e.g. an elapsed time or countdown. */
   trailing?: ReactNode;
+  /**
+   * Spoken form of `trailing` (e.g. "45 seconds left"). The row reads as one
+   * element, so `trailing` is otherwise silent to screen readers.
+   */
+  trailingLabel?: string;
 }
 
 export interface StepListProps {
@@ -75,6 +80,9 @@ function stepLabel(step: StepListItem): string {
   const parts = [step.title, STATUS_LABEL[step.status]];
   if (step.description) {
     parts.push(step.description);
+  }
+  if (step.trailingLabel) {
+    parts.push(step.trailingLabel);
   }
   return parts.join(", ");
 }
