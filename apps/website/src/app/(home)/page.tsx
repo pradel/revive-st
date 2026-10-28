@@ -83,7 +83,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="flex flex-col min-h-screen bg-neutral-50 text-neutral-900 selection:bg-emerald-200">
+    <div className="flex flex-col min-h-screen bg-bg text-fg selection:bg-accent-muted">
       <script
         type="application/ld+json"
         // oxlint-disable-next-line react/no-danger
@@ -97,17 +97,17 @@ export default function HomePage() {
       <main className="flex flex-col flex-1">
         {/* Hero Section */}
         <section className="relative overflow-hidden pt-24 pb-16 lg:pt-32 lg:pb-24 px-4">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/50 via-neutral-50 to-neutral-50" />
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-accent-muted via-bg to-bg" />
 
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-8 items-center">
             {/* Left Column: Text & CTA */}
             <div className="flex flex-col items-center text-center lg:items-start lg:text-left">
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance max-w-2xl mb-6 text-neutral-900">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-balance max-w-2xl mb-6 text-fg">
                 Your Bose speakers still work.
                 <br />
-                <span className="text-emerald-600">Now your app does too.</span>
+                <span className="text-accent">Now your app does too.</span>
               </h1>
-              <p className="text-lg md:text-xl text-neutral-600 text-pretty max-w-xl mb-10">
+              <p className="text-lg md:text-xl text-fg-secondary text-pretty max-w-xl mb-10">
                 The SoundTouch app stopped working in May 2026. Revive ST brings
                 back full control of your speakers, no account needed.
               </p>
@@ -141,7 +141,7 @@ export default function HomePage() {
                     />
                   </a>
                 </div>
-                <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
+                <span className="text-xs uppercase tracking-widest text-fg-tertiary font-mono mt-4">
                   One-time purchase &middot; No subscription &middot; Open
                   source
                 </span>
@@ -156,9 +156,9 @@ export default function HomePage() {
         </section>
 
         {/* Trust / Open Source Strip */}
-        <section className="py-4 border-y border-neutral-200 bg-white">
-          <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row items-center justify-center text-center md:text-left gap-4 md:gap-3 text-sm text-neutral-700">
-            <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+        <section className="py-4 bg-surface-1">
+          <div className="max-w-5xl mx-auto px-4 flex flex-col md:flex-row items-center justify-center text-center md:text-left gap-4 md:gap-3 text-sm text-fg-secondary">
+            <ShieldCheck className="w-5 h-5 text-accent shrink-0" />
             <p className="text-pretty">
               <strong>Revive ST is fully open source.</strong> The code lives on
               GitHub and anyone can run or compile it themselves, so nothing
@@ -168,7 +168,7 @@ export default function HomePage() {
               href={WEBSITE_CONFIG.GITHUB_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="shrink-0 inline-flex items-center font-medium hover:underline text-emerald-600"
+              className="shrink-0 inline-flex items-center font-medium hover:underline text-accent"
             >
               View source on GitHub &rarr;
             </a>
@@ -176,17 +176,17 @@ export default function HomePage() {
         </section>
 
         {/* Problem Section */}
-        <section className="py-24 px-4 bg-neutral-50">
+        <section className="py-24 px-4 bg-bg">
           <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
             <div>
-              <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-3 block">
+              <span className="text-xs font-bold uppercase tracking-widest text-accent mb-3 block">
                 What happened
               </span>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-balance">
                 The SoundTouch app was shut down. Your speakers lost their key
                 features.
               </h2>
-              <div className="prose prose-lg text-neutral-600">
+              <div className="prose prose-lg text-fg-secondary">
                 <p>
                   In May 2026, the SoundTouch cloud servers were switched off.
                   Preset buttons stopped responding, internet radio stations
@@ -194,15 +194,15 @@ export default function HomePage() {
                   that cost hundreds of dollars were left without a way to
                   control them.
                 </p>
-                <p className="font-medium text-neutral-900 mt-4">
+                <p className="font-medium text-fg mt-4">
                   Your hardware is perfectly fine. All it needed was a new app.
                 </p>
               </div>
             </div>
             <div className="flex justify-center md:justify-end">
-              <div className="bg-white rounded-2xl shadow-sm border border-neutral-200 p-16 flex flex-col items-center justify-center w-full max-w-sm aspect-square">
-                <WifiOff className="w-16 h-16 text-red-500 mb-4" />
-                <span className="text-red-500 font-mono text-sm tracking-tight">
+              <div className="bg-surface-1 rounded-2xl shadow-sm border border-separator p-16 flex flex-col items-center justify-center w-full max-w-sm aspect-square">
+                <WifiOff className="w-16 h-16 text-danger mb-4" />
+                <span className="text-danger font-mono text-sm tracking-tight">
                   Connection Failed
                 </span>
               </div>
@@ -211,13 +211,10 @@ export default function HomePage() {
         </section>
 
         {/* Features Section */}
-        <section
-          id="features"
-          className="py-24 px-4 bg-white border-y border-neutral-200"
-        >
+        <section id="features" className="py-24 px-4 bg-surface-1">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-16">
-              <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-3 block">
+              <span className="text-xs font-bold uppercase tracking-widest text-accent mb-3 block">
                 What you get back
               </span>
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 text-balance">
@@ -260,14 +257,14 @@ export default function HomePage() {
                 icon={<Code className="w-5 h-5" />}
                 title="No account. No cloud."
                 description="Revive ST runs entirely on your local Wi-Fi. Nothing leaves your home, and there is no server that can be switched off."
-                className="md:col-span-4 bg-neutral-100"
+                className="md:col-span-4 bg-surface-3"
               />
             </div>
           </div>
         </section>
 
         {/* How It Works Section */}
-        <section id="how-it-works" className="py-24 px-4 bg-neutral-50">
+        <section id="how-it-works" className="py-24 px-4 bg-bg">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-16">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight">
@@ -276,7 +273,7 @@ export default function HomePage() {
             </div>
 
             <div className="relative flex flex-col md:flex-row justify-between items-center md:items-start gap-8 md:gap-4 mt-12">
-              <div className="hidden md:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-neutral-200 -z-10" />
+              <div className="hidden md:block absolute top-8 left-[10%] right-[10%] h-0.5 bg-separator -z-10" />
 
               <Step
                 number="1"
@@ -301,16 +298,16 @@ export default function HomePage() {
         {/* Open Source Section */}
         <section
           id="open-source"
-          className="py-24 px-4 bg-white border-y border-neutral-200 text-center"
+          className="py-24 px-4 bg-surface-1 text-center"
         >
           <div className="max-w-3xl mx-auto">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-600 mb-3 block">
+            <span className="text-xs font-bold uppercase tracking-widest text-accent mb-3 block">
               Built to last
             </span>
             <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-balance">
               The code is yours, forever.
             </h2>
-            <div className="text-lg text-neutral-600 mb-8 text-pretty space-y-4 max-w-2xl mx-auto">
+            <div className="text-lg text-fg-secondary mb-8 text-pretty space-y-4 max-w-2xl mx-auto">
               <p>
                 Revive ST is fully open source, which means anyone can read it,
                 check it, and run it. Even if the project stops being maintained
@@ -328,13 +325,13 @@ export default function HomePage() {
                 href={WEBSITE_CONFIG.GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-md border border-neutral-300 px-6 py-3 text-base font-semibold hover:bg-neutral-50 transition-colors text-neutral-900 shadow-sm"
+                className="inline-flex items-center justify-center rounded-md border border-separator px-6 py-3 text-base font-semibold hover:bg-surface-2 transition-colors text-fg shadow-sm"
               >
                 View source on GitHub
               </a>
               <Link
                 href="#download"
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors shadow-sm"
+                className="inline-flex items-center justify-center rounded-md bg-accent text-on-accent px-6 py-3 text-base font-semibold hover:bg-accent/85 transition-colors shadow-sm"
               >
                 Download the App
               </Link>
@@ -343,18 +340,18 @@ export default function HomePage() {
         </section>
 
         {/* FAQ Section */}
-        <section id="faq" className="py-24 px-4 bg-neutral-50">
+        <section id="faq" className="py-24 px-4 bg-bg">
           <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-12 lg:gap-16">
             <div className="md:col-span-5 lg:col-span-4 flex flex-col">
               <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-6 text-balance">
                 Frequently asked questions
               </h2>
-              <p className="text-lg text-neutral-600 mb-8 text-pretty">
+              <p className="text-lg text-fg-secondary mb-8 text-pretty">
                 Can't find the answer you're looking for? We're here to help.
               </p>
               <a
                 href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}
-                className="inline-flex items-center justify-center rounded-md bg-emerald-600 text-white px-6 py-3 text-base font-semibold hover:bg-emerald-700 transition-colors self-start shadow-sm"
+                className="inline-flex items-center justify-center rounded-md bg-accent text-on-accent px-6 py-3 text-base font-semibold hover:bg-accent/85 transition-colors self-start shadow-sm"
               >
                 Get in touch
                 <MessageCircle className="w-5 h-5 ml-2" />
@@ -375,17 +372,14 @@ export default function HomePage() {
         </section>
 
         {/* Final CTA Section */}
-        <section
-          id="download"
-          className="py-24 px-4 bg-white border-t border-neutral-200 text-center"
-        >
+        <section id="download" className="py-24 px-4 bg-surface-1 text-center">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-3xl md:text-5xl font-bold tracking-tight text-balance mb-6">
               Your speakers are still good.
               <br />
               Get them working again.
             </h2>
-            <p className="text-lg text-neutral-600 mb-10 text-pretty">
+            <p className="text-lg text-fg-secondary mb-10 text-pretty">
               One purchase, no subscription, full control on your local network.
             </p>
             <div className="flex flex-col items-center gap-4">
@@ -417,7 +411,7 @@ export default function HomePage() {
                   />
                 </a>
               </div>
-              <span className="text-xs uppercase tracking-widest text-neutral-500 font-mono mt-4">
+              <span className="text-xs uppercase tracking-widest text-fg-tertiary font-mono mt-4">
                 One-time purchase &middot; No subscription &middot; Open source
                 &middot; Free to compile
               </span>
@@ -445,13 +439,13 @@ function FeatureCard({
 }) {
   return (
     <div
-      className={`p-6 rounded-2xl bg-neutral-50 border border-neutral-200 hover:border-emerald-200 hover:bg-white transition-colors flex flex-col ${className}`}
+      className={`p-6 rounded-2xl bg-surface-2 border border-separator hover:border-accent/40 hover:bg-surface-3 transition-colors flex flex-col ${className}`}
     >
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 text-emerald-600 bg-emerald-50 shrink-0">
+      <div className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 text-accent bg-accent-muted shrink-0">
         {icon}
       </div>
-      <h3 className="text-base font-bold mb-2 text-neutral-900">{title}</h3>
-      <p className="text-sm text-neutral-600 leading-relaxed">{description}</p>
+      <h3 className="text-base font-bold mb-2 text-fg">{title}</h3>
+      <p className="text-sm text-fg-secondary leading-relaxed">{description}</p>
     </div>
   );
 }
@@ -470,12 +464,12 @@ function Step({
   return (
     <div className="flex flex-col items-center text-center flex-1 z-10 w-full max-w-[280px]">
       <div
-        className={`w-16 h-16 rounded-full bg-white border-2 flex items-center justify-center text-2xl font-bold mb-4 shadow-sm transition-colors ${active ? "border-emerald-500 text-emerald-600" : "border-neutral-200 text-neutral-900"}`}
+        className={`w-16 h-16 rounded-full bg-surface-2 border-2 flex items-center justify-center text-2xl font-bold mb-4 shadow-sm transition-colors ${active ? "border-accent text-accent" : "border-separator text-fg"}`}
       >
         {number}
       </div>
-      <h3 className="text-lg font-bold mb-2 text-neutral-900">{title}</h3>
-      <p className="text-sm text-neutral-600">{description}</p>
+      <h3 className="text-lg font-bold mb-2 text-fg">{title}</h3>
+      <p className="text-sm text-fg-secondary">{description}</p>
     </div>
   );
 }
@@ -490,20 +484,20 @@ function FaqItem({
   link?: { text: string; href: string };
 }) {
   return (
-    <details className="group bg-white rounded-2xl border border-neutral-200 hover:border-emerald-200 shadow-sm text-left overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-colors">
-      <summary className="flex cursor-pointer items-center justify-between p-4 md:p-5 font-semibold text-base text-neutral-900 focus-visible:outline-none focus-visible:bg-neutral-50 hover:bg-neutral-50 transition-colors">
+    <details className="group bg-surface-1 rounded-2xl border border-separator hover:border-accent/40 shadow-sm text-left overflow-hidden [&_summary::-webkit-details-marker]:hidden transition-colors">
+      <summary className="flex cursor-pointer items-center justify-between p-4 md:p-5 font-semibold text-base text-fg focus-visible:outline-none focus-visible:bg-surface-2 hover:bg-surface-2 transition-colors">
         {question}
-        <div className="ml-4 shrink-0 w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600 transition-colors group-hover:bg-emerald-100">
+        <div className="ml-4 shrink-0 w-8 h-8 rounded-lg bg-accent-muted flex items-center justify-center text-accent transition-colors group-hover:bg-accent/25">
           <Plus className="w-4 h-4 block group-open:hidden" />
           <Minus className="w-4 h-4 hidden group-open:block" />
         </div>
       </summary>
-      <div className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-neutral-600 leading-relaxed text-pretty">
+      <div className="px-4 md:px-5 pb-4 md:pb-5 text-sm text-fg-secondary leading-relaxed text-pretty">
         <p>{answer}</p>
         {link && (
           <Link
             href={link.href}
-            className="inline-block mt-2 font-medium text-emerald-600 hover:underline"
+            className="inline-block mt-2 font-medium text-accent hover:underline"
           >
             {link.text}
           </Link>

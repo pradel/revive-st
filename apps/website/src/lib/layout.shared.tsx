@@ -17,6 +17,7 @@ export function baseOptions(): BaseLayoutProps {
         active: "nested-url",
       },
     ],
+    themeSwitch: { enabled: false },
     githubUrl: WEBSITE_CONFIG.GITHUB_URL,
   };
 }

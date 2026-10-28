@@ -2,6 +2,75 @@
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 
+/* Brand palette — mirrors apps/app/src/ui/tokens.ts (`color`). */
+@theme {
+  --color-bg: #0b0b0c;
+  --color-surface-1: #161618;
+  --color-surface-2: #1f1f22;
+  --color-surface-3: #2a2a2e;
+  --color-separator: rgba(255, 255, 255, 0.08);
+  --color-fg: #ffffff;
+  --color-fg-secondary: rgba(255, 255, 255, 0.68);
+  --color-fg-tertiary: rgba(255, 255, 255, 0.45);
+  --color-accent: #2edca0;
+  --color-accent-muted: rgba(46, 220, 160, 0.16);
+  --color-on-accent: #04160f;
+  --color-danger: #ff5449;
+  --color-danger-muted: rgba(255, 84, 73, 0.16);
+  --color-warning: #ffb86c;
+
+  --shadow-phone: 0 30px 80px -12px rgba(0, 0, 0, 0.7);
+
+  /* Fumadocs (dark-only site: same values as .dark) */
+  --color-fd-background: var(--color-bg);
+  --color-fd-foreground: var(--color-fg);
+  --color-fd-muted: var(--color-surface-1);
+  --color-fd-muted-foreground: var(--color-fg-secondary);
+  --color-fd-popover: var(--color-surface-2);
+  --color-fd-popover-foreground: var(--color-fg);
+  --color-fd-card: var(--color-surface-1);
+  --color-fd-card-foreground: var(--color-fg);
+  --color-fd-border: var(--color-separator);
+  --color-fd-primary: var(--color-accent);
+  --color-fd-primary-foreground: var(--color-on-accent);
+  --color-fd-secondary: var(--color-surface-2);
+  --color-fd-secondary-foreground: var(--color-fg);
+  --color-fd-accent: var(--color-surface-2);
+  --color-fd-accent-foreground: var(--color-fg);
+  --color-fd-ring: var(--color-accent);
+}
+
+.dark {
+  --color-fd-background: var(--color-bg);
+  --color-fd-foreground: var(--color-fg);
+  --color-fd-muted: var(--color-surface-1);
+  --color-fd-muted-foreground: var(--color-fg-secondary);
+  --color-fd-popover: var(--color-surface-2);
+  --color-fd-popover-foreground: var(--color-fg);
+  --color-fd-card: var(--color-surface-1);
+  --color-fd-card-foreground: var(--color-fg);
+  --color-fd-border: var(--color-separator);
+  --color-fd-primary: var(--color-accent);
+  --color-fd-primary-foreground: var(--color-on-accent);
+  --color-fd-secondary: var(--color-surface-2);
+  --color-fd-secondary-foreground: var(--color-fg);
+  --color-fd-accent: var(--color-surface-2);
+  --color-fd-accent-foreground: var(--color-fg);
+  --color-fd-ring: var(--color-accent);
+}
+
+@theme static {
+  --color-fd-success: var(--color-accent);
+  --color-fd-warning: var(--color-warning);
+  --color-fd-error: var(--color-danger);
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: var(--color-surface-2);
+  --color-fd-secondary: var(--color-surface-3);
+  --color-fd-muted-foreground: var(--color-fg-secondary);
+}
+
 html {
   scrollbar-gutter: stable;
 }
