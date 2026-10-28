@@ -1,7 +1,7 @@
 import React from "react";
 import { View, type ViewProps, type ViewStyle } from "react-native";
 
-import { COLORS } from "../../ui/theme";
+import { color, radius, space } from "../../ui/tokens";
 import { useRender } from "../../utils/useRender";
 
 export interface CardProps extends ViewProps {
@@ -9,6 +9,7 @@ export interface CardProps extends ViewProps {
   render?: React.ReactElement | ((props: any) => React.ReactElement);
 }
 
+/** Grouped content on the first surface step; no border (see `ui/tokens`). */
 export function Card({ children, style, render, ...props }: CardProps) {
   return useRender({
     render,
@@ -22,7 +23,7 @@ export function Card({ children, style, render, ...props }: CardProps) {
 }
 
 const $card: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderRadius: 16,
-  padding: 16,
+  backgroundColor: color.surface1,
+  borderRadius: radius.md,
+  padding: space.md,
 };

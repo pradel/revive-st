@@ -1,4 +1,3 @@
-import { SymbolView } from "expo-symbols";
 import {
   type ComponentRef,
   useContext,
@@ -10,29 +9,34 @@ import {
   ActivityIndicator,
   Keyboard,
   ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
   View,
+  type TextInput,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
 import { Card } from "@/components/ui/Card";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { Icon, icons, type IconName } from "@/ui/ds/Icon";
+import { IconButton } from "@/ui/ds/IconButton";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Text } from "@/ui/ds/Text";
+import { TextField } from "@/ui/ds/TextField";
+import { color, radius, space } from "@/ui/tokens";
 
 import { validateCredentials } from "../session/credentials";
 import type { HomeNetwork, Security } from "../session/types";
 import {
   $setupButtons,
   $setupCard,
-  $setupEmphasis,
   $setupNote,
-  SetupButton,
+  Emphasis,
   SetupHeader,
   SetupScrollContext,
   signalStrength,
 } from "./SetupLayout";
+
+const WIFI_ICON: IconName = { ios: "wifi", android: "wifi", web: "wifi" };
 
 const SECURITY_LABEL: Record<Security, string> = {
   open: "Open",
@@ -80,7 +84,6 @@ export function CredentialsForm({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [attempted, setAttempted] = useState(false);
-  const [focused, setFocused] = useState<"ssid" | "password" | null>(null);
   const passwordRef = useRef<ComponentRef<typeof TextInput>>(null);
   const { scrollToEnd } = useContext(SetupScrollContext);
   const keyboardShown = useRef<ReturnType<typeof Keyboard.addListener> | null>(
@@ -150,76 +153,46 @@ export function CredentialsForm({
 
       <Card style={[$setupCard, $listCard]}>
         <View style={$listHeader}>
-          <Text style={$listHeaderText}>Networks nearby</Text>
-          <TouchableOpacity
-            onPress={onRefresh}
-            disabled={refreshing}
-            style={$refreshButton}
-            activeOpacity={0.7}
-            accessibilityRole="button"
-            accessibilityLabel="Refresh networks"
-          >
-            {refreshing ? (
-              <ActivityIndicator size="small" color={COLORS.primary} />
-            ) : (
-              <SymbolView
-                name={{
-                  ios: "arrow.clockwise",
-                  android: "refresh",
-                  web: "refresh",
-                }}
-                tintColor={COLORS.primary}
-                size={18}
-              />
-            )}
-          </TouchableOpacity>
+          <Text variant="overline" color="textSecondary">
+            Networks nearby
+          </Text>
+          {refreshing ? (
+            <View style={$refreshing}>
+              <ActivityIndicator size="small" color={color.textSecondary} />
+            </View>
+          ) : (
+            <IconButton
+              icon={icons.refresh}
+              accessibilityLabel="Refresh networks"
+              onPress={onRefresh}
+              iconSize={18}
+            />
+          )}
         </View>
         {networks.length === 0 ? (
-          <Text style={$emptyText}>
+          <Text variant="subhead" color="textSecondary" style={$emptyText}>
             No Wi-Fi networks found. Refresh, or enter the network name below.
           </Text>
         ) : (
           <ScrollView style={$list} nestedScrollEnabled>
-            {networks.map((network, index) => {
+            {networks.map((network) => {
               const isSelected = !manual && selected === network.ssid;
               const signal = signalStrength(network.level);
               return (
-                <View key={network.ssid}>
-                  {index > 0 && <View style={$divider} />}
-                  <TouchableOpacity
-                    style={[$networkRow, isSelected && $networkRowSelected]}
-                    onPress={() => {
-                      setManual(false);
-                      setSelected(network.ssid);
-                    }}
-                    activeOpacity={0.7}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected: isSelected }}
-                  >
-                    <SymbolView
+                <ListRow
+                  key={network.ssid}
+                  title={network.ssid}
+                  subtitle={`${network.bands
+                    .map((band) => band.replace("GHz", " GHz"))
+                    .join(" · ")} · ${SECURITY_LABEL[network.security]}`}
+                  leading={
+                    <Icon
                       name={signal.symbol}
-                      tintColor={isSelected ? COLORS.primary : COLORS.text}
-                      size={20}
+                      color={isSelected ? "accent" : "textSecondary"}
                     />
-                    <View style={$networkText}>
-                      <Text
-                        style={[
-                          $networkName,
-                          isSelected && $networkNameSelected,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {network.ssid}
-                      </Text>
-                      <Text style={$networkMeta}>
-                        {network.bands
-                          .map((band) => band.replace("GHz", " GHz"))
-                          .join(" · ")}
-                        {" · "}
-                        {SECURITY_LABEL[network.security]}
-                      </Text>
-                    </View>
-                    <SymbolView
+                  }
+                  trailing={
+                    <Icon
                       name={
                         network.security === "open"
                           ? {
@@ -229,168 +202,132 @@ export function CredentialsForm({
                             }
                           : { ios: "lock.fill", android: "lock", web: "lock" }
                       }
-                      tintColor={COLORS.textMuted}
                       size={14}
+                      color="textTertiary"
                     />
-                  </TouchableOpacity>
-                </View>
+                  }
+                  selected={isSelected}
+                  onPress={() => {
+                    setManual(false);
+                    setSelected(network.ssid);
+                  }}
+                />
               );
             })}
           </ScrollView>
         )}
-        <View style={$divider} />
-        <TouchableOpacity
-          style={[$networkRow, manual && $networkRowSelected]}
+        <ListRow
+          title="Other network…"
+          leading={
+            <Icon
+              name={{ ios: "keyboard", android: "keyboard", web: "keyboard" }}
+              color={manual ? "accent" : "textSecondary"}
+            />
+          }
+          selected={manual}
           onPress={() => {
             setManual(true);
           }}
-          activeOpacity={0.7}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: manual }}
-        >
-          <SymbolView
-            name={{ ios: "keyboard", android: "keyboard", web: "keyboard" }}
-            tintColor={manual ? COLORS.primary : COLORS.text}
-            size={20}
-          />
-          <Text style={[$networkName, manual && $networkNameSelected]}>
-            Other network…
-          </Text>
-        </TouchableOpacity>
+        />
       </Card>
 
       {manual && (
-        <Card style={[$setupCard, $inputCard]}>
-          <View style={[$inputRow, focused === "ssid" && $inputFocused]}>
-            <SymbolView
-              name={{ ios: "wifi", android: "wifi", web: "wifi" }}
-              tintColor={COLORS.primary}
-              size={20}
-            />
-            <TextInput
-              style={$input}
-              placeholder="Network name (SSID)"
-              placeholderTextColor={COLORS.textMuted}
-              value={manualSsid}
-              onChangeText={setManualSsid}
-              onFocus={() => {
-                setFocused("ssid");
-                revealInputs();
-              }}
-              onBlur={() => {
-                setFocused(null);
-              }}
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-          </View>
-        </Card>
+        <View style={$setupCard}>
+          <TextField
+            icon={WIFI_ICON}
+            placeholder="Network name (SSID)"
+            value={manualSsid}
+            onChangeText={setManualSsid}
+            onFocus={revealInputs}
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+        </View>
       )}
 
       {reason === "rejected" && (
-        <Card style={[$setupCard, $rejectedCard]}>
-          <SymbolView
-            name={{
-              ios: "exclamationmark.triangle",
-              android: "warning",
-              web: "warning",
-            }}
-            tintColor={COLORS.error}
-            size={20}
-          />
-          <Text style={$rejectedText}>
+        <View style={[$setupCard, $rejected]}>
+          <Icon name={icons.warning} color="danger" />
+          <Text variant="body" style={$flex}>
             The speaker couldn't join{" "}
-            <Text style={$setupEmphasis}>{suggested ?? "the network"}</Text>.
-            The password is probably wrong: check it and try again.
+            <Emphasis>{suggested ?? "the network"}</Emphasis>. The password is
+            probably wrong: check it and try again.
           </Text>
-        </Card>
+        </View>
       )}
       {needsPassword ? (
-        <Card style={[$setupCard, $inputCard]}>
-          <View style={[$inputRow, focused === "password" && $inputFocused]}>
-            <SymbolView
-              name={{ ios: "lock", android: "lock", web: "lock" }}
-              tintColor={COLORS.primary}
-              size={20}
-            />
-            <TextInput
-              ref={passwordRef}
-              style={$input}
-              placeholder={
-                security === undefined
-                  ? "Wi-Fi password (empty if open)"
-                  : "Wi-Fi password"
-              }
-              placeholderTextColor={COLORS.textMuted}
-              value={password}
-              onChangeText={setPassword}
-              onFocus={() => {
-                setFocused("password");
-                revealInputs();
-              }}
-              onBlur={() => {
-                setFocused(null);
-              }}
-              onSubmitEditing={submit}
-              secureTextEntry={!showPassword}
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="off"
-              importantForAutofill="no"
-              returnKeyType="done"
-            />
-            <TouchableOpacity
-              onPress={() => {
-                setShowPassword((shown) => !shown);
-              }}
-              style={$eyeButton}
-              activeOpacity={0.7}
-              accessibilityRole="button"
-              accessibilityLabel={
-                showPassword ? "Hide password" : "Show password"
-              }
-            >
-              <SymbolView
-                name={{
+        <View style={$setupCard}>
+          <TextField
+            ref={passwordRef}
+            icon={icons.lock}
+            placeholder={
+              security === undefined
+                ? "Wi-Fi password (empty if open)"
+                : "Wi-Fi password"
+            }
+            value={password}
+            onChangeText={setPassword}
+            onFocus={revealInputs}
+            onSubmitEditing={submit}
+            secureTextEntry={!showPassword}
+            autoCapitalize="none"
+            autoCorrect={false}
+            autoComplete="off"
+            importantForAutofill="no"
+            returnKeyType="done"
+            trailing={
+              <IconButton
+                icon={{
                   ios: showPassword ? "eye.slash" : "eye",
                   android: showPassword ? "visibility_off" : "visibility",
                   web: showPassword ? "visibility_off" : "visibility",
                 }}
-                tintColor={COLORS.textMuted}
-                size={20}
+                accessibilityLabel={
+                  showPassword ? "Hide password" : "Show password"
+                }
+                onPress={() => {
+                  setShowPassword((shown) => !shown);
+                }}
+                iconSize={20}
               />
-            </TouchableOpacity>
-          </View>
-        </Card>
+            }
+          />
+        </View>
       ) : (
-        <Text style={[$setupNote, $openNote]}>
+        <Text
+          variant="caption"
+          color="textTertiary"
+          style={[$setupNote, $openNote]}
+        >
           {ssid} is an open network: no password needed.
         </Text>
       )}
 
       {shownProblem !== undefined && (
-        <Text style={$problem}>{shownProblem.message}</Text>
+        <Text variant="subhead" color="danger" style={$message}>
+          {shownProblem.message}
+        </Text>
       )}
       {security === "wpa3" && shownProblem === undefined && (
-        <Text style={$warning}>
+        <Text variant="subhead" color="warning" style={$message}>
           This network only offers WPA3. The speaker may not be able to join it.
         </Text>
       )}
 
       <View style={$setupButtons}>
-        <SetupButton
+        <Button
           label="Connect speaker"
           icon={{ ios: "key", android: "vpn_key", web: "vpn_key" }}
           onPress={submit}
           disabled={ssid.trim() === "" || refreshing}
         />
         <View style={$disclaimer}>
-          <SymbolView
-            name={{ ios: "lock", android: "lock", web: "lock" }}
-            tintColor={COLORS.textMuted}
-            size={12}
-          />
-          <Text style={[$setupNote, $flex]}>
+          <Icon name={icons.lock} size={12} color="textTertiary" />
+          <Text
+            variant="caption"
+            color="textTertiary"
+            style={[$setupNote, $flex]}
+          >
             The password is only sent to the speaker over its own network and is
             never stored.
           </Text>
@@ -404,148 +341,58 @@ const $flex: TextStyle = {
   flex: 1,
 };
 
-const $rejectedCard: ViewStyle = {
+const $rejected: ViewStyle = {
   flexDirection: "row",
   alignItems: "flex-start",
-  gap: 12,
-  borderWidth: 1,
-  borderColor: COLORS.errorDark,
-  backgroundColor: COLORS.errorDarker,
-};
-
-const $rejectedText: TextStyle = {
-  flex: 1,
-  color: COLORS.errorLight,
-  fontSize: 14,
-  lineHeight: 20,
+  gap: space.sm,
+  padding: space.md,
+  borderRadius: radius.md,
+  backgroundColor: color.dangerMuted,
 };
 
 const $listCard: ViewStyle = {
   padding: 0,
-  paddingVertical: 4,
+  paddingVertical: space.xxs,
+  overflow: "hidden",
 };
 
 const $listHeader: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "space-between",
-  paddingHorizontal: 16,
-  paddingTop: 8,
-  paddingBottom: 4,
+  paddingLeft: space.screen,
+  paddingRight: space.xs,
 };
 
-const $listHeaderText: TextStyle = {
-  fontSize: 12,
-  fontWeight: "700",
-  color: COLORS.textMuted,
-  letterSpacing: 0.5,
-  textTransform: "uppercase",
-};
-
-const $refreshButton: ViewStyle = {
-  padding: 6,
+const $refreshing: ViewStyle = {
+  width: 40,
+  height: 40,
+  alignItems: "center",
+  justifyContent: "center",
 };
 
 const $emptyText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 13,
-  lineHeight: 18,
-  paddingHorizontal: 16,
-  paddingVertical: 12,
+  paddingHorizontal: space.screen,
+  paddingVertical: space.sm,
 };
 
 const $list: ViewStyle = {
   maxHeight: 240,
 };
 
-const $networkRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 12,
-  paddingHorizontal: 16,
-  paddingVertical: 12,
-};
-
-const $networkRowSelected: ViewStyle = {
-  backgroundColor: COLORS.primaryTransparent,
-};
-
-const $networkText: ViewStyle = {
-  flex: 1,
-};
-
-const $networkName: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $networkNameSelected: TextStyle = {
-  color: COLORS.primary,
-};
-
-const $networkMeta: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  marginTop: 2,
-};
-
-const $divider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginLeft: 48,
-};
-
-const $inputCard: ViewStyle = {
-  padding: 0,
-};
-
-const $inputRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: 16,
-  height: 56,
-  gap: 12,
-};
-
-const $inputFocused: ViewStyle = {
-  backgroundColor: COLORS.primaryTransparent,
-  borderRadius: 16,
-};
-
-const $input: TextStyle = {
-  flex: 1,
-  fontSize: 16,
-  color: COLORS.text,
-  height: "100%",
-};
-
-const $eyeButton: ViewStyle = {
-  padding: 4,
-};
-
 const $openNote: TextStyle = {
-  marginBottom: 20,
+  marginBottom: space.lg,
 };
 
-const $problem: TextStyle = {
-  color: COLORS.errorLight,
-  fontSize: 13,
+const $message: TextStyle = {
   textAlign: "center",
-  marginBottom: 12,
-};
-
-const $warning: TextStyle = {
-  color: COLORS.warning,
-  fontSize: 13,
-  textAlign: "center",
-  marginBottom: 12,
+  marginBottom: space.sm,
 };
 
 const $disclaimer: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
-  gap: 6,
-  paddingHorizontal: 24,
+  gap: space.xxs,
+  paddingHorizontal: space.xl,
 };

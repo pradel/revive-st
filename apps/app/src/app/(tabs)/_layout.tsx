@@ -1,10 +1,10 @@
 import { NativeTabs } from "expo-router/native-tabs";
 
-import { COLORS } from "@/ui/theme";
+import { color } from "@/ui/tokens";
 
 export default function TabLayout() {
   return (
-    <NativeTabs backgroundColor={COLORS.background} tintColor={COLORS.primary}>
+    <NativeTabs backgroundColor={color.bg} tintColor={color.accent}>
       <NativeTabs.Trigger name="index">
         <NativeTabs.Trigger.Icon
           sf={{ default: "house", selected: "house.fill" }}

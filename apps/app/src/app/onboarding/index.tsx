@@ -1,6 +1,5 @@
 import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, usePreventRemove, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import {
   type ComponentRef,
   type ReactNode,
@@ -9,16 +8,8 @@ import {
   useRef,
   useState,
 } from "react";
-import {
-  Alert,
-  Text,
-  TouchableOpacity,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { Alert, View, type TextStyle, type ViewStyle } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isScenarioName } from "@/features/onboarding/adapters/simulated";
 import { CredentialsForm } from "@/features/onboarding/components/CredentialsForm";
@@ -42,7 +33,11 @@ import {
   type SetupSessionHandle,
   useSetupSession,
 } from "@/features/onboarding/useSetupSession";
-import { COLORS } from "@/ui/theme";
+import { icons } from "@/ui/ds/Icon";
+import { IconButton } from "@/ui/ds/IconButton";
+import { Screen } from "@/ui/ds/Screen";
+import { Text } from "@/ui/ds/Text";
+import { space } from "@/ui/tokens";
 
 type CredentialsPrompt = Extract<Prompt, { kind: "credentials" }>;
 
@@ -196,14 +191,21 @@ function SetupChrome({
     [],
   );
   return (
-    <SafeAreaView style={$container}>
+    <Screen>
       <View style={$topBar}>
         {scenario !== undefined && (
-          <Text style={$simulated} numberOfLines={1}>
+          <Text
+            variant="caption"
+            color="warning"
+            style={$simulated}
+            numberOfLines={1}
+          >
             Simulated: {scenario}
           </Text>
         )}
-        <TouchableOpacity
+        <IconButton
+          icon={icons.close}
+          accessibilityLabel="Close setup"
           onPress={() => {
             if (router.canGoBack()) {
               router.back();
@@ -211,17 +213,7 @@ function SetupChrome({
               router.replace("/");
             }
           }}
-          style={$closeButton}
-          activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Close setup"
-        >
-          <SymbolView
-            name={{ ios: "xmark", android: "close", web: "close" }}
-            tintColor={COLORS.textSecondary}
-            size={22}
-          />
-        </TouchableOpacity>
+        />
       </View>
       <SetupScrollContext.Provider value={scroll}>
         <KeyboardAwareScrollView
@@ -229,12 +221,13 @@ function SetupChrome({
           contentContainerStyle={$content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          bottomOffset={40}
+          // Space kept below a focused field: room for the submit button under it.
+          bottomOffset={120}
         >
           {children}
         </KeyboardAwareScrollView>
       </SetupScrollContext.Provider>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -316,34 +309,22 @@ export default function OnboardingScreen() {
   return <SetupScreen scenario={scenario} />;
 }
 
-const $container: ViewStyle = {
-  flex: 1,
-  backgroundColor: COLORS.background,
-};
-
 const $topBar: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "flex-end",
-  gap: 12,
-  paddingHorizontal: 16,
-  paddingTop: 8,
+  gap: space.sm,
+  paddingLeft: space.screen,
+  paddingRight: space.xs,
 };
 
 const $simulated: TextStyle = {
   flex: 1,
-  color: COLORS.warning,
-  fontSize: 12,
-  fontWeight: "600",
-};
-
-const $closeButton: ViewStyle = {
-  padding: 8,
 };
 
 const $content: ViewStyle = {
   flexGrow: 1,
-  paddingHorizontal: 24,
-  paddingTop: 24,
-  paddingBottom: 40,
+  paddingHorizontal: space.screen,
+  paddingTop: space.md,
+  paddingBottom: space.xxxl,
 };

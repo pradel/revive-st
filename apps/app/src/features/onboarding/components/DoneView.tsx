@@ -1,18 +1,18 @@
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Text, View, type ViewStyle } from "react-native";
+import { ActivityIndicator, View, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { Text } from "@/ui/ds/Text";
+import { color, space } from "@/ui/tokens";
 
 import type { SpeakerIdentity } from "../session/types";
 import {
-  $setupBody,
   $setupButtons,
   $setupCard,
   $setupCardTitle,
-  SetupButton,
   SetupHeader,
 } from "./SetupLayout";
 
@@ -71,8 +71,10 @@ export function DoneView({
 
       {renameFailed && (
         <Card style={$setupCard}>
-          <Text style={$setupCardTitle}>Name not changed</Text>
-          <Text style={$setupBody}>
+          <Text variant="headline" style={$setupCardTitle}>
+            Name not changed
+          </Text>
+          <Text variant="body" color="textSecondary">
             The speaker couldn't be renamed, so it kept its current name. You
             can change it later in the speaker's settings.
           </Text>
@@ -81,7 +83,7 @@ export function DoneView({
 
       {!acknowledged ? (
         <View style={$setupButtons}>
-          <SetupButton
+          <Button
             label="Continue"
             icon={{
               ios: "arrow.right",
@@ -95,20 +97,24 @@ export function DoneView({
         </View>
       ) : !timedOut || listed ? (
         <View style={$waiting}>
-          <ActivityIndicator size="small" color={COLORS.primary} />
-          <Text style={$setupBody}>Opening the speaker…</Text>
+          <ActivityIndicator size="small" color={color.accent} />
+          <Text variant="body" color="textSecondary">
+            Opening the speaker…
+          </Text>
         </View>
       ) : (
         <>
           <Card style={$setupCard}>
-            <Text style={$setupCardTitle}>Not in your speaker list yet</Text>
-            <Text style={$setupBody}>
+            <Text variant="headline" style={$setupCardTitle}>
+              Not in your speaker list yet
+            </Text>
+            <Text variant="body" color="textSecondary">
               The speaker should appear on the dashboard within a minute. Open
               it there to finish its configuration.
             </Text>
           </Card>
           <View style={$setupButtons}>
-            <SetupButton
+            <Button
               label="Go to dashboard"
               icon={{ ios: "house", android: "home", web: "home" }}
               onPress={() => {
@@ -126,6 +132,6 @@ const $waiting: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
-  gap: 12,
-  marginTop: 8,
+  gap: space.sm,
+  marginTop: space.xs,
 };

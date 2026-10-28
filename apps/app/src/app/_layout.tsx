@@ -7,7 +7,7 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 import { BoseProvider } from "@/features/speakers/contexts/BoseContext";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
-import { COLORS } from "@/ui/theme";
+import { color } from "@/ui/tokens";
 
 export default function RootLayout() {
   useEffect(() => {
@@ -23,7 +23,7 @@ export default function RootLayout() {
               <Stack
                 screenOptions={{
                   headerShown: false,
-                  contentStyle: { backgroundColor: COLORS.background },
+                  contentStyle: { backgroundColor: color.bg },
                 }}
               >
                 <Stack.Screen

@@ -1,7 +1,9 @@
 import { useRouter } from "expo-router";
 import { Alert, Platform, View } from "react-native";
 
-import { $setupButtons, SetupButton, SetupHeader } from "./SetupLayout";
+import { Button } from "@/ui/ds/Button";
+
+import { $setupButtons, SetupHeader } from "./SetupLayout";
 
 /** Setup needs Wi-Fi scanning, which only Android exposes to apps. */
 export const SPEAKER_SETUP_SUPPORTED = Platform.OS === "android";
@@ -36,7 +38,7 @@ export function SetupUnavailableView({ onClose }: { onClose: () => void }) {
         description={UNAVAILABLE_MESSAGE}
       />
       <View style={$setupButtons}>
-        <SetupButton
+        <Button
           label="Back to dashboard"
           icon={{ ios: "house", android: "home", web: "home" }}
           onPress={onClose}

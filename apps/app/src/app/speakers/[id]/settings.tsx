@@ -4,26 +4,31 @@ import {
   BottomSheetView,
 } from "@expo/ui/community/bottom-sheet";
 import type { AudioMode } from "bose-api-speaker-client";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import { useState, useEffect, useRef } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState, useEffect, useRef, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Keyboard,
+  Pressable,
   ScrollView,
-  Text,
-  TextInput,
-  TouchableOpacity,
   useWindowDimensions,
   View,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 
-import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerManager";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { EmptyState } from "@/ui/ds/EmptyState";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Screen } from "@/ui/ds/Screen";
+import { SectionHeader } from "@/ui/ds/SectionHeader";
+import { SegmentedControl } from "@/ui/ds/SegmentedControl";
+import { Text } from "@/ui/ds/Text";
+import { TextField } from "@/ui/ds/TextField";
+import { color, radius, space, type ColorName } from "@/ui/tokens";
 
 interface AudioModeDisplay {
   value: AudioMode;
@@ -81,6 +86,10 @@ export default function SpeakerSettings() {
 
   const margeAPIStatus = useMargeAPIStatusQuery(speaker?.host ?? "");
 
+  const goBack = () => {
+    router.back();
+  };
+
   const handleSaveName = () => {
     if (!speaker) {
       return;
@@ -116,30 +125,15 @@ export default function SpeakerSettings() {
 
   if (!speaker) {
     return (
-      <View style={$container}>
-        <Stack.Screen
-          options={{
-            title: "Settings",
-            headerShown: true,
-            headerStyle: { backgroundColor: COLORS.background },
-            headerTintColor: COLORS.text,
-            headerShadowVisible: false,
-            headerTitleStyle: { fontWeight: "600" },
-          }}
+      <Screen title="Settings" onBack={goBack}>
+        <EmptyState
+          icon={icons.speaker}
+          title="Speaker not found"
+          actions={
+            <Button label="Go back" variant="secondary" onPress={goBack} />
+          }
         />
-        <View style={$centerState}>
-          <ActivityIndicator size="small" color="#71717a" />
-          <Text style={$notFoundText}>Speaker not found</Text>
-          <TouchableOpacity
-            onPress={() => {
-              router.back();
-            }}
-            style={$backButton}
-          >
-            <Text style={$backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      </Screen>
     );
   }
 
@@ -156,53 +150,40 @@ export default function SpeakerSettings() {
   const bassValue =
     bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
 
-  return (
-    <ScrollView
-      style={$container}
-      contentContainerStyle={$content}
-      showsVerticalScrollIndicator={false}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Stack.Screen
-        options={{
-          title: "Settings",
-          headerShown: true,
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-          headerTitleStyle: { fontWeight: "600" },
-        }}
-      />
+  const margeStatus = (() => {
+    if (margeAPIStatus.isLoading) {
+      return <ActivityIndicator size="small" color={color.textSecondary} />;
+    }
+    if (margeAPIStatus.isError) {
+      return <StatusText color="danger">Connection failed</StatusText>;
+    }
+    if (margeAPIStatus.data) {
+      return <StatusText color="textPrimary">Configured</StatusText>;
+    }
+    return <StatusText color="textSecondary">Not configured</StatusText>;
+  })();
 
-      {/* Hero */}
-      <Card style={$heroCard}>
-        <View style={$heroIconContainer}>
-          <SymbolView
-            name={{ ios: "speaker.wave.2", android: "speaker", web: "speaker" }}
-            tintColor={COLORS.primary}
-            size={32}
-          />
-        </View>
-        <Text style={$heroTitle}>{speaker.name}</Text>
-        <Text style={$heroSubtitle}>
+  return (
+    <Screen title={speaker.name} onBack={goBack}>
+      <ScrollView
+        contentContainerStyle={$content}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <Text variant="subhead" color="textSecondary" style={$subtitle}>
           {speaker.type} · {speaker.host}
         </Text>
-      </Card>
 
-      {/* Name */}
-      <Text style={$sectionLabel}>Name</Text>
-      {nameValue !== "" ? (
-        <Card>
-          <View style={$renameRow}>
-            <TextInput
-              style={[$textInput, nameError ? $textInputError : undefined]}
+        <SectionHeader title="Name" />
+        {nameValue !== "" ? (
+          <View style={$block}>
+            <TextField
               value={nameValue}
               onChangeText={(text) => {
                 setNameValue(text);
                 setNameError(null);
               }}
               placeholder={speaker.name}
-              placeholderTextColor="#52525b"
               maxLength={50}
               editable={!setNameMutation.isPending}
               autoFocus
@@ -214,61 +195,56 @@ export default function SpeakerSettings() {
                   setNameError(null);
                 }
               }}
+              trailing={
+                setNameMutation.isPending ? (
+                  <View style={$fieldAction}>
+                    <ActivityIndicator
+                      size="small"
+                      color={color.textSecondary}
+                    />
+                  </View>
+                ) : (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={handleSaveName}
+                    hitSlop={8}
+                    style={({ pressed }) => [$fieldAction, pressed && $pressed]}
+                  >
+                    <Text variant="headline" color="accent">
+                      Save
+                    </Text>
+                  </Pressable>
+                )
+              }
             />
-            {setNameMutation.isPending ? (
-              <ActivityIndicator size="small" color="#fafafa" />
-            ) : (
-              <TouchableOpacity
-                style={$saveButton}
-                onPress={handleSaveName}
-                activeOpacity={0.8}
-              >
-                <Text style={$saveButtonText}>Save</Text>
-              </TouchableOpacity>
-            )}
+            {nameError ? (
+              <Text variant="caption" color="danger">
+                {nameError}
+              </Text>
+            ) : null}
           </View>
-          {nameError ? <Text style={$nameErrorText}>{nameError}</Text> : null}
-        </Card>
-      ) : (
-        <Card
-          style={$linkCard}
-          render={
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                setNameValue(speaker.name);
-              }}
-            />
-          }
-        >
-          <View style={$linkIconContainer}>
-            <SymbolView
-              name={{ ios: "pencil", android: "edit", web: "edit" }}
-              tintColor={COLORS.primary}
-              size={20}
-            />
-          </View>
-          <Text style={[$linkText, { flex: 1 }]}>Rename Speaker</Text>
-          {setNameMutation.isPending ? (
-            <ActivityIndicator size="small" color="#a1a1aa" />
-          ) : (
-            <SymbolView
-              name={{
-                ios: "chevron.right",
-                android: "chevron_right",
-                web: "chevron_right",
-              }}
-              tintColor={COLORS.textMuted}
-              size={20}
-            />
-          )}
-        </Card>
-      )}
+        ) : (
+          <ListRow
+            title="Rename speaker"
+            leading={
+              <View style={$iconWell}>
+                <Icon name={{ ios: "pencil", android: "edit", web: "edit" }} />
+              </View>
+            }
+            trailing={
+              setNameMutation.isPending ? (
+                <ActivityIndicator size="small" color={color.textSecondary} />
+              ) : (
+                <Chevron />
+              )
+            }
+            onPress={() => {
+              setNameValue(speaker.name);
+            }}
+          />
+        )}
 
-      {/* Audio */}
-      <Text style={$sectionLabel}>Audio</Text>
-      <Card>
-        {/* Bass */}
+        <SectionHeader title="Audio" />
         {showBass && bassCaps ? (
           <NativeSliderSetting
             label="Bass"
@@ -288,26 +264,31 @@ export default function SpeakerSettings() {
           />
         ) : null}
 
-        {/* Audio DSP Mode */}
         {showDsp && dspControls ? (
-          <PickerSetting
-            label="Audio Mode"
-            withDivider
-            value={dspControls.audiomode}
-            options={AUDIO_MODES}
-            onChange={(mode) => {
-              setAudioDspControlsMutation.mutate({
-                deviceID: speaker.deviceID,
-                audiomode: mode,
-              });
-            }}
-          />
+          <View style={$block}>
+            <Text variant="body">Audio mode</Text>
+            <SegmentedControl
+              options={AUDIO_MODES}
+              value={dspControls.audiomode}
+              onChange={(mode) => {
+                setAudioDspControlsMutation.mutate({
+                  deviceID: speaker.deviceID,
+                  audiomode: mode,
+                });
+              }}
+            />
+            <Text variant="subhead" color="textSecondary">
+              {
+                AUDIO_MODES.find(
+                  (option) => option.value === dspControls.audiomode,
+                )?.description
+              }
+            </Text>
+          </View>
         ) : null}
 
-        {/* Tone Controls */}
         {showTone && toneControls ? (
           <>
-            <View style={$infoDivider} />
             <NativeSliderSetting
               label="Bass EQ"
               value={toneControls.bass.value}
@@ -322,7 +303,6 @@ export default function SpeakerSettings() {
                 });
               }}
             />
-            <View style={$infoDivider} />
             <NativeSliderSetting
               label="Treble EQ"
               value={toneControls.treble.value}
@@ -340,12 +320,10 @@ export default function SpeakerSettings() {
           </>
         ) : null}
 
-        {/* Speaker Levels */}
         {showLevels && levelControls ? (
           <>
-            <View style={$infoDivider} />
             <NativeSliderSetting
-              label="Front Center"
+              label="Front center"
               value={levelControls.frontCenterSpeakerLevel.value}
               min={levelControls.frontCenterSpeakerLevel.minValue}
               max={levelControls.frontCenterSpeakerLevel.maxValue}
@@ -358,9 +336,8 @@ export default function SpeakerSettings() {
                 });
               }}
             />
-            <View style={$infoDivider} />
             <NativeSliderSetting
-              label="Rear Surround"
+              label="Rear surround"
               value={levelControls.rearSurroundSpeakersLevel.value}
               min={levelControls.rearSurroundSpeakersLevel.minValue}
               max={levelControls.rearSurroundSpeakersLevel.maxValue}
@@ -375,186 +352,153 @@ export default function SpeakerSettings() {
             />
           </>
         ) : null}
-      </Card>
 
-      {/* Radio Configuration */}
-      <Text style={$sectionLabel}>Radio Configuration</Text>
-      <Card>
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Marge API Radio</Text>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {(() => {
-              if (margeAPIStatus.isLoading) {
-                return (
-                  <ActivityIndicator size="small" color={COLORS.textMuted} />
-                );
-              }
-              if (margeAPIStatus.isError) {
-                return (
-                  <Text style={[$infoValue, { color: COLORS.error }]}>
-                    Connection Failed
-                  </Text>
-                );
-              }
-              if (margeAPIStatus.data) {
-                return (
-                  <Text style={[$infoValue, { color: COLORS.primary }]}>
-                    Configured
-                  </Text>
-                );
-              }
-              return <Text style={$infoValue}>Not Configured</Text>;
-            })()}
-          </View>
-        </View>
-
+        <SectionHeader title="Internet radio" />
+        <ValueRow label="Marge API radio" value={margeStatus} />
         {margeAPIStatus.isError && (
-          <>
-            <View style={$infoDivider} />
-            <Text
-              style={[$pickerDescription, { marginTop: 0, marginBottom: 12 }]}
-            >
+          <View style={$block}>
+            <Text variant="subhead" color="textSecondary">
               Failed to connect to the speaker via Telnet. Ensure your device is
               on the same network.
             </Text>
-            <TouchableOpacity
-              style={$secondaryButton}
+            <Button
+              label="Retry connection"
+              variant="secondary"
+              icon={icons.refresh}
               onPress={() => {
                 void margeAPIStatus.refetch();
               }}
-            >
-              <Text style={$secondaryButtonText}>Retry Connection</Text>
-            </TouchableOpacity>
-          </>
+            />
+          </View>
         )}
-
         {!margeAPIStatus.isLoading && !margeAPIStatus.isError && (
-          <>
-            <View style={$infoDivider} />
-            <Text
-              style={[$pickerDescription, { marginTop: 0, marginBottom: 12 }]}
-            >
+          <View style={$block}>
+            <Text variant="subhead" color="textSecondary">
               Enable custom internet radio streams on this speaker. This will
               reboot the device.
             </Text>
-            <TouchableOpacity
-              style={$primaryButton}
+            <Button
+              label={
+                margeAPIStatus.data
+                  ? "Re-configure for Marge API"
+                  : "Configure for Marge API"
+              }
+              variant={margeAPIStatus.data ? "secondary" : "primary"}
               onPress={() => {
                 router.push("./configure");
               }}
-            >
-              <Text style={$primaryButtonText}>
-                {margeAPIStatus.data
-                  ? "Re-configure for Marge API"
-                  : "Configure for Marge API"}
-              </Text>
-            </TouchableOpacity>
-          </>
+            />
+          </View>
         )}
-      </Card>
 
-      {/* Presets */}
-      <Text style={$sectionLabel}>Presets</Text>
-      <Text
-        style={[
-          $pickerDescription,
-          { marginLeft: 4, marginTop: 0, marginBottom: 8 },
-        ]}
-      >
-        Press and hold the desired preset button on your device or remote until
-        you hear a beep. From now on you can start the stream by pressing the
-        preset button.
-      </Text>
-      <Card>
+        <SectionHeader title="Presets" />
+        <Text variant="subhead" color="textSecondary" style={$paragraph}>
+          Press and hold the desired preset button on your device or remote
+          until you hear a beep. From now on you can start the stream by
+          pressing the preset button.
+        </Text>
         {speaker.presets && speaker.presets.length > 0 ? (
-          speaker.presets.map((preset, index) => (
-            <View key={preset.id}>
-              {index > 0 && <View style={$infoDivider} />}
-              <View style={$infoRow}>
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    flexShrink: 1,
-                  }}
-                >
-                  <View style={$presetNumberBadge}>
-                    <Text style={$presetNumberText}>{preset.id}</Text>
-                  </View>
-                  <View style={{ flexShrink: 1 }}>
-                    <Text style={$infoLabel}>{preset.contentItem.source}</Text>
-                    {preset.contentItem.location ? (
-                      <Text
-                        style={[$pickerDescription, { marginTop: 2 }]}
-                        numberOfLines={1}
-                      >
-                        {preset.contentItem.location}
-                      </Text>
-                    ) : null}
-                  </View>
+          speaker.presets.map((preset) => (
+            <ListRow
+              key={preset.id}
+              title={preset.contentItem.source}
+              subtitle={preset.contentItem.location || undefined}
+              leading={
+                <View style={[$iconWell, $presetBadge]}>
+                  <Text variant="headline">{preset.id}</Text>
                 </View>
-              </View>
-            </View>
+              }
+            />
           ))
         ) : (
-          <Text style={$infoValue}>No presets configured.</Text>
-        )}
-      </Card>
-
-      {/* Device Info */}
-      <Text style={$sectionLabel}>Device Info</Text>
-      <Card>
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Device ID</Text>
-          <Text style={$infoValue} numberOfLines={1}>
-            {speaker.deviceID}
+          <Text variant="body" color="textTertiary" style={$paragraph}>
+            No presets configured.
           </Text>
-        </View>
-        <View style={$infoDivider} />
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>IP Address</Text>
-          <Text style={$infoValue}>{speaker.host}</Text>
-        </View>
-        <View style={$infoDivider} />
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Port</Text>
-          <Text style={$infoValue}>{speaker.port}</Text>
-        </View>
-        {speaker.macAddress ? (
-          <>
-            <View style={$infoDivider} />
-            <View style={$infoRow}>
-              <Text style={$infoLabel}>MAC Address</Text>
-              <Text style={$infoValue}>{speaker.macAddress}</Text>
-            </View>
-          </>
-        ) : null}
-        <View style={$infoDivider} />
-        <View style={$infoRow}>
-          <Text style={$infoLabel}>Type</Text>
-          <Text style={$infoValue}>{speaker.type}</Text>
-        </View>
-      </Card>
+        )}
 
-      {/* Software Versions */}
-      {speaker.components && speaker.components.length > 0 ? (
-        <>
-          <Text style={$sectionLabel}>Software</Text>
-          <Card>
+        <SectionHeader title="Device info" />
+        <ValueRow label="Device ID" value={speaker.deviceID} />
+        <ValueRow label="IP address" value={speaker.host} />
+        <ValueRow label="Port" value={String(speaker.port)} />
+        {speaker.macAddress ? (
+          <ValueRow label="MAC address" value={speaker.macAddress} />
+        ) : null}
+        <ValueRow label="Type" value={speaker.type} />
+
+        {speaker.components && speaker.components.length > 0 ? (
+          <>
+            <SectionHeader title="Software" />
             {speaker.components.map((comp, index) => (
-              <View key={comp.serialNumber || index}>
-                {index > 0 && <View style={$infoDivider} />}
-                <Text style={$versionLabel}>
+              <View key={comp.serialNumber || index} style={$stackedRow}>
+                <Text variant="subhead" color="textSecondary">
                   {comp.componentCategory || "Component"}
                 </Text>
-                <Text style={$versionValue}>{comp.softwareVersion}</Text>
+                <Text variant="body" selectable>
+                  {comp.softwareVersion}
+                </Text>
               </View>
             ))}
-          </Card>
-        </>
-      ) : null}
-    </ScrollView>
+          </>
+        ) : null}
+      </ScrollView>
+    </Screen>
+  );
+}
+
+function Chevron() {
+  return <Icon name={icons.chevronRight} size={16} color="textTertiary" />;
+}
+
+function StatusText({
+  color: colorName,
+  children,
+}: {
+  color: ColorName;
+  children: string;
+}) {
+  return (
+    <Text variant="body" color={colorName}>
+      {children}
+    </Text>
+  );
+}
+
+/** Label on the left, value (text or node) on the right; tappable when `onPress` is set. */
+function ValueRow({
+  label,
+  value,
+  trailing,
+  onPress,
+}: {
+  label: string;
+  value: ReactNode;
+  trailing?: ReactNode;
+  onPress?: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole={onPress ? "button" : undefined}
+      onPress={onPress}
+      disabled={!onPress}
+      style={({ pressed }) => [$valueRow, pressed && $rowPressed]}
+    >
+      <Text variant="body">{label}</Text>
+      <View style={$valueSide}>
+        {typeof value === "string" ? (
+          <Text
+            variant="body"
+            color="textSecondary"
+            numberOfLines={1}
+            style={$valueText}
+          >
+            {value}
+          </Text>
+        ) : (
+          value
+        )}
+        {trailing}
+      </View>
+    </Pressable>
   );
 }
 
@@ -640,54 +584,45 @@ function NativeSliderSetting({
 
   return (
     <>
-      <TouchableOpacity
-        style={$infoRow}
-        activeOpacity={0.7}
+      <ValueRow
+        label={label}
+        value={String(value)}
         onPress={() => {
           setIsOpen(true);
         }}
-      >
-        <Text style={$infoLabel}>{label}</Text>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-          {isSaving && (
-            <ActivityIndicator size="small" color={COLORS.textMuted} />
-          )}
-          <Text style={$infoValue}>{value}</Text>
-          <SymbolView
-            name={{
-              ios: "chevron.right",
-              android: "chevron_right",
-              web: "chevron_right",
-            }}
-            tintColor={COLORS.textMuted}
-            size={14}
-          />
-        </View>
-      </TouchableOpacity>
+        trailing={
+          <>
+            {isSaving && (
+              <ActivityIndicator size="small" color={color.textSecondary} />
+            )}
+            <Chevron />
+          </>
+        }
+      />
       <BottomSheetModal
         ref={bottomSheetRef}
         onDismiss={() => {
           setIsOpen(false);
         }}
         enablePanDownToClose
-        backgroundStyle={{ backgroundColor: COLORS.card }}
-        handleIndicatorStyle={{ backgroundColor: COLORS.textMuted }}
+        backgroundStyle={{ backgroundColor: color.surface1 }}
+        handleIndicatorStyle={{ backgroundColor: color.textTertiary }}
       >
         <BottomSheetView style={[$bottomSheetContent, { width }]}>
           <View style={$sliderHeader}>
-            <Text style={$infoLabel}>{label}</Text>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-            >
+            <Text variant="headline">{label}</Text>
+            <View style={$valueSide}>
               {isSaving && (
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                >
-                  <ActivityIndicator size="small" color={COLORS.textMuted} />
-                  <Text style={$savingText}>Saving...</Text>
-                </View>
+                <>
+                  <ActivityIndicator size="small" color={color.textSecondary} />
+                  <Text variant="caption" color="textSecondary">
+                    Saving…
+                  </Text>
+                </>
               )}
-              <Text style={$infoValue}>{localValue}</Text>
+              <Text variant="headline" color="textSecondary">
+                {localValue}
+              </Text>
             </View>
           </View>
           {/* @expo/ui 58 top-aligns Host content on iOS; size Host to the
@@ -705,8 +640,12 @@ function NativeSliderSetting({
             </Host>
           </View>
           <View style={$sliderLabels}>
-            <Text style={$sliderLabelText}>{min}</Text>
-            <Text style={$sliderLabelText}>{max}</Text>
+            <Text variant="caption" color="textTertiary">
+              {min}
+            </Text>
+            <Text variant="caption" color="textTertiary">
+              {max}
+            </Text>
           </View>
         </BottomSheetView>
       </BottomSheetModal>
@@ -714,225 +653,87 @@ function NativeSliderSetting({
   );
 }
 
-function PickerSetting({
-  label,
-  value,
-  options,
-  onChange,
-  withDivider,
-}: {
-  label: string;
-  value: AudioMode;
-  options: AudioModeDisplay[];
-  onChange: (value: AudioMode) => void;
-  withDivider?: boolean;
-}) {
-  return (
-    <>
-      {withDivider && <View style={$infoDivider} />}
-      <View>
-        <Text style={$infoLabel}>{label}</Text>
-        <View style={$pickerOptions}>
-          {options.map((opt) => {
-            const isActive = opt.value === value;
-            return (
-              <TouchableOpacity
-                key={opt.value}
-                style={[$pickerChip, isActive ? $pickerChipActive : undefined]}
-                onPress={() => {
-                  onChange(opt.value);
-                }}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    $pickerChipText,
-                    isActive ? $pickerChipTextActive : undefined,
-                  ]}
-                >
-                  {opt.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-        <Text style={$pickerDescription}>
-          {options.find((option) => option.value === value)?.description}
-        </Text>
-      </View>
-    </>
-  );
-}
-
-const $container: ViewStyle = {
-  flex: 1,
-  backgroundColor: COLORS.background,
-};
-
 const $content: ViewStyle = {
-  paddingHorizontal: 20,
-  paddingTop: 20,
-  paddingBottom: 40,
-  gap: 8,
+  paddingBottom: space.xxxl,
 };
 
-const $centerState: ViewStyle = {
-  flex: 1,
+const $subtitle: TextStyle = {
+  paddingHorizontal: space.screen,
+};
+
+const $paragraph: TextStyle = {
+  paddingHorizontal: space.screen,
+  paddingBottom: space.xs,
+};
+
+const $block: ViewStyle = {
+  gap: space.sm,
+  paddingHorizontal: space.screen,
+  paddingVertical: space.sm,
+};
+
+const $iconWell: ViewStyle = {
+  width: 40,
+  height: 40,
   alignItems: "center",
   justifyContent: "center",
-  paddingVertical: 80,
+  borderRadius: radius.sm,
+  backgroundColor: color.surface1,
 };
 
-const $notFoundText: TextStyle = {
-  fontSize: 16,
-  color: COLORS.textMuted,
-  marginTop: 16,
+const $presetBadge: ViewStyle = {
+  borderRadius: radius.pill,
 };
 
-const $backButton: ViewStyle = {
-  marginTop: 20,
-  paddingHorizontal: 24,
-  paddingVertical: 10,
-  borderRadius: 10,
-  backgroundColor: COLORS.border,
-};
-
-const $backButtonText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textSecondary,
-  fontWeight: "600",
-};
-
-const $heroCard: ViewStyle = {
+const $fieldAction: ViewStyle = {
+  minWidth: 40,
+  minHeight: 40,
   alignItems: "center",
-  paddingVertical: 24,
-  marginBottom: 8,
-};
-
-const $heroIconContainer: ViewStyle = {
-  width: 64,
-  height: 64,
-  borderRadius: 32,
-  backgroundColor: "rgba(29, 185, 84, 0.1)",
   justifyContent: "center",
-  alignItems: "center",
-  marginBottom: 16,
+  paddingHorizontal: space.sm,
 };
 
-const $heroTitle: TextStyle = {
-  fontSize: 22,
-  fontWeight: "bold",
-  color: COLORS.text,
-  marginBottom: 4,
-  textAlign: "center",
+const $pressed: ViewStyle = {
+  opacity: 0.6,
 };
 
-const $heroSubtitle: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-};
-
-const $sectionLabel: TextStyle = {
-  fontSize: 13,
-  fontWeight: "700",
-  color: COLORS.textMuted,
-  textTransform: "uppercase",
-  letterSpacing: 1,
-  marginTop: 16,
-  marginBottom: 4,
-  marginLeft: 4,
-};
-
-const $linkCard: ViewStyle = {
+const $valueRow: ViewStyle = {
+  minHeight: 52,
   flexDirection: "row",
   alignItems: "center",
-  paddingVertical: 12,
-};
-
-const $linkIconContainer: ViewStyle = {
-  width: 36,
-  height: 36,
-  borderRadius: 8,
-  backgroundColor: "rgba(255, 255, 255, 0.05)",
-  justifyContent: "center",
-  alignItems: "center",
-  marginRight: 16,
-};
-
-const $linkText: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $renameRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 10,
-};
-
-const $textInput: TextStyle = {
-  flex: 1,
-  backgroundColor: COLORS.border,
-  borderRadius: 10,
-  paddingHorizontal: 12,
-  paddingVertical: 10,
-  fontSize: 15,
-  color: COLORS.text,
-};
-
-const $textInputError: TextStyle = {};
-
-const $nameErrorText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.error,
-  marginTop: 4,
-};
-
-const $saveButton: ViewStyle = {
-  backgroundColor: COLORS.text,
-  paddingHorizontal: 16,
-  paddingVertical: 10,
-  borderRadius: 10,
-};
-
-const $saveButtonText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.background,
-  fontWeight: "700",
-};
-
-const $infoDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginVertical: 10,
-};
-
-const $infoRow: ViewStyle = {
-  flexDirection: "row",
   justifyContent: "space-between",
+  gap: space.md,
+  paddingHorizontal: space.screen,
+  paddingVertical: space.xs,
+};
+
+const $rowPressed: ViewStyle = {
+  backgroundColor: color.surface2,
+};
+
+const $valueSide: ViewStyle = {
+  flexDirection: "row",
   alignItems: "center",
-  paddingVertical: 4,
-};
-
-const $infoLabel: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $infoValue: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textMuted,
-  textAlign: "right",
+  gap: space.xs,
   flexShrink: 1,
+};
+
+const $valueText: TextStyle = {
+  flexShrink: 1,
+  textAlign: "right",
+};
+
+const $stackedRow: ViewStyle = {
+  gap: 2,
+  paddingHorizontal: space.screen,
+  paddingVertical: space.xs,
 };
 
 const $sliderHeader: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 10,
+  marginBottom: space.xs,
 };
 
 const $sliderTrack: ViewStyle = {
@@ -943,111 +744,12 @@ const $sliderTrack: ViewStyle = {
 const $sliderLabels: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
-  marginTop: 4,
+  marginTop: space.xxs,
 };
 
 const $bottomSheetContent: ViewStyle = {
   flex: 1,
   width: "100%",
-  padding: 24,
+  padding: space.xl,
   paddingBottom: 48,
-};
-
-const $sliderLabelText: TextStyle = {
-  fontSize: 11,
-  color: COLORS.textDisabled,
-};
-
-const $savingText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-};
-
-const $pickerOptions: ViewStyle = {
-  flexDirection: "row",
-  flexWrap: "wrap",
-  gap: 6,
-  marginTop: 10,
-};
-
-const $pickerChip: ViewStyle = {
-  paddingHorizontal: 12,
-  paddingVertical: 6,
-  borderRadius: 8,
-  backgroundColor: COLORS.border,
-};
-
-const $pickerChipActive: ViewStyle = {
-  backgroundColor: COLORS.text,
-};
-
-const $pickerChipText: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textSecondary,
-  fontWeight: "600",
-};
-
-const $pickerChipTextActive: TextStyle = {
-  color: COLORS.background,
-};
-
-const $pickerDescription: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textDisabled,
-  marginTop: 8,
-};
-
-const $versionLabel: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textMuted,
-  fontWeight: "600",
-  marginBottom: 4,
-};
-
-const $versionValue: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textSecondary,
-  fontWeight: "400",
-  lineHeight: 20,
-};
-
-const $presetNumberBadge: ViewStyle = {
-  width: 28,
-  height: 28,
-  borderRadius: 14,
-  backgroundColor: COLORS.border,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $presetNumberText: TextStyle = {
-  color: COLORS.text,
-  fontSize: 13,
-  fontWeight: "bold",
-};
-
-const $primaryButton: ViewStyle = {
-  backgroundColor: COLORS.text,
-  paddingVertical: 12,
-  borderRadius: 10,
-  alignItems: "center",
-};
-
-const $primaryButtonText: TextStyle = {
-  color: COLORS.background,
-  fontSize: 15,
-  fontWeight: "600",
-};
-
-const $secondaryButton: ViewStyle = {
-  backgroundColor: COLORS.border,
-  paddingVertical: 12,
-  borderRadius: 10,
-  alignItems: "center",
-};
-
-const $secondaryButtonText: TextStyle = {
-  color: COLORS.text,
-  fontSize: 15,
-  fontWeight: "600",
 };

@@ -1,13 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
 import type { SocketModuleLike } from "bose-api-speaker-client";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState, useRef } from "react";
 import {
   ActivityIndicator,
   ScrollView,
-  Text,
-  TouchableOpacity,
   View,
   type ScrollViewInstance,
   type TextStyle,
@@ -21,7 +18,14 @@ import {
   checkMargeAPIStatus,
   configureMargeAPI,
 } from "@/features/speakers/lib/telnet";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { EmptyState } from "@/ui/ds/EmptyState";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { Screen } from "@/ui/ds/Screen";
+import { SectionHeader } from "@/ui/ds/SectionHeader";
+import { StepList, type StepListItem, type StepStatus } from "@/ui/ds/StepList";
+import { Text } from "@/ui/ds/Text";
+import { color, space, type ColorName } from "@/ui/tokens";
 
 interface LogLine {
   id: string;
@@ -33,8 +37,6 @@ interface LogLine {
 interface Step {
   id: string;
   label: string;
-  status: "idle" | "running" | "success" | "error";
-  errorDetails?: string;
 }
 
 type ConfigState =
@@ -44,29 +46,13 @@ type ConfigState =
   | { status: "error"; currentStepIndex: number; errorDetails: string };
 
 const INITIAL_STEPS: Step[] = [
-  {
-    id: "telnet_connect",
-    label: "Connecting via Telnet (port 17000)",
-    status: "idle",
-  },
-  { id: "set_registry", label: "Setting BMX registry URL", status: "idle" },
-  {
-    id: "set_redirect",
-    label: "Configuring boseurls redirect",
-    status: "idle",
-  },
-  {
-    id: "set_account",
-    label: "Configuring account environment",
-    status: "idle",
-  },
-  { id: "pair_device", label: "Pairing speaker with account", status: "idle" },
-  { id: "reboot", label: "Triggering speaker reboot", status: "idle" },
-  {
-    id: "wait_online",
-    label: "Waiting for speaker to restart",
-    status: "idle",
-  },
+  { id: "telnet_connect", label: "Connecting via Telnet (port 17000)" },
+  { id: "set_registry", label: "Setting BMX registry URL" },
+  { id: "set_redirect", label: "Configuring boseurls redirect" },
+  { id: "set_account", label: "Configuring account environment" },
+  { id: "pair_device", label: "Pairing speaker with account" },
+  { id: "reboot", label: "Triggering speaker reboot" },
+  { id: "wait_online", label: "Waiting for speaker to restart" },
 ];
 
 export default function ConfigureSpeaker() {
@@ -252,22 +238,21 @@ export default function ConfigureSpeaker() {
     }
   };
 
+  const goBack = () => {
+    router.back();
+  };
+
   if (!speaker) {
     return (
-      <View style={$container}>
-        <Stack.Screen options={{ title: "Configure Speaker" }} />
-        <View style={$centerState}>
-          <Text style={$notFoundText}>Speaker not found</Text>
-          <TouchableOpacity
-            onPress={() => {
-              router.back();
-            }}
-            style={$backButton}
-          >
-            <Text style={$backButtonText}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Screen title="Configure" onBack={goBack}>
+        <EmptyState
+          icon={icons.speaker}
+          title="Speaker not found"
+          actions={
+            <Button label="Go Back" variant="secondary" onPress={goBack} />
+          }
+        />
+      </Screen>
     );
   }
 
@@ -278,425 +263,191 @@ export default function ConfigureSpeaker() {
   const rebootTimer =
     configState.status === "running" ? configState.rebootTimer : null;
 
-  const steps: Step[] = INITIAL_STEPS.map((step, index) => {
-    let status: Step["status"] = "idle";
-    let errorDetails: string | undefined = undefined;
+  const steps: StepListItem[] = INITIAL_STEPS.map((step, index) => {
+    let status: StepStatus = "pending";
+    let description: string | undefined = undefined;
 
     if (configState.status === "success") {
-      status = "success";
-    } else if (configState.status === "running") {
+      status = "done";
+    } else if (
+      configState.status === "running" ||
+      configState.status === "error"
+    ) {
       if (index < configState.currentStepIndex) {
-        status = "success";
+        status = "done";
       } else if (index === configState.currentStepIndex) {
-        status = "running";
-      } else {
-        status = "idle";
-      }
-    } else if (configState.status === "error") {
-      if (index < configState.currentStepIndex) {
-        status = "success";
-      } else if (index === configState.currentStepIndex) {
-        status = "error";
-        errorDetails = configState.errorDetails;
-      } else {
-        status = "idle";
+        if (configState.status === "running") {
+          status = "active";
+        } else {
+          status = "error";
+          description = configState.errorDetails;
+        }
       }
     }
 
     return {
-      ...step,
+      id: step.id,
+      title: step.label,
       status,
-      errorDetails,
+      description,
+      trailing:
+        step.id === "wait_online" && rebootTimer !== null ? (
+          <Text variant="subhead" color="textSecondary" style={$countdown}>
+            {rebootTimer}s
+          </Text>
+        ) : undefined,
     };
   });
 
   return (
-    <View style={$container}>
-      <Stack.Screen
-        options={{
-          title: "Configure Speaker",
-          headerShown: true,
-          headerStyle: { backgroundColor: COLORS.background },
-          headerTintColor: COLORS.text,
-          headerShadowVisible: false,
-        }}
-      />
-
+    <Screen title="Configure" onBack={goBack}>
       <ScrollView
         contentContainerStyle={$content}
         showsVerticalScrollIndicator={false}
       >
         {/* Header summary */}
-        <Card style={$headerCard}>
-          <SymbolView
-            name={{
-              ios: "gearshape.2.fill",
-              android: "settings",
-              web: "settings",
-            }}
-            tintColor={COLORS.primary}
-            size={36}
-          />
-          <Text style={$headerTitle}>Pairing with Revive ST Marge API</Text>
-          <Text style={$headerSubtitle}>
-            {speaker.name} · {speaker.host}
-          </Text>
-        </Card>
+        <View style={$section}>
+          <Card style={$headerCard}>
+            <Icon name={icons.settings} size={32} />
+            <Text variant="headline" style={$centered}>
+              Pairing with Revive ST Marge API
+            </Text>
+            <Text variant="subhead" color="textSecondary" style={$centered}>
+              {speaker.name} · {speaker.host}
+            </Text>
+          </Card>
+        </View>
 
         {/* Steps Tracker */}
-        <Text style={$sectionLabel}>Progress Checklist</Text>
-        <Card>
-          {steps.map((step, index) => {
-            const isPending = step.status === "idle";
-            const isActive = step.status === "running";
-            const isCompleted = step.status === "success";
-            const isFailed = step.status === "error";
-
-            return (
-              <View key={step.id}>
-                {index > 0 && <View style={$stepDivider} />}
-                <View style={$stepRow}>
-                  <View style={$stepIconCol}>
-                    {isPending && <View style={$dotOutline} />}
-                    {isActive && (
-                      <ActivityIndicator size="small" color={COLORS.primary} />
-                    )}
-                    {isCompleted && (
-                      <SymbolView
-                        name={{
-                          ios: "checkmark.circle.fill",
-                          android: "check",
-                          web: "check",
-                        }}
-                        tintColor={COLORS.success}
-                        size={20}
-                      />
-                    )}
-                    {isFailed && (
-                      <SymbolView
-                        name={{
-                          ios: "exclamationmark.triangle.fill",
-                          android: "warning",
-                          web: "warning",
-                        }}
-                        tintColor={COLORS.error}
-                        size={20}
-                      />
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text
-                      style={[
-                        $stepLabel,
-                        isCompleted && $stepLabelCompleted,
-                        isFailed && $stepLabelFailed,
-                        isActive && $stepLabelActive,
-                      ]}
-                    >
-                      {step.label}
-                      {step.id === "wait_online" && rebootTimer !== null && (
-                        <Text style={{ fontWeight: "700" }}>
-                          {" "}
-                          ({rebootTimer}s)
-                        </Text>
-                      )}
-                    </Text>
-                    {step.errorDetails && (
-                      <Text style={$stepErrorText}>{step.errorDetails}</Text>
-                    )}
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </Card>
+        <SectionHeader title="Progress" />
+        <View style={$section}>
+          <Card>
+            <StepList steps={steps} />
+          </Card>
+        </View>
 
         {/* Console Log */}
-        <Text style={$sectionLabel}>Execution Logs</Text>
-        <View style={$consoleCard}>
-          <ScrollView
-            ref={logsEndRef}
-            style={$consoleScroll}
-            contentContainerStyle={{ gap: 4 }}
-            nestedScrollEnabled
-          >
-            {logs.length === 0 ? (
-              <Text style={$logTextMuted}>
-                {configState.status === "idle"
-                  ? "Ready to start configuration..."
-                  : "Initializing steps..."}
-              </Text>
-            ) : (
-              logs.map((log) => {
-                let color = "#a1a1aa";
-                if (log.type === "success") {
-                  color = COLORS.success;
-                } else if (log.type === "error") {
-                  color = COLORS.error;
-                } else if (log.type === "debug") {
-                  color = "#71717a";
-                }
-                return (
-                  <Text key={log.id} style={[$logLineText, { color }]}>
-                    <Text style={$logTime}>{log.timestamp}</Text> - {log.text}
+        <SectionHeader title="Logs" />
+        <View style={$section}>
+          <Card>
+            <ScrollView
+              ref={logsEndRef}
+              style={$consoleScroll}
+              contentContainerStyle={$consoleContent}
+              nestedScrollEnabled
+            >
+              {logs.length === 0 ? (
+                <Text color="textTertiary" style={$logText}>
+                  {configState.status === "idle"
+                    ? "Ready to start configuration..."
+                    : "Initializing steps..."}
+                </Text>
+              ) : (
+                logs.map((log) => (
+                  <Text
+                    key={log.id}
+                    color={LOG_COLOR[log.type]}
+                    style={$logText}
+                  >
+                    <Text color="textTertiary" style={$logText}>
+                      {log.timestamp}
+                    </Text>{" "}
+                    - {log.text}
                   </Text>
-                );
-              })
-            )}
-          </ScrollView>
+                ))
+              )}
+            </ScrollView>
+          </Card>
         </View>
 
         {/* Actions */}
-        <View style={{ marginTop: 12, gap: 10 }}>
+        <View style={[$section, $actions]}>
           {configState.status === "idle" && (
-            <TouchableOpacity
-              style={$primaryButton}
+            <Button
+              label="Start Configuration"
               onPress={() => void runConfiguration()}
-              activeOpacity={0.8}
-            >
-              <Text style={$primaryButtonText}>Start Configuration</Text>
-            </TouchableOpacity>
+            />
           )}
 
-          {isFinished && (
-            <TouchableOpacity
-              style={$primaryButton}
-              onPress={() => {
-                router.back();
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={$primaryButtonText}>Done</Text>
-            </TouchableOpacity>
-          )}
+          {isFinished && <Button label="Done" onPress={goBack} />}
 
           {hasErrors && (
             <>
-              <TouchableOpacity
-                style={$primaryButton}
+              <Button
+                label="Retry Configuration"
+                icon={icons.refresh}
                 onPress={() => void runConfiguration()}
-                activeOpacity={0.8}
-              >
-                <Text style={$primaryButtonText}>Retry Configuration</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={$secondaryButton}
-                onPress={() => {
-                  router.back();
-                }}
-                activeOpacity={0.8}
-              >
-                <Text style={$secondaryButtonText}>Go Back</Text>
-              </TouchableOpacity>
+              />
+              <Button label="Go Back" variant="secondary" onPress={goBack} />
             </>
           )}
 
           {isRunning && !isFinished && (
             <View style={$runningBanner}>
-              <ActivityIndicator size="small" color={COLORS.textMuted} />
-              <Text style={$runningBannerText}>
+              <ActivityIndicator size="small" color={color.textSecondary} />
+              <Text variant="caption" color="textSecondary">
                 Configuring speaker, please keep the app open...
               </Text>
             </View>
           )}
         </View>
       </ScrollView>
-    </View>
+    </Screen>
   );
 }
 
-const $container: ViewStyle = {
-  flex: 1,
-  backgroundColor: COLORS.background,
+const LOG_COLOR: Record<LogLine["type"], ColorName> = {
+  info: "textSecondary",
+  success: "accent",
+  error: "danger",
+  debug: "textTertiary",
 };
 
 const $content: ViewStyle = {
-  paddingHorizontal: 20,
-  paddingTop: 16,
-  paddingBottom: 40,
-  gap: 12,
+  paddingBottom: space.xxxl,
 };
 
-const $centerState: ViewStyle = {
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $notFoundText: TextStyle = {
-  fontSize: 16,
-  color: COLORS.textMuted,
-  marginBottom: 16,
-};
-
-const $backButton: ViewStyle = {
-  paddingHorizontal: 24,
-  paddingVertical: 10,
-  borderRadius: 10,
-  backgroundColor: COLORS.border,
-};
-
-const $backButtonText: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textSecondary,
-  fontWeight: "600",
+const $section: ViewStyle = {
+  paddingHorizontal: space.screen,
 };
 
 const $headerCard: ViewStyle = {
   alignItems: "center",
-  paddingVertical: 24,
-  paddingHorizontal: 16,
+  gap: space.xs,
+  paddingVertical: space.xl,
 };
 
-const $headerTitle: TextStyle = {
-  fontSize: 20,
-  fontWeight: "bold",
-  color: COLORS.text,
-  marginTop: 12,
-  marginBottom: 4,
+const $centered: TextStyle = {
   textAlign: "center",
 };
 
-const $headerSubtitle: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textMuted,
-  textAlign: "center",
-};
-
-const $sectionLabel: TextStyle = {
-  fontSize: 14,
-  fontWeight: "700",
-  color: COLORS.primary,
-  marginTop: 14,
-  marginBottom: 2,
-  marginLeft: 4,
-  textTransform: "uppercase",
-  letterSpacing: 0.5,
-};
-
-const $stepRow: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "flex-start",
-  gap: 12,
-  paddingVertical: 6,
-};
-
-const $stepIconCol: ViewStyle = {
-  width: 24,
-  height: 24,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $dotOutline: ViewStyle = {
-  width: 8,
-  height: 8,
-  borderRadius: 4,
-  borderWidth: 1.5,
-  borderColor: COLORS.textDisabled,
-};
-
-const $stepLabel: TextStyle = {
-  fontSize: 14,
-  color: COLORS.textSecondary,
-  fontWeight: "500",
-};
-
-const $stepLabelCompleted: TextStyle = {
-  color: COLORS.text,
-  fontWeight: "600",
-};
-
-const $stepLabelActive: TextStyle = {
-  color: COLORS.primary,
-  fontWeight: "600",
-};
-
-const $stepLabelFailed: TextStyle = {
-  color: COLORS.error,
-  fontWeight: "600",
-};
-
-const $stepErrorText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.error,
-  marginTop: 4,
-  lineHeight: 16,
-};
-
-const $stepDivider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginVertical: 8,
-};
-
-const $consoleCard: ViewStyle = {
-  backgroundColor: "#09090b",
-  borderRadius: 16,
-  borderWidth: 1,
-  borderColor: "#27272a",
-  padding: 12,
+const $countdown: TextStyle = {
+  fontVariant: ["tabular-nums"],
 };
 
 const $consoleScroll: ViewStyle = {
   height: 160,
 };
 
-const $logTextMuted: TextStyle = {
-  fontFamily: "monospace",
-  fontSize: 11,
-  color: "#52525b",
+const $consoleContent: ViewStyle = {
+  gap: space.xxs,
 };
 
-const $logLineText: TextStyle = {
+const $logText: TextStyle = {
   fontFamily: "monospace",
   fontSize: 11,
   lineHeight: 15,
 };
 
-const $logTime: TextStyle = {
-  color: "#52525b",
-};
-
-const $primaryButton: ViewStyle = {
-  backgroundColor: COLORS.text,
-  paddingVertical: 14,
-  borderRadius: 12,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $primaryButtonText: TextStyle = {
-  color: COLORS.background,
-  fontSize: 15,
-  fontWeight: "700",
-};
-
-const $secondaryButton: ViewStyle = {
-  backgroundColor: COLORS.border,
-  paddingVertical: 14,
-  borderRadius: 12,
-  alignItems: "center",
-  justifyContent: "center",
-};
-
-const $secondaryButtonText: TextStyle = {
-  color: COLORS.text,
-  fontSize: 15,
-  fontWeight: "700",
+const $actions: ViewStyle = {
+  marginTop: space.xl,
+  gap: space.sm,
 };
 
 const $runningBanner: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
   justifyContent: "center",
-  gap: 8,
-  paddingVertical: 10,
-};
-
-const $runningBannerText: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  fontWeight: "500",
+  gap: space.xs,
+  paddingVertical: space.sm,
 };

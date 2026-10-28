@@ -1,24 +1,19 @@
-import { SymbolView } from "expo-symbols";
-import {
-  Text,
-  TouchableOpacity,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { View, type TextStyle, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Text } from "@/ui/ds/Text";
+import { color, radius, space } from "@/ui/tokens";
 
 import type { ScanResult } from "../session/ports";
 import {
-  $setupBody,
   $setupButtons,
   $setupCard,
   $setupCardTitle,
-  $setupEmphasis,
   $setupNote,
-  SetupButton,
+  Emphasis,
   SetupHeader,
   SetupInstruction,
   signalStrength,
@@ -35,40 +30,39 @@ export function RationaleView({ onContinue }: { onContinue: () => void }) {
       />
 
       <Card style={$setupCard}>
-        <Text style={$setupCardTitle}>Put the speaker in setup mode</Text>
+        <Text variant="headline" style={$setupCardTitle}>
+          Put the speaker in setup mode
+        </Text>
         <SetupInstruction index={1}>
           Plug in the speaker and turn it on.
         </SetupInstruction>
         <SetupInstruction index={2}>
-          Hold <Text style={$setupEmphasis}>2</Text> and{" "}
-          <Text style={$setupEmphasis}>Volume −</Text> together until the Wi-Fi
-          light is <Text style={$setupEmphasis}>solid amber</Text> (about 5
+          Hold <Emphasis>2</Emphasis> and <Emphasis>Volume −</Emphasis> together
+          until the Wi-Fi light is <Emphasis>solid amber</Emphasis> (about 5
           seconds).
         </SetupInstruction>
       </Card>
 
       <Card style={$setupCard}>
         <View style={$row}>
-          <SymbolView
+          <Icon
             name={{
               ios: "location",
               android: "location_on",
               web: "location_on",
             }}
-            tintColor={COLORS.primary}
-            size={20}
           />
-          <Text style={[$setupBody, $flexText]}>
+          <Text variant="body" color="textSecondary" style={$flexText}>
             Seeing nearby Wi-Fi networks requires{" "}
-            <Text style={$setupEmphasis}>precise location</Text> access. Allow
-            it on the next screen so the app can find your speaker. Your
-            location is not stored or shared.
+            <Emphasis>precise location</Emphasis> access. Allow it on the next
+            screen so the app can find your speaker. Your location is not stored
+            or shared.
           </Text>
         </View>
       </Card>
 
       <View style={$setupButtons}>
-        <SetupButton
+        <Button
           label="Continue"
           icon={{
             ios: "arrow.right",
@@ -104,50 +98,28 @@ export function ChooseSpeakerView({
       />
 
       <Card style={[$setupCard, $listCard]}>
-        {sorted.map((speaker, index) => {
+        {sorted.map((speaker) => {
           const signal = signalStrength(speaker.level);
           return (
-            <View key={speaker.bssid}>
-              {index > 0 && <View style={$divider} />}
-              <TouchableOpacity
-                style={$listRow}
-                onPress={() => {
-                  onChoose(speaker.bssid);
-                }}
-                activeOpacity={0.7}
-                accessibilityRole="button"
-              >
-                <SymbolView
-                  name={{
-                    ios: "hifispeaker",
-                    android: "speaker",
-                    web: "speaker",
-                  }}
-                  tintColor={COLORS.primary}
-                  size={22}
-                />
-                <View style={$flex}>
-                  <Text style={$listTitle} numberOfLines={1}>
-                    {speaker.ssid}
-                  </Text>
-                  <Text style={$listSubtitle}>{signal.label}</Text>
+            <ListRow
+              key={speaker.bssid}
+              title={speaker.ssid}
+              subtitle={signal.label}
+              leading={<Icon name={icons.speaker} size={22} />}
+              trailing={
+                <View style={$trailing}>
+                  <Icon name={signal.symbol} size={18} />
+                  <Icon
+                    name={icons.chevronRight}
+                    size={16}
+                    color="textTertiary"
+                  />
                 </View>
-                <SymbolView
-                  name={signal.symbol}
-                  tintColor={COLORS.textSecondary}
-                  size={18}
-                />
-                <SymbolView
-                  name={{
-                    ios: "chevron.right",
-                    android: "chevron_right",
-                    web: "chevron_right",
-                  }}
-                  tintColor={COLORS.textMuted}
-                  size={16}
-                />
-              </TouchableOpacity>
-            </View>
+              }
+              onPress={() => {
+                onChoose(speaker.bssid);
+              }}
+            />
           );
         })}
       </Card>
@@ -174,18 +146,19 @@ export function ManualJoinView({
       <Card style={$setupCard}>
         <SetupInstruction index={1}>
           Open the Wi-Fi settings and select the speaker's network (
-          <Text style={$setupEmphasis}>Bose …</Text>).
+          <Emphasis>Bose …</Emphasis>).
         </SetupInstruction>
         <SetupInstruction index={2}>
           Before connecting, open the network's advanced options and set{" "}
-          <Text style={$setupEmphasis}>IP settings</Text> to{" "}
-          <Text style={$setupEmphasis}>Static</Text>.
+          <Emphasis>IP settings</Emphasis> to <Emphasis>Static</Emphasis>.
         </SetupInstruction>
         <View style={$staticTable}>
           {STATIC_IP.map(([label, value]) => (
             <View key={label} style={$staticRow}>
-              <Text style={$staticLabel}>{label}</Text>
-              <Text style={$staticValue} selectable>
+              <Text variant="subhead" color="textSecondary">
+                {label}
+              </Text>
+              <Text variant="subhead" style={$staticValue} selectable>
                 {value}
               </Text>
             </View>
@@ -196,24 +169,23 @@ export function ManualJoinView({
           stay connected.
         </SetupInstruction>
         <SetupInstruction index={4}>
-          Come back to this screen and tap{" "}
-          <Text style={$setupEmphasis}>I'm connected</Text>.
+          Come back to this screen and tap <Emphasis>I'm connected</Emphasis>.
         </SetupInstruction>
       </Card>
 
       <View style={$setupButtons}>
-        <SetupButton
+        <Button
           label="Open Wi-Fi settings"
           variant="secondary"
           icon={{ ios: "gearshape", android: "settings", web: "settings" }}
           onPress={onOpenSettings}
         />
-        <SetupButton
+        <Button
           label="I'm connected"
           icon={{ ios: "checkmark", android: "check", web: "check" }}
           onPress={onConnected}
         />
-        <Text style={$setupNote}>
+        <Text variant="caption" color="textTertiary" style={$setupNote}>
           The speaker's address on its own network is always 192.0.2.1.
         </Text>
       </View>
@@ -228,10 +200,6 @@ const STATIC_IP: [label: string, value: string][] = [
   ["DNS", "192.0.2.1"],
 ];
 
-const $flex: ViewStyle = {
-  flex: 1,
-};
-
 const $flexText: TextStyle = {
   flex: 1,
 };
@@ -239,63 +207,36 @@ const $flexText: TextStyle = {
 const $row: ViewStyle = {
   flexDirection: "row",
   alignItems: "flex-start",
-  gap: 12,
+  gap: space.sm,
 };
 
 const $listCard: ViewStyle = {
   padding: 0,
-  paddingVertical: 4,
+  paddingVertical: space.xxs,
+  overflow: "hidden",
 };
 
-const $listRow: ViewStyle = {
+const $trailing: ViewStyle = {
   flexDirection: "row",
   alignItems: "center",
-  gap: 12,
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-};
-
-const $listTitle: TextStyle = {
-  fontSize: 15,
-  color: COLORS.text,
-  fontWeight: "500",
-};
-
-const $listSubtitle: TextStyle = {
-  fontSize: 12,
-  color: COLORS.textMuted,
-  marginTop: 2,
-};
-
-const $divider: ViewStyle = {
-  height: 1,
-  backgroundColor: COLORS.border,
-  marginLeft: 50,
+  gap: space.xs,
 };
 
 const $staticTable: ViewStyle = {
-  backgroundColor: COLORS.background,
-  borderRadius: 12,
-  paddingHorizontal: 12,
-  paddingVertical: 8,
+  backgroundColor: color.surface2,
+  borderRadius: radius.sm,
+  paddingHorizontal: space.sm,
+  paddingVertical: space.xs,
   marginLeft: 36,
-  marginBottom: 12,
+  marginBottom: space.sm,
 };
 
 const $staticRow: ViewStyle = {
   flexDirection: "row",
   justifyContent: "space-between",
-  paddingVertical: 4,
-};
-
-const $staticLabel: TextStyle = {
-  fontSize: 13,
-  color: COLORS.textMuted,
+  paddingVertical: space.xxs,
 };
 
 const $staticValue: TextStyle = {
-  fontSize: 13,
-  color: COLORS.text,
-  fontWeight: "600",
   fontVariant: ["tabular-nums"],
 };

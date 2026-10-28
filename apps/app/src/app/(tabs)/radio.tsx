@@ -1,26 +1,19 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { SymbolView } from "expo-symbols";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  TouchableOpacity,
-  Pressable,
   ActivityIndicator,
-  TextInput,
-  FlatList,
-  Image,
   Alert,
+  FlatList,
   Modal,
+  Pressable,
+  ScrollView,
   StyleSheet,
-  type ImageStyle,
-  type TextStyle,
+  View,
   type ViewStyle,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Card } from "@/components/ui/Card";
 import {
   useRadioFavorites,
   useRadioToggleFavorite,
@@ -29,14 +22,27 @@ import {
   useRadioStations,
   type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
+import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
   useMargeAPIStatusQuery,
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
 import { logger } from "@/lib/logger";
-import { PageHeader } from "@/ui/PageHeader";
-import { COLORS } from "@/ui/theme";
+import { Button } from "@/ui/ds/Button";
+import { Chip } from "@/ui/ds/Chip";
+import { EmptyState } from "@/ui/ds/EmptyState";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { IconButton } from "@/ui/ds/IconButton";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Screen } from "@/ui/ds/Screen";
+import { SearchField } from "@/ui/ds/SearchField";
+import { SectionHeader } from "@/ui/ds/SectionHeader";
+import { SegmentedControl } from "@/ui/ds/SegmentedControl";
+import { Shelf } from "@/ui/ds/Shelf";
+import { Text } from "@/ui/ds/Text";
+import { Tile } from "@/ui/ds/Tile";
+import { artwork, color, radius, space } from "@/ui/tokens";
 
 const GENRE_TAGS = [
   "All",
@@ -49,6 +55,21 @@ const GENRE_TAGS = [
   "News",
   "Ambient",
 ];
+
+const TABS = [
+  { value: "search", label: "Browse" },
+  { value: "favorites", label: "Favorites" },
+] as const;
+
+function stationDetail(station: RadioStation) {
+  return [
+    station.country,
+    station.codec,
+    station.bitrate ? `${station.bitrate} kbps` : "",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 export default function RadioBrowser() {
   const { speakers, playStreamMutation } = useBose();
@@ -88,6 +109,8 @@ export default function RadioBrowser() {
   const [castingToSpeakerId, setCastingToSpeakerId] = useState<string | null>(
     null,
   );
+
+  const isSearching = Boolean(debouncedQuery) || selectedTag !== "All";
 
   const handleSearch = (searchQuery = query, tag = selectedTag) => {
     setQuery(searchQuery);
@@ -170,158 +193,117 @@ export default function RadioBrowser() {
     }
   };
 
-  const renderStationCard = ({ item }: { item: RadioStation }) => {
+  const renderStationRow = ({ item }: { item: RadioStation }) => {
     const isFav = favorites.some((fav) => fav.stationuuid === item.stationuuid);
 
-    const handleToggle = () => {
-      toggleFavorite({ station: item, isFavorite: isFav });
-    };
-
     return (
-      <Card
-        style={$stationCard}
-        render={
-          <TouchableOpacity
+      <ListRow
+        title={item.name}
+        subtitle={stationDetail(item)}
+        artworkUri={item.favicon || null}
+        fallbackIcon={icons.radio}
+        onPress={() => {
+          handleStationPress(item);
+        }}
+        trailing={
+          <IconButton
+            icon={isFav ? icons.starFilled : icons.star}
+            accessibilityLabel={
+              isFav ? "Remove from favorites" : "Add to favorites"
+            }
+            tint={isFav ? "accent" : "textSecondary"}
             onPress={() => {
-              handleStationPress(item);
+              toggleFavorite({ station: item, isFavorite: isFav });
             }}
           />
         }
-      >
-        <View style={$stationLogoContainer}>
-          {item.favicon ? (
-            <Image source={{ uri: item.favicon }} style={$stationLogo} />
-          ) : (
-            <SymbolView
-              name={{ ios: "radio", android: "radio", web: "radio" }}
-              tintColor={COLORS.textMuted}
-              size={28}
-            />
-          )}
-        </View>
-
-        <View style={$stationDetails}>
-          <Text style={$stationName} numberOfLines={1}>
-            {item.name}
-          </Text>
-          <Text style={$stationSubText} numberOfLines={1}>
-            {item.country ?? "Unknown Country"} • {item.codec ?? "MP3"}
-            {item.bitrate ? ` • ${item.bitrate} kbps` : ""}
-          </Text>
-        </View>
-
-        <Pressable style={$favoriteButton} onPress={handleToggle}>
-          <Text
-            style={isFav ? $favoriteIconTextActive : $favoriteIconTextInactive}
-          >
-            {isFav ? "★" : "☆"}
-          </Text>
-        </Pressable>
-      </Card>
+      />
     );
   };
 
-  const renderSearchResults = () => {
+  const renderBrowseEmpty = () => {
     if (isLoading) {
       return (
-        <View style={$centerState}>
-          <ActivityIndicator size="large" color={COLORS.primary} />
-          <Text style={$loadingText}>Fetching stations...</Text>
+        <View style={$loading}>
+          <ActivityIndicator size="small" color={color.textSecondary} />
+          <Text variant="subhead" color="textSecondary">
+            Fetching stations…
+          </Text>
         </View>
       );
     }
     if (isError) {
       return (
-        <View style={$infoContainer}>
-          <Text style={$infoIcon}>⚠</Text>
-          <Text style={$infoTitle}>Search Failed</Text>
-          <Text style={$infoText}>
-            {error instanceof Error
+        <EmptyState
+          icon={icons.warning}
+          title="Search failed"
+          description={
+            error instanceof Error
               ? error.message
-              : "Could not retrieve radio stations. Please check your internet connection."}
-          </Text>
-          <Pressable
-            style={$exploreButton}
-            onPress={() => {
-              void queryClient.refetchQueries({
-                queryKey: ["radio-stations"],
-              });
-            }}
-          >
-            <Text style={$exploreButtonText}>Retry</Text>
-          </Pressable>
-        </View>
-      );
-    }
-    if (!stations || stations.length === 0) {
-      return (
-        <View style={$infoContainer}>
-          <Text style={$infoIcon}>📻</Text>
-          <Text style={$infoTitle}>No Stations Found</Text>
-          <Text style={$infoText}>
-            Try a different search term or genre tag.
-          </Text>
-        </View>
+              : "Could not retrieve radio stations. Please check your internet connection."
+          }
+          actions={
+            <Button
+              label="Retry"
+              variant="secondary"
+              onPress={() => {
+                void queryClient.refetchQueries({
+                  queryKey: ["radio-stations"],
+                });
+              }}
+            />
+          }
+        />
       );
     }
     return (
-      <FlatList
-        data={stations}
-        keyExtractor={(item) => item.stationuuid}
-        renderItem={renderStationCard}
-        contentContainerStyle={$listContent}
+      <EmptyState
+        icon={icons.radio}
+        title="No stations found"
+        description="Try a different search term or genre tag."
       />
     );
   };
 
-  return (
-    <SafeAreaView style={$container}>
-      <PageHeader title="Radio" hideIcon />
+  const browseHeader = (
+    <>
+      {favorites.length > 0 && !isSearching && (
+        <Shelf title="Your favorites">
+          {favorites.map((station) => (
+            <Tile
+              key={station.stationuuid}
+              title={station.name}
+              subtitle={station.country || undefined}
+              artworkUri={station.favicon || null}
+              fallbackIcon={icons.radio}
+              onPress={() => {
+                handleStationPress(station);
+              }}
+            />
+          ))}
+        </Shelf>
+      )}
+      {!isLoading && !isError && stations && stations.length > 0 && (
+        <SectionHeader title={isSearching ? "Search results" : "Trending"} />
+      )}
+    </>
+  );
 
-      <View style={$tabsContainer}>
-        <View style={$tabsWrapper}>
-          <Pressable
-            style={[$tab, activeTab === "search" && $activeTab]}
-            onPress={() => {
-              setActiveTab("search");
-            }}
-          >
-            <Text style={[$tabText, activeTab === "search" && $activeTabText]}>
-              Browse
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[$tab, activeTab === "favorites" && $activeTab]}
-            onPress={() => {
-              setActiveTab("favorites");
-            }}
-          >
-            <Text
-              style={[$tabText, activeTab === "favorites" && $activeTabText]}
-            >
-              Favorites
-            </Text>
-          </Pressable>
-        </View>
+  return (
+    <Screen title="Radio" footer={<NowPlayingBar />}>
+      <View style={$controls}>
+        <SegmentedControl
+          options={TABS}
+          value={activeTab}
+          onChange={setActiveTab}
+        />
       </View>
 
       {activeTab === "search" ? (
-        <View style={{ flex: 1 }}>
-          <View style={$searchBox}>
-            <SymbolView
-              name={{
-                ios: "magnifyingglass",
-                android: "search",
-                web: "search",
-              }}
-              tintColor={COLORS.textSecondary}
-              size={20}
-              style={{ marginRight: 8 }}
-            />
-            <TextInput
-              style={$searchInput}
-              placeholder="Search by station name..."
-              placeholderTextColor={COLORS.textMuted}
+        <View style={$fill}>
+          <View style={$search}>
+            <SearchField
+              placeholder="Search stations"
               value={query}
               onChangeText={(text) => {
                 setQuery(text);
@@ -330,81 +312,67 @@ export default function RadioBrowser() {
               onSubmitEditing={() => {
                 handleSearch(query, "All");
               }}
-              returnKeyType="search"
+              onClear={() => {
+                setQuery("");
+              }}
             />
-            {query.trim().length > 0 && (
-              <Pressable
+          </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={$tags}
+            style={$tagsScroll}
+          >
+            {GENRE_TAGS.map((tag) => (
+              <Chip
+                key={tag}
+                label={tag}
+                selected={selectedTag === tag}
                 onPress={() => {
-                  setQuery("");
+                  const nextTag = selectedTag === tag ? "All" : tag;
+                  handleSearch("", nextTag);
                 }}
-                style={$clearSearchButton}
-              >
-                <Text style={$clearSearchText}>✕</Text>
-              </Pressable>
-            )}
-          </View>
+              />
+            ))}
+          </ScrollView>
 
-          <View style={{ paddingHorizontal: 16, marginBottom: 20 }}>
-            <FlatList
-              data={GENRE_TAGS}
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              keyExtractor={(item) => item}
-              contentContainerStyle={$tagsContent}
-              renderItem={({ item }) => (
-                <Pressable
-                  style={[$tagPill, selectedTag === item && $tagPillActive]}
-                  onPress={() => {
-                    const nextTag = selectedTag === item ? "All" : item;
-                    handleSearch("", nextTag);
-                  }}
-                >
-                  <Text
-                    style={[$tagText, selectedTag === item && $tagTextActive]}
-                  >
-                    {item}
-                  </Text>
-                </Pressable>
-              )}
-            />
-          </View>
-
-          {!isLoading && !isError && stations && stations.length > 0 && (
-            <Text style={$listHeaderTitle}>
-              {debouncedQuery || selectedTag !== "All"
-                ? "SEARCH RESULTS"
-                : "TRENDING STATIONS"}
-            </Text>
-          )}
-          {renderSearchResults()}
+          <FlatList
+            data={isLoading || isError ? [] : (stations ?? [])}
+            keyExtractor={(item) => item.stationuuid}
+            renderItem={renderStationRow}
+            ListHeaderComponent={browseHeader}
+            ListEmptyComponent={renderBrowseEmpty()}
+            contentContainerStyle={$listContent}
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+          />
         </View>
       ) : (
-        <View style={{ flex: 1 }}>
-          {favorites.length === 0 ? (
-            <View style={$infoContainer}>
-              <Text style={$infoIcon}>★</Text>
-              <Text style={$infoTitle}>No Favorites Yet</Text>
-              <Text style={$infoText}>
-                Stations you mark with a star will appear here for fast access.
-              </Text>
-              <Pressable
-                style={$exploreButton}
-                onPress={() => {
-                  setActiveTab("search");
-                }}
-              >
-                <Text style={$exploreButtonText}>Find Stations</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <FlatList
-              data={favorites}
-              keyExtractor={(item) => item.stationuuid}
-              renderItem={renderStationCard}
-              contentContainerStyle={$listContent}
+        <FlatList
+          data={favorites}
+          keyExtractor={(item) => item.stationuuid}
+          renderItem={renderStationRow}
+          contentContainerStyle={$listContent}
+          contentInsetAdjustmentBehavior="automatic"
+          ListEmptyComponent={
+            <EmptyState
+              icon={icons.starFilled}
+              title="No favorites yet"
+              description="Stations you star will appear here for quick access."
+              actions={
+                <Button
+                  label="Find stations"
+                  variant="secondary"
+                  onPress={() => {
+                    setActiveTab("search");
+                  }}
+                />
+              }
             />
-          )}
-        </View>
+          }
+        />
       )}
 
       <Modal
@@ -418,51 +386,44 @@ export default function RadioBrowser() {
         <View style={$modalOverlay}>
           <Pressable
             style={StyleSheet.absoluteFill}
+            accessibilityLabel="Close"
             onPress={() => {
               setCastModalVisible(false);
             }}
           />
-          <View style={$sheetContent}>
+          <SafeAreaView edges={["bottom"]} style={$sheet}>
+            <View style={$grabber} />
             <View style={$sheetHeader}>
-              <Text style={$sheetTitle}>Select Speaker</Text>
+              <Text variant="title">Play on…</Text>
+              <Text variant="body" color="textSecondary" numberOfLines={2}>
+                {`Choose a speaker for "${castingStation?.name ?? ""}".`}
+              </Text>
             </View>
 
-            <Text style={$sheetSubtitle}>
-              Which speaker would you like to stream{" "}
-              {`"${castingStation?.name}"`} to?
-            </Text>
-
             {speakers.length === 0 ? (
-              <View style={$sheetEmpty}>
-                <Text style={$sheetEmptyIcon}>📡</Text>
-                <Text style={$sheetEmptyTitle}>No Speakers Discovered</Text>
-                <Text style={$sheetEmptyText}>
-                  Please ensure your SoundTouch speaker is online and connected
-                  to the same Wi-Fi.
-                </Text>
-              </View>
+              <EmptyState
+                icon={icons.wifiOff}
+                title="No speakers discovered"
+                description="Make sure your SoundTouch speaker is online and on the same Wi-Fi."
+              />
             ) : (
               <View style={$speakerList}>
-                {speakers.map((speaker) => {
-                  const isCasting = castingToSpeakerId === speaker.deviceID;
-
-                  return (
-                    <SpeakerCastItem
-                      key={speaker.deviceID}
-                      speaker={speaker}
-                      isCasting={isCasting}
-                      onCast={(id, isConfigured) => {
-                        void handleCastToSpeaker(id, isConfigured);
-                      }}
-                    />
-                  );
-                })}
+                {speakers.map((speaker) => (
+                  <SpeakerCastItem
+                    key={speaker.deviceID}
+                    speaker={speaker}
+                    isCasting={castingToSpeakerId === speaker.deviceID}
+                    onCast={(id, isConfigured) => {
+                      void handleCastToSpeaker(id, isConfigured);
+                    }}
+                  />
+                ))}
               </View>
             )}
-          </View>
+          </SafeAreaView>
         </View>
       </Modal>
-    </SafeAreaView>
+    </Screen>
   );
 }
 
@@ -486,7 +447,7 @@ function SpeakerCastItem({
 
   const getStatusText = () => {
     if (isLoading) {
-      return "Checking configuration...";
+      return "Checking configuration…";
     }
     if (isError) {
       return "Connection failed";
@@ -497,384 +458,116 @@ function SpeakerCastItem({
     if (isPowerOff) {
       return "Standby";
     }
-    return `Playing • Vol ${speaker.volume}%`;
+    return `Playing · Vol ${speaker.volume}%`;
   };
 
-  const renderIcon = () => {
+  const renderTrailing = () => {
     if (isCasting || isLoading) {
-      return <ActivityIndicator size="small" color={COLORS.primary} />;
+      return <ActivityIndicator size="small" color={color.textSecondary} />;
     }
     if (isError) {
-      return (
-        <SymbolView
-          name={{
-            ios: "exclamationmark.triangle.fill",
-            android: "warning",
-            web: "warning",
-          }}
-          tintColor={COLORS.error}
-          size={16}
-        />
-      );
+      return <Icon name={icons.warning} size={16} color="danger" />;
     }
     if (isConfigured) {
-      return <Text style={$castPlayIcon}>▶</Text>;
+      return <Icon name={icons.play} size={16} color="textPrimary" />;
     }
-    return (
-      <SymbolView
-        name={{
-          ios: "lock",
-          android: "lock",
-          web: "lock",
-        }}
-        tintColor={COLORS.textMuted}
-        size={16}
-      />
-    );
+    return <Icon name={icons.lock} size={16} color="textTertiary" />;
   };
 
   return (
-    <Card
-      style={[$speakerItem, (!isConfigured || isDisabled) && { opacity: 0.6 }]}
-      render={
-        <TouchableOpacity
-          onPress={() => {
-            logger.info(
-              `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
-            );
-            onCast(speaker.deviceID, isConfigured);
-          }}
-          disabled={isDisabled}
-        />
-      }
-    >
-      <View style={$speakerItemLeft}>
-        <SymbolView
-          name={{
-            ios: "speaker.wave.2.fill",
-            android: "speaker",
-            web: "speaker",
-          }}
-          tintColor={COLORS.textMuted}
-          size={20}
-        />
-        <View>
-          <Text style={$speakerName}>{speaker.name}</Text>
-          <Text style={$speakerStatus}>{getStatusText()}</Text>
+    <ListRow
+      title={speaker.name}
+      subtitle={getStatusText()}
+      disabled={isDisabled}
+      leading={
+        <View style={$speakerIcon}>
+          <Icon name={icons.speaker} size={20} />
         </View>
-      </View>
-      {renderIcon()}
-    </Card>
+      }
+      trailing={renderTrailing()}
+      onPress={() => {
+        logger.info(
+          `[SpeakerCastItem] PRESSED ${speaker.name} (${speaker.deviceID})`,
+        );
+        onCast(speaker.deviceID, isConfigured);
+      }}
+    />
   );
 }
 
-const $container: ViewStyle = {
+const $fill: ViewStyle = {
   flex: 1,
-  backgroundColor: COLORS.background,
 };
 
-const $tabsContainer: ViewStyle = {
-  paddingHorizontal: 16,
-  paddingVertical: 12,
+const $controls: ViewStyle = {
+  paddingHorizontal: space.screen,
+  paddingBottom: space.sm,
 };
 
-const $tabsWrapper: ViewStyle = {
-  flexDirection: "row",
-  backgroundColor: COLORS.card,
-  borderRadius: 24,
-  padding: 4,
+const $search: ViewStyle = {
+  paddingHorizontal: space.screen,
 };
 
-const $tab: ViewStyle = {
-  flex: 1,
-  paddingVertical: 10,
-  borderRadius: 20,
-  alignItems: "center",
-  backgroundColor: COLORS.transparent,
+const $tagsScroll: ViewStyle = {
+  flexGrow: 0,
+  // The station list below is flex: 1; without this the row shrinks and clips the chips.
+  flexShrink: 0,
 };
 
-const $activeTab: ViewStyle = {
-  backgroundColor: COLORS.border,
-};
-
-const $tabText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 14,
-  fontWeight: "600",
-};
-
-const $activeTabText: TextStyle = {
-  color: COLORS.text,
-};
-
-const $searchBox: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  backgroundColor: COLORS.card,
-  borderRadius: 24,
-  borderWidth: 1,
-  borderColor: COLORS.border,
-  marginHorizontal: 16,
-  marginBottom: 12,
-  paddingHorizontal: 12,
-};
-
-const $searchInput: TextStyle = {
-  flex: 1,
-  color: COLORS.text,
-  height: 44,
-  fontSize: 15,
-};
-
-const $clearSearchButton: ViewStyle = {
-  padding: 6,
-};
-
-const $clearSearchText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 16,
-};
-
-const $tagsContent: ViewStyle = {
-  gap: 8,
-};
-
-const $tagPill: ViewStyle = {
-  paddingHorizontal: 24,
-  paddingVertical: 8,
-  borderRadius: 24,
-  backgroundColor: COLORS.card,
-};
-
-const $tagPillActive: ViewStyle = {
-  backgroundColor: COLORS.primary,
-};
-
-const $tagText: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 13,
-  fontWeight: "600",
-};
-
-const $tagTextActive: TextStyle = {
-  color: COLORS.text,
+const $tags: ViewStyle = {
+  gap: space.xs,
+  paddingHorizontal: space.screen,
+  paddingVertical: space.sm,
 };
 
 const $listContent: ViewStyle = {
-  paddingHorizontal: 16,
-  paddingBottom: 24,
-  gap: 16,
+  paddingBottom: space.xl,
 };
 
-const $stationCard: ViewStyle = {
-  flexDirection: "row",
+const $loading: ViewStyle = {
   alignItems: "center",
-};
-
-const $stationLogoContainer: ViewStyle = {
-  width: 56,
-  height: 56,
-  borderRadius: 8,
-  backgroundColor: COLORS.card,
-  justifyContent: "center",
-  alignItems: "center",
-  overflow: "hidden",
-};
-
-const $stationLogo: ImageStyle = {
-  width: 56,
-  height: 56,
-};
-
-const $stationDetails: ViewStyle = {
-  flex: 1,
-  marginLeft: 14,
-  marginRight: 8,
-};
-
-const $stationName: TextStyle = {
-  color: COLORS.text,
-  fontSize: 16,
-  fontWeight: "bold",
-};
-
-const $stationSubText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 13,
-  marginTop: 4,
-};
-
-const $favoriteButton: ViewStyle = {
-  width: 36,
-  height: 36,
-  justifyContent: "center",
-  alignItems: "center",
-};
-
-const $favoriteIconTextActive: TextStyle = {
-  color: COLORS.primary,
-  fontSize: 24,
-};
-
-const $favoriteIconTextInactive: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 24,
-};
-
-const $listHeaderTitle: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 12,
-  fontWeight: "bold",
-  letterSpacing: 1.5,
-  paddingHorizontal: 16,
-  marginBottom: 12,
-};
-
-const $centerState: ViewStyle = {
-  flex: 1,
-  justifyContent: "center",
-  alignItems: "center",
-  paddingVertical: 60,
-};
-
-const $loadingText: TextStyle = {
-  color: COLORS.textSecondary,
-  marginTop: 12,
-  fontSize: 15,
-};
-
-const $infoContainer: ViewStyle = {
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  padding: 32,
-  marginTop: 20,
-};
-
-const $infoIcon: TextStyle = {
-  fontSize: 64,
-  marginBottom: 16,
-  opacity: 0.5,
-};
-
-const $infoTitle: TextStyle = {
-  color: COLORS.text,
-  fontSize: 18,
-  fontWeight: "bold",
-  marginBottom: 8,
-  textAlign: "center",
-};
-
-const $infoText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 14,
-  textAlign: "center",
-  lineHeight: 20,
-  marginBottom: 24,
-};
-
-const $exploreButton: ViewStyle = {
-  backgroundColor: COLORS.primary,
-  paddingHorizontal: 24,
-  paddingVertical: 12,
-  borderRadius: 8,
-};
-
-const $exploreButtonText: TextStyle = {
-  color: COLORS.text,
-  fontWeight: "600",
-  fontSize: 14,
+  gap: space.sm,
+  paddingVertical: space.xxxl,
 };
 
 const $modalOverlay: ViewStyle = {
   flex: 1,
   justifyContent: "flex-end",
-  backgroundColor: "rgba(0, 0, 0, 0.4)",
+  backgroundColor: color.scrim,
 };
 
-const $sheetContent: ViewStyle = {
-  backgroundColor: COLORS.card,
-  borderTopLeftRadius: 24,
-  borderTopRightRadius: 24,
-  paddingHorizontal: 24,
-  paddingTop: 24,
-  paddingBottom: 48,
+const $sheet: ViewStyle = {
+  backgroundColor: color.surface1,
+  borderTopLeftRadius: radius.lg,
+  borderTopRightRadius: radius.lg,
+  paddingBottom: space.md,
+};
+
+const $grabber: ViewStyle = {
+  alignSelf: "center",
+  width: 36,
+  height: 5,
+  marginTop: space.xs,
+  borderRadius: radius.pill,
+  backgroundColor: color.surface3,
 };
 
 const $sheetHeader: ViewStyle = {
-  flexDirection: "row",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 12,
-};
-
-const $sheetTitle: TextStyle = {
-  color: COLORS.text,
-  fontSize: 20,
-  fontWeight: "700",
-};
-
-const $sheetSubtitle: TextStyle = {
-  color: COLORS.textSecondary,
-  fontSize: 14,
-  lineHeight: 20,
-  marginBottom: 20,
+  gap: space.xxs,
+  paddingHorizontal: space.screen,
+  paddingTop: space.md,
+  paddingBottom: space.xs,
 };
 
 const $speakerList: ViewStyle = {
-  marginBottom: 12,
+  paddingTop: space.xxs,
 };
 
-const $speakerItem: ViewStyle = {
-  flexDirection: "row",
+const $speakerIcon: ViewStyle = {
+  width: artwork.row,
+  height: artwork.row,
   alignItems: "center",
-  justifyContent: "space-between",
-  marginBottom: 10,
-};
-
-const $speakerItemLeft: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 12,
-};
-
-const $speakerName: TextStyle = {
-  color: COLORS.text,
-  fontSize: 15,
-  fontWeight: "bold",
-};
-
-const $speakerStatus: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 12,
-  marginTop: 2,
-};
-
-const $castPlayIcon: TextStyle = {
-  color: COLORS.primary,
-  fontSize: 18,
-  fontWeight: "bold",
-};
-
-const $sheetEmpty: ViewStyle = {
-  alignItems: "center",
-  paddingVertical: 40,
-};
-
-const $sheetEmptyIcon: TextStyle = {
-  fontSize: 48,
-  marginBottom: 12,
-};
-
-const $sheetEmptyTitle: TextStyle = {
-  color: COLORS.text,
-  fontSize: 16,
-  fontWeight: "bold",
-  marginBottom: 6,
-};
-
-const $sheetEmptyText: TextStyle = {
-  color: COLORS.textMuted,
-  fontSize: 12,
-  textAlign: "center",
+  justifyContent: "center",
+  borderRadius: radius.xs,
+  backgroundColor: color.surface2,
 };
