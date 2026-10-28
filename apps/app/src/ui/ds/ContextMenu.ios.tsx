@@ -101,7 +101,9 @@ export function ContextMenu({
         setWidth(event.nativeEvent.layout.width);
       }}
     >
-      {menu}
+      {/* Text laid out before the width is known keeps its unconstrained
+          width (rows wouldn't truncate), so the trigger waits for it. */}
+      {width === undefined ? null : menu}
     </View>
   );
 }
