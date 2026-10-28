@@ -2,8 +2,6 @@ import type { ReactNode } from "react";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
-import { color } from "@/ui/tokens";
-
 export interface ScreenProps {
   children: ReactNode;
   /** Pinned below the content and above the bottom inset (e.g. `MiniPlayer`). */
@@ -28,8 +26,11 @@ const edges: Record<NonNullable<ScreenProps["presentation"]>, Edge[]> = {
 };
 
 /**
- * Screen root: lays out content → footer on the `bg` color, keeping clear of
- * the system bars that no native header covers.
+ * Screen root: lays out content → footer, keeping clear of the system bars
+ * that no native header covers. The `bg` color comes from the stack's
+ * `contentStyle`: a background here would make the root a real native view,
+ * which hides the screen's scroll view from iOS and stops the large title
+ * from collapsing.
  */
 export function Screen({
   children,
@@ -38,7 +39,7 @@ export function Screen({
   presentation = "stack",
 }: ScreenProps) {
   return (
-    <View style={$root}>
+    <View style={$fill}>
       {backdrop ? (
         <View style={StyleSheet.absoluteFill}>{backdrop}</View>
       ) : null}
@@ -51,11 +52,6 @@ export function Screen({
     </View>
   );
 }
-
-const $root: ViewStyle = {
-  flex: 1,
-  backgroundColor: color.bg,
-};
 
 const $fill: ViewStyle = {
   flex: 1,
