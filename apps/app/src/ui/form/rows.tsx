@@ -13,7 +13,7 @@ import {
 import { weight } from "@expo/ui/jetpack-compose/modifiers";
 import { buttonStyle, textSelection } from "@expo/ui/swift-ui/modifiers";
 import { useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, ToastAndroid } from "react-native";
 
 import { copyText } from "@/lib/clipboard";
 import { color } from "@/ui/tokens";
@@ -90,7 +90,9 @@ export function FormValueRow({
       onPress={
         copyable && !ios && value !== undefined
           ? () => {
-              void copyText(value, `Copied ${label}`);
+              void copyText(value, `Copied ${label}`).catch(() => {
+                ToastAndroid.show("Could not copy", ToastAndroid.SHORT);
+              });
             }
           : undefined
       }
