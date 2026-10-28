@@ -1,4 +1,5 @@
 import {
+  decodeXmlEntities,
   getChild,
   getChildText,
   parseBool,
@@ -114,20 +115,9 @@ export type BoseWSUpdate =
       deviceID: string;
     };
 
-function unescapeXml(val: string): string {
-  if (!val) {
-    return "";
-  }
-  return val
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&apos;/g, "'");
-}
-
-function unescapeIf(val: string | undefined): string | undefined {
-  return val ? unescapeXml(val) : undefined;
+/** `parseXml` already decoded entities; this only maps empty text to unset. */
+function nonEmpty(val: string | undefined): string | undefined {
+  return val === "" ? undefined : val;
 }
 
 function parseVolumeResponse(xml: string): BoseVolume {
@@ -168,10 +158,10 @@ function parseNowPlayingResponse(xml: string): BoseNowPlaying {
     deviceID: np?.attributes.deviceID ?? "",
     source: np?.attributes.source ?? "STANDBY",
     playStatus: (np && getChildText(np, "playStatus")) ?? "STANDBY",
-    track: np ? unescapeIf(getChildText(np, "track")) : undefined,
-    artist: np ? unescapeIf(getChildText(np, "artist")) : undefined,
-    album: np ? unescapeIf(getChildText(np, "album")) : undefined,
-    artUrl: np ? unescapeIf(getChildText(np, "art")) : undefined,
+    track: np ? nonEmpty(getChildText(np, "track")) : undefined,
+    artist: np ? nonEmpty(getChildText(np, "artist")) : undefined,
+    album: np ? nonEmpty(getChildText(np, "album")) : undefined,
+    artUrl: np ? nonEmpty(getChildText(np, "art")) : undefined,
   };
 }
 
@@ -198,8 +188,7 @@ function parseNowSelectionUpdated(xml: string): BoseNowSelection {
             isPresetable: parseBool(
               contentItemNode.attributes.isPresetable ?? "false",
             ),
-            itemName:
-              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+            itemName: nonEmpty(getChildText(contentItemNode, "itemName")) ?? "",
           }
         : undefined,
     },
@@ -234,8 +223,7 @@ function parseRecentsUpdated(xml: string): BoseRecents {
             isPresetable: parseBool(
               contentItemNode.attributes.isPresetable ?? "false",
             ),
-            itemName:
-              unescapeIf(getChildText(contentItemNode, "itemName")) ?? "",
+            itemName: nonEmpty(getChildText(contentItemNode, "itemName")) ?? "",
           }
         : undefined,
     };
@@ -310,7 +298,7 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     return {
       type: "nameUpdated",
       deviceID,
-      name: match ? unescapeXml(match[1]) : "",
+      name: match ? decodeXmlEntities(match[1]) : "",
     };
   }
 
