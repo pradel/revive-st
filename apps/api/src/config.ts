@@ -1,12 +1,16 @@
-declare const process: {
-  env: {
-    DATABASE_URL?: string;
-    RAILWAY_VOLUME_MOUNT_PATH?: string;
-  };
-};
+import { Config } from "effect";
 
-export const dbUrl =
-  process.env.DATABASE_URL ??
-  (process.env.RAILWAY_VOLUME_MOUNT_PATH
-    ? `file:${process.env.RAILWAY_VOLUME_MOUNT_PATH}/revivest.db`
-    : "file:revivest.db");
+/**
+ * libSQL URL of the presets database: `DATABASE_URL`, else a file on the
+ * Railway volume, else `revivest.db` in the working directory.
+ */
+export const DatabaseUrl = Config.String("DATABASE_URL").pipe(
+  Config.orElse(() =>
+    Config.String("RAILWAY_VOLUME_MOUNT_PATH").pipe(
+      Config.map((directory) => `file:${directory}/revivest.db`),
+    ),
+  ),
+  Config.withDefault("file:revivest.db"),
+);
+
+export const ServerPort = Config.Port("PORT").pipe(Config.withDefault(3000));

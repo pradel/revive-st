@@ -104,6 +104,15 @@ export default defineConfig({
         rules: { "no-console": "off" },
       },
       {
+        // Effect idioms: anonymous `Effect.gen`/`Effect.fn` generators (spans
+        // are named via `Effect.fn("name")`) and `_tag` discriminants.
+        files: ["apps/api/src/**/*.ts"],
+        rules: {
+          "func-names": "off",
+          "no-underscore-dangle": ["error", { allow: ["_tag"] }],
+        },
+      },
+      {
         // The onboarding session is pure TS so it runs under node `vp test`.
         files: ["apps/app/src/features/onboarding/session/**"],
         rules: {
