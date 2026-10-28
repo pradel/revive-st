@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
+  RefreshControl,
   ScrollView,
   useWindowDimensions,
   View,
@@ -85,6 +86,21 @@ export default function SpeakerSettings() {
   }, [speaker?.deviceID, loadPresets]);
 
   const margeAPIStatus = useMargeAPIStatusQuery(speaker?.host ?? "");
+
+  // Re-reads the speaker's state (name, audio, presets, info) and re-checks
+  // the Marge API configuration.
+  const [refreshing, setRefreshing] = useState(false);
+  const refresh = async () => {
+    if (!speaker) {
+      return;
+    }
+    setRefreshing(true);
+    await Promise.allSettled([
+      loadPresets(speaker.deviceID),
+      margeAPIStatus.refetch(),
+    ]);
+    setRefreshing(false);
+  };
 
   const goBack = () => {
     router.back();
@@ -172,6 +188,14 @@ export default function SpeakerSettings() {
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void refresh()}
+            tintColor={color.textSecondary}
+            colors={[color.accent]}
+          />
+        }
       >
         <Text variant="subhead" color="textSecondary" style={$subtitle}>
           {speaker.type} · {speaker.host}

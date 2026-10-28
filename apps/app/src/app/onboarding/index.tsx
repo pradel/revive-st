@@ -1,4 +1,3 @@
-import { useKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, usePreventRemove, useRouter } from "expo-router";
 import {
   type ComponentRef,
@@ -11,6 +10,7 @@ import {
 import { Alert, View, type TextStyle, type ViewStyle } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 
+import { KeepAwake } from "@/components/KeepAwake";
 import { isScenarioName } from "@/features/onboarding/adapters/simulated";
 import { CredentialsForm } from "@/features/onboarding/components/CredentialsForm";
 import { DoneView } from "@/features/onboarding/components/DoneView";
@@ -40,12 +40,6 @@ import { Text } from "@/ui/ds/Text";
 import { space } from "@/ui/tokens";
 
 type CredentialsPrompt = Extract<Prompt, { kind: "credentials" }>;
-
-/** Keeps the screen on while mounted (the session is working). */
-function KeepAwake() {
-  useKeepAwake();
-  return null;
-}
 
 interface SetupContentProps {
   view: SetupView;
