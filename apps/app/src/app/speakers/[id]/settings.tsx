@@ -99,6 +99,8 @@ export default function SpeakerSettings() {
       loadPresets(speaker.deviceID),
       margeAPIStatus.refetch(),
     ]);
+    // Show the bass the speaker just reported instead of the last local drag.
+    setBassSliderValue(null);
     setRefreshing(false);
   };
 
@@ -165,7 +167,11 @@ export default function SpeakerSettings() {
   const showLevels = levelControls !== null && levelControls !== undefined;
 
   const bassValue =
-    bassSliderValue ?? bassCaps?.bassDefault ?? bassCaps?.bassMin ?? -9;
+    bassSliderValue ??
+    speaker.bass ??
+    bassCaps?.bassDefault ??
+    bassCaps?.bassMin ??
+    -9;
 
   const margeStatus = (() => {
     if (margeAPIStatus.isLoading) {

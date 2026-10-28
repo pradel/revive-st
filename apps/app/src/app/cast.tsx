@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -31,6 +31,16 @@ export default function CastSheet() {
   );
   const [castError, setCastError] = useState<string | null>(null);
 
+  // The cast can finish after the user has already closed the sheet; going
+  // back then would pop whatever screen is now on top.
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+
   const castToSpeaker = async (speaker: BoseSpeaker) => {
     setCastError(null);
     setCastingToSpeakerId(speaker.deviceID);
@@ -42,7 +52,9 @@ export default function CastSheet() {
         name: station.name,
       });
       // Success shows up in the mini player; no need to interrupt.
-      router.back();
+      if (mountedRef.current) {
+        router.back();
+      }
     } catch (err) {
       logger.error(err);
       setCastError(
