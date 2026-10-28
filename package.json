@@ -5,10 +5,12 @@
     "release:app": "./scripts/release-app.sh",
     "ready": "vp check && vp run -r test && vp run -r build",
     "dev": "vp run website#dev",
+    "icons": "node scripts/export-icons.ts",
     "prepare": "vp config"
   },
   "devDependencies": {
     "@changesets/cli": "3.0.3",
+    "@resvg/resvg-js": "2.6.2",
     "vite-plus": "catalog:"
   },
   "engines": {
