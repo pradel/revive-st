@@ -1,13 +1,17 @@
 // Regenerates the app and website icons from the vector sources in brand/.
-// Run with `pnpm run icons` after editing brand/logo.svg or brand/logo-mark.svg.
+// Run with `vp run design#icons` after editing brand/logo.svg or brand/logo-mark.svg.
 import { readFile, writeFile } from "node:fs/promises";
 import { stdout } from "node:process";
 
 import { Resvg } from "@resvg/resvg-js";
 
-const root = new URL("../", import.meta.url);
-const logo = await readFile(new URL("brand/logo.svg", root), "utf8");
-const mark = await readFile(new URL("brand/logo-mark.svg", root), "utf8");
+const packageRoot = new URL("../", import.meta.url);
+const repoRoot = new URL("../../", packageRoot);
+const logo = await readFile(new URL("brand/logo.svg", packageRoot), "utf8");
+const mark = await readFile(
+  new URL("brand/logo-mark.svg", packageRoot),
+  "utf8",
+);
 
 const background =
   /<rect width="1024" height="1024" fill="(#[0-9A-Fa-f]{6})"/u.exec(logo)?.[1];
@@ -66,7 +70,7 @@ for (const { svg, size, files } of outputs) {
     .render()
     .asPng();
   for (const file of files) {
-    await writeFile(new URL(file, root), png);
+    await writeFile(new URL(file, repoRoot), png);
     stdout.write(`${file} (${size}×${size})\n`);
   }
 }
