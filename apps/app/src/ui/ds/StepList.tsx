@@ -1,5 +1,10 @@
-import type { ReactNode } from "react";
-import { ActivityIndicator, View, type ViewStyle } from "react-native";
+import { useEffect, useRef, type ReactNode } from "react";
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import { color, space, type ColorName } from "@/ui/tokens";
 
@@ -16,6 +21,11 @@ export interface StepListItem {
   description?: string;
   /** Right-aligned content, e.g. an elapsed time or countdown. */
   trailing?: ReactNode;
+  /**
+   * Spoken form of `trailing` (e.g. "45 seconds left"). The row reads as one
+   * element, so `trailing` is otherwise silent to screen readers.
+   */
+  trailingLabel?: string;
 }
 
 export interface StepListProps {
@@ -59,14 +69,67 @@ const TITLE_COLOR: Record<StepStatus, ColorName> = {
   error: "textPrimary",
 };
 
+const STATUS_LABEL: Record<StepStatus, string> = {
+  pending: "not started",
+  active: "in progress",
+  done: "done",
+  error: "failed",
+};
+
+function stepLabel(step: StepListItem): string {
+  const parts = [step.title, STATUS_LABEL[step.status]];
+  if (step.description) {
+    parts.push(step.description);
+  }
+  if (step.trailingLabel) {
+    parts.push(step.trailingLabel);
+  }
+  return parts.join(", ");
+}
+
+/**
+ * Announces steps whose status changed since the previous render to screen
+ * readers. The first render is silent; regressions to `pending` (resets) are
+ * not announced. Simultaneous changes are merged into one announcement so they
+ * don't interrupt each other.
+ */
+function useStatusAnnouncements(steps: StepListItem[]) {
+  const previousRef = useRef<Map<string, StepStatus> | null>(null);
+
+  useEffect(() => {
+    const previous = previousRef.current;
+    previousRef.current = new Map(steps.map((step) => [step.id, step.status]));
+    if (!previous) {
+      return;
+    }
+
+    const changes = steps
+      .filter(
+        (step) =>
+          step.status !== "pending" && previous.get(step.id) !== step.status,
+      )
+      .map((step) => `${step.title}, ${STATUS_LABEL[step.status]}`);
+    if (changes.length > 0) {
+      AccessibilityInfo.announceForAccessibility(changes.join(". "));
+    }
+  }, [steps]);
+}
+
 /** Vertical progress checklist: one row per step with a status glyph. */
 export function StepList({ steps }: StepListProps) {
+  useStatusAnnouncements(steps);
+
   return (
     <View style={$list}>
       {steps.map((step) => {
         const emphasized = step.status === "active" || step.status === "error";
         return (
-          <View key={step.id} style={$row}>
+          <View
+            key={step.id}
+            style={$row}
+            accessible
+            accessibilityLabel={stepLabel(step)}
+          >
             <View style={$icon}>
               {step.status === "active" ? (
                 <ActivityIndicator size="small" color={color.accent} />

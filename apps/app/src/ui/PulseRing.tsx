@@ -1,7 +1,9 @@
 import { useEffect } from "react";
 import type { ViewStyle } from "react-native";
 import Animated, {
+  cancelAnimation,
   useAnimatedStyle,
+  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
@@ -15,10 +17,15 @@ interface PulseRingProps {
   size?: number;
 }
 
+/** Expanding, fading ring. Renders nothing when the OS reduce-motion setting is on. */
 export function PulseRing({ delay, size = 80 }: PulseRingProps) {
+  const reduceMotion = useReducedMotion();
   const animatedValue = useSharedValue(0);
 
   useEffect(() => {
+    if (reduceMotion) {
+      return;
+    }
     animatedValue.set(0);
     animatedValue.set(
       withDelay(
@@ -26,7 +33,10 @@ export function PulseRing({ delay, size = 80 }: PulseRingProps) {
         withRepeat(withTiming(1, { duration: 2400 }), -1, false),
       ),
     );
-  }, [animatedValue, delay]);
+    return () => {
+      cancelAnimation(animatedValue);
+    };
+  }, [animatedValue, delay, reduceMotion]);
 
   const rStyle = useAnimatedStyle(() => ({
     transform: [{ scale: animatedValue.value * 1.5 + 1 }],
@@ -38,6 +48,10 @@ export function PulseRing({ delay, size = 80 }: PulseRingProps) {
     height: size,
     borderRadius: size / 2,
   };
+
+  if (reduceMotion) {
+    return null;
+  }
 
   return <Animated.View style={[$staticPulseRing, $dynamicStyle, rStyle]} />;
 }

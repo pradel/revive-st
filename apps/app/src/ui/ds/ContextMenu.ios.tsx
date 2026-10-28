@@ -10,13 +10,18 @@ import { disabled } from "@expo/ui/swift-ui/modifiers";
 import { useState } from "react";
 import { View, type LayoutChangeEvent, type ViewStyle } from "react-native";
 
-import type { ContextMenuAction, ContextMenuProps } from "./ContextMenu.types";
+import {
+  accessibilityMenuProps,
+  type ContextMenuAction,
+  type ContextMenuProps,
+} from "./ContextMenu.shared";
 
 export type {
   ContextMenuAction,
   ContextMenuConfig,
   ContextMenuProps,
-} from "./ContextMenu.types";
+  ContextMenuTriggerProps,
+} from "./ContextMenu.shared";
 
 function renderItem(action: ContextMenuAction, onAction: (id: string) => void) {
   const systemImage = typeof action.icon === "string" ? action.icon : undefined;
@@ -76,7 +81,7 @@ export function ContextMenu({
         <SwiftUIContextMenu.Trigger>
           <RNHostView matchContents>
             <View style={fill ? { width } : undefined}>
-              {children(undefined)}
+              {children(accessibilityMenuProps({ actions, onAction }))}
             </View>
           </RNHostView>
         </SwiftUIContextMenu.Trigger>

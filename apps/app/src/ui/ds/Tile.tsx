@@ -3,7 +3,11 @@ import { Pressable, View, type ViewStyle } from "react-native";
 import { artwork, radius } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
-import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
+import {
+  ContextMenu,
+  type ContextMenuConfig,
+  type ContextMenuTriggerProps,
+} from "./ContextMenu";
 import type { IconName } from "./Icon";
 import { Text } from "./Text";
 
@@ -28,13 +32,13 @@ export function Tile({
   menu,
   muted = false,
 }: TileProps) {
-  const renderTile = (openMenu: (() => void) | undefined) => (
+  const renderTile = (triggerProps?: ContextMenuTriggerProps) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={subtitle ? `${title}, ${subtitle}` : title}
       onPress={onPress}
-      onLongPress={openMenu}
-      disabled={!onPress && !openMenu}
+      {...triggerProps}
+      disabled={!onPress && !menu}
       style={({ pressed }) => [$tile, (pressed || muted) && $dimmed]}
     >
       <Artwork
@@ -64,7 +68,7 @@ export function Tile({
   return menu ? (
     <ContextMenu {...menu}>{renderTile}</ContextMenu>
   ) : (
-    renderTile(undefined)
+    renderTile()
   );
 }
 

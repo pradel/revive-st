@@ -15,6 +15,7 @@ import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
 import { formIcons } from "@/ui/form/icons";
 import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
+import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
@@ -27,7 +28,7 @@ export default function AppSettings() {
   return (
     <Screen>
       <Form>
-        <FieldGroup.Section title="About">
+        <FormSection title="About">
           <FormValueRow
             icon={formIcons.speaker}
             label="Revive SoundTouch"
@@ -47,9 +48,9 @@ export default function AppSettings() {
               void Linking.openURL(APP_CONFIG.GITHUB_URL);
             }}
           />
-        </FieldGroup.Section>
+        </FormSection>
 
-        <FieldGroup.Section title="Network">
+        <FormSection title="Network">
           <FormLinkRow
             icon={formIcons.refresh}
             label="Rescan local network"
@@ -61,9 +62,9 @@ export default function AppSettings() {
             disabled={isScanning}
             onPress={rescan}
           />
-        </FieldGroup.Section>
+        </FormSection>
 
-        <FieldGroup.Section title="Developer">
+        <FormSection title="Developer">
           <FormLinkRow
             icon={formIcons.terminal}
             label="Logs"
@@ -72,11 +73,11 @@ export default function AppSettings() {
               router.push("/logs");
             }}
           />
-        </FieldGroup.Section>
+        </FormSection>
 
         {/* Dev builds only: runs speaker setup against a fake scenario. */}
         {__DEV__ && (
-          <FieldGroup.Section title="Simulate speaker setup">
+          <FormSection title="Simulate speaker setup">
             {simulatedScenarios().map(({ name, description }) => (
               <FormLinkRow
                 key={name}
@@ -95,7 +96,7 @@ export default function AppSettings() {
                 {`Fake speaker and phone; ${HOME_SSID} password: ${HOME_PASSWORD}`}
               </Text>
             </FieldGroup.SectionFooter>
-          </FieldGroup.Section>
+          </FormSection>
         )}
       </Form>
     </Screen>

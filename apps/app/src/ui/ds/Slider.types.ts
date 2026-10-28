@@ -1,13 +1,13 @@
 import type { StyleProp, ViewStyle } from "react-native";
 
+import type { SliderDraft } from "@/lib/useSliderDraft";
 import type { ColorName } from "@/ui/tokens";
 
 export interface SliderProps {
-  value: number;
+  /** Draft from `useSliderDraft`: the value shown and the drag handlers. */
+  draft: SliderDraft;
   minimumValue: number;
   maximumValue: number;
-  /** Called with whole numbers while dragging. */
-  onValueChange: (value: number) => void;
   accessibilityLabel: string;
   /** Filled track color. */
   tint?: ColorName;

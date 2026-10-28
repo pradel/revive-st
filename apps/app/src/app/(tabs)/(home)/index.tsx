@@ -23,6 +23,7 @@ import {
   isSpeakerPlaying,
   isStandby,
   playStatusLabel,
+  trackTitle,
 } from "@/features/speakers/lib/playback";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
@@ -205,6 +206,7 @@ export default function Index() {
             onRefresh={rescan}
             tintColor={color.textSecondary}
             colors={[color.accent]}
+            progressBackgroundColor={color.surface2}
           />
         }
       >
@@ -251,9 +253,7 @@ export default function Index() {
                   <SpeakerCard
                     key={speaker.deviceID}
                     name={speaker.name}
-                    nowPlaying={
-                      hasMedia ? (speaker.track ?? "Unknown Track") : undefined
-                    }
+                    nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
                     detail={[speaker.artist, playStatusLabel(speaker)]
                       .filter(Boolean)
                       .join(" · ")}

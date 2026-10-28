@@ -297,6 +297,8 @@ export default function ConfigureSpeaker() {
     configState.status === "running" ? configState.rebootTimer : null;
 
   const steps: StepListItem[] = INITIAL_STEPS.map((step, index) => {
+    const countdown =
+      step.id === "wait_online" && rebootTimer !== null ? rebootTimer : null;
     let status: StepStatus = "pending";
     let description: string | undefined = undefined;
 
@@ -324,11 +326,13 @@ export default function ConfigureSpeaker() {
       status,
       description,
       trailing:
-        step.id === "wait_online" && rebootTimer !== null ? (
+        countdown === null ? undefined : (
           <Text variant="subhead" color="textSecondary" style={$countdown}>
-            {rebootTimer}s
+            {countdown}s
           </Text>
-        ) : undefined,
+        ),
+      trailingLabel:
+        countdown === null ? undefined : `${countdown} seconds left`,
     };
   });
 

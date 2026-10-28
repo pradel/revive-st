@@ -18,10 +18,9 @@ import type { SliderProps } from "./Slider.types";
 const scales = { small: 0.6, regular: 0.75 } as const;
 
 export function Slider({
-  value,
+  draft,
   minimumValue,
   maximumValue,
-  onValueChange,
   accessibilityLabel,
   tint = "textPrimary",
   size = "small",
@@ -39,11 +38,14 @@ export function Slider({
       <View style={$stretch}>
         <Host matchContents={{ vertical: true }}>
           <SwiftUISlider
-            value={value}
+            value={draft.value}
             min={minimumValue}
             max={maximumValue}
             onValueChange={(next) => {
-              onValueChange(Math.round(next));
+              draft.swiftUI.onValueChange(Math.round(next));
+            }}
+            onEditingChanged={(isEditing) => {
+              draft.swiftUI.onEditingChanged(isEditing);
             }}
             modifiers={[
               tintModifier(color[tint]),
