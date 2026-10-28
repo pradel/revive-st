@@ -25,17 +25,17 @@ export function HeroPhone() {
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[290%] aspect-square border border-separator rounded-full -z-10" />
 
       {/* Phone Hardware Mockup */}
-      <div className="absolute inset-0 rounded-[3rem] border-[12px] border-surface-3 bg-surface-3 shadow-phone overflow-hidden ring-1 ring-separator">
+      <div className="absolute inset-0 rounded-[3rem] border-[12px] border-device-frame bg-device-frame shadow-phone overflow-hidden ring-1 ring-separator">
         {/* Inner bezel */}
-        <div className="absolute inset-0 rounded-[2.25rem] border-[4px] border-bg bg-bg overflow-hidden">
+        <div className="absolute inset-0 rounded-[2.25rem] border-[4px] border-device-bezel bg-device-bezel overflow-hidden">
           {/* Notch */}
-          <div className="absolute top-0 inset-x-0 h-6 bg-bg z-50 rounded-b-3xl mx-[20%] flex justify-center items-center">
+          <div className="absolute top-0 inset-x-0 h-6 bg-device-bezel z-50 rounded-b-3xl mx-[20%] flex justify-center items-center">
             {/* Camera dot */}
-            <div className="w-1.5 h-1.5 rounded-full bg-surface-2 border border-surface-3/50" />
+            <div className="w-1.5 h-1.5 rounded-full bg-device-camera border border-device-frame/50" />
           </div>
 
           {/* Screen Content */}
-          <div className="relative w-full h-full bg-bg rounded-[2rem] overflow-hidden">
+          <div className="relative w-full h-full bg-device-bezel rounded-[2rem] overflow-hidden">
             {IMAGES.map((src, index) => (
               <div
                 key={src}
