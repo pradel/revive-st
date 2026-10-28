@@ -3,9 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AccessibilityInfo,
   Alert,
-  Platform,
   ScrollView,
-  ToastAndroid,
   View,
   type TextStyle,
   type ViewStyle,
@@ -38,17 +36,11 @@ export default function LogsViewer() {
   }, [copiedCount]);
 
   const handleCopyLogs = async () => {
-    await copyLogs();
-    const message = `Copied ${logs.length} log entries`;
-    if (Platform.OS === "android") {
-      // Android 13+ confirms clipboard writes itself; a toast would repeat it.
-      if (Platform.Version < 33) {
-        ToastAndroid.show(message, ToastAndroid.SHORT);
-      }
-      return;
+    const count = logs.length;
+    if (await copyLogs()) {
+      setCopiedCount(count);
+      AccessibilityInfo.announceForAccessibility(`Copied ${count} log entries`);
     }
-    setCopiedCount(logs.length);
-    AccessibilityInfo.announceForAccessibility(message);
   };
 
   const handleClearLogs = () => {
