@@ -29,10 +29,6 @@ export default function RootLayout() {
                   name="onboarding"
                   options={{ headerShown: false }}
                 />
-                <Stack.Screen
-                  name="speakers/[id]"
-                  options={{ headerShown: false }}
-                />
                 <Stack.Screen name="logs" options={{ title: "Logs" }} />
                 <Stack.Screen
                   name="speakers/[id]/now-playing"

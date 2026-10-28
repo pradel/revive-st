@@ -20,9 +20,11 @@ import {
   type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
+import { copyText } from "@/lib/clipboard";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
+import type { ContextMenuConfig } from "@/ui/ds/ContextMenu";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
@@ -33,6 +35,7 @@ import { SegmentedControl } from "@/ui/ds/SegmentedControl";
 import { Shelf } from "@/ui/ds/Shelf";
 import { Text } from "@/ui/ds/Text";
 import { Tile } from "@/ui/ds/Tile";
+import { nativeIcons } from "@/ui/nativeIcons";
 import { color, space } from "@/ui/tokens";
 
 const GENRE_TAGS = [
@@ -117,8 +120,52 @@ export default function RadioBrowser() {
     });
   };
 
+  const isFavorite = (station: RadioStation) =>
+    favorites.some((fav) => fav.stationuuid === station.stationuuid);
+
+  const toggleStationFavorite = (station: RadioStation) => {
+    const isFav = isFavorite(station);
+    haptics.toggle(!isFav);
+    toggleFavorite({ station, isFavorite: isFav });
+  };
+
+  const stationMenu = (station: RadioStation): ContextMenuConfig => {
+    const isFav = isFavorite(station);
+    return {
+      actions: [
+        { id: "play", title: "Play on…", icon: nativeIcons.cast },
+        {
+          id: "favorite",
+          title: isFav ? "Remove from favorites" : "Add to favorites",
+          icon: isFav ? nativeIcons.starSlash : nativeIcons.star,
+        },
+        { id: "copy", title: "Copy stream URL", icon: nativeIcons.copy },
+      ],
+      onAction: (id) => {
+        if (id === "play") {
+          handleStationPress(station);
+        } else if (id === "favorite") {
+          toggleStationFavorite(station);
+        } else {
+          void copyText(
+            station.url_resolved || station.url,
+            "Stream URL copied",
+          )
+            .then((needsConfirmation) => {
+              if (needsConfirmation) {
+                haptics.success();
+              }
+            })
+            .catch(() => {
+              haptics.error();
+            });
+        }
+      },
+    };
+  };
+
   const renderStationRow = ({ item }: { item: RadioStation }) => {
-    const isFav = favorites.some((fav) => fav.stationuuid === item.stationuuid);
+    const isFav = isFavorite(item);
 
     return (
       <ListRow
@@ -129,6 +176,7 @@ export default function RadioBrowser() {
         onPress={() => {
           handleStationPress(item);
         }}
+        menu={stationMenu(item)}
         trailing={
           <IconButton
             icon={isFav ? icons.starFilled : icons.star}
@@ -137,8 +185,7 @@ export default function RadioBrowser() {
             }
             tint={isFav ? "accent" : "textSecondary"}
             onPress={() => {
-              haptics.toggle(!isFav);
-              toggleFavorite({ station: item, isFavorite: isFav });
+              toggleStationFavorite(item);
             }}
           />
         }
@@ -234,6 +281,7 @@ export default function RadioBrowser() {
               onPress={() => {
                 handleStationPress(station);
               }}
+              menu={stationMenu(station)}
             />
           ))}
         </Shelf>

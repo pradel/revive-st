@@ -1,6 +1,12 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Stack, useRouter } from "expo-router";
-import { RefreshControl, ScrollView, View, type ViewStyle } from "react-native";
+import {
+  Alert,
+  RefreshControl,
+  ScrollView,
+  View,
+  type ViewStyle,
+} from "react-native";
 
 import {
   SPEAKER_SETUP_SUPPORTED,
@@ -10,23 +16,27 @@ import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
 import {
+  canSavePreset,
   findActiveSpeaker,
   hasLoadedMedia,
   isRadioSource,
   isSpeakerPlaying,
+  isStandby,
   playStatusLabel,
 } from "@/features/speakers/lib/playback";
 import { haptics } from "@/lib/haptics";
+import { logger } from "@/lib/logger";
 import { Button } from "@/ui/ds/Button";
+import type { ContextMenuConfig } from "@/ui/ds/ContextMenu";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Shelf } from "@/ui/ds/Shelf";
 import { SpeakerCard } from "@/ui/ds/SpeakerCard";
 import { Tile } from "@/ui/ds/Tile";
+import { nativeIcons } from "@/ui/nativeIcons";
 import { PulseRing } from "@/ui/PulseRing";
 import { color, space } from "@/ui/tokens";
-import { toolbarIcons } from "@/ui/toolbarIcons";
 
 const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
@@ -39,6 +49,9 @@ export default function Index() {
     volumeMutation,
     playPauseMutation,
     keyMutation,
+    powerToggleMutation,
+    selectSourceMutation,
+    savePresetMutation,
   } = useBose();
   const openSpeakerSetup = useOpenSpeakerSetup();
 
@@ -62,11 +75,121 @@ export default function Index() {
     });
   };
 
+  const speakerMenu = (speaker: BoseSpeaker): ContextMenuConfig => ({
+    actions: [
+      {
+        id: "now-playing",
+        title: "Now playing",
+        icon: nativeIcons.nowPlaying,
+      },
+      { id: "settings", title: "Settings", icon: nativeIcons.settings },
+      {
+        id: "source",
+        title: "Source",
+        icon: nativeIcons.source,
+        actions: [
+          {
+            id: "source-bluetooth",
+            title: "Bluetooth",
+            icon: nativeIcons.bluetooth,
+            checked: speaker.source === "BLUETOOTH",
+          },
+          {
+            id: "source-aux",
+            title: "AUX",
+            icon: nativeIcons.aux,
+            checked: speaker.source === "AUX",
+          },
+        ],
+      },
+      {
+        id: "power",
+        title: isStandby(speaker) ? "Turn on" : "Turn off",
+        icon: nativeIcons.power,
+      },
+    ],
+    onAction: (id) => {
+      const { deviceID } = speaker;
+      switch (id) {
+        case "now-playing":
+          openNowPlaying(speaker);
+          break;
+        case "settings":
+          openSettings(speaker);
+          break;
+        case "source-bluetooth":
+          haptics.tap();
+          selectSourceMutation.mutate({ deviceID, source: "BLUETOOTH" });
+          break;
+        case "source-aux":
+          haptics.tap();
+          selectSourceMutation.mutate({
+            deviceID,
+            source: "AUX",
+            sourceAccount: "AUX",
+          });
+          break;
+        case "power":
+          haptics.toggle(isStandby(speaker));
+          powerToggleMutation.mutate({ deviceID });
+          break;
+        default:
+          break;
+      }
+    },
+  });
+
+  const savePreset = (speaker: BoseSpeaker, slot: number) => {
+    savePresetMutation.mutate(
+      { deviceID: speaker.deviceID, presetId: slot },
+      {
+        onSuccess: () => {
+          haptics.success();
+        },
+        onError: (error) => {
+          logger.warn("[Home] Failed to save preset:", error);
+          haptics.error();
+          Alert.alert(
+            "Couldn't save preset",
+            `${speaker.name} didn't save Preset ${slot}. Try again.`,
+          );
+        },
+      },
+    );
+  };
+
+  const presetMenu = (
+    speaker: BoseSpeaker,
+    slot: number,
+    isEmpty: boolean,
+  ): ContextMenuConfig => ({
+    actions: [
+      ...(isEmpty
+        ? []
+        : [{ id: "play", title: "Play", icon: nativeIcons.play }]),
+      {
+        id: "save",
+        title: isEmpty
+          ? "Save current track here"
+          : "Replace with current track",
+        icon: nativeIcons.save,
+        disabled: !canSavePreset(speaker),
+      },
+    ],
+    onAction: (id) => {
+      if (id === "play") {
+        playPreset(speaker, slot);
+      } else {
+        savePreset(speaker, slot);
+      }
+    },
+  });
+
   return (
     <Screen footer={<NowPlayingBar />}>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
-          icon={toolbarIcons.add}
+          icon={nativeIcons.add}
           accessibilityLabel="Add speaker"
           hidden={!SPEAKER_SETUP_SUPPORTED}
           onPress={openSpeakerSetup}
@@ -154,6 +277,7 @@ export default function Index() {
                     onOpenSettings={() => {
                       openSettings(speaker);
                     }}
+                    menu={speakerMenu(speaker)}
                   />
                 );
               })}
@@ -173,7 +297,12 @@ export default function Index() {
                   );
                   if (!preset) {
                     return (
-                      <Tile key={slot} title={`Preset ${slot} · empty`} muted />
+                      <Tile
+                        key={slot}
+                        title={`Preset ${slot} · empty`}
+                        muted
+                        menu={presetMenu(presetSpeaker, slot, true)}
+                      />
                     );
                   }
                   return (
@@ -189,6 +318,7 @@ export default function Index() {
                       onPress={() => {
                         playPreset(presetSpeaker, slot);
                       }}
+                      menu={presetMenu(presetSpeaker, slot, false)}
                     />
                   );
                 })}

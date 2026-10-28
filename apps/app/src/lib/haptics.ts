@@ -47,6 +47,14 @@ export const haptics = {
         : selectionAsync(),
     );
   },
+  /** A long press opened a menu (iOS context menus play their own). */
+  longPress() {
+    play(
+      android
+        ? performAndroidHapticsAsync(AndroidHaptics.Long_Press)
+        : impactAsync(ImpactFeedbackStyle.Medium),
+    );
+  },
   /** A longer task finished: casting started, speaker configured. */
   success() {
     play(
