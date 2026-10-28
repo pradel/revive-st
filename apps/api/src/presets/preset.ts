@@ -25,3 +25,13 @@ export class Preset extends Schema.Class<Preset>("Preset")({
   updatedOn: Schema.optional(Schema.Number),
   contentItem: ContentItem,
 }) {}
+
+/**
+ * A preset as stored. Rows written before preset ids were validated may hold
+ * any integer id, so reads accept them; writes still require a `PresetId`.
+ */
+export const StoredPreset = Schema.Struct({
+  ...Preset.fields,
+  id: Schema.Int,
+});
+export type StoredPreset = typeof StoredPreset.Type;

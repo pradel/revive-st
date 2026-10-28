@@ -1,4 +1,4 @@
-import type { Preset } from "../presets/preset.ts";
+import type { StoredPreset } from "../presets/preset.ts";
 
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -46,7 +46,7 @@ export function createAccountFullXml(accountId: string): string {
 </account>`;
 }
 
-export function createPresetsXml(presets: readonly Preset[]): string {
+export function createPresetsXml(presets: readonly StoredPreset[]): string {
   if (presets.length === 0) {
     return `${XML_HEADER}\n<presets/>`;
   }

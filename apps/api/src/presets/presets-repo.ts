@@ -3,9 +3,11 @@ import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
 import { presetsTable } from "../db/schema.ts";
-import { type DeviceId, Preset } from "./preset.ts";
+import { type DeviceId, type Preset, StoredPreset } from "./preset.ts";
 
-const decodePresets = Schema.decodeUnknownEffect(Schema.Array(Preset));
+const decodeStoredPresets = Schema.decodeUnknownEffect(
+  Schema.Array(StoredPreset),
+);
 
 /** Presets stored per device, served back to speakers by the Marge API. */
 export class PresetsRepo extends Context.Service<
@@ -13,7 +15,7 @@ export class PresetsRepo extends Context.Service<
   {
     readonly findByDevice: (
       deviceId: DeviceId,
-    ) => Effect.Effect<readonly Preset[]>;
+    ) => Effect.Effect<readonly StoredPreset[]>;
     /**
      * Inserts or replaces presets by id. `updatedOn` is always the current
      * time; `createdOn` is kept from the stored row, else taken from the
@@ -38,7 +40,7 @@ export class PresetsRepo extends Context.Service<
           .from(presetsTable)
           .where(eq(presetsTable.deviceId, deviceId))
           .orderBy(asc(presetsTable.presetId));
-        return yield* decodePresets(
+        return yield* decodeStoredPresets(
           rows.map((row) => ({
             id: row.presetId,
             createdOn: row.createdOn ?? undefined,

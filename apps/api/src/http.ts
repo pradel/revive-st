@@ -30,6 +30,16 @@ const isXmlOrJson = (contentType: string | undefined) =>
 
 const textDecoder = new TextDecoder();
 
+const MAX_LOGGED_BODY_LENGTH = 4096;
+
+const truncateBody = (body: string) =>
+  body.length <= MAX_LOGGED_BODY_LENGTH
+    ? body
+    : `${body.slice(0, MAX_LOGGED_BODY_LENGTH)}… (${body.length - MAX_LOGGED_BODY_LENGTH} more chars)`;
+
+/** The path only: query strings carry encoded station data. */
+const pathOf = (url: string) => url.split("?", 1)[0];
+
 /** Logs XML and JSON bodies: the record of what speakers actually send. */
 const LogBodiesLayer = HttpRouter.middleware(
   (httpEffect) =>
@@ -38,7 +48,7 @@ const LogBodiesLayer = HttpRouter.middleware(
         if (isXmlOrJson(request.headers["content-type"])) {
           const body = yield* request.text.pipe(Effect.orElseSucceed(() => ""));
           if (body !== "") {
-            yield* Effect.logInfo("Request body", body);
+            yield* Effect.logInfo("Request body", truncateBody(body));
           }
         }
         const response = yield* httpEffect;
@@ -48,14 +58,14 @@ const LogBodiesLayer = HttpRouter.middleware(
         ) {
           yield* Effect.logInfo(
             "Response body",
-            textDecoder.decode(response.body.body),
+            truncateBody(textDecoder.decode(response.body.body)),
           ).pipe(Effect.annotateLogs("http.status", response.status));
         }
         return response;
       }).pipe(
         Effect.annotateLogs({
           "http.method": request.method,
-          "http.url": request.url,
+          "http.url": pathOf(request.url),
         }),
       ),
     ),

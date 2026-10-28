@@ -1,8 +1,16 @@
 import { assert, describe, it } from "@effect/vitest";
-import { Effect } from "effect";
+import { Effect, Layer } from "effect";
 import { TestClock } from "effect/testing";
 
-import { ContentItem, DeviceId, Preset, PresetId } from "./preset.ts";
+import { Database } from "../db/database.ts";
+import { presetsTable } from "../db/schema.ts";
+import {
+  ContentItem,
+  DeviceId,
+  Preset,
+  PresetId,
+  type StoredPreset,
+} from "./preset.ts";
 import { PresetsRepo } from "./presets-repo.ts";
 
 const deviceA = DeviceId.make("device-a");
@@ -25,6 +33,17 @@ const preset = (
     }),
   });
 
+/** The read-back shape of {@link preset}. */
+const storedPreset = (
+  id: number,
+  itemName: string,
+  timestamps: { createdOn: number; updatedOn: number },
+): StoredPreset => ({
+  id,
+  ...timestamps,
+  contentItem: preset(id, itemName).contentItem,
+});
+
 describe("PresetsRepo", () => {
   it.effect("round-trips presets per device, ordered by id", () =>
     Effect.gen(function* () {
@@ -34,8 +53,8 @@ describe("PresetsRepo", () => {
       yield* repo.upsert(deviceB, [preset(1, "other")]);
 
       assert.deepStrictEqual(yield* repo.findByDevice(deviceA), [
-        preset(1, "one", { createdOn: 1_000, updatedOn: 1_000 }),
-        preset(3, "three", { createdOn: 1_000, updatedOn: 1_000 }),
+        storedPreset(1, "one", { createdOn: 1_000, updatedOn: 1_000 }),
+        storedPreset(3, "three", { createdOn: 1_000, updatedOn: 1_000 }),
       ]);
       assert.deepStrictEqual(
         (yield* repo.findByDevice(deviceB)).map(
@@ -73,5 +92,28 @@ describe("PresetsRepo", () => {
       yield* repo.upsert(deviceA, []);
       assert.deepStrictEqual(yield* repo.findByDevice(deviceA), []);
     }).pipe(Effect.provide(PresetsRepo.layerTest)),
+  );
+
+  it.effect("reads rows stored with ids outside 1-6", () =>
+    Effect.gen(function* () {
+      const db = yield* Database;
+      yield* db.insert(presetsTable).values({
+        deviceId: deviceA,
+        presetId: 9,
+        source: "TUNEIN",
+        location: "s123",
+        sourceAccount: "",
+        isPresetable: true,
+        itemName: "Legacy",
+      });
+      const repo = yield* PresetsRepo;
+      const [stored] = yield* repo.findByDevice(deviceA);
+      assert.strictEqual(stored.id, 9);
+      assert.strictEqual(stored.contentItem.itemName, "Legacy");
+    }).pipe(
+      Effect.provide(
+        PresetsRepo.layerNoDeps.pipe(Layer.provideMerge(Database.layerTest)),
+      ),
+    ),
   );
 });
