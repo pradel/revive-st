@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   FlatList,
   RefreshControl,
-  ScrollView,
   View,
   type ViewStyle,
 } from "react-native";
@@ -23,9 +22,9 @@ import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { copyText } from "@/lib/clipboard";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
-import { Chip } from "@/ui/ds/Chip";
 import type { ContextMenuConfig } from "@/ui/ds/ContextMenu";
 import { EmptyState } from "@/ui/ds/EmptyState";
+import { FilterChips } from "@/ui/ds/FilterChips";
 import { icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { ListRow } from "@/ui/ds/ListRow";
@@ -49,6 +48,8 @@ const GENRE_TAGS = [
   "News",
   "Ambient",
 ];
+
+const GENRE_OPTIONS = GENRE_TAGS.map((tag) => ({ value: tag, label: tag }));
 
 const TABS = [
   { value: "search", label: "Browse" },
@@ -250,25 +251,17 @@ export default function RadioBrowser() {
   const browseHeader = (
     <>
       {controls}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={$tags}
-      >
-        {GENRE_TAGS.map((tag) => (
-          <Chip
-            key={tag}
-            label={tag}
-            selected={selectedTag === tag}
-            onPress={() => {
-              haptics.selection();
-              const nextTag = selectedTag === tag ? "All" : tag;
-              searchBarRef.current?.clearText();
-              handleSearch("", nextTag);
-            }}
-          />
-        ))}
-      </ScrollView>
+      <FilterChips
+        options={GENRE_OPTIONS}
+        value={selectedTag ?? "All"}
+        style={$tags}
+        onSelect={(tag) => {
+          haptics.selection();
+          const nextTag = selectedTag === tag ? "All" : tag;
+          searchBarRef.current?.clearText();
+          handleSearch("", nextTag);
+        }}
+      />
       {favorites.length > 0 && !isSearching && (
         <Shelf title="Your favorites">
           {favorites.map((station) => (
@@ -376,9 +369,7 @@ const $controls: ViewStyle = {
 };
 
 const $tags: ViewStyle = {
-  gap: space.xs,
-  paddingHorizontal: space.screen,
-  paddingVertical: space.sm,
+  paddingVertical: space.xxs,
 };
 
 const $listContent: ViewStyle = {

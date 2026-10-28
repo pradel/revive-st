@@ -14,7 +14,6 @@ export interface IconButtonProps {
   icon: IconName;
   accessibilityLabel: string;
   onPress?: () => void;
-  onLongPress?: () => void;
   variant?: IconButtonVariant;
   /** Diameter of the button; never below the 40pt hit area. */
   size?: number;
@@ -34,7 +33,6 @@ export function IconButton({
   icon,
   accessibilityLabel,
   onPress,
-  onLongPress,
   variant = "plain",
   size = 40,
   iconSize,
@@ -54,7 +52,6 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       onPress={onPress}
-      onLongPress={onLongPress}
       disabled={disabled}
       hitSlop={4}
       style={({ pressed }: PressableStateCallbackType) => [

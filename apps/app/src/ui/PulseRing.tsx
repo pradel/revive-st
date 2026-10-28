@@ -3,12 +3,13 @@ import type { ViewStyle } from "react-native";
 import Animated, {
   cancelAnimation,
   useAnimatedStyle,
-  useReducedMotion,
   useSharedValue,
   withDelay,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
+
+import { useReduceMotion } from "@/lib/useReduceMotion";
 
 import { color } from "./tokens";
 
@@ -19,7 +20,7 @@ interface PulseRingProps {
 
 /** Expanding, fading ring. Renders nothing when the OS reduce-motion setting is on. */
 export function PulseRing({ delay, size = 80 }: PulseRingProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = useReduceMotion();
   const animatedValue = useSharedValue(0);
 
   useEffect(() => {

@@ -32,7 +32,7 @@ export function parseXml(xml: string): XmlNode {
       const attrRegex = /([a-zA-Z0-9_-]+)="([^"]*)"/g;
       let am: RegExpExecArray | null;
       while ((am = attrRegex.exec(attrStr)) !== null) {
-        attrs[am[1]] = am[2];
+        attrs[am[1]] = decodeXmlEntities(am[2]);
       }
     }
 
@@ -93,7 +93,7 @@ export function parseXml(xml: string): XmlNode {
         throw new Error(`Mismatched tags: <${node.name}> and </${token.name}>`);
       }
 
-      node.text = cleanText(text);
+      node.text = decodeXmlEntities(cleanText(text));
 
       if (stack.length > 0) {
         stack[stack.length - 1].children.push(node);
@@ -108,6 +108,38 @@ export function parseXml(xml: string): XmlNode {
     throw new XmlParseError({ message: "Empty XML document", rawXml: xml });
   }
   return root;
+}
+
+const namedEntities: Record<string, string> = {
+  amp: "&",
+  lt: "<",
+  gt: ">",
+  quot: '"',
+  apos: "'",
+};
+
+/**
+ * Decodes XML character references (`&amp;`, `&#233;`, `&#xE9;`) in one pass,
+ * so `&amp;lt;` becomes the literal text `&lt;`. Unknown names and numeric
+ * references outside Unicode are kept as written.
+ */
+export function decodeXmlEntities(value: string): string {
+  return value.replace(
+    /&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/g,
+    (reference, entity: string) => {
+      if (entity.startsWith("#")) {
+        const codePoint = entity.startsWith("#x")
+          ? Number.parseInt(entity.slice(2), 16)
+          : Number.parseInt(entity.slice(1), 10);
+        return codePoint <= 0x10ffff
+          ? String.fromCodePoint(codePoint)
+          : reference;
+      }
+      return Object.hasOwn(namedEntities, entity)
+        ? namedEntities[entity]
+        : reference;
+    },
+  );
 }
 
 export function getChild(root: XmlNode, name: string): XmlNode | undefined {

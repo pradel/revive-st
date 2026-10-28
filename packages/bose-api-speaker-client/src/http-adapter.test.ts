@@ -281,6 +281,40 @@ describe("boseSpeakerClient", () => {
       expect(val.stationName).toBe("Radio Station");
       expect(val.playStatus).toBe("PLAY_STATE");
     });
+
+    it("decodes XML entities in text and attributes, once", async () => {
+      mockFetch(
+        200,
+        `<nowPlaying deviceID="${DEVICE_ID}" source="SPOTIFY" sourceAccount="Tom &amp; Jerry">
+          <ContentItem source="SPOTIFY" location="" sourceAccount="" isPresetable="true">
+            <itemName>Rock &amp; Roll</itemName>
+          </ContentItem>
+          <track>Indian Flute (feat. Sebastian &amp; Rajé Shwari)</track>
+          <artist>Caf&#233; &#xE9;l&#233;gant</artist>
+          <album>&amp;lt;not a tag&amp;gt;</album>
+          <playStatus>PLAY_STATE</playStatus>
+        </nowPlaying>`,
+      );
+      const val = unwrapOk<NowPlayingResponse>(await client.getNowPlaying());
+      expect(val.track).toBe("Indian Flute (feat. Sebastian & Rajé Shwari)");
+      expect(val.artist).toBe("Café élégant");
+      expect(val.album).toBe("&lt;not a tag&gt;");
+      expect(val.contentItem?.itemName).toBe("Rock & Roll");
+    });
+
+    it("keeps unknown and out-of-range references as written", async () => {
+      mockFetch(
+        200,
+        `<nowPlaying deviceID="${DEVICE_ID}" source="SPOTIFY">
+          <track>&constructor; &toString; &nbsp;</track>
+          <artist>&#x110000; &#99999999;</artist>
+          <playStatus>PLAY_STATE</playStatus>
+        </nowPlaying>`,
+      );
+      const val = unwrapOk<NowPlayingResponse>(await client.getNowPlaying());
+      expect(val.track).toBe("&constructor; &toString; &nbsp;");
+      expect(val.artist).toBe("&#x110000; &#99999999;");
+    });
   });
 
   describe("/trackInfo", () => {

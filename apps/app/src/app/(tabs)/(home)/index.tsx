@@ -58,10 +58,11 @@ export default function Index() {
 
   const presetSpeaker = findActiveSpeaker(speakers) ?? speakers[0];
 
+  const playerHref = (speaker: BoseSpeaker) =>
+    `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing` as const;
+
   const openNowPlaying = (speaker: BoseSpeaker) => {
-    router.push(
-      `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
-    );
+    router.push(playerHref(speaker));
   };
 
   const openSettings = (speaker: BoseSpeaker) => {
@@ -271,9 +272,7 @@ export default function Index() {
                       haptics.tap();
                       playPauseMutation.mutate({ deviceID: speaker.deviceID });
                     }}
-                    onOpen={() => {
-                      openNowPlaying(speaker);
-                    }}
+                    playerHref={playerHref(speaker)}
                     onOpenSettings={() => {
                       openSettings(speaker);
                     }}

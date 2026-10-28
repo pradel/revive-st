@@ -4,7 +4,6 @@ import {
   AccessibilityInfo,
   Alert,
   FlatList,
-  ScrollView,
   View,
   type TextStyle,
   type ViewStyle,
@@ -14,8 +13,8 @@ import { Card } from "@/components/ui/Card";
 import { haptics } from "@/lib/haptics";
 import type { LogEntry, LogLevel } from "@/lib/logger";
 import { useLogger } from "@/lib/useLogger";
-import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
+import { FilterChips } from "@/ui/ds/FilterChips";
 import { Icon } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Text } from "@/ui/ds/Text";
@@ -48,10 +47,10 @@ export default function LogsViewer() {
   const hasLogs = logs.length > 0;
   const [copiedCount, setCopiedCount] = useState<number | null>(null);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
-  const visibleLogs =
-    levelFilter === "all"
-      ? logs
-      : logs.filter((entry) => entry.level === levelFilter);
+  // Stored oldest first; shown newest first. Copy and Share keep the order.
+  const visibleLogs = logs
+    .filter((entry) => levelFilter === "all" || entry.level === levelFilter)
+    .reverse();
   const emptyTitle =
     LEVEL_FILTERS.find((filter) => filter.value === levelFilter)?.emptyTitle ??
     "";
@@ -146,27 +145,18 @@ export default function LogsViewer() {
         renderItem={({ item }) => <LogRow entry={item} />}
         ListHeaderComponent={
           hasLogs ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
+            <FilterChips
+              options={LEVEL_FILTERS}
+              value={levelFilter}
               style={$filters}
-              contentContainerStyle={$filtersContent}
-            >
-              {LEVEL_FILTERS.map((filter) => (
-                <Chip
-                  key={filter.value}
-                  label={filter.label}
-                  selected={levelFilter === filter.value}
-                  onPress={() => {
-                    if (filter.value === levelFilter) {
-                      return;
-                    }
-                    haptics.selection();
-                    setLevelFilter(filter.value);
-                  }}
-                />
-              ))}
-            </ScrollView>
+              onSelect={(level) => {
+                if (level === levelFilter) {
+                  return;
+                }
+                haptics.selection();
+                setLevelFilter(level);
+              }}
+            />
           ) : undefined
         }
         ListEmptyComponent={
@@ -230,12 +220,6 @@ const $listContent: ViewStyle = {
 
 const $filters: ViewStyle = {
   marginHorizontal: -space.screen,
-};
-
-const $filtersContent: ViewStyle = {
-  gap: space.xs,
-  paddingHorizontal: space.screen,
-  paddingBottom: space.xs,
 };
 
 const $logEntry: ViewStyle = {
