@@ -150,11 +150,15 @@ export default function RadioBrowser() {
           void copyText(
             station.url_resolved || station.url,
             "Stream URL copied",
-          ).then((needsConfirmation) => {
-            if (needsConfirmation) {
-              haptics.success();
-            }
-          });
+          )
+            .then((needsConfirmation) => {
+              if (needsConfirmation) {
+                haptics.success();
+              }
+            })
+            .catch(() => {
+              haptics.error();
+            });
         }
       },
     };
