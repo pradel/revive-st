@@ -1,7 +1,7 @@
-import * as Clipboard from "expo-clipboard";
 import { useCallback, useSyncExternalStore } from "react";
 import { Share } from "react-native";
 
+import { copyText } from "./clipboard";
 import { clearLogs, getLogs, subscribe, type LogEntry } from "./logger";
 
 function formatLogs(logs: LogEntry[]): string {
@@ -16,7 +16,8 @@ function formatLogs(logs: LogEntry[]): string {
 export function useLogger(): {
   logs: LogEntry[];
   clearLogs: () => Promise<void>;
-  copyLogs: () => Promise<void>;
+  /** Resolves `true` when the caller should confirm the copy (see `copyText`). */
+  copyLogs: () => Promise<boolean>;
   shareLogs: () => Promise<void>;
 } {
   const logs = useSyncExternalStore(subscribe, getLogs, getLogs);
@@ -25,9 +26,10 @@ export function useLogger(): {
     await clearLogs();
   }, []);
 
-  const handleCopyLogs = useCallback(async () => {
-    await Clipboard.setStringAsync(formatLogs(logs));
-  }, [logs]);
+  const handleCopyLogs = useCallback(
+    async () => copyText(formatLogs(logs), `Copied ${logs.length} log entries`),
+    [logs],
+  );
 
   const handleShareLogs = useCallback(async () => {
     await Share.share({ message: formatLogs(logs) });

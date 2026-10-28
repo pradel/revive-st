@@ -1,28 +1,23 @@
+import { FieldGroup, Text } from "@expo/ui";
 import Constants from "expo-constants";
 import { useRouter } from "expo-router";
-import {
-  ActivityIndicator,
-  Linking,
-  ScrollView,
-  View,
-  type ViewStyle,
-} from "react-native";
+import { Linking } from "react-native";
 
 import { APP_CONFIG } from "@/config";
-import { SimulateSetupCard } from "@/features/onboarding/components/SimulateSetupCard";
+import { simulatedScenarios } from "@/features/onboarding/adapters/simulated";
+import {
+  HOME_PASSWORD,
+  HOME_SSID,
+} from "@/features/onboarding/session/testing/scenarios";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
-import { Icon, icons, type IconName } from "@/ui/ds/Icon";
-import { ListRow } from "@/ui/ds/ListRow";
 import { Screen } from "@/ui/ds/Screen";
-import { SectionHeader } from "@/ui/ds/SectionHeader";
-import { color, radius, space } from "@/ui/tokens";
+import { Form } from "@/ui/form/Form";
+import { formIcons } from "@/ui/form/icons";
+import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
+import { color } from "@/ui/tokens";
 
 const version = Constants.expoConfig?.version ?? "0.0.0";
-
-const chevron = (
-  <Icon name={icons.chevronRight} size={16} color="textTertiary" />
-);
 
 export default function AppSettings() {
   const router = useRouter();
@@ -31,111 +26,78 @@ export default function AppSettings() {
 
   return (
     <Screen>
-      <ScrollView
-        contentContainerStyle={$content}
-        contentInsetAdjustmentBehavior="automatic"
-        showsVerticalScrollIndicator={false}
-      >
-        <SectionHeader title="About" />
-        <ListRow
-          title="Revive SoundTouch"
-          subtitle={`Version ${version}`}
-          leading={<RowIcon name={icons.speaker} />}
-        />
-        <ListRow
-          title="Website"
-          leading={
-            <RowIcon
-              name={{ ios: "globe", android: "language", web: "language" }}
-            />
-          }
-          trailing={chevron}
-          onPress={() => {
-            void Linking.openURL(APP_CONFIG.WEBSITE_URL);
-          }}
-        />
-        <ListRow
-          title="GitHub"
-          leading={
-            <RowIcon
-              name={{
-                ios: "chevron.left.forwardslash.chevron.right",
-                android: "code",
-                web: "code",
-              }}
-            />
-          }
-          trailing={chevron}
-          onPress={() => {
-            void Linking.openURL(APP_CONFIG.GITHUB_URL);
-          }}
-        />
+      <Form>
+        <FieldGroup.Section title="About">
+          <FormValueRow
+            icon={formIcons.speaker}
+            label="Revive SoundTouch"
+            value={`Version ${version}`}
+          />
+          <FormLinkRow
+            icon={formIcons.website}
+            label="Website"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.WEBSITE_URL);
+            }}
+          />
+          <FormLinkRow
+            icon={formIcons.code}
+            label="GitHub"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.GITHUB_URL);
+            }}
+          />
+        </FieldGroup.Section>
 
-        <SectionHeader title="Network" />
-        <ListRow
-          title="Rescan local network"
-          subtitle={
-            isScanning ? "Scanning network…" : "Search for SoundTouch speakers"
-          }
-          leading={
-            <View style={$iconWell}>
-              {isScanning ? (
-                <ActivityIndicator size="small" color={color.textSecondary} />
-              ) : (
-                <Icon name={icons.refresh} />
-              )}
-            </View>
-          }
-          trailing={chevron}
-          onPress={rescan}
-          disabled={isScanning}
-        />
+        <FieldGroup.Section title="Network">
+          <FormLinkRow
+            icon={formIcons.refresh}
+            label="Rescan local network"
+            description={
+              isScanning
+                ? "Scanning network…"
+                : "Search for SoundTouch speakers"
+            }
+            disabled={isScanning}
+            onPress={rescan}
+          />
+        </FieldGroup.Section>
 
-        <SectionHeader title="Developer" />
-        <ListRow
-          title="Logs"
-          subtitle={`${logs.length} entries stored`}
-          leading={
-            <RowIcon
-              name={{ ios: "terminal", android: "terminal", web: "terminal" }}
-            />
-          }
-          trailing={chevron}
-          onPress={() => {
-            router.push("/logs");
-          }}
-        />
+        <FieldGroup.Section title="Developer">
+          <FormLinkRow
+            icon={formIcons.terminal}
+            label="Logs"
+            value={String(logs.length)}
+            onPress={() => {
+              router.push("/logs");
+            }}
+          />
+        </FieldGroup.Section>
+
+        {/* Dev builds only: runs speaker setup against a fake scenario. */}
         {__DEV__ && (
-          <View style={$devSlot}>
-            <SimulateSetupCard />
-          </View>
+          <FieldGroup.Section title="Simulate speaker setup">
+            {simulatedScenarios().map(({ name, description }) => (
+              <FormLinkRow
+                key={name}
+                label={name}
+                description={description}
+                onPress={() => {
+                  router.push({
+                    pathname: "/onboarding",
+                    params: { simulate: name },
+                  });
+                }}
+              />
+            ))}
+            <FieldGroup.SectionFooter>
+              <Text textStyle={{ color: color.textSecondary, fontSize: 13 }}>
+                {`Fake speaker and phone; ${HOME_SSID} password: ${HOME_PASSWORD}`}
+              </Text>
+            </FieldGroup.SectionFooter>
+          </FieldGroup.Section>
         )}
-      </ScrollView>
+      </Form>
     </Screen>
   );
 }
-
-function RowIcon({ name }: { name: IconName }) {
-  return (
-    <View style={$iconWell}>
-      <Icon name={name} />
-    </View>
-  );
-}
-
-const $content: ViewStyle = {
-  paddingBottom: space.xxl,
-};
-
-const $iconWell: ViewStyle = {
-  width: 40,
-  height: 40,
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: radius.sm,
-  backgroundColor: color.surface1,
-};
-
-const $devSlot: ViewStyle = {
-  paddingHorizontal: space.screen,
-};
