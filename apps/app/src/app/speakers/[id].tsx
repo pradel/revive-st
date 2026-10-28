@@ -15,9 +15,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { Slider } from "@/components/ui/Slider";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { logger } from "@/lib/logger";
+import { useDraftValue } from "@/lib/useDraftValue";
+import { Slider } from "@/ui/ds/Slider";
 
 export default function SpeakerDetail() {
   const router = useRouter();
@@ -38,8 +39,22 @@ export default function SpeakerDetail() {
   const speaker = speakers.find((item) => item.deviceID === id);
   const [savingPresetId, setSavingPresetId] = useState<number | null>(null);
 
-  const [localVolume, setLocalVolume] = useState<number | null>(null);
-  const [localBass, setLocalBass] = useState<number | null>(null);
+  const [draftVolume, setDraftVolume] = useDraftValue(
+    speaker?.volume ?? 0,
+    (volume) => {
+      if (speaker) {
+        volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
+      }
+    },
+  );
+  const [draftBass, setDraftBass] = useDraftValue(
+    speaker?.bass ?? -5,
+    (value) => {
+      if (speaker) {
+        setBassMutation.mutate({ deviceID: speaker.deviceID, value });
+      }
+    },
+  );
 
   const speakerDeviceID = speaker?.deviceID;
   useEffect(() => {
@@ -338,9 +353,7 @@ export default function SpeakerDetail() {
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Volume</Text>
                 <Text style={$panelValue}>
-                  {speaker.muteEnabled
-                    ? "Muted"
-                    : `${localVolume ?? speaker.volume ?? 0}%`}
+                  {speaker.muteEnabled ? "Muted" : `${draftVolume}%`}
                 </Text>
               </View>
 
@@ -361,19 +374,11 @@ export default function SpeakerDetail() {
                 {/* Volume Slider */}
                 <View style={$sliderContainer}>
                   <Slider
-                    value={speaker.muteEnabled ? 0 : (speaker.volume ?? 30)}
+                    value={speaker.muteEnabled ? 0 : draftVolume}
                     minimumValue={0}
                     maximumValue={100}
-                    onValueChange={(val) => {
-                      setLocalVolume(Math.round(val));
-                    }}
-                    onSlidingComplete={(val) => {
-                      setLocalVolume(null);
-                      volumeMutation.mutate({
-                        deviceID: speaker.deviceID,
-                        volume: val,
-                      });
-                    }}
+                    accessibilityLabel="Volume"
+                    onValueChange={setDraftVolume}
                   />
                 </View>
 
@@ -404,27 +409,19 @@ export default function SpeakerDetail() {
               <View style={$panelHeader}>
                 <Text style={$panelTitle}>Bass Tuning</Text>
                 <Text style={$panelValue}>
-                  {localBass ?? speaker.bass ?? "..."}
+                  {speaker.bass === undefined ? "..." : draftBass}
                 </Text>
               </View>
 
               <View style={$volumeRow}>
                 <View style={$sliderContainer}>
                   <Slider
-                    value={speaker.bass ?? -5}
+                    value={draftBass}
                     minimumValue={-9}
                     maximumValue={0}
-                    fillColor="#f59e0b"
-                    onValueChange={(val) => {
-                      setLocalBass(Math.round(val));
-                    }}
-                    onSlidingComplete={(val) => {
-                      setLocalBass(null);
-                      setBassMutation.mutate({
-                        deviceID: speaker.deviceID,
-                        value: val,
-                      });
-                    }}
+                    tint="warning"
+                    accessibilityLabel="Bass"
+                    onValueChange={setDraftBass}
                   />
                 </View>
 

@@ -20,6 +20,7 @@ import {
   type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
+import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -136,6 +137,7 @@ export default function RadioBrowser() {
             }
             tint={isFav ? "accent" : "textSecondary"}
             onPress={() => {
+              haptics.toggle(!isFav);
               toggleFavorite({ station: item, isFavorite: isFav });
             }}
           />
@@ -212,6 +214,7 @@ export default function RadioBrowser() {
             label={tag}
             selected={selectedTag === tag}
             onPress={() => {
+              haptics.selection();
               const nextTag = selectedTag === tag ? "All" : tag;
               searchBarRef.current?.clearText();
               handleSearch("", nextTag);

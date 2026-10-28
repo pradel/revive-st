@@ -1,8 +1,8 @@
-import { Pressable, View, type ViewStyle } from "react-native";
+import { SegmentedControl as NativeSegmentedControl } from "@expo/ui/community/segmented-control";
+import { Platform } from "react-native";
 
-import { color, radius, space } from "@/ui/tokens";
-
-import { Text } from "./Text";
+import { haptics } from "@/lib/haptics";
+import { color } from "@/ui/tokens";
 
 export interface SegmentedOption<Value extends string> {
   value: Value;
@@ -15,53 +15,29 @@ export interface SegmentedControlProps<Value extends string> {
   onChange: (value: Value) => void;
 }
 
+/**
+ * Native segmented control (UISegmentedControl on iOS, Material 3 segmented
+ * buttons on Android) with typed values. Android's selected segment uses the
+ * accent tint instead of the wallpaper-derived Material color.
+ */
 export function SegmentedControl<Value extends string>({
   options,
   value,
   onChange,
 }: SegmentedControlProps<Value>) {
   return (
-    <View style={$track} accessibilityRole="tablist">
-      {options.map((option) => {
-        const selected = option.value === value;
-        return (
-          <Pressable
-            key={option.value}
-            accessibilityRole="tab"
-            accessibilityState={{ selected }}
-            onPress={() => {
-              onChange(option.value);
-            }}
-            style={[$segment, selected && $segmentSelected]}
-          >
-            <Text
-              variant="subhead"
-              color={selected ? "textPrimary" : "textSecondary"}
-            >
-              {option.label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <NativeSegmentedControl
+      values={options.map((option) => option.label)}
+      selectedIndex={options.findIndex((option) => option.value === value)}
+      appearance="dark"
+      tintColor={Platform.OS === "android" ? color.accentMuted : undefined}
+      onChange={(event) => {
+        const option = options[event.nativeEvent.selectedSegmentIndex];
+        if (option !== undefined && option.value !== value) {
+          haptics.selection();
+          onChange(option.value);
+        }
+      }}
+    />
   );
 }
-
-const $track: ViewStyle = {
-  flexDirection: "row",
-  padding: space.xxs,
-  borderRadius: radius.pill,
-  backgroundColor: color.surface1,
-};
-
-const $segment: ViewStyle = {
-  flex: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  minHeight: 34,
-  borderRadius: radius.pill,
-};
-
-const $segmentSelected: ViewStyle = {
-  backgroundColor: color.surface3,
-};

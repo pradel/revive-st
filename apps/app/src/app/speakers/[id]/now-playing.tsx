@@ -1,7 +1,6 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useState } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -10,7 +9,6 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { Slider } from "@/components/ui/Slider";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
   hasLoadedMedia,
@@ -19,6 +17,8 @@ import {
   sourceLabel,
   trackDetail,
 } from "@/features/speakers/lib/playback";
+import { haptics } from "@/lib/haptics";
+import { useDraftValue } from "@/lib/useDraftValue";
 import { Artwork } from "@/ui/ds/Artwork";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
@@ -26,6 +26,7 @@ import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { Screen } from "@/ui/ds/Screen";
+import { Slider } from "@/ui/ds/Slider";
 import { Text } from "@/ui/ds/Text";
 import { color, radius, space } from "@/ui/tokens";
 
@@ -38,7 +39,14 @@ export default function NowPlayingModal() {
     useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
-  const [localVolume, setLocalVolume] = useState<number | null>(null);
+  const [draftVolume, setDraftVolume] = useDraftValue(
+    speaker?.volume ?? 0,
+    (volume) => {
+      if (speaker) {
+        volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
+      }
+    },
+  );
 
   if (!speaker) {
     return (
@@ -63,11 +71,10 @@ export default function NowPlayingModal() {
 
   const isPlaying = isSpeakerPlaying(speaker);
   const hasMusic = hasLoadedMedia(speaker);
-  const volume = speaker.volume ?? 0;
-  const displayVolume = localVolume ?? volume;
   const detail = trackDetail(speaker);
 
   const sendKey = (key: KeyValue) => {
+    haptics.tap();
     keyMutation.mutate({ deviceID: speaker.deviceID, key });
   };
 
@@ -160,6 +167,7 @@ export default function NowPlayingModal() {
             iconSize={28}
             disabled={!hasMusic}
             onPress={() => {
+              haptics.tap();
               playPauseMutation.mutate({ deviceID: speaker.deviceID });
             }}
           />
@@ -186,30 +194,16 @@ export default function NowPlayingModal() {
               sendKey("MUTE");
             }}
           />
-          <View style={$slider}>
-            <Slider
-              value={volume}
-              minimumValue={0}
-              maximumValue={100}
-              trackHeight={6}
-              thumbSize={18}
-              trackColor={color.surface3}
-              fillColor={color.textPrimary}
-              thumbColor={color.textPrimary}
-              onValueChange={(val) => {
-                setLocalVolume(Math.round(val));
-              }}
-              onSlidingComplete={(val) => {
-                setLocalVolume(null);
-                volumeMutation.mutate({
-                  deviceID: speaker.deviceID,
-                  volume: val,
-                });
-              }}
-            />
-          </View>
+          <Slider
+            value={draftVolume}
+            minimumValue={0}
+            maximumValue={100}
+            accessibilityLabel="Volume"
+            style={$slider}
+            onValueChange={setDraftVolume}
+          />
           <Text variant="subhead" color="textSecondary" style={$volumeValue}>
-            {displayVolume}
+            {draftVolume}
           </Text>
         </View>
 

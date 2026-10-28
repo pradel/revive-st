@@ -1,6 +1,7 @@
 import { useRouter } from "expo-router";
 
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { haptics } from "@/lib/haptics";
 import { MiniPlayer } from "@/ui/ds/MiniPlayer";
 
 import { findActiveSpeaker, isSpeakerPlaying } from "../lib/playback";
@@ -27,6 +28,7 @@ export function NowPlayingBar() {
         );
       }}
       onPlayPause={() => {
+        haptics.tap();
         playPauseMutation.mutate({ deviceID: speaker.deviceID });
       }}
     />

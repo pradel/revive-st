@@ -25,6 +25,7 @@ import {
   checkMargeAPIStatus,
   configureMargeAPI,
 } from "@/features/speakers/lib/telnet";
+import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { Icon, icons } from "@/ui/ds/Icon";
@@ -201,6 +202,7 @@ export default function ConfigureSpeaker() {
         void queryClient.invalidateQueries({
           queryKey: ["marge-api-status", speaker.host],
         });
+        haptics.success();
         setConfigState({ status: "success" });
       } else {
         throw new Error(
@@ -237,6 +239,7 @@ export default function ConfigureSpeaker() {
           "The speaker did not re-join the network in time. Check the speaker LED. If it has a solid Wi-Fi light, try hitting 'Retry Connection' in settings.";
       }
 
+      haptics.error();
       setConfigState({
         status: "error",
         currentStepIndex: activeStepIndex,

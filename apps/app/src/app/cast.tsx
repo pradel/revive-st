@@ -14,6 +14,7 @@ import {
   useMargeAPIStatusQuery,
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
+import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { Icon, icons } from "@/ui/ds/Icon";
@@ -52,11 +53,13 @@ export default function CastSheet() {
         name: station.name,
       });
       // Success shows up in the mini player; no need to interrupt.
+      haptics.success();
       if (mountedRef.current) {
         router.back();
       }
     } catch (err) {
       logger.error(err);
+      haptics.error();
       setCastError(
         err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR"
           ? `${speaker.name} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`
