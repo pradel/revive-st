@@ -15,9 +15,10 @@ export function FilterChips<Value extends string>({
   style,
 }: FilterChipsProps<Value>) {
   return (
-    // A fixed height: as a lone list header, a content-sized host collapses
-    // to zero before Compose measures the chips.
-    <Host style={[$row, style]}>
+    // As a lone list header, a host sized only by its content collapses to
+    // zero before Compose measures the chips, so it starts at the chips'
+    // standard height and grows when larger text makes them taller.
+    <Host matchContents={{ vertical: true }} style={[$row, style]}>
       <Row
         horizontalArrangement={{ spacedBy: space.xs }}
         modifiers={[
@@ -62,7 +63,7 @@ export function FilterChips<Value extends string>({
   );
 }
 
-/** Material 3 filter chips are 32dp tall. */
+/** Material 3 filter chips are 32dp tall at the default text size. */
 const $row: ViewStyle = {
-  height: 32 + space.xs * 2,
+  minHeight: 32 + space.xs * 2,
 };

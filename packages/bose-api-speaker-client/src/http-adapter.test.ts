@@ -301,6 +301,20 @@ describe("boseSpeakerClient", () => {
       expect(val.album).toBe("&lt;not a tag&gt;");
       expect(val.contentItem?.itemName).toBe("Rock & Roll");
     });
+
+    it("keeps unknown and out-of-range references as written", async () => {
+      mockFetch(
+        200,
+        `<nowPlaying deviceID="${DEVICE_ID}" source="SPOTIFY">
+          <track>&constructor; &toString; &nbsp;</track>
+          <artist>&#x110000; &#99999999;</artist>
+          <playStatus>PLAY_STATE</playStatus>
+        </nowPlaying>`,
+      );
+      const val = unwrapOk<NowPlayingResponse>(await client.getNowPlaying());
+      expect(val.track).toBe("&constructor; &toString; &nbsp;");
+      expect(val.artist).toBe("&#x110000; &#99999999;");
+    });
   });
 
   describe("/trackInfo", () => {

@@ -120,19 +120,24 @@ const namedEntities: Record<string, string> = {
 
 /**
  * Decodes XML character references (`&amp;`, `&#233;`, `&#xE9;`) in one pass,
- * so `&amp;lt;` becomes the literal text `&lt;`. Unknown names are kept.
+ * so `&amp;lt;` becomes the literal text `&lt;`. Unknown names and numeric
+ * references outside Unicode are kept as written.
  */
 export function decodeXmlEntities(value: string): string {
   return value.replace(
     /&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/g,
     (reference, entity: string) => {
-      if (entity.startsWith("#x")) {
-        return String.fromCodePoint(Number.parseInt(entity.slice(2), 16));
-      }
       if (entity.startsWith("#")) {
-        return String.fromCodePoint(Number.parseInt(entity.slice(1), 10));
+        const codePoint = entity.startsWith("#x")
+          ? Number.parseInt(entity.slice(2), 16)
+          : Number.parseInt(entity.slice(1), 10);
+        return codePoint <= 0x10ffff
+          ? String.fromCodePoint(codePoint)
+          : reference;
       }
-      return namedEntities[entity] ?? reference;
+      return Object.hasOwn(namedEntities, entity)
+        ? namedEntities[entity]
+        : reference;
     },
   );
 }
