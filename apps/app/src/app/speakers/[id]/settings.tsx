@@ -18,6 +18,7 @@ import {
   FormSliderRow,
   FormValueRow,
 } from "@/ui/form/rows";
+import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
 
 const AUDIO_MODES: readonly {
@@ -156,7 +157,7 @@ export default function SpeakerSettings() {
     <Screen>
       <Stack.Title>{speaker.name}</Stack.Title>
       <Form onRefresh={refresh}>
-        <FieldGroup.Section title="Name">
+        <FormSection title="Name">
           <TextInput
             key={speaker.name}
             defaultValue={speaker.name}
@@ -185,10 +186,10 @@ export default function SpeakerSettings() {
               <FormFooterText color={color.danger}>{nameError}</FormFooterText>
             </FieldGroup.SectionFooter>
           ) : null}
-        </FieldGroup.Section>
+        </FormSection>
 
         {hasAudioSliders ? (
-          <FieldGroup.Section title="Audio">
+          <FormSection title="Audio">
             {bassCaps?.bassAvailable ? (
               <FormSliderRow
                 label="Bass"
@@ -269,11 +270,11 @@ export default function SpeakerSettings() {
                 />
               </>
             ) : null}
-          </FieldGroup.Section>
+          </FormSection>
         ) : null}
 
         {dspControls ? (
-          <FieldGroup.Section>
+          <FormSection>
             <FormPickerRow
               label="Audio mode"
               value={dspControls.audiomode}
@@ -293,10 +294,10 @@ export default function SpeakerSettings() {
                 )?.description ?? ""}
               </FormFooterText>
             </FieldGroup.SectionFooter>
-          </FieldGroup.Section>
+          </FormSection>
         ) : null}
 
-        <FieldGroup.Section title="Internet radio">
+        <FormSection title="Internet radio">
           <FormValueRow
             label="Marge API radio"
             value={margeStatus.label}
@@ -329,9 +330,9 @@ export default function SpeakerSettings() {
                 : "Lets the speaker play custom internet radio streams. Configuring reboots the speaker."}
             </FormFooterText>
           </FieldGroup.SectionFooter>
-        </FieldGroup.Section>
+        </FormSection>
 
-        <FieldGroup.Section title="Presets">
+        <FormSection title="Presets">
           {speaker.presets && speaker.presets.length > 0 ? (
             speaker.presets.map((preset) => (
               <FormValueRow
@@ -350,9 +351,9 @@ export default function SpeakerSettings() {
               button on the speaker or remote until it beeps.
             </FormFooterText>
           </FieldGroup.SectionFooter>
-        </FieldGroup.Section>
+        </FormSection>
 
-        <FieldGroup.Section title="Device info">
+        <FormSection title="Device info">
           <FormValueRow label="Type" value={speaker.type} copyable />
           <FormValueRow label="Device ID" value={speaker.deviceID} copyable />
           <FormValueRow label="IP address" value={speaker.host} copyable />
@@ -364,10 +365,10 @@ export default function SpeakerSettings() {
               copyable
             />
           ) : null}
-        </FieldGroup.Section>
+        </FormSection>
 
         {speaker.components && speaker.components.length > 0 ? (
-          <FieldGroup.Section title="Software">
+          <FormSection title="Software">
             {speaker.components.map((component, index) => (
               <FormValueRow
                 key={component.serialNumber || index}
@@ -376,7 +377,7 @@ export default function SpeakerSettings() {
                 copyable
               />
             ))}
-          </FieldGroup.Section>
+          </FormSection>
         ) : null}
       </Form>
     </Screen>

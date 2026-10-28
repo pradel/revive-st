@@ -5,20 +5,23 @@ import {
   Icon,
   Picker,
   Row,
-  Slider,
   Spacer,
   Text,
   type PickerItemValue,
 } from "@expo/ui";
+import { Slider as ComposeSlider } from "@expo/ui/jetpack-compose";
 import { weight } from "@expo/ui/jetpack-compose/modifiers";
+import { Slider as SwiftUISlider } from "@expo/ui/swift-ui";
 import { buttonStyle, textSelection } from "@expo/ui/swift-ui/modifiers";
+import { use } from "react";
 import { Platform, ToastAndroid } from "react-native";
 
 import { copyText } from "@/lib/clipboard";
-import { useDraftValue } from "@/lib/useDraftValue";
+import { useSliderDraft } from "@/lib/useSliderDraft";
 import { color } from "@/ui/tokens";
 
 import type { FormIcon } from "./icons";
+import { ContainerHandlesPress } from "./rowPress";
 
 const ios = Platform.OS === "ios";
 
@@ -129,8 +132,15 @@ export function FormLinkRow({
   disabled?: boolean;
   onPress: () => void;
 }) {
+  // Android's `FormSection` makes the whole list item clickable instead.
+  const containerHandlesPress = use(ContainerHandlesPress);
   return (
-    <Row alignment="center" spacing={12} onPress={onPress} disabled={disabled}>
+    <Row
+      alignment="center"
+      spacing={12}
+      onPress={containerHandlesPress ? undefined : onPress}
+      disabled={disabled}
+    >
       <RowIcon icon={icon} />
       <Label label={label} description={description} />
       {iosSpacer}
@@ -216,7 +226,7 @@ export function FormPickerRow<Value extends PickerItemValue>({
 
 /**
  * Inline slider with its label and current value. Dragging updates the value
- * shown immediately; `onCommit` fires once it rests (see `useDraftValue`).
+ * shown immediately; `onCommit` fires when the drag ends.
  */
 export function FormSliderRow({
   label,
@@ -235,7 +245,8 @@ export function FormSliderRow({
   saving?: boolean;
   onCommit: (value: number) => void;
 }) {
-  const [localValue, setLocalValue] = useDraftValue(value, onCommit);
+  const draft = useSliderDraft(value, onCommit);
+  const snap = (next: number) => Math.round((next - min) / step) * step + min;
 
   return (
     <Column spacing={4}>
@@ -243,16 +254,37 @@ export function FormSliderRow({
         <Label label={label} />
         {iosSpacer}
         <Text textStyle={secondary}>
-          {saving ? "Saving…" : String(localValue)}
+          {saving ? "Saving…" : String(draft.value)}
         </Text>
       </Row>
-      <Slider
-        value={localValue}
-        onValueChange={setLocalValue}
-        min={min}
-        max={max}
-        step={step}
-      />
+      {ios ? (
+        <SwiftUISlider
+          value={draft.value}
+          min={min}
+          max={max}
+          step={step}
+          onValueChange={(next) => {
+            draft.swiftUI.onValueChange(snap(next));
+          }}
+          onEditingChanged={(isEditing) => {
+            draft.swiftUI.onEditingChanged(isEditing);
+          }}
+        />
+      ) : (
+        <ComposeSlider
+          value={draft.value}
+          min={min}
+          max={max}
+          // Compose counts the stops between the ends, not the increment.
+          steps={Math.max(0, Math.round((max - min) / step) - 1)}
+          onValueChange={(next) => {
+            draft.onValueChange(snap(next));
+          }}
+          onValueChangeFinished={() => {
+            draft.onSlidingComplete();
+          }}
+        />
+      )}
     </Column>
   );
 }

@@ -4,7 +4,11 @@ import { Pressable, View, type ViewStyle } from "react-native";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
-import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
+import {
+  ContextMenu,
+  type ContextMenuConfig,
+  type ContextMenuTriggerProps,
+} from "./ContextMenu";
 import type { IconName } from "./Icon";
 import { Text } from "./Text";
 
@@ -38,13 +42,13 @@ export function ListRow({
   menu,
 }: ListRowProps) {
   const isRadio = selected !== undefined;
-  const renderMain = (openMenu: (() => void) | undefined) => (
+  const renderMain = (triggerProps?: ContextMenuTriggerProps) => (
     <Pressable
       accessibilityRole={isRadio ? "radio" : onPress ? "button" : undefined}
       accessibilityState={isRadio ? { disabled, selected } : { disabled }}
       onPress={onPress}
-      onLongPress={openMenu}
-      disabled={disabled || (!onPress && !openMenu)}
+      {...triggerProps}
+      disabled={disabled || (!onPress && !menu)}
       style={({ pressed }) => [
         $main,
         trailing !== undefined && $mainWithTrailing,
@@ -93,7 +97,7 @@ export function ListRow({
           {renderMain}
         </ContextMenu>
       ) : (
-        renderMain(undefined)
+        renderMain()
       )}
       {trailing}
     </View>

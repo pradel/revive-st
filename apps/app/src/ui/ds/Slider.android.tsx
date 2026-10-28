@@ -18,10 +18,9 @@ import { sliderDimensions, type SliderProps } from "./Slider.types";
  * Material's tall bar thumb and 16dp track.
  */
 export function Slider({
-  value,
+  draft,
   minimumValue,
   maximumValue,
-  onValueChange,
   accessibilityLabel,
   tint = "textPrimary",
   size = "small",
@@ -31,17 +30,20 @@ export function Slider({
   // The custom track is drawn from JS, so it fills to the current value itself.
   const fraction = Math.min(
     1,
-    Math.max(0, (value - minimumValue) / (maximumValue - minimumValue)),
+    Math.max(0, (draft.value - minimumValue) / (maximumValue - minimumValue)),
   );
 
   return (
     <Host matchContents={{ vertical: true }} style={style}>
       <ComposeSlider
-        value={value}
+        value={draft.value}
         min={minimumValue}
         max={maximumValue}
         onValueChange={(next) => {
-          onValueChange(Math.round(next));
+          draft.onValueChange(Math.round(next));
+        }}
+        onValueChangeFinished={() => {
+          draft.onSlidingComplete();
         }}
         modifiers={[semantics({ contentDescription: accessibilityLabel })]}
       >

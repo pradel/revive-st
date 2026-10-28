@@ -336,6 +336,7 @@ export default function RadioBrowser() {
               onRefresh={() => void refreshStations()}
               tintColor={color.textSecondary}
               colors={[color.accent]}
+              progressBackgroundColor={color.surface2}
             />
           }
         />

@@ -16,9 +16,10 @@ import {
   playStatusLabel,
   sourceLabel,
   trackDetail,
+  trackTitle,
 } from "@/features/speakers/lib/playback";
 import { haptics } from "@/lib/haptics";
-import { useDraftValue } from "@/lib/useDraftValue";
+import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
@@ -39,14 +40,11 @@ export default function NowPlayingModal() {
     useBose();
 
   const speaker = speakers.find((s) => s.deviceID === id);
-  const [draftVolume, setDraftVolume] = useDraftValue(
-    speaker?.volume ?? 0,
-    (volume) => {
-      if (speaker) {
-        volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
-      }
-    },
-  );
+  const volumeDraft = useSliderDraft(speaker?.volume ?? 0, (volume) => {
+    if (speaker) {
+      volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
+    }
+  });
 
   if (!speaker) {
     return (
@@ -140,10 +138,12 @@ export default function NowPlayingModal() {
             <Chip label={sourceLabel(speaker.source)} />
           ) : null}
           <Text variant="title" numberOfLines={1}>
-            {hasMusic ? (speaker.track ?? "Unknown Track") : "Nothing playing"}
+            {hasMusic ? trackTitle(speaker) : "Nothing playing"}
           </Text>
           <Text variant="body" color="textSecondary" numberOfLines={1}>
-            {hasMusic ? detail || "Unknown Artist" : "Ready to play"}
+            {hasMusic
+              ? detail || (speaker.track ? "Unknown Artist" : "")
+              : "Ready to play"}
           </Text>
         </View>
 
@@ -196,15 +196,14 @@ export default function NowPlayingModal() {
           />
           <Slider
             size="regular"
-            value={draftVolume}
+            draft={volumeDraft}
             minimumValue={0}
             maximumValue={100}
             accessibilityLabel="Volume"
             style={$slider}
-            onValueChange={setDraftVolume}
           />
           <Text variant="subhead" color="textSecondary" style={$volumeValue}>
-            {draftVolume}
+            {volumeDraft.value}
           </Text>
         </View>
 

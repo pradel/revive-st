@@ -96,3 +96,15 @@ export function isRadioSource(source: string) {
 export function trackDetail(speaker: BoseSpeaker) {
   return [speaker.artist, speaker.album].filter(Boolean).join(" · ");
 }
+
+/**
+ * Title for what's loaded. AUX and Bluetooth report no track (an empty
+ * string, not undefined), so they're named by their source.
+ */
+export function trackTitle(speaker: BoseSpeaker) {
+  return (
+    [speaker.track, speaker.album, sourceLabel(speaker.source ?? "")].find(
+      Boolean,
+    ) ?? "Unknown Track"
+  );
+}

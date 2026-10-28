@@ -8,13 +8,18 @@ import { Platform, View, type ViewStyle } from "react-native";
 
 import { haptics } from "@/lib/haptics";
 
-import type { ContextMenuAction, ContextMenuProps } from "./ContextMenu.types";
+import {
+  accessibilityMenuProps,
+  type ContextMenuAction,
+  type ContextMenuProps,
+} from "./ContextMenu.shared";
 
 export type {
   ContextMenuAction,
   ContextMenuConfig,
   ContextMenuProps,
-} from "./ContextMenu.types";
+  ContextMenuTriggerProps,
+} from "./ContextMenu.shared";
 
 function toMenuAction(action: ContextMenuAction): MenuAction {
   return {
@@ -45,19 +50,21 @@ export function ContextMenu({
   children,
   fill = false,
 }: ContextMenuProps) {
-  // Held in state, not a ref: `openMenu` is handed to the trigger at render.
+  // Held in state, not a ref: the trigger gets `onLongPress` at render.
   const [menu, setMenu] = useState<MenuComponentRef | null>(null);
-  const openMenu =
-    Platform.OS === "android"
-      ? () => {
-          haptics.longPress();
-          menu?.show();
-        }
-      : undefined;
 
   return (
     <View style={fill ? $fill : undefined}>
-      {children(openMenu)}
+      {children({
+        ...accessibilityMenuProps({ actions, onAction }),
+        onLongPress:
+          Platform.OS === "android"
+            ? () => {
+                haptics.longPress();
+                menu?.show();
+              }
+            : undefined,
+      })}
       <MenuView
         ref={setMenu}
         style={$anchor}

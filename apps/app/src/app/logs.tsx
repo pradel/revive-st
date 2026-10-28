@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import {
   AccessibilityInfo,
   Alert,
+  FlatList,
   ScrollView,
   View,
   type TextStyle,
@@ -10,7 +11,10 @@ import {
 } from "react-native";
 
 import { Card } from "@/components/ui/Card";
+import { haptics } from "@/lib/haptics";
+import type { LogEntry, LogLevel } from "@/lib/logger";
 import { useLogger } from "@/lib/useLogger";
+import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { Icon } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
@@ -18,10 +22,39 @@ import { Text } from "@/ui/ds/Text";
 import { nativeIcons } from "@/ui/nativeIcons";
 import { color, radius, space, type ColorName } from "@/ui/tokens";
 
+type LevelFilter = "all" | LogLevel;
+
+const LEVEL_FILTERS: readonly {
+  value: LevelFilter;
+  label: string;
+  emptyTitle: string;
+}[] = [
+  { value: "all", label: "All", emptyTitle: "No logs yet" },
+  { value: "error", label: "Errors", emptyTitle: "No errors" },
+  { value: "warn", label: "Warnings", emptyTitle: "No warnings" },
+  { value: "info", label: "Info", emptyTitle: "No info messages" },
+  { value: "log", label: "Log", emptyTitle: "No log messages" },
+  { value: "debug", label: "Debug", emptyTitle: "No debug messages" },
+];
+
+const logsIcon = {
+  ios: "doc.text",
+  android: "description",
+  web: "description",
+} as const;
+
 export default function LogsViewer() {
   const { logs, clearLogs, copyLogs, shareLogs } = useLogger();
   const hasLogs = logs.length > 0;
   const [copiedCount, setCopiedCount] = useState<number | null>(null);
+  const [levelFilter, setLevelFilter] = useState<LevelFilter>("all");
+  const visibleLogs =
+    levelFilter === "all"
+      ? logs
+      : logs.filter((entry) => entry.level === levelFilter);
+  const emptyTitle =
+    LEVEL_FILTERS.find((filter) => filter.value === levelFilter)?.emptyTitle ??
+    "";
 
   useEffect(() => {
     if (copiedCount === null) {
@@ -107,44 +140,74 @@ export default function LogsViewer() {
           </Stack.Toolbar.MenuAction>
         </Stack.Toolbar.Menu>
       </Stack.Toolbar>
-      <ScrollView
-        contentContainerStyle={$scrollContent}
+      <FlatList
+        data={visibleLogs}
+        keyExtractor={(entry) => entry.id}
+        renderItem={({ item }) => <LogRow entry={item} />}
+        ListHeaderComponent={
+          hasLogs ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={$filters}
+              contentContainerStyle={$filtersContent}
+            >
+              {LEVEL_FILTERS.map((filter) => (
+                <Chip
+                  key={filter.value}
+                  label={filter.label}
+                  selected={levelFilter === filter.value}
+                  onPress={() => {
+                    if (filter.value === levelFilter) {
+                      return;
+                    }
+                    haptics.selection();
+                    setLevelFilter(filter.value);
+                  }}
+                />
+              ))}
+            </ScrollView>
+          ) : undefined
+        }
+        ListEmptyComponent={
+          hasLogs ? (
+            <EmptyState
+              icon={logsIcon}
+              title={emptyTitle}
+              description="Try a different level filter."
+            />
+          ) : (
+            <EmptyState icon={logsIcon} title="No logs yet" />
+          )
+        }
+        contentContainerStyle={$listContent}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
-      >
-        {logs.length === 0 ? (
-          <EmptyState
-            icon={{
-              ios: "doc.text",
-              android: "description",
-              web: "description",
-            }}
-            title="No logs yet"
-          />
-        ) : (
-          logs.map((entry) => (
-            <Card key={entry.id} style={$logEntry}>
-              <View style={$logMeta}>
-                <Text variant="caption" color="textTertiary">
-                  {new Date(entry.timestamp).toLocaleTimeString()}
-                </Text>
-                <Text variant="overline" color={levelColor(entry.level)}>
-                  {entry.level}
-                </Text>
-              </View>
-              <Text
-                variant="subhead"
-                color="textSecondary"
-                style={$logMessage}
-                selectable
-              >
-                {entry.message}
-              </Text>
-            </Card>
-          ))
-        )}
-      </ScrollView>
+      />
     </Screen>
+  );
+}
+
+function LogRow({ entry }: { entry: LogEntry }) {
+  return (
+    <Card style={$logEntry}>
+      <View style={$logMeta}>
+        <Text variant="caption" color="textTertiary">
+          {new Date(entry.timestamp).toLocaleTimeString()}
+        </Text>
+        <Text variant="overline" color={levelColor(entry.level)}>
+          {entry.level}
+        </Text>
+      </View>
+      <Text
+        variant="subhead"
+        color="textSecondary"
+        style={$logMessage}
+        selectable
+      >
+        {entry.message}
+      </Text>
+    </Card>
   );
 }
 
@@ -159,10 +222,20 @@ function levelColor(level: string): ColorName {
   }
 }
 
-const $scrollContent: ViewStyle = {
+const $listContent: ViewStyle = {
   paddingHorizontal: space.screen,
   paddingBottom: space.lg,
   gap: space.xs,
+};
+
+const $filters: ViewStyle = {
+  marginHorizontal: -space.screen,
+};
+
+const $filtersContent: ViewStyle = {
+  gap: space.xs,
+  paddingHorizontal: space.screen,
+  paddingBottom: space.xs,
 };
 
 const $logEntry: ViewStyle = {

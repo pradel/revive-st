@@ -1,10 +1,14 @@
 import { Pressable, View, type TextStyle, type ViewStyle } from "react-native";
 
-import { useDraftValue } from "@/lib/useDraftValue";
+import { useSliderDraft } from "@/lib/useSliderDraft";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
-import { ContextMenu, type ContextMenuConfig } from "./ContextMenu";
+import {
+  ContextMenu,
+  type ContextMenuConfig,
+  type ContextMenuTriggerProps,
+} from "./ContextMenu";
 import { Icon, icons } from "./Icon";
 import { IconButton } from "./IconButton";
 import { Slider } from "./Slider";
@@ -21,7 +25,7 @@ export interface SpeakerCardProps {
   /** Disables play/pause when the speaker has nothing to resume. */
   canPlayPause: boolean;
   volume: number;
-  /** Sends the volume once a drag settles. */
+  /** Sends the volume when a drag ends. */
   onVolumeCommit: (volume: number) => void;
   onPlayPause: () => void;
   onOpen: () => void;
@@ -44,15 +48,15 @@ export function SpeakerCard({
   onOpenSettings,
   menu,
 }: SpeakerCardProps) {
-  const [draftVolume, setDraftVolume] = useDraftValue(volume, onVolumeCommit);
+  const volumeDraft = useSliderDraft(volume, onVolumeCommit);
 
-  const renderMain = (openMenu: (() => void) | undefined) => (
+  const renderMain = (triggerProps?: ContextMenuTriggerProps) => (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
       accessibilityHint="Opens the player"
       onPress={onOpen}
-      onLongPress={openMenu}
+      {...triggerProps}
       style={({ pressed }) => [$main, pressed && $pressed]}
     >
       <Artwork
@@ -91,7 +95,7 @@ export function SpeakerCard({
             {renderMain}
           </ContextMenu>
         ) : (
-          renderMain(undefined)
+          renderMain()
         )}
         <IconButton
           icon={icons.settings}
@@ -111,15 +115,14 @@ export function SpeakerCard({
         />
         <Icon name={icons.volume} size={16} />
         <Slider
-          value={draftVolume}
+          draft={volumeDraft}
           minimumValue={0}
           maximumValue={100}
           accessibilityLabel={`${name} volume`}
           style={$slider}
-          onValueChange={setDraftVolume}
         />
         <Text variant="caption" color="textSecondary" style={$volumeValue}>
-          {draftVolume}
+          {volumeDraft.value}
         </Text>
       </View>
     </View>
