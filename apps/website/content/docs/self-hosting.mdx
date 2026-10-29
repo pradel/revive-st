@@ -1,0 +1,73 @@
+---
+title: Self-hosting
+description: Run your own Revive ST server so your speakers don't depend on ours.
+---
+
+# Self-hosting
+
+By default, the app and your speakers use the Revive ST server at `api.revivest.app`: it stores your presets, and your speakers ask it for their account, presets and stations every time they start. You can run that server yourself, on a computer at home, so your speakers keep working whatever happens to ours.
+
+## What you need
+
+- **A computer that's always on** when your speakers are, with [Docker](https://docs.docker.com/get-docker/): a NAS, a home server or a Raspberry Pi (64-bit OS). The server image runs on `amd64` and `arm64`.
+- **A fixed address for it on your network**, such as `192.168.1.10`. Most routers can reserve an address for a device ("DHCP reservation").
+- **Internet access for the server**: TuneIn stations are looked up through TuneIn when they play.
+- **The Revive ST app** on a phone on the same network.
+
+## Run the server
+
+With Docker Compose, download the [compose file](https://github.com/pradel/revive-st/blob/main/apps/api/compose.yaml) and start it:
+
+```bash
+curl -O https://raw.githubusercontent.com/pradel/revive-st/main/apps/api/compose.yaml
+docker compose up -d
+```
+
+Or with Docker alone:
+
+```bash
+docker run -d --name revive-st --restart unless-stopped \
+  -p 3000:3000 -v revive-st-data:/data \
+  ghcr.io/pradel/revive-st-api:latest
+```
+
+To check it's running, open `http://192.168.1.10:3000/v2/registry.json` (with your server's address) in your phone's browser: it shows a list of services.
+
+Your accounts and presets are stored in the `/data` volume, in the database file `revivest.db`. Back up that volume to keep them.
+
+| Setting        | Default                  | What it does                                         |
+| -------------- | ------------------------ | ---------------------------------------------------- |
+| `PORT`         | `3000`                   | The port the server listens on inside the container. |
+| `DATABASE_URL` | `file:/data/revivest.db` | Where accounts and presets are stored.               |
+
+## Point the app at your server
+
+In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching.
+
+Plain `http://` only works with an IP address, a `.local` name or a name without dots (like `nas`). For any other name, put the server behind a reverse proxy with HTTPS and enter its `https://` address.
+
+## Configure your speakers
+
+For each speaker, open its settings and tap **Configure for Marge API**. A speaker set up for another server shows **Not configured** until you do. The app saves the speaker's presets to your server, points the speaker at it and restarts the speaker. Once it's back, it plays and restores its presets from your server.
+
+A speaker keeps using the server it was configured with until you configure it again, whatever server the app is set to.
+
+## Update the server
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`.
+
+## Go back to the Revive ST server
+
+In **Settings** → **Network** → **Server**, tap **Use the Revive ST server**, then configure each speaker again.
+
+## Good to know
+
+- **Keep the server running.** Speakers fetch their account and presets from it every time they start, and TuneIn and the stations you cast from the app play through it. A speaker that starts while the server is down keeps its presets, but can't play those stations until the server is back.
+- **Stations cast before switching servers** still play through the server they were cast with. Cast them again, and save them to a preset again, to move them to your server.
+- **Keep the server on your home network.** Anyone who can reach it and knows your household's account id can read and change your presets, and the account id travels unencrypted on your network. If the computer is also reachable from the internet, publish the port on its home-network address only, for example `"192.168.1.10:3000:3000"` in the compose file, or block it with a firewall.
+- On **iOS**, the app can only reach a plain `http://` server at a local address, which is why other names need HTTPS.
