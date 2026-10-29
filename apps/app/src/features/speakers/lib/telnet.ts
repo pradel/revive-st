@@ -7,7 +7,7 @@ import {
 
 import { APP_CONFIG } from "@/config";
 
-import { isSafeAccountId } from "./account";
+import { isSafeAccountId } from "./account-id";
 
 export class MargeAPIConfigurationError extends TaggedError(
   "MargeAPIConfigurationError",
@@ -37,8 +37,8 @@ export interface ConfigureMargeAPIOptions {
 }
 
 /**
- * Points the speaker at our server and, unless it already has an account of
- * its own household, pairs it with `accountId`.
+ * Points the speaker at our server and, unless it already has an account,
+ * pairs it with `accountId`.
  */
 export async function configureMargeAPI(
   host: string,
@@ -46,15 +46,6 @@ export async function configureMargeAPI(
   accountId: string,
   options?: ConfigureMargeAPIOptions,
 ): Promise<Result<void, MargeAPIConfigurationError>> {
-  if (!isSafeAccountId(accountId)) {
-    return new Err(
-      new MargeAPIConfigurationError({
-        host,
-        step: "set_account",
-        message: `Invalid account id: ${accountId}`,
-      }),
-    );
-  }
   const telnet = new TelnetClient({ host, socket });
 
   const run = async (): Promise<Result<void, MargeAPIConfigurationError>> => {
@@ -132,6 +123,15 @@ export async function configureMargeAPI(
       infoResult.isOk() && infoResult.value.margeAccountUUID !== "";
 
     if (!isAccountSet) {
+      if (!isSafeAccountId(accountId)) {
+        const err = new MargeAPIConfigurationError({
+          host,
+          step: "set_account",
+          message: `Invalid account id: ${accountId}`,
+        });
+        options?.onStepError?.("set_account", err);
+        return new Err(err);
+      }
       options?.onLog?.("Executing: envswitch accountid set <account>", "info");
       const accResult = await telnet.executeCommand(
         `envswitch accountid set ${accountId}`,

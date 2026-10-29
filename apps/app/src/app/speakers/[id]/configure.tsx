@@ -55,6 +55,7 @@ type ConfigState =
   | { status: "error"; currentStepIndex: number; errorDetails: string };
 
 const INITIAL_STEPS: Step[] = [
+  { id: "resolve_account", label: "Getting your household account" },
   { id: "telnet_connect", label: "Connecting via Telnet (port 17000)" },
   { id: "set_registry", label: "Setting BMX registry URL" },
   { id: "set_redirect", label: "Configuring boseurls redirect" },
@@ -146,11 +147,11 @@ export default function ConfigureSpeaker() {
         throw configResult.error;
       }
 
-      // Step 7: Wait for speaker to come back online
-      activeStepIndex = 6;
+      // Wait for speaker to come back online
+      activeStepIndex = INITIAL_STEPS.findIndex((s) => s.id === "wait_online");
       setConfigState({
         status: "running",
-        currentStepIndex: 6,
+        currentStepIndex: activeStepIndex,
         rebootTimer: 90,
       });
       addLog("Waiting for speaker to disconnect and reboot...");
@@ -219,22 +220,15 @@ export default function ConfigureSpeaker() {
       const msg = error instanceof Error ? error.message : String(error);
       addLog(`Error: ${msg}`, "error");
 
-      // Determine failed step
-      const stepIds = [
-        "telnet_connect",
-        "set_registry",
-        "set_redirect",
-        "set_account",
-        "pair_device",
-        "reboot",
-        "wait_online",
-      ];
-      const failedStepId = stepIds[activeStepIndex] || "telnet_connect";
+      const failedStepId = INITIAL_STEPS[activeStepIndex]?.id;
 
       // Formulate useful user suggestions
       let suggestion =
         "Ensure your phone is connected to the same Wi-Fi network.";
-      if (failedStepId === "telnet_connect") {
+      if (failedStepId === "resolve_account") {
+        suggestion =
+          "Could not get your household account from the Revive ST server. Check that your phone is connected to the internet.";
+      } else if (failedStepId === "telnet_connect") {
         suggestion =
           "Failed to establish Telnet. Confirm the speaker is powered on and connected to your Wi-Fi router. Verify its IP matches and port 17000 is not blocked.";
       } else if (failedStepId === "pair_device") {

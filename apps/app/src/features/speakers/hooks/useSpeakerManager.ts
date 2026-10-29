@@ -496,13 +496,26 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       }
       setUpdating(deviceID, true);
       try {
+        const speakerIp = speaker.options.ip;
+        const speakerPort = speaker.options.port ?? 8090;
+        // The local radio source is registered under the speaker's account:
+        // read it fresh, as pairing changes it after the state was read.
+        const info = await new BoseHttpAdapter({
+          ip: speakerIp,
+          port: speakerPort,
+        }).getInfo();
+        if (!info.isOk()) {
+          throw info.error;
+        }
+        if (info.value.margeAccountUUID === "") {
+          // An unpaired speaker has no local radio source to play from.
+          throw new Error("UNKNOWN_SOURCE_ERROR");
+        }
         const payload = buildMargeRadioPayload(
           uri,
           name,
-          speaker.getState().margeAccountUUID ?? "",
+          info.value.margeAccountUUID,
         );
-        const speakerIp = speaker.options.ip;
-        const speakerPort = speaker.options.port ?? 8090;
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           controller.abort();
