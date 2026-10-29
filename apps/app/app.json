@@ -58,7 +58,8 @@
           "android": {
             "minSdkVersion": 30,
             "usePrecompiledHeaders": true,
-            "enableMinifyInReleaseBuilds": false
+            "enableMinifyInReleaseBuilds": false,
+            "usesCleartextTraffic": true
           }
         }
       ],
