@@ -2,7 +2,7 @@ import { Buffer } from "node:buffer";
 
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect, Layer, Logger, Schema } from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -37,30 +37,60 @@ const TuneInTest = Layer.succeed(
   }),
 );
 
+/** Every log line the server writes, as JSON. */
+const logLines: string[] = [];
+
 const TestLayer = HttpAppLayer.pipe(
-  Layer.provide([PresetsRepo.layerTest, TuneInTest]),
+  Layer.provide([
+    PresetsRepo.layerTest,
+    TuneInTest,
+    Logger.layer([
+      Logger.map(Logger.formatJson, (line) => {
+        logLines.push(line);
+      }),
+    ]),
+  ]),
   Layer.provideMerge(NodeHttpServer.layerTest),
 );
 
-const devicePath = (deviceId: string) =>
-  `/streaming/account/revivest-user/device/${deviceId}`;
+/** The account the tests' speakers are paired with. */
+const ACCOUNT = "household-1";
+
+const devicePath = (deviceId: string, accountId = ACCOUNT) =>
+  `/streaming/account/${accountId}/device/${deviceId}`;
 
 const putPreset = (
   deviceId: string,
   presetId: number,
   body: string,
-  contentType = BOSE_XML_CONTENT_TYPE,
+  { contentType = BOSE_XML_CONTENT_TYPE, accountId = ACCOUNT } = {},
 ) =>
   HttpClient.execute(
-    HttpClientRequest.put(`${devicePath(deviceId)}/preset/${presetId}`).pipe(
-      HttpClientRequest.bodyText(body, contentType),
-    ),
+    HttpClientRequest.put(
+      `${devicePath(deviceId, accountId)}/preset/${presetId}`,
+    ).pipe(HttpClientRequest.bodyText(body, contentType)),
   );
 
-const getPresetsXml = (deviceId: string) =>
-  HttpClient.get(`${devicePath(deviceId)}/presets`).pipe(
+const getPresetsXml = (deviceId: string, accountId = ACCOUNT) =>
+  HttpClient.get(`${devicePath(deviceId, accountId)}/presets`).pipe(
     Effect.flatMap((response) => response.text),
   );
+
+const syncPresets = (deviceId: string, presets: unknown, accountId = ACCOUNT) =>
+  HttpClient.execute(
+    HttpClientRequest.post(
+      `/api/internal/account/${accountId}/device/${deviceId}/presets`,
+    ).pipe(HttpClientRequest.bodyJsonUnsafe({ presets })),
+  );
+
+const mintAccountId = HttpClient.post("/api/internal/accounts").pipe(
+  Effect.flatMap(
+    HttpIncomingMessage.schemaBodyJson(
+      Schema.Struct({ accountId: Schema.String }),
+    ),
+  ),
+  Effect.map(({ accountId }) => accountId),
+);
 
 const STATION_LOCATION =
   "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJ9";
@@ -79,8 +109,7 @@ const speakerPresetXml = ({
 }) =>
   `<?xml version="1.0" encoding="UTF-8" ?><preset buttonNumber="1"><sourceid>${sourceId}</sourceid><name>${name}</name><username>${name}</username><location>${location}</location><contentItemType>stationurl</contentItemType><containerArt>${art}</containerArt></preset>`;
 
-const LOCAL_RADIO_SOURCE_XML =
-  '<source id="1" type="Audio"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><credential type="token"></credential><name>LOCAL_INTERNET_RADIO</name><sourceproviderid>10003</sourceproviderid><sourcename>Local Radio Source</sourcename><sourceSettings/><updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn><username>revivest-user</username></source>';
+const LOCAL_RADIO_SOURCE_XML = `<source id="1" type="Audio"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><credential type="token"></credential><name>LOCAL_INTERNET_RADIO</name><sourceproviderid>10003</sourceproviderid><sourcename>Local Radio Source</sourcename><sourceSettings/><updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn><username>${ACCOUNT}</username></source>`;
 
 const TUNEIN_SOURCE_XML =
   '<source id="10004" type="Audio"><createdOn>2017-07-20T16:43:48.000+00:00</createdOn><credential type="token">eyJzZXJpYWwiOiJ0dW5laW4ifQ==</credential><name>TUNEIN</name><sourceproviderid>25</sourceproviderid><sourcename></sourcename><sourceSettings/><updatedOn>2017-07-20T16:43:48.000+00:00</updatedOn><username></username></source>';
@@ -163,7 +192,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("offers local radio and TuneIn sources in the account", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get(
-        "/streaming/account/revivest-user/full",
+        `/streaming/account/${ACCOUNT}/full`,
       );
       const body = yield* assertBoseXml(response);
       assert.isString(response.headers.etag);
@@ -270,7 +299,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         "put-any-type",
         1,
         speakerPresetXml({ name: "Radio" }),
-        "text/plain",
+        { contentType: "text/plain" },
       );
       assert.strictEqual(response.status, 200);
       assert.include(
@@ -309,27 +338,70 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("keeps presets apart between accounts sharing a device id", () =>
+    Effect.gen(function* () {
+      yield* putPreset("shared-device", 1, speakerPresetXml({ name: "Ours" }));
+
+      assert.include(
+        yield* getPresetsXml("shared-device", "household-2"),
+        "<presets/>",
+      );
+    }),
+  );
+
+  it.effect("mints a distinct account id per request", () =>
+    Effect.gen(function* () {
+      const first = yield* mintAccountId;
+      const second = yield* mintAccountId;
+      assert.match(
+        first,
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/,
+      );
+      assert.notStrictEqual(first, second);
+    }),
+  );
+
+  it.effect("never logs an account id", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      yield* putPreset("logged", 1, speakerPresetXml({ name: "FIP" }), {
+        accountId,
+      });
+      yield* getPresetsXml("logged", accountId);
+      yield* syncPresets("logged", [], accountId);
+      yield* HttpClient.get(`/streaming/account/${accountId}/unknown-route`);
+      yield* HttpClient.get(`/streaming/account/${accountId}/full`);
+
+      // Unrouted speaker calls stay visible, with their status.
+      assert.isTrue(
+        logLines.some(
+          (line) =>
+            line.includes("No route for request") &&
+            line.includes("/streaming/account/…/unknown-route") &&
+            line.includes("404"),
+        ),
+      );
+      for (const line of logLines) {
+        assert.notInclude(line, accountId);
+      }
+    }),
+  );
+
   it.effect("serves presets synced by the app, in preset order", () =>
     Effect.gen(function* () {
       const contentItem = (itemName: string) => ({
         source: "LOCAL_INTERNET_RADIO",
         type: "stationurl",
         location: STATION_LOCATION,
-        sourceAccount: "revivest-user",
+        sourceAccount: ACCOUNT,
         isPresetable: true,
         itemName,
         containerArt: "",
       });
-      const response = yield* HttpClient.execute(
-        HttpClientRequest.post("/api/internal/device/app-sync/presets").pipe(
-          HttpClientRequest.bodyJsonUnsafe({
-            presets: [
-              { id: 4, contentItem: contentItem("Four") },
-              { id: 1, createdOn: 1000, contentItem: contentItem("One") },
-            ],
-          }),
-        ),
-      );
+      const response = yield* syncPresets("app-sync", [
+        { id: 4, contentItem: contentItem("Four") },
+        { id: 1, createdOn: 1000, contentItem: contentItem("One") },
+      ]);
       assert.strictEqual(response.status, 200);
       assert.deepStrictEqual(yield* response.json, { success: true });
 
@@ -338,45 +410,41 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         body,
         /<preset buttonNumber="1"><containerArt><\/containerArt><contentItemType>stationurl<\/contentItemType><createdOn>1970-01-01T00:00:01\.000\+00:00<\/createdOn>[^]*<preset buttonNumber="4">/,
       );
+      assert.include(
+        yield* getPresetsXml("app-sync", "household-2"),
+        "<presets/>",
+      );
     }),
   );
 
   it.effect("drops synced presets from a source the account lacks", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.execute(
-        HttpClientRequest.post(
-          "/api/internal/device/app-sync-mixed/presets",
-        ).pipe(
-          HttpClientRequest.bodyJsonUnsafe({
-            presets: [
-              {
-                id: 1,
-                contentItem: {
-                  source: "SPOTIFY",
-                  type: "tracklisturl",
-                  location: SPOTIFY_LOCATION,
-                  sourceAccount: "",
-                  isPresetable: true,
-                  itemName: "SMOOTH JAZZ",
-                  containerArt: "",
-                },
-              },
-              {
-                id: 2,
-                contentItem: {
-                  source: "LOCAL_INTERNET_RADIO",
-                  type: "stationurl",
-                  location: STATION_LOCATION,
-                  sourceAccount: "revivest-user",
-                  isPresetable: true,
-                  itemName: "FIP",
-                  containerArt: "",
-                },
-              },
-            ],
-          }),
-        ),
-      );
+      const response = yield* syncPresets("app-sync-mixed", [
+        {
+          id: 1,
+          contentItem: {
+            source: "SPOTIFY",
+            type: "tracklisturl",
+            location: SPOTIFY_LOCATION,
+            sourceAccount: "",
+            isPresetable: true,
+            itemName: "SMOOTH JAZZ",
+            containerArt: "",
+          },
+        },
+        {
+          id: 2,
+          contentItem: {
+            source: "LOCAL_INTERNET_RADIO",
+            type: "stationurl",
+            location: STATION_LOCATION,
+            sourceAccount: ACCOUNT,
+            isPresetable: true,
+            itemName: "FIP",
+            containerArt: "",
+          },
+        },
+      ]);
       assert.strictEqual(response.status, 200);
 
       const body = yield* getPresetsXml("app-sync-mixed");
@@ -388,11 +456,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("rejects synced presets that do not match the schema", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.execute(
-        HttpClientRequest.post(
-          "/api/internal/device/app-sync-invalid/presets",
-        ).pipe(HttpClientRequest.bodyJsonUnsafe({ presets: [{ id: 1 }] })),
-      );
+      const response = yield* syncPresets("app-sync-invalid", [{ id: 1 }]);
       assert.strictEqual(response.status, 400);
       assert.include(yield* getPresetsXml("app-sync-invalid"), "<presets/>");
     }),
@@ -401,7 +465,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("serves an empty software update", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get(
-        "/streaming/software/update/account/revivest-user",
+        `/streaming/software/update/account/${ACCOUNT}`,
       );
       assert.include(
         yield* assertBoseXml(response),
@@ -458,9 +522,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     (suffix) =>
       Effect.gen(function* () {
         const response = yield* HttpClient.execute(
-          HttpClientRequest.post(
-            `/streaming/account/revivest-user${suffix}`,
-          ).pipe(
+          HttpClientRequest.post(`/streaming/account/${ACCOUNT}${suffix}`).pipe(
             HttpClientRequest.bodyText(
               `<?xml version="1.0" encoding="UTF-8" ?><device deviceid="EC1127C25A50"><name>Bose SoundTouch 10</name></device>`,
               BOSE_XML_CONTENT_TYPE,

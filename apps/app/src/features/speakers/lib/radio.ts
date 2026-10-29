@@ -2,7 +2,16 @@ import { escapeXml } from "bose-api-speaker-client";
 
 import { APP_CONFIG } from "@/config";
 
-export function buildMargeRadioPayload(uri: string, name: string): string {
+/**
+ * The ContentItem that plays `uri` through our Orion station adapter.
+ * `accountId` is the speaker's Marge account: its local radio source is
+ * registered under it.
+ */
+export function buildMargeRadioPayload(
+  uri: string,
+  name: string,
+  accountId: string,
+): string {
   const data = {
     streamUrl: uri,
     name,
@@ -20,7 +29,7 @@ export function buildMargeRadioPayload(uri: string, name: string): string {
   )}`;
   return `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(
     locationUrl,
-  )}" sourceAccount="revivest-user"><itemName>${escapeXml(
+  )}" sourceAccount="${escapeXml(accountId)}"><itemName>${escapeXml(
     name,
   )}</itemName></ContentItem>`;
 }

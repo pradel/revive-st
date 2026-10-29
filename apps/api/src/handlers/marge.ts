@@ -50,7 +50,10 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handle(
           "presets",
           Effect.fn(function* ({ params }) {
-            const presets = yield* presetsRepo.findByDevice(params.deviceId);
+            const presets = yield* presetsRepo.findByDevice(
+              params.accountId,
+              params.deviceId,
+            );
             return withEtag(createPresetsXml(presets, params.accountId));
           }),
         )
@@ -77,7 +80,7 @@ export const MargeHandlers = HttpApiBuilder.group(
               );
               return yield* new HttpApiError.BadRequest();
             }
-            yield* presetsRepo.upsert(params.deviceId, [
+            yield* presetsRepo.upsert(params.accountId, params.deviceId, [
               new Preset({
                 id: params.presetId,
                 contentItem: new ContentItem({
@@ -91,7 +94,10 @@ export const MargeHandlers = HttpApiBuilder.group(
                 }),
               }),
             ]);
-            const presets = yield* presetsRepo.findByDevice(params.deviceId);
+            const presets = yield* presetsRepo.findByDevice(
+              params.accountId,
+              params.deviceId,
+            );
             const saved = presets.find(({ id }) => id === params.presetId);
             if (saved === undefined) {
               return yield* Effect.die(
