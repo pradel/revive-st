@@ -9,6 +9,8 @@ import {
   HOME_PASSWORD,
   HOME_SSID,
 } from "@/features/onboarding/session/testing/scenarios";
+import { useServerUrl } from "@/features/server/server";
+import { serverHost } from "@/features/server/server-url";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
@@ -24,6 +26,7 @@ export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
   const { isScanning, rescan } = useBose();
+  const serverUrl = useServerUrl();
 
   return (
     <Screen>
@@ -61,6 +64,14 @@ export default function AppSettings() {
             }
             disabled={isScanning}
             onPress={rescan}
+          />
+          <FormLinkRow
+            icon={formIcons.server}
+            label="Server"
+            description={serverHost(serverUrl)}
+            onPress={() => {
+              router.push("/server");
+            }}
           />
         </FormSection>
 

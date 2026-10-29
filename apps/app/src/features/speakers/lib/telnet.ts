@@ -5,7 +5,8 @@ import {
   type SocketModuleLike,
 } from "bose-api-speaker-client";
 
-import { APP_CONFIG } from "@/config";
+import { getServerUrl } from "@/features/server/server";
+import { isSafeServerUrl } from "@/features/server/server-url";
 
 import { isSafeAccountId } from "./account-id";
 import { usesOurServer } from "./marge-api";
@@ -65,14 +66,26 @@ export async function configureMargeAPI(
     options?.onStepSuccess?.("telnet_connect");
     options?.onLog?.("Successfully established Telnet connection.", "success");
 
-    // 2. Set bmxRegistryUrl
+    // 2. Set bmxRegistryUrl. The server origin goes into this command and
+    // the next one: read it once so both name the same server, and check it
+    // again here, since `boseurls` runs through the speaker's shell.
     options?.onStepStart?.("set_registry");
+    const serverUrl = getServerUrl();
+    if (!isSafeServerUrl(serverUrl)) {
+      const err = new MargeAPIConfigurationError({
+        host,
+        step: "set_registry",
+        message: `Invalid server address: ${serverUrl}`,
+      });
+      options?.onStepError?.("set_registry", err);
+      return new Err(err);
+    }
     options?.onLog?.(
-      `Executing: sys configuration bmxRegistryUrl ${APP_CONFIG.API_URL}/v2/registry.json`,
+      `Executing: sys configuration bmxRegistryUrl ${serverUrl}/v2/registry.json`,
       "info",
     );
     const regResult = await telnet.executeCommand(
-      `sys configuration bmxRegistryUrl ${APP_CONFIG.API_URL}/v2/registry.json`,
+      `sys configuration bmxRegistryUrl ${serverUrl}/v2/registry.json`,
       1200,
     );
     if (!regResult.isOk()) {
@@ -92,11 +105,11 @@ export async function configureMargeAPI(
     // 3. Set boseurls envswitch
     options?.onStepStart?.("set_redirect");
     options?.onLog?.(
-      `Executing: envswitch boseurls set ${APP_CONFIG.API_URL} https://worldwide.bose.com/updates/soundtouch`,
+      `Executing: envswitch boseurls set ${serverUrl} https://worldwide.bose.com/updates/soundtouch`,
       "info",
     );
     const redirectResult = await telnet.executeCommand(
-      `envswitch boseurls set ${APP_CONFIG.API_URL} https://worldwide.bose.com/updates/soundtouch`,
+      `envswitch boseurls set ${serverUrl} https://worldwide.bose.com/updates/soundtouch`,
       1200,
     );
     if (!redirectResult.isOk()) {

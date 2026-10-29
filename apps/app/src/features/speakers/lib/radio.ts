@@ -1,6 +1,6 @@
 import { escapeXml } from "bose-api-speaker-client";
 
-import { APP_CONFIG } from "@/config";
+import { getServerUrl } from "@/features/server/server";
 
 /**
  * The ContentItem that plays `uri` through our Orion station adapter.
@@ -24,7 +24,7 @@ export function buildMargeRadioPayload(
   )
     .replace(/\+/g, "-")
     .replace(/\//g, "_");
-  const locationUrl = `${APP_CONFIG.API_URL}/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
+  const locationUrl = `${getServerUrl()}/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
     base64Data,
   )}`;
   return `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(

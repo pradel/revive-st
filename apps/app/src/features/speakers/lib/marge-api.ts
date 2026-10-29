@@ -1,16 +1,16 @@
 import type { Preset } from "bose-api-speaker-client";
 
-import { APP_CONFIG } from "@/config";
+import { getServerUrl } from "@/features/server/server";
 
 import { isHouseholdAccountId, isSameOrigin } from "./account-id";
 
 /** Whether a speaker's Marge server, the `margeURL` of its `/info`, is ours. */
 export const usesOurServer = (margeURL: string | undefined) =>
-  isSameOrigin(margeURL, APP_CONFIG.API_URL);
+  isSameOrigin(margeURL, getServerUrl());
 
 /** A new household account id, minted by our server. */
 export async function mintAccountId(): Promise<string> {
-  const response = await fetch(`${APP_CONFIG.API_URL}/api/internal/accounts`, {
+  const response = await fetch(`${getServerUrl()}/api/internal/accounts`, {
     method: "POST",
   });
   if (!response.ok) {
@@ -36,7 +36,7 @@ export async function syncPresetsToMarge(
   deviceId: string,
   presets: Preset[],
 ): Promise<void> {
-  const url = `${APP_CONFIG.API_URL}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
+  const url = `${getServerUrl()}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
   const response = await fetch(url, {
     method: "POST",
     headers: {
