@@ -5,7 +5,7 @@ import {
   SOURCE_PROVIDERS,
   sourceNamed,
 } from "../marge/sources.ts";
-import type { Preset } from "../presets/preset.ts";
+import type { DeviceId, Preset } from "../presets/preset.ts";
 
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -63,13 +63,42 @@ export function createSourceProvidersXml(): string {
   return `${XML_HEADER}<sourceProviders>${providers.join("")}</sourceProviders>`;
 }
 
-export function createAccountFullXml(accountId: AccountId): string {
+/** A device paired with the account, with the presets stored for it. */
+export interface AccountDevice {
+  readonly deviceId: DeviceId;
+  readonly presets: readonly Preset[];
+}
+
+/**
+ * The account a speaker syncs at boot. A speaker missing from its
+ * `<devices>` drops its account and its presets, so every device paired with
+ * the account is listed, with its presets: a speaker that lost its own (after
+ * a factory reset, say) restores them from here, while one that has presets
+ * keeps them. A device with no stored presets has no `<presets>` at all: an
+ * empty one wipes the speaker's.
+ *
+ * A device lists only its id and presets: speakers need no more, so their
+ * IP address, serial numbers and name are never stored.
+ */
+export function createAccountFullXml(
+  accountId: AccountId,
+  devices: readonly AccountDevice[],
+): string {
   const sources = ACCOUNT_SOURCES.map((source) => sourceXml(source, accountId));
+  const devicesXml = devices.map(({ deviceId, presets }) => {
+    const presetsXml =
+      presets.length === 0
+        ? ""
+        : `<presets>${presets.map((preset) => presetXml(preset, accountId)).join("")}</presets>`;
+    return `<device deviceid="${escapeXml(deviceId)}">${presetsXml}</device>`;
+  });
   return [
     XML_HEADER,
     `<account id="${escapeXml(accountId)}">`,
     "<accountStatus>OK</accountStatus>",
-    "<devices/>",
+    devices.length === 0
+      ? "<devices/>"
+      : `<devices>${devicesXml.join("")}</devices>`,
     "<mode>global</mode>",
     "<preferredLanguage>en</preferredLanguage>",
     `<sources>${sources.join("")}</sources>`,
@@ -143,6 +172,26 @@ export function createRecentXml(recent: Recent, accountId: AccountId): string {
 
 export function createStatusOkXml(): string {
   return `${XML_HEADER}\n<status>OK</status>`;
+}
+
+/**
+ * The reply to a speaker registering with an account. Speakers pairing with
+ * an account fail (`SET_MARGE_ACCOUNT_ERROR`) without it.
+ */
+export function createDeviceXml(
+  deviceId: DeviceId,
+  name: string,
+  epochMillis: number,
+): string {
+  const date = formatMargeDate(epochMillis);
+  return [
+    XML_HEADER,
+    `<device deviceid="${escapeXml(deviceId)}">`,
+    element("createdOn", date),
+    element("name", name),
+    element("updatedOn", date),
+    "</device>",
+  ].join("");
 }
 
 export function createSoftwareUpdateXml(): string {

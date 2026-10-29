@@ -28,3 +28,20 @@ export const presetsTable = sqliteTable(
     }),
   ],
 );
+
+/**
+ * The speakers paired with each account. A speaker can be listed in several
+ * accounts: pairing never removes it from one, as its device id (its MAC
+ * address) is no secret. Nothing else about the speaker (IP address, serial
+ * numbers, name) is stored: speakers don't need it back.
+ */
+export const devicesTable = sqliteTable(
+  "devices",
+  {
+    accountId: text("account_id").notNull(),
+    deviceId: text("device_id").notNull(),
+    /** Epoch milliseconds. */
+    pairedOn: integer("paired_on").notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.accountId, table.deviceId] })],
+);

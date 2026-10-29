@@ -29,6 +29,10 @@ Returns the full account XML structure including the list of sources, root eleme
 
 - **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
 
+`<devices>` lists every speaker paired with the account, each with its presets. A speaker missing from it drops its account and presets at boot. A speaker with no presets restores them from here; one that has presets keeps its own. A speaker with no stored presets is listed without a `<presets>` element, as an empty one wipes the speaker's presets. Only the device id is listed: the speaker's IP address, serial numbers and name are never stored.
+
+A speaker is paired with an account when it registers with it, saves or deletes a preset or adds a recent in it, looks its group up in it, or has its presets synced to it by the app. Pairing never removes a speaker from another account: its device id is its MAC address, which anyone can name, so pairing it elsewhere must not unpair it from its household.
+
 ### `GET /streaming/account/:accountId/device/:deviceId/presets`
 
 Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` per stored preset, with its location, name, artwork, content type and the `<source>` it plays from. Includes an `ETag` that changes whenever a preset does.
@@ -36,6 +40,10 @@ Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` 
 ### `PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId`
 
 Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>` identifies the source: the id copied from the account's sources in `/full`, or, for TuneIn, the source's name. A preset from any other source is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
+
+### `DELETE /streaming/account/:accountId/device/:deviceId/preset/:presetId`
+
+Called by the speaker when a preset is removed from it. Deletes the stored preset, so the speaker doesn't restore it at its next boot, and returns `200 OK` with `<status>OK</status>`.
 
 ### `GET /streaming/software/update/account/:accountId`
 
@@ -51,7 +59,15 @@ Endpoint called by the speaker upon boot to signal it has turned on. We return a
 
 ### `POST /streaming/account/:accountId/device/`
 
-Endpoint called by the speaker after account configuration to register the device to the user account. We return a standard `<status>OK</status>` response with a `200 OK` status to complete the registration handshake.
+Called by the speaker when it is paired with an account (`setMargeAccount` on the speaker). Pairs the device with the account and returns `201 Created` with a `<device>` document, which the speaker accepts.
+
+A bare `200 OK` status reply is not enough: the speaker then refuses the pairing with `SET_MARGE_ACCOUNT_ERROR`.
+
+A body without a `deviceid` gets `400 Bad Request`.
+
+### `GET /streaming/account/:accountId/device/:deviceId/group/`
+
+Called by the speaker at boot to look up its stereo pair group. Stereo pairs are not supported, so this always returns an empty `<group/>`.
 
 ## BMX Endpoints
 
@@ -78,4 +94,4 @@ Returns a new household account id, `{ "accountId": "…" }`.
 
 ### `POST /api/internal/account/:accountId/device/:deviceId/presets`
 
-Stores the presets the app read from the speaker, `{ "presets": [...] }`, so the speaker gets them back from the presets endpoint. Presets from a source the account does not offer are dropped.
+Stores the presets the app read from the speaker, `{ "presets": [...] }`, so the speaker gets them back from the presets endpoint. Pairs the device with the account, and replaces the device's stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account does not offer are dropped.
