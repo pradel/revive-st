@@ -11,10 +11,13 @@ export type PresetId = typeof PresetId.Type;
 
 export class ContentItem extends Schema.Class<ContentItem>("ContentItem")({
   source: Schema.String,
+  /** `stationurl`, `tracklisturl`, …; Marge calls it `contentItemType`. */
+  type: Schema.String,
   location: Schema.String,
   sourceAccount: Schema.String,
   isPresetable: Schema.Boolean,
   itemName: Schema.String,
+  containerArt: Schema.String,
 }) {}
 
 export class Preset extends Schema.Class<Preset>("Preset")({

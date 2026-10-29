@@ -391,8 +391,9 @@ describe("boseSpeakerClient", () => {
         200,
         `<presets>
           <preset id="1" createdOn="1234567890" updatedOn="1234567899">
-            <ContentItem source="TUNEIN" location="/v1/playback/station/s12345" sourceAccount="" isPresetable="true">
+            <ContentItem source="TUNEIN" type="stationurl" location="/v1/playback/station/s12345" sourceAccount="" isPresetable="true">
               <itemName>My Station</itemName>
+              <containerArt>https://cdn.example/s12345.png</containerArt>
             </ContentItem>
           </preset>
           <preset id="2">
@@ -403,9 +404,18 @@ describe("boseSpeakerClient", () => {
         </presets>`,
       );
       const val = unwrapOk<PresetsResponse>(await client.getPresets());
-      expect(val.presets).toHaveLength(2);
-      expect(val.presets[0].id).toBe(1);
-      expect(val.presets[0].id).toBe(1);
+      expect(val.presets.map((preset) => preset.id)).toEqual([1, 2]);
+      expect(val.presets[0].contentItem).toEqual({
+        source: "TUNEIN",
+        type: "stationurl",
+        location: "/v1/playback/station/s12345",
+        sourceAccount: "",
+        isPresetable: true,
+        itemName: "My Station",
+        containerArt: "https://cdn.example/s12345.png",
+      });
+      expect(val.presets[1].contentItem.type).toBe("");
+      expect(val.presets[1].contentItem.containerArt).toBe("");
     });
   });
 

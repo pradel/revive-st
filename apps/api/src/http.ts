@@ -5,6 +5,7 @@ import {
   HttpMiddleware,
   HttpRouter,
   HttpServerRequest,
+  HttpServerResponse,
   HttpStaticServer,
 } from "effect/http";
 import { HttpApiBuilder } from "effect/http-api";
@@ -72,6 +73,25 @@ const LogBodiesLayer = HttpRouter.middleware(
   { global: true },
 );
 
+/**
+ * Answers a GET whose `If-None-Match` names the response's `ETag` with a bare
+ * 304, so a speaker polling an unchanged document gets no body.
+ */
+const NotModifiedLayer = HttpRouter.middleware(
+  (httpEffect) =>
+    HttpServerRequest.HttpServerRequest.use((request) =>
+      Effect.map(httpEffect, (response) => {
+        const etag = response.headers.etag;
+        return request.method === "GET" &&
+          etag !== undefined &&
+          request.headers["if-none-match"] === etag
+          ? HttpServerResponse.empty({ status: 304 })
+          : response;
+      }),
+    ),
+  { global: true },
+);
+
 // Railway terminates TLS and is the only route to the server, so its
 // forwarded host and protocol are trusted unconditionally.
 const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
@@ -83,7 +103,7 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
  * Requires `PresetsRepo` and the platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
-  Layer.mergeAll(ApiLayer, MediaLayer, LogBodiesLayer),
+  Layer.mergeAll(ApiLayer, MediaLayer, NotModifiedLayer, LogBodiesLayer),
   {
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },

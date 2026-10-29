@@ -26,10 +26,12 @@ const preset = (
     ...timestamps,
     contentItem: new ContentItem({
       source: "LOCAL_INTERNET_RADIO",
+      type: "stationurl",
       location: `https://example.com/${itemName}`,
       sourceAccount: "revivest-user",
       isPresetable: id % 2 === 1,
       itemName,
+      containerArt: `https://example.com/${itemName}.png`,
     }),
   });
 
@@ -78,10 +80,9 @@ describe("PresetsRepo", () => {
         const [stored] = yield* repo.findByDevice(deviceA);
         assert.strictEqual(stored.createdOn, 500);
         assert.strictEqual(stored.updatedOn, 5_000);
-        assert.strictEqual(stored.contentItem.itemName, "after");
-        assert.strictEqual(
-          stored.contentItem.location,
-          "https://example.com/after",
+        assert.deepStrictEqual(
+          stored.contentItem,
+          preset(2, "after").contentItem,
         );
       }).pipe(Effect.provide(PresetsRepo.layerTest)),
   );
