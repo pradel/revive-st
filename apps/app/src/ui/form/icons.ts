@@ -1,4 +1,5 @@
 import Code from "@expo/material-symbols/code.xml";
+import Dns from "@expo/material-symbols/dns.xml";
 import Language from "@expo/material-symbols/language.xml";
 import Refresh from "@expo/material-symbols/refresh.xml";
 import Speaker from "@expo/material-symbols/speaker.xml";
@@ -11,6 +12,7 @@ export type FormIcon = Extract<IconName, { ios: unknown }>;
 export const formIcons = {
   code: { ios: "chevron.left.forwardslash.chevron.right", android: Code },
   refresh: { ios: "arrow.clockwise", android: Refresh },
+  server: { ios: "server.rack", android: Dns },
   speaker: { ios: "hifispeaker.fill", android: Speaker },
   terminal: { ios: "terminal", android: Terminal },
   website: { ios: "globe", android: Language },

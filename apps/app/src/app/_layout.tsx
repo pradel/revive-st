@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
+import { loadServerUrl } from "@/features/server/server";
 import { BoseProvider } from "@/features/speakers/contexts/BoseContext";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
@@ -13,6 +14,7 @@ import { color } from "@/ui/tokens";
 export default function RootLayout() {
   useEffect(() => {
     void initLogger();
+    void loadServerUrl();
   }, []);
 
   return (

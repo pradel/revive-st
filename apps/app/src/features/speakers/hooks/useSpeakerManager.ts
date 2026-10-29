@@ -16,6 +16,7 @@ import {
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type Service } from "react-native-zeroconf";
 
+import { useServerUrl } from "@/features/server/server";
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
@@ -672,9 +673,11 @@ export function useSpeakerManager(scanDurationMs = 5000) {
   };
 }
 
+/** Whether the speaker at `host` uses our server; re-checked when it changes. */
 export function useMargeAPIStatusQuery(host: string) {
+  const serverUrl = useServerUrl();
   return useQuery({
-    queryKey: ["marge-api-status", host],
+    queryKey: ["marge-api-status", host, serverUrl],
     queryFn: async () => checkMargeAPIStatus(host),
     enabled: host.length > 0,
     retry: false,
