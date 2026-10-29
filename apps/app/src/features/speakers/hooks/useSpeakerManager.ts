@@ -16,10 +16,9 @@ import {
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type Service } from "react-native-zeroconf";
 
-import { APP_CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
-import { syncPresetsToMarge } from "../lib/marge-api";
+import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
 import { buildMargeRadioPayload } from "../lib/radio";
 import { checkMargeAPIStatus } from "../lib/telnet";
 
@@ -48,7 +47,7 @@ export interface BoseSpeaker {
   components?: DeviceComponent[];
   macAddress?: string;
   /** The Marge account the speaker is paired with; empty when unpaired. */
-  margeAccountId?: string;
+  margeAccountUUID?: string;
   /** The Marge server the speaker calls. */
   margeURL?: string;
 }
@@ -84,7 +83,7 @@ function flattenSpeakerState(
     audioProductLevelControls: state.audioProductLevelControls,
     components: state.components,
     macAddress: state.macAddress,
-    margeAccountId: state.margeAccountUUID,
+    margeAccountUUID: state.margeAccountUUID,
     margeURL: state.margeURL,
   };
 }
@@ -200,7 +199,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
                 if (
                   state.presets &&
                   accountId &&
-                  state.margeURL?.includes(APP_CONFIG.API_URL)
+                  usesOurServer(state.margeURL)
                 ) {
                   syncPresetsToMarge(accountId, deviceID, state.presets).catch(
                     (err: unknown) => {

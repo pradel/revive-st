@@ -1,7 +1,8 @@
 import { Schema } from "effect";
 import { HttpApiEndpoint, HttpApiGroup } from "effect/http-api";
 
-import { AccountId, DeviceId, Preset } from "../presets/preset.ts";
+import { AccountId } from "../marge/account.ts";
+import { DeviceId, Preset } from "../presets/preset.ts";
 
 /** Endpoints the revive-st app calls directly. */
 export class InternalApi extends HttpApiGroup.make("internal")

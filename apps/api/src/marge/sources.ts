@@ -1,3 +1,5 @@
+import type { AccountId } from "./account.ts";
+
 /**
  * The music sources every account offers its speakers. Speakers copy them from
  * `/full` into their own `Sources.xml` at boot, and only play or save presets
@@ -12,7 +14,7 @@ export interface MargeSource {
   readonly updatedOn: string;
   readonly sourceName: string;
   /** The `sourceAccount` the speaker's ContentItems carry for this source. */
-  readonly username: (accountId: string) => string;
+  readonly username: (accountId: AccountId) => string;
 }
 
 export type SourceName = "LOCAL_INTERNET_RADIO" | "TUNEIN";

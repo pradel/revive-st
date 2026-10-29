@@ -7,7 +7,8 @@ import {
   HttpApiSchema,
 } from "effect/http-api";
 
-import { AccountId, DeviceId, PresetId } from "../presets/preset.ts";
+import { AccountId } from "../marge/account.ts";
+import { DeviceId, PresetId } from "../presets/preset.ts";
 
 export const BOSE_XML_CONTENT_TYPE = "application/vnd.bose.streaming-v1.2+xml";
 

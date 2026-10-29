@@ -10,8 +10,10 @@ const SERVER = "https://api.revivest.app";
 const MINTED = "6f1c2a3b-4d5e-4f60-8a1b-2c3d4e5f6a7b";
 const OTHER_MINTED = "0a1b2c3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d";
 
-const onServer = (margeAccountId: string): SpeakerAccount => ({
-  margeAccountId,
+const onOurServer = (margeURL: string | undefined) => margeURL === SERVER;
+
+const onServer = (margeAccountUUID: string): SpeakerAccount => ({
+  margeAccountUUID,
   margeURL: SERVER,
 });
 
@@ -21,7 +23,7 @@ describe("pickHouseholdAccountId", () => {
       pickHouseholdAccountId({
         otherSpeakers: [onServer(MINTED)],
         storedAccountId: OTHER_MINTED,
-        serverUrl: SERVER,
+        onOurServer,
       }),
     ).toBe(MINTED);
   });
@@ -31,7 +33,7 @@ describe("pickHouseholdAccountId", () => {
     ["a Bose cloud account number", onServer("1234567")],
     [
       "an account on another server",
-      { margeAccountId: MINTED, margeURL: "https://other.example" },
+      { margeAccountUUID: MINTED, margeURL: "https://other.example" },
     ],
     ["an unpaired speaker", onServer("")],
   ])("never spreads %s", (_label, other) => {
@@ -39,7 +41,7 @@ describe("pickHouseholdAccountId", () => {
       pickHouseholdAccountId({
         otherSpeakers: [other],
         storedAccountId: null,
-        serverUrl: SERVER,
+        onOurServer,
       }),
     ).toBeUndefined();
   });
@@ -49,7 +51,7 @@ describe("pickHouseholdAccountId", () => {
       pickHouseholdAccountId({
         otherSpeakers: [onServer("revivest-user")],
         storedAccountId: MINTED,
-        serverUrl: SERVER,
+        onOurServer,
       }),
     ).toBe(MINTED);
   });
@@ -59,7 +61,7 @@ describe("pickHouseholdAccountId", () => {
       pickHouseholdAccountId({
         otherSpeakers: [],
         storedAccountId: "revivest-user",
-        serverUrl: SERVER,
+        onOurServer,
       }),
     ).toBeUndefined();
   });

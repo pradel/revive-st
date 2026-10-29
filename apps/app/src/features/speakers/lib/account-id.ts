@@ -17,26 +17,26 @@ export const isSafeAccountId = (accountId: string) =>
   /^[A-Za-z0-9-]+$/.test(accountId);
 
 export interface SpeakerAccount {
-  margeAccountId?: string;
+  margeAccountUUID?: string;
   margeURL?: string;
 }
 
 /**
  * The household account an unpaired speaker joins: the one another of the
- * household's speakers on our server (`serverUrl`) uses, else the one this
- * phone used before. `undefined` when the household has none yet.
+ * household's speakers on our server uses, else the one this phone used
+ * before. `undefined` when the household has none yet.
  */
 export const pickHouseholdAccountId = ({
   otherSpeakers,
   storedAccountId,
-  serverUrl,
+  onOurServer,
 }: {
   otherSpeakers: readonly SpeakerAccount[];
   storedAccountId: string | null;
-  serverUrl: string;
+  onOurServer: (margeURL: string | undefined) => boolean;
 }): string | undefined =>
   otherSpeakers
-    .filter((other) => other.margeURL?.includes(serverUrl))
-    .map((other) => other.margeAccountId)
+    .filter((other) => onOurServer(other.margeURL))
+    .map((other) => other.margeAccountUUID)
     .find(isHouseholdAccountId) ??
   (isHouseholdAccountId(storedAccountId) ? storedAccountId : undefined);

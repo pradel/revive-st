@@ -2,13 +2,8 @@ import { assert, describe, it } from "@effect/vitest";
 import { Effect } from "effect";
 import { TestClock } from "effect/testing";
 
-import {
-  AccountId,
-  ContentItem,
-  DeviceId,
-  Preset,
-  PresetId,
-} from "./preset.ts";
+import { AccountId } from "../marge/account.ts";
+import { ContentItem, DeviceId, Preset, PresetId } from "./preset.ts";
 import { PresetsRepo } from "./presets-repo.ts";
 
 const household = AccountId.make("household");

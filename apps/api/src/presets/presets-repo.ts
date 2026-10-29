@@ -3,7 +3,8 @@ import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
 import { presetsTable } from "../db/schema.ts";
-import { type AccountId, type DeviceId, Preset } from "./preset.ts";
+import type { AccountId } from "../marge/account.ts";
+import { type DeviceId, Preset } from "./preset.ts";
 
 const decodePresets = Schema.decodeUnknownEffect(Schema.Array(Preset));
 

@@ -4,8 +4,8 @@ import { Effect } from "effect";
 import { HttpApiBuilder } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
+import { AccountId } from "../marge/account.ts";
 import { sourceNamed } from "../marge/sources.ts";
-import { AccountId } from "../presets/preset.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
 
 export const InternalHandlers = HttpApiBuilder.group(

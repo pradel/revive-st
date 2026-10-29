@@ -8,6 +8,7 @@ import {
 import { APP_CONFIG } from "@/config";
 
 import { isSafeAccountId } from "./account-id";
+import { usesOurServer } from "./marge-api";
 
 export class MargeAPIConfigurationError extends TaggedError(
   "MargeAPIConfigurationError",
@@ -22,9 +23,7 @@ export async function checkMargeAPIStatus(host: string): Promise<boolean> {
   const client = createClient({ ip: host });
   const infoResult = await client.getInfo();
   if (infoResult.isOk()) {
-    const isConfigured =
-      infoResult.value.margeURL?.includes(APP_CONFIG.API_URL) ?? false;
-    return isConfigured;
+    return usesOurServer(infoResult.value.margeURL);
   }
   throw infoResult.error;
 }
