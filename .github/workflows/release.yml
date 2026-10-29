@@ -13,6 +13,8 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+    outputs:
+      api-version: ${{ steps.api.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -33,3 +35,23 @@ jobs:
           publish-script: pnpm changeset publish
           commit-message: "chore(release): version packages"
           pr-title: "chore(release): version packages"
+
+      - name: Find the published API version
+        id: api
+        if: steps.changesets.outputs.published == 'true'
+        env:
+          PUBLISHED_PACKAGES: ${{ steps.changesets.outputs.published-packages }}
+        run: |
+          version=$(jq --raw-output '.[] | select(.name == "@revive-st/api") | .version' <<< "$PUBLISHED_PACKAGES")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  docker:
+    name: Docker
+    needs: release
+    if: needs.release.outputs.api-version != ''
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker-publish.yml
+    with:
+      version: ${{ needs.release.outputs.api-version }}

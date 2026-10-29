@@ -7,6 +7,7 @@
     "dev": "node --watch src/main.ts",
     "build": "tsc",
     "start": "node src/main.ts",
+    "bundle": "vp pack",
     "test": "vp test run",
     "test:watch": "vp test watch",
     "db:generate": "drizzle-kit generate"
