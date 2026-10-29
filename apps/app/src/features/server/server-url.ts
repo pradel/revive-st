@@ -9,6 +9,8 @@ const CREDENTIALS = "Remove the user name and password from the address";
 const PORT = "The port must be a number from 1 to 65535";
 const LOOPBACK =
   "Speakers can't reach localhost; use the server's address on your network";
+const HTTP_OUTSIDE_NETWORK =
+  "Use https:// for this address. Plain http:// only works with the server's IP address or a .local name";
 
 const DEFAULT_PORTS: Record<string, string> = { http: "80", https: "443" };
 
@@ -61,8 +63,11 @@ function ipv6Groups(address: string): number[] | undefined {
  * Only `http`/`https`, a hostname, an IPv4 or a bracketed IPv6 address and a
  * port are accepted. The origin ends up in telnet commands on the speaker,
  * so anything else (paths, credentials, whitespace, shell characters) is
- * refused, and so is loopback, which the speakers can't reach. Returns the
- * problem otherwise.
+ * refused, and so is loopback, which the speakers can't reach. Plain `http`
+ * is only accepted for an IP address, a `.local` name or a single-label
+ * name: iOS only allows cleartext to those (`NSAllowsLocalNetworking`), and
+ * anywhere else it would send the account id unencrypted beyond the local
+ * network. Returns the problem otherwise.
  */
 export function parseServerUrl(input: string): Result<string, string> {
   const schemeMatch = /^(https?):\/\//i.exec(input);
@@ -111,7 +116,8 @@ export function parseServerUrl(input: string): Result<string, string> {
     }
     // A numeric last label makes it an IP address (`2130706433`, `1.2.3`
     // and `0x7f.1` are 127.0.0.1 to some parsers): only dotted quads.
-    if (/(?:^|\.)[0-9]+$/.test(host)) {
+    const isIpv4 = /(?:^|\.)[0-9]+$/.test(host);
+    if (isIpv4) {
       const octets = ipv4Octets(host);
       if (!octets) {
         return new Err(INVALID);
@@ -121,6 +127,11 @@ export function parseServerUrl(input: string): Result<string, string> {
       }
     } else if (host === "localhost" || host.endsWith(".localhost")) {
       return new Err(LOOPBACK);
+    }
+    const onLocalNetwork =
+      isIpv4 || !host.includes(".") || host.endsWith(".local");
+    if (scheme === "http" && !onLocalNetwork) {
+      return new Err(HTTP_OUTSIDE_NETWORK);
     }
   }
 
