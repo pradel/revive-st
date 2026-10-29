@@ -18,6 +18,7 @@ import {
   createDeviceXml,
   createPresetsXml,
   createPresetXml,
+  createProviderSettingsXml,
   createRecentXml,
   createSoftwareUpdateXml,
   createSourceProvidersXml,
@@ -209,6 +210,9 @@ export const MargeHandlers = HttpApiBuilder.group(
             yield* devicesRepo.pair(params.accountId, params.deviceId);
             return `${XML_HEADER}<group/>`;
           }),
+        )
+        .handle("providerSettings", ({ params }) =>
+          Effect.succeed(createProviderSettingsXml(params.accountId)),
         )
     );
   }),

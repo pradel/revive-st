@@ -540,6 +540,18 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("serves the account's provider settings, escaping its id", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.get(
+        `/streaming/account/${encodeURIComponent('a&"b')}/provider_settings`,
+      );
+      assert.match(
+        yield* assertBoseXml(response),
+        /\?><providerSettings><providerSetting><boseId>a&amp;&quot;b<\/boseId><keyName>ELIGIBLE_FOR_TRIAL<\/keyName><value>false<\/value><providerId>14<\/providerId><\/providerSetting><\/providerSettings>$/,
+      );
+    }),
+  );
+
   it.effect("serves an empty software update", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get(

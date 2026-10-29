@@ -194,6 +194,23 @@ export function createDeviceXml(
   ].join("");
 }
 
+/**
+ * The account's music provider settings, which speakers fetch at boot. The
+ * one setting says the account can't start a Deezer (provider 14) trial: the
+ * account offers no Deezer source.
+ */
+export function createProviderSettingsXml(accountId: AccountId): string {
+  return [
+    XML_HEADER,
+    "<providerSettings><providerSetting>",
+    element("boseId", accountId),
+    element("keyName", "ELIGIBLE_FOR_TRIAL"),
+    element("value", "false"),
+    element("providerId", "14"),
+    "</providerSetting></providerSettings>",
+  ].join("");
+}
+
 export function createSoftwareUpdateXml(): string {
   return `${XML_HEADER}
 <software_update>

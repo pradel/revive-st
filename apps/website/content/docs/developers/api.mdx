@@ -71,6 +71,10 @@ A body without a `deviceid` gets `400 Bad Request`.
 
 Called by the speaker at boot to look up its stereo pair group. Stereo pairs are not supported, so this always returns an empty `<group/>`.
 
+### `GET /streaming/account/:accountId/provider_settings`
+
+Called by the speaker at boot to read the account's music provider settings. Returns a `<providerSettings>` document with one setting, `ELIGIBLE_FOR_TRIAL` set to `false` for Deezer (provider `14`), as the account offers no Deezer source.
+
 ## BMX Endpoints
 
 ### `GET /v2/registry.json`
