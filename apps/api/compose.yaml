@@ -1,0 +1,11 @@
+services:
+  revive-st:
+    image: ghcr.io/pradel/revive-st-api:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - data:/data
+    restart: unless-stopped
+
+volumes:
+  data:

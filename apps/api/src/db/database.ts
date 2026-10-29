@@ -1,15 +1,9 @@
-import { fileURLToPath } from "node:url";
-
 import { LibsqlClient } from "@effect/sql-libsql";
 import * as LibsqlDrizzle from "drizzle-orm/effect-libsql";
 import { migrate } from "drizzle-orm/effect-libsql/migrator";
 import { Context, Effect, Layer } from "effect";
 
-import { DatabaseUrl } from "../config.ts";
-
-const migrationsFolder = fileURLToPath(
-  new URL("../../drizzle", import.meta.url),
-);
+import { DatabaseUrl, migrationsFolder } from "../config.ts";
 
 /** The Drizzle database, migrated with `drizzle/` before first use. */
 export class Database extends Context.Service<

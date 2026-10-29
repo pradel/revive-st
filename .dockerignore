@@ -1,0 +1,13 @@
+# Only the API container image builds from the repository root: send it the
+# workspace files and the packages the server needs, nothing else.
+*
+!package.json
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!patches/
+!tsconfig.json
+!apps/api/
+!packages/bose-api-speaker-client/
+**/node_modules
+**/dist
+**/*.db
