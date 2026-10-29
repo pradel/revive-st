@@ -11,6 +11,8 @@ Revive ST hosts a custom API server that acts both as the backend for our applic
 
 Each household gets its own Marge account, and presets are stored per account and device, so knowing a household's account id is what grants access to its presets. The id is never logged: the server masks it in every log line.
 
+The id is not secret on the household's own network. SoundTouch speakers only speak plain HTTP: a speaker reports its account id unauthenticated in its `/info`, and the app sends it over HTTP when pairing a speaker (`setMargeAccount`) and when casting a station (as `sourceAccount`). Anyone on that network can read it; this risk is accepted, as no speaker offers HTTPS. For the same reason the Android app allows cleartext HTTP, which can't be limited to speakers: their addresses are discovered at runtime. Every request to the Revive ST server uses HTTPS.
+
 When the app configures a speaker that is not paired with an account yet, it pairs it with the household's account: the one another of the household's speakers on this server uses, else the one the phone used before, else a new one minted by `POST /api/internal/accounts`. Only ids minted by the server are shared this way. A speaker already paired with an account keeps it.
 
 ## Marge Emulation Endpoints (Bose SoundTouch)
