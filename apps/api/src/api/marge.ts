@@ -203,5 +203,11 @@ export class MargeApi extends HttpApiGroup.make("marge")
       "/account/:accountId/device/:deviceId/group",
       { params: DeviceParams, success: BoseXml },
     ),
+    /** The account's music provider settings; speakers fetch them at boot. */
+    HttpApiEndpoint.get(
+      "providerSettings",
+      "/account/:accountId/provider_settings",
+      { params: AccountParams, success: BoseXml },
+    ),
   )
   .prefix("/streaming") {}
