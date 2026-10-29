@@ -118,7 +118,7 @@ describe("TuneIn", () => {
   it.effect("plays a station without waiting long for its description", () =>
     Effect.gen(function* () {
       const fiber = yield* Effect.forkChild((yield* TuneIn).station("s1"));
-      yield* TestClock.adjust("2 seconds");
+      yield* TestClock.adjust("4 seconds");
       assert.deepStrictEqual(yield* Fiber.join(fiber), {
         streamUrls: ["http://a.example/1.mp3"],
         name: "",

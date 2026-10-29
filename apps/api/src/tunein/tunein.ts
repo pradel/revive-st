@@ -101,7 +101,7 @@ export class TuneIn extends Context.Service<
               Effect.flatMap((xml) =>
                 Effect.try(() => parseDescribeResponse(xml)),
               ),
-              Effect.timeout("2 seconds"),
+              Effect.timeout("4 seconds"),
               Effect.orElseSucceed(() => ({ name: "", imageUrl: "" })),
             ),
           ],
