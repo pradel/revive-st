@@ -19,37 +19,71 @@ const BoseXmlWithEtag = HttpApiSchema.WithHeaders(BoseXml, {
   ETag: Schema.String,
 });
 
-/** The fields the server keeps from the `<preset>` document a speaker PUTs. */
-export const SpeakerPresetXml = Schema.String.pipe(
-  Schema.decodeTo(
-    Schema.Struct({ name: Schema.String, location: Schema.String }),
-    SchemaTransformation.transformEffect({
-      decode: (xml, options) =>
-        Effect.try({
-          try: () => parseXml(xml),
-          catch: () =>
-            new SchemaIssue.InvalidValue(
-              { message: "Invalid XML payload" },
-              xml,
-              options,
+/**
+ * A flat XML document a speaker sends, decoded to the text of its root's
+ * children, keyed by element name. Elements the speaker leaves out or sends
+ * empty are absent.
+ */
+const speakerXml = <const Fields extends Schema.Struct.Fields>(
+  rootName: string,
+  fields: Fields,
+) =>
+  Schema.String.pipe(
+    Schema.decodeTo(
+      Schema.Struct(fields),
+      SchemaTransformation.transformEffect({
+        decode: (xml, options) =>
+          Effect.try({
+            try: () => parseXml(xml),
+            catch: () =>
+              new SchemaIssue.InvalidValue(
+                { message: "Invalid XML payload" },
+                xml,
+                options,
+              ),
+          }).pipe(
+            Effect.map(
+              (root) =>
+                Object.fromEntries(
+                  root.children
+                    .filter((child) => child.text !== "")
+                    .map((child) => [child.name, child.text]),
+                ) as Schema.Struct.Encoded<Fields>,
             ),
-        }).pipe(
-          Effect.map((root) => {
-            const childText = (name: string) =>
-              root.children.find((child) => child.name === name)?.text;
-            return {
-              name: childText("name") ?? "Unknown Preset",
-              location: childText("location") ?? "",
-            };
-          }),
-        ),
-      encode: ({ name, location }) =>
-        Effect.succeed(
-          `<preset><name>${escapeXml(name)}</name><location>${escapeXml(location)}</location></preset>`,
-        ),
-    }),
-  ),
-);
+          ),
+        encode: (value) =>
+          Effect.succeed(
+            `<${rootName}>${Object.entries(value)
+              .map(
+                ([name, text]) =>
+                  `<${name}>${escapeXml(String(text))}</${name}>`,
+              )
+              .join("")}</${rootName}>`,
+          ),
+      }),
+    ),
+  );
+
+const OptionalText = Schema.optional(Schema.String);
+
+/** The `<preset>` document a speaker PUTs when a preset button is held. */
+export const SpeakerPresetXml = speakerXml("preset", {
+  sourceid: OptionalText,
+  name: OptionalText,
+  username: OptionalText,
+  location: OptionalText,
+  contentItemType: OptionalText,
+  containerArt: OptionalText,
+});
+
+/** The `<recent>` document a speaker POSTs when it starts playing. */
+export const SpeakerRecentXml = speakerXml("recent", {
+  sourceid: OptionalText,
+  name: OptionalText,
+  location: OptionalText,
+  contentItemType: OptionalText,
+  lastplayedat: OptionalText,
+});
 
 const AccountParams = { accountId: Schema.String };
 const DeviceParams = { accountId: Schema.String, deviceId: DeviceId };
@@ -65,7 +99,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
     }),
     HttpApiEndpoint.get("account", "/account/:accountId/full", {
       params: AccountParams,
-      success: BoseXml,
+      success: BoseXmlWithEtag,
     }),
     HttpApiEndpoint.get(
       "presets",
@@ -94,10 +128,11 @@ export class MargeApi extends HttpApiGroup.make("marge")
       "/account/:accountId/device/:deviceId/recent",
       {
         params: DeviceParams,
-        success: HttpApiSchema.WithHeaders(
-          BoseXml.pipe(HttpApiSchema.status(201)),
-          { Location: Schema.String },
+        payload: SpeakerRecentXml.pipe(
+          HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
         ),
+        success: BoseXml.pipe(HttpApiSchema.status(201)),
+        error: HttpApiError.BadRequest,
       },
     ),
     HttpApiEndpoint.post("powerOn", "/support/power_on", {

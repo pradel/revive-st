@@ -47,10 +47,12 @@ export class PresetsRepo extends Context.Service<
             updatedOn: row.updatedOn ?? undefined,
             contentItem: {
               source: row.source,
+              type: row.contentItemType,
               location: row.location,
               sourceAccount: row.sourceAccount,
               isPresetable: row.isPresetable,
               itemName: row.itemName,
+              containerArt: row.containerArt,
             },
           })),
         );
@@ -73,10 +75,12 @@ export class PresetsRepo extends Context.Service<
               createdOn: preset.createdOn ?? now,
               updatedOn: now,
               source: preset.contentItem.source,
+              contentItemType: preset.contentItem.type ?? "",
               location: preset.contentItem.location,
               sourceAccount: preset.contentItem.sourceAccount,
               isPresetable: preset.contentItem.isPresetable,
               itemName: preset.contentItem.itemName,
+              containerArt: preset.contentItem.containerArt ?? "",
             })),
           )
           .onConflictDoUpdate({
@@ -84,10 +88,12 @@ export class PresetsRepo extends Context.Service<
             set: {
               updatedOn: sql`excluded.updated_on`,
               source: sql`excluded.source`,
+              contentItemType: sql`excluded.content_item_type`,
               location: sql`excluded.location`,
               sourceAccount: sql`excluded.source_account`,
               isPresetable: sql`excluded.is_presetable`,
               itemName: sql`excluded.item_name`,
+              containerArt: sql`excluded.container_art`,
             },
           });
       }, Effect.orDie);

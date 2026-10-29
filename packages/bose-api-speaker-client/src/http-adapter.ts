@@ -21,6 +21,7 @@ import type {
   BassCapabilitiesResponse,
   BassResponse,
   CapabilitiesResponse,
+  ContentItem,
   InfoResponse,
   KeyPressRequest,
   NetworkInfoResponse,
@@ -725,22 +726,26 @@ function parseNowPlaying(root: XmlNode): NowPlayingResponse {
   };
 }
 
-function parseContentItem(node: XmlNode | undefined) {
+function parseContentItem(node: XmlNode | undefined): ContentItem {
   if (!node) {
     return {
       source: "",
+      type: "",
       location: "",
       sourceAccount: "",
       isPresetable: false,
       itemName: "",
+      containerArt: "",
     };
   }
   return {
     source: node.attributes.source ?? "",
+    type: node.attributes.type ?? "",
     location: node.attributes.location ?? "",
     sourceAccount: node.attributes.sourceAccount ?? "",
     isPresetable: parseBool(node.attributes.isPresetable ?? "false"),
     itemName: getChildText(node, "itemName") ?? "",
+    containerArt: getChildText(node, "containerArt") ?? "",
   };
 }
 

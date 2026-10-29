@@ -26,10 +26,12 @@ const preset = (
     ...timestamps,
     contentItem: new ContentItem({
       source: "LOCAL_INTERNET_RADIO",
+      type: "stationurl",
       location: `https://example.com/${itemName}`,
       sourceAccount: "revivest-user",
       isPresetable: id % 2 === 1,
       itemName,
+      containerArt: `https://example.com/${itemName}.png`,
     }),
   });
 
@@ -78,10 +80,9 @@ describe("PresetsRepo", () => {
         const [stored] = yield* repo.findByDevice(deviceA);
         assert.strictEqual(stored.createdOn, 500);
         assert.strictEqual(stored.updatedOn, 5_000);
-        assert.strictEqual(stored.contentItem.itemName, "after");
-        assert.strictEqual(
-          stored.contentItem.location,
-          "https://example.com/after",
+        assert.deepStrictEqual(
+          stored.contentItem,
+          preset(2, "after").contentItem,
         );
       }).pipe(Effect.provide(PresetsRepo.layerTest)),
   );
@@ -94,7 +95,7 @@ describe("PresetsRepo", () => {
     }).pipe(Effect.provide(PresetsRepo.layerTest)),
   );
 
-  it.effect("reads rows stored with ids outside 1-6", () =>
+  it.effect("reads rows written before preset ids and types were tracked", () =>
     Effect.gen(function* () {
       const db = yield* Database;
       yield* db.insert(presetsTable).values({
@@ -110,6 +111,8 @@ describe("PresetsRepo", () => {
       const [stored] = yield* repo.findByDevice(deviceA);
       assert.strictEqual(stored.id, 9);
       assert.strictEqual(stored.contentItem.itemName, "Legacy");
+      assert.strictEqual(stored.contentItem.type, "stationurl");
+      assert.strictEqual(stored.contentItem.containerArt, "");
     }).pipe(
       Effect.provide(
         PresetsRepo.layerNoDeps.pipe(Layer.provideMerge(Database.layerTest)),

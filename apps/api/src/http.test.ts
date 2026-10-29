@@ -40,8 +40,30 @@ const getPresetsXml = (deviceId: string) =>
     Effect.flatMap((response) => response.text),
   );
 
-const speakerPresetXml = (name: string, location: string) =>
-  `<?xml version="1.0" encoding="UTF-8" ?><preset buttonNumber="1"><sourceid>1</sourceid><name>${name}</name><username>${name}</username><location>${location}</location><contentItemType>stationurl</contentItemType><containerArt></containerArt></preset>`;
+const STATION_LOCATION =
+  "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJ9";
+
+/** The document a speaker PUTs, as captured from SoundTouch firmware. */
+const speakerPresetXml = ({
+  sourceId = "1",
+  name,
+  location = STATION_LOCATION,
+  art = "",
+}: {
+  sourceId?: string;
+  name: string;
+  location?: string;
+  art?: string;
+}) =>
+  `<?xml version="1.0" encoding="UTF-8" ?><preset buttonNumber="1"><sourceid>${sourceId}</sourceid><name>${name}</name><username>${name}</username><location>${location}</location><contentItemType>stationurl</contentItemType><containerArt>${art}</containerArt></preset>`;
+
+const LOCAL_RADIO_SOURCE_XML =
+  '<source id="1" type="Audio"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><credential type="token"></credential><name>LOCAL_INTERNET_RADIO</name><sourceproviderid>10003</sourceproviderid><sourcename>Local Radio Source</sourcename><sourceSettings/><updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn><username>revivest-user</username></source>';
+
+const MARGE_DATE = String.raw`\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}\+00:00`;
+
+/** `text` as a literal pattern inside a `RegExp`. */
+const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 const assertBoseXml = (response: HttpClientResponse.HttpClientResponse) =>
   Effect.gen(function* () {
@@ -55,6 +77,20 @@ const assertBoseXml = (response: HttpClientResponse.HttpClientResponse) =>
     return body;
   });
 
+const getIfNoneMatch = (path: string, etag: string) =>
+  HttpClient.execute(
+    HttpClientRequest.get(path).pipe(
+      HttpClientRequest.setHeader("if-none-match", etag),
+    ),
+  );
+
+const postRecent = (body: string) =>
+  HttpClient.execute(
+    HttpClientRequest.post(`${devicePath("dev-1")}/recent`).pipe(
+      HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
+    ),
+  );
+
 /** URL-safe base64 of UTF-8 JSON, as the app encodes station data. */
 const encodeStation = (station: object) =>
   Buffer.from(JSON.stringify(station)).toString("base64url");
@@ -63,12 +99,44 @@ const stationPath = "/core02/svc-bmx-adapter-orion/prod/orion/station";
 
 // The server runs on live services: it stamps presets with the real clock.
 layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
-  it.effect("serves the source providers with an ETag", () =>
+  it.effect("serves the source providers", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.get("/streaming/sourceproviders");
+      const body = yield* assertBoseXml(
+        yield* HttpClient.get("/streaming/sourceproviders"),
+      );
+      assert.include(
+        body,
+        '<sourceprovider id="10003"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><name>LOCAL_INTERNET_RADIO</name>',
+      );
+    }),
+  );
+
+  it.effect("answers a matching If-None-Match with a bare 304", () =>
+    Effect.gen(function* () {
+      const first = yield* HttpClient.get("/streaming/sourceproviders");
+      const etag = first.headers.etag;
+      assert.isString(etag);
+
+      const unchanged = yield* getIfNoneMatch(
+        "/streaming/sourceproviders",
+        etag,
+      );
+      assert.strictEqual(unchanged.status, 304);
+      assert.strictEqual(yield* unchanged.text, "");
+
+      const stale = yield* getIfNoneMatch("/streaming/sourceproviders", "old");
+      assert.strictEqual(stale.status, 200);
+    }),
+  );
+
+  it.effect("offers the local radio source in the account", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.get(
+        "/streaming/account/revivest-user/full",
+      );
       const body = yield* assertBoseXml(response);
-      assert.strictEqual(response.headers.etag, "1");
-      assert.include(body, '<sourceprovider id="10003">');
+      assert.isString(response.headers.etag);
+      assert.include(body, `<sources>${LOCAL_RADIO_SOURCE_XML}</sources>`);
     }),
   );
 
@@ -83,28 +151,76 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("stores a preset the speaker PUTs and serves it back", () =>
-    Effect.gen(function* () {
-      const location =
-        "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJ9";
-      const saved = yield* putPreset(
-        "put-roundtrip",
-        2,
-        speakerPresetXml("Dance Wave!", location),
-      );
-      assert.include(yield* assertBoseXml(saved), "<status>OK</status>");
+  it.effect(
+    "stores a preset the speaker PUTs and serves it in Marge's shape",
+    () =>
+      Effect.gen(function* () {
+        const saved = yield* putPreset(
+          "put-roundtrip",
+          2,
+          speakerPresetXml({
+            name: "Dance Wave!",
+            art: "https://cdn.example/logo.png",
+          }),
+        );
+        const echoed = yield* assertBoseXml(saved);
 
-      const response = yield* HttpClient.get(
-        `${devicePath("put-roundtrip")}/presets`,
+        const response = yield* HttpClient.get(
+          `${devicePath("put-roundtrip")}/presets`,
+        );
+        const body = yield* assertBoseXml(response);
+        assert.isString(response.headers.etag);
+        const preset = new RegExp(
+          `<preset buttonNumber="2"><containerArt>https://cdn\\.example/logo\\.png</containerArt><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><location>${literal(STATION_LOCATION)}</location><name>Dance Wave!</name>${literal(LOCAL_RADIO_SOURCE_XML)}<updatedOn>${MARGE_DATE}</updatedOn><username>Dance Wave!</username></preset>`,
+        );
+        assert.match(body, preset);
+        assert.match(echoed, preset);
+      }),
+  );
+
+  it.effect(
+    "recognises a station saved under a Bose cloud source id by its location",
+    () =>
+      Effect.gen(function* () {
+        const saved = yield* putPreset(
+          "bose-era",
+          1,
+          speakerPresetXml({ sourceId: "9330201", name: "Radio" }),
+        );
+        assert.strictEqual(saved.status, 200);
+        assert.include(
+          yield* getPresetsXml("bose-era"),
+          LOCAL_RADIO_SOURCE_XML,
+        );
+      }),
+  );
+
+  it.effect("rejects a preset from a source the account lacks", () =>
+    Effect.gen(function* () {
+      const response = yield* putPreset(
+        "tunein",
+        6,
+        speakerPresetXml({
+          sourceId: "TUNEIN",
+          name: "SMOOTH JAZZ",
+          location: "/v1/playback/station/s166521",
+        }),
       );
-      const body = yield* assertBoseXml(response);
-      assert.strictEqual(response.headers.etag, "1");
-      assert.match(body, /<preset id="2" createdOn="\d+" updatedOn="\d+">/);
-      assert.include(
-        body,
-        `<ContentItem source="LOCAL_INTERNET_RADIO" location="${location}" sourceAccount="revivest-user" isPresetable="true">`,
-      );
-      assert.include(body, "<itemName>Dance Wave!</itemName>");
+      assert.strictEqual(response.status, 400);
+      assert.include(yield* getPresetsXml("tunein"), "<presets/>");
+    }),
+  );
+
+  it.effect("changes the presets ETag when a preset changes", () =>
+    Effect.gen(function* () {
+      const path = `${devicePath("etag")}/presets`;
+      const before = (yield* HttpClient.get(path)).headers.etag;
+      assert.isString(before);
+      yield* putPreset("etag", 1, speakerPresetXml({ name: "New" }));
+
+      const after = yield* getIfNoneMatch(path, before);
+      assert.strictEqual(after.status, 200);
+      assert.include(yield* after.text, "<name>New</name>");
     }),
   );
 
@@ -113,20 +229,14 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const response = yield* putPreset(
         "put-any-type",
         1,
-        speakerPresetXml("Radio", "loc"),
+        speakerPresetXml({ name: "Radio" }),
         "text/plain",
       );
       assert.strictEqual(response.status, 200);
-      assert.include(yield* getPresetsXml("put-any-type"), "Radio");
-    }),
-  );
-
-  it.effect("defaults a preset without name or location", () =>
-    Effect.gen(function* () {
-      yield* putPreset("put-defaults", 1, "<preset></preset>");
-      const body = yield* getPresetsXml("put-defaults");
-      assert.include(body, 'location=""');
-      assert.include(body, "<itemName>Unknown Preset</itemName>");
+      assert.include(
+        yield* getPresetsXml("put-any-type"),
+        "<name>Radio</name>",
+      );
     }),
   );
 
@@ -135,7 +245,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const response = yield* putPreset(
         "put-out-of-range",
         presetId,
-        speakerPresetXml("Radio", "loc"),
+        speakerPresetXml({ name: "Radio" }),
       );
       assert.strictEqual(response.status, 400);
       assert.include(yield* getPresetsXml("put-out-of-range"), "<presets/>");
@@ -159,12 +269,13 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("stores presets synced by the app, in preset order", () =>
+  it.effect("serves presets synced by the app, in preset order", () =>
     Effect.gen(function* () {
       const contentItem = (itemName: string) => ({
-        source: "TUNEIN",
-        location: `/v1/playback/station/${itemName}`,
-        sourceAccount: "",
+        source: "LOCAL_INTERNET_RADIO",
+        type: "stationurl",
+        location: STATION_LOCATION,
+        sourceAccount: "revivest-user",
         isPresetable: true,
         itemName,
       });
@@ -182,8 +293,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.deepStrictEqual(yield* response.json, { success: true });
 
       const body = yield* getPresetsXml("app-sync");
-      assert.match(body, /<preset id="1" createdOn="1000"[^]*<preset id="4"/);
-      assert.include(body, 'source="TUNEIN"');
+      assert.match(
+        body,
+        /<preset buttonNumber="1"><containerArt><\/containerArt><contentItemType>stationurl<\/contentItemType><createdOn>1970-01-01T00:00:01\.000\+00:00<\/createdOn>[^]*<preset buttonNumber="4">/,
+      );
     }),
   );
 
@@ -211,19 +324,32 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("acknowledges a recent item with its location", () =>
+  it.effect("acknowledges a recent with the source it played from", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.post(`${devicePath("dev-1")}/recent`);
+      const response = yield* postRecent(
+        `<?xml version="1.0" encoding="UTF-8" ?><recent><lastplayedat>2026-03-29T21:33:00+00:00</lastplayedat><sourceid>1</sourceid><name>FIP</name><location>${STATION_LOCATION}</location><contentItemType>stationurl</contentItemType></recent>`,
+      );
       assert.strictEqual(response.status, 201);
       assert.strictEqual(
         response.headers["content-type"],
         BOSE_XML_CONTENT_TYPE,
       );
-      assert.strictEqual(
-        response.headers.location,
-        "http://localhost:8000/account/revivest-user/device/dev-1/recent/1",
+      assert.isUndefined(response.headers.location);
+      assert.match(
+        yield* response.text,
+        new RegExp(
+          `<recent id="\\d+"><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><lastplayedat>2026-03-29T21:33:00\\.000\\+00:00</lastplayedat><location>${literal(STATION_LOCATION)}</location><name>FIP</name>${literal(LOCAL_RADIO_SOURCE_XML)}<sourceid>1</sourceid>`,
+        ),
       );
-      assert.include(yield* response.text, '<recent id="1">');
+    }),
+  );
+
+  it.effect("rejects a recent from a source the account lacks", () =>
+    Effect.gen(function* () {
+      const response = yield* postRecent(
+        `<?xml version="1.0" encoding="UTF-8" ?><recent><sourceid>10004</sourceid><name>SMOOTH JAZZ</name><location>/v1/playback/station/s166521</location><contentItemType>stationurl</contentItemType></recent>`,
+      );
+      assert.strictEqual(response.status, 400);
     }),
   );
 

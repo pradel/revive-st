@@ -11,21 +11,25 @@ Revive ST hosts a custom API server that acts both as the backend for our applic
 
 These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services to trick the speaker into playing custom network streams via the `LOCAL_INTERNET_RADIO` source type.
 
+Responses that carry an `ETag` answer a request whose `If-None-Match` matches it with a bare `304 Not Modified`. The tag is derived from the body, and the header is spelled exactly `ETag`: SoundTouch firmware ignores any other spelling.
+
 ### `GET /streaming/sourceproviders`
 
-Returns an XML list of the supported streaming source providers. We only return `LOCAL_INTERNET_RADIO` (id: `10003`) to avoid confusing the device with deprecated cloud services.
-
-- **Headers**: Includes an `ETag` header to signify the current version.
+Returns an XML list of the supported streaming source providers. We only return `LOCAL_INTERNET_RADIO` (id: `10003`) to avoid confusing the device with deprecated cloud services. Includes an `ETag`.
 
 ### `GET /streaming/account/:accountId/full`
 
-Returns the full account XML structure including the list of sources, root element is `<account>`. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source.
+Returns the full account XML structure including the list of sources, root element is `<account>`. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source. Includes an `ETag`.
 
 - **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
 
 ### `GET /streaming/account/:accountId/device/:deviceId/presets`
 
-Mandatory endpoint called by the speaker. Returns an empty `<presets/>` list to satisfy the device and prevent retry loops. Includes an `ETag` header.
+Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` per stored preset, with its location, name, artwork, content type and the `<source>` it plays from. Includes an `ETag` that changes whenever a preset does.
+
+### `PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId`
+
+Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>` identifies the source; for an id from the Bose cloud, the location's shape does (a custom station `…/orion/station?data=…`). A preset from a source the account does not offer is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
 
 ### `GET /streaming/software/update/account/:accountId`
 
@@ -33,7 +37,7 @@ Mandatory endpoint called by the speaker to check for firmware updates. Returns 
 
 ### `POST /streaming/account/:accountId/device/:deviceId/recent`
 
-Endpoint called by the speaker to report recent tracks or activity. We accept the request and respond with a stubbed XML item response, returning `201 Created` with a `Location` header to satisfy the API spec and prevent retry loops.
+Endpoint called by the speaker when it starts playing something. Returns `201 Created` with the recent and the source it played from; a recent from a source the account does not offer is rejected with `400`. Recents are not stored.
 
 ### `POST /streaming/support/power_on`
 
