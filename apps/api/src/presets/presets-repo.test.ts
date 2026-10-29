@@ -95,7 +95,7 @@ describe("PresetsRepo", () => {
     }).pipe(Effect.provide(PresetsRepo.layerTest)),
   );
 
-  it.effect("reads rows written before preset ids and types were tracked", () =>
+  it.effect("reads rows stored with ids outside 1-6", () =>
     Effect.gen(function* () {
       const db = yield* Database;
       yield* db.insert(presetsTable).values({
@@ -111,8 +111,6 @@ describe("PresetsRepo", () => {
       const [stored] = yield* repo.findByDevice(deviceA);
       assert.strictEqual(stored.id, 9);
       assert.strictEqual(stored.contentItem.itemName, "Legacy");
-      assert.strictEqual(stored.contentItem.type, "stationurl");
-      assert.strictEqual(stored.contentItem.containerArt, "");
     }).pipe(
       Effect.provide(
         PresetsRepo.layerNoDeps.pipe(Layer.provideMerge(Database.layerTest)),

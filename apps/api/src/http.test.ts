@@ -178,36 +178,19 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       }),
   );
 
-  it.effect(
-    "recognises a station saved under a Bose cloud source id by its location",
-    () =>
-      Effect.gen(function* () {
-        const saved = yield* putPreset(
-          "bose-era",
-          1,
-          speakerPresetXml({ sourceId: "9330201", name: "Radio" }),
-        );
-        assert.strictEqual(saved.status, 200);
-        assert.include(
-          yield* getPresetsXml("bose-era"),
-          LOCAL_RADIO_SOURCE_XML,
-        );
-      }),
-  );
-
-  it.effect("rejects a preset from a source the account lacks", () =>
+  it.effect.each([
+    ["a source the account lacks", "TUNEIN", "/v1/playback/station/s166521"],
+    ["a source id the account never handed out", "9330201", STATION_LOCATION],
+  ])("rejects a preset from %s", ([, sourceId, location]) =>
     Effect.gen(function* () {
+      const device = `rejected-${sourceId}`;
       const response = yield* putPreset(
-        "tunein",
+        device,
         6,
-        speakerPresetXml({
-          sourceId: "TUNEIN",
-          name: "SMOOTH JAZZ",
-          location: "/v1/playback/station/s166521",
-        }),
+        speakerPresetXml({ sourceId, name: "Radio", location }),
       );
       assert.strictEqual(response.status, 400);
-      assert.include(yield* getPresetsXml("tunein"), "<presets/>");
+      assert.include(yield* getPresetsXml(device), "<presets/>");
     }),
   );
 
@@ -278,6 +261,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         sourceAccount: "revivest-user",
         isPresetable: true,
         itemName,
+        containerArt: "",
       });
       const response = yield* HttpClient.execute(
         HttpClientRequest.post("/api/internal/device/app-sync/presets").pipe(

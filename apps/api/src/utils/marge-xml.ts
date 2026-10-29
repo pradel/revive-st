@@ -85,8 +85,8 @@ function presetXml(preset: StoredPreset, accountId: string): string {
   const source = sourceNamed(contentItem.source);
   return [
     `<preset buttonNumber="${preset.id}">`,
-    element("containerArt", contentItem.containerArt ?? ""),
-    element("contentItemType", contentItem.type ?? ""),
+    element("containerArt", contentItem.containerArt),
+    element("contentItemType", contentItem.type),
     element("createdOn", formatMargeDate(preset.createdOn)),
     element("location", contentItem.location),
     element("name", contentItem.itemName),

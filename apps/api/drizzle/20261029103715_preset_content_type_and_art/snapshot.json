@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "e6f8a2e1-b86e-43ee-ab3d-5478e9941e98",
+  "id": "91ee1671-809c-4619-a89a-4be9f1ebdee9",
   "prevIds": ["e3a30390-7f43-4239-8420-731e7a547c8c"],
   "ddl": [
     {
@@ -64,7 +64,7 @@
       "type": "text",
       "notNull": true,
       "autoincrement": false,
-      "default": "'stationurl'",
+      "default": "''",
       "generated": null,
       "entityType": "columns"
     },

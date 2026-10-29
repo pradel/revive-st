@@ -75,12 +75,12 @@ export class PresetsRepo extends Context.Service<
               createdOn: preset.createdOn ?? now,
               updatedOn: now,
               source: preset.contentItem.source,
-              contentItemType: preset.contentItem.type ?? "",
+              contentItemType: preset.contentItem.type,
               location: preset.contentItem.location,
               sourceAccount: preset.contentItem.sourceAccount,
               isPresetable: preset.contentItem.isPresetable,
               itemName: preset.contentItem.itemName,
-              containerArt: preset.contentItem.containerArt ?? "",
+              containerArt: preset.contentItem.containerArt,
             })),
           )
           .onConflictDoUpdate({

@@ -14,7 +14,7 @@ export const presetsTable = sqliteTable(
     updatedOn: integer("updated_on"),
     source: text("source").notNull(),
     /** The ContentItem `type`, Marge's `contentItemType`. */
-    contentItemType: text("content_item_type").notNull().default("stationurl"),
+    contentItemType: text("content_item_type").notNull().default(""),
     location: text("location").notNull(),
     sourceAccount: text("source_account").notNull(),
     isPresetable: integer("is_presetable", { mode: "boolean" }).notNull(),

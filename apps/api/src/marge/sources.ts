@@ -17,10 +17,7 @@ export interface MargeSource {
 
 export type SourceName = "LOCAL_INTERNET_RADIO";
 
-/**
- * Stations the app casts, played through the Orion adapter. Its id and
- * provider id are the ones speakers already stored, so they stay as they are.
- */
+/** Stations the app casts, played through the Orion adapter. */
 export const LOCAL_INTERNET_RADIO: MargeSource = {
   id: "1",
   name: "LOCAL_INTERNET_RADIO",
@@ -34,26 +31,12 @@ export const LOCAL_INTERNET_RADIO: MargeSource = {
 
 export const ACCOUNT_SOURCES: readonly MargeSource[] = [LOCAL_INTERNET_RADIO];
 
-/** Ids a speaker's `<sourceid>` may carry for each source. */
-const SOURCES_BY_ID: Readonly<Record<string, MargeSource>> = {
-  "1": LOCAL_INTERNET_RADIO,
-  LOCAL_INTERNET_RADIO,
-};
-
-const ORION_LOCATION =
-  /(?:^|\/orion)\/station\?data=|^(?:https?:\/\/[^/]+)?\/custom\/v1\/playback\//;
-
 /**
- * The source a preset or recent a speaker sends belongs to: by its
- * `<sourceid>`, else, for an id this server never handed out (one from the
- * Bose cloud, say), by the shape of its location.
+ * The source a preset or recent a speaker sends belongs to, by its
+ * `<sourceid>`: the id the speaker copied from `/full`.
  */
-export const resolveSource = (
-  sourceId: string,
-  location: string,
-): MargeSource | undefined =>
-  SOURCES_BY_ID[sourceId] ??
-  (ORION_LOCATION.test(location) ? LOCAL_INTERNET_RADIO : undefined);
+export const sourceWithId = (sourceId: string): MargeSource | undefined =>
+  ACCOUNT_SOURCES.find((source) => source.id === sourceId);
 
 /** The source a stored ContentItem's `source` names, if the account has it. */
 export const sourceNamed = (name: string): MargeSource | undefined =>

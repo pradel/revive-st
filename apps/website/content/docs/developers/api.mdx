@@ -29,7 +29,7 @@ Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` 
 
 ### `PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId`
 
-Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>` identifies the source; for an id from the Bose cloud, the location's shape does (a custom station `…/orion/station?data=…`). A preset from a source the account does not offer is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
+Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>`, copied from the account's sources in `/full`, identifies the source. A preset from any other source is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
 
 ### `GET /streaming/software/update/account/:accountId`
 

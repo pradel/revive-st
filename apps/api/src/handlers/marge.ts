@@ -5,7 +5,7 @@ import { HttpApiBuilder, HttpApiError, HttpApiSchema } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
 import { SpeakerPresetXml, SpeakerRecentXml } from "../api/marge.ts";
-import { resolveSource } from "../marge/sources.ts";
+import { sourceWithId } from "../marge/sources.ts";
 import { ContentItem, Preset } from "../presets/preset.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
 import {
@@ -67,13 +67,13 @@ export const MargeHandlers = HttpApiBuilder.group(
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
             const location = preset.location ?? "";
-            const source = resolveSource(preset.sourceid ?? "", location);
+            const source = sourceWithId(preset.sourceid ?? "");
             if (source === undefined) {
               // Storing it under a guessed source would hand the speaker back
               // a preset that plays from the wrong service.
               yield* Effect.logWarning(
                 "Rejected preset from an unknown source",
-                { sourceid: preset.sourceid, location },
+                { sourceid: preset.sourceid },
               );
               return yield* new HttpApiError.BadRequest();
             }
@@ -117,11 +117,11 @@ export const MargeHandlers = HttpApiBuilder.group(
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
             const location = recent.location ?? "";
-            const source = resolveSource(recent.sourceid ?? "", location);
+            const source = sourceWithId(recent.sourceid ?? "");
             if (source === undefined) {
               yield* Effect.logWarning(
                 "Rejected recent from an unknown source",
-                { sourceid: recent.sourceid, location },
+                { sourceid: recent.sourceid },
               );
               return yield* new HttpApiError.BadRequest();
             }
