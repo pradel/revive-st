@@ -3,11 +3,11 @@ import type { Preset } from "bose-api-speaker-client";
 import { APP_CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
-import { isHouseholdAccountId } from "./account-id";
+import { isHouseholdAccountId, isSameOrigin } from "./account-id";
 
 /** Whether a speaker's Marge server, the `margeURL` of its `/info`, is ours. */
 export const usesOurServer = (margeURL: string | undefined) =>
-  margeURL?.includes(APP_CONFIG.API_URL) ?? false;
+  isSameOrigin(margeURL, APP_CONFIG.API_URL);
 
 /** A new household account id, minted by our server. */
 export async function mintAccountId(): Promise<string> {

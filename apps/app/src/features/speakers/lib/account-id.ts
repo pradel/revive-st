@@ -16,6 +16,22 @@ export const isHouseholdAccountId = (
 export const isSafeAccountId = (accountId: string) =>
   /^[A-Za-z0-9-]+$/.test(accountId);
 
+/**
+ * Whether `url` points at the same server as `serverUrl`: same scheme, host
+ * and port. A missing or unparsable URL is never a match, and neither is a
+ * host that merely starts with ours (`api.revivest.app.example.com`).
+ */
+export const isSameOrigin = (url: string | undefined, serverUrl: string) => {
+  if (url === undefined) {
+    return false;
+  }
+  try {
+    return new URL(url).origin === new URL(serverUrl).origin;
+  } catch {
+    return false;
+  }
+};
+
 export interface SpeakerAccount {
   margeAccountUUID?: string;
   margeURL?: string;

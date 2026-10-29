@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   isSafeAccountId,
+  isSameOrigin,
   pickHouseholdAccountId,
   type SpeakerAccount,
 } from "./account-id";
@@ -78,4 +79,27 @@ describe("isSafeAccountId", () => {
       expect(isSafeAccountId(accountId)).toBe(false);
     },
   );
+});
+
+describe("isSameOrigin", () => {
+  it.each([
+    SERVER,
+    `${SERVER}/`,
+    `${SERVER}/streaming`,
+    "HTTPS://API.revivest.app",
+  ])("matches %s", (url) => {
+    expect(isSameOrigin(url, SERVER)).toBe(true);
+  });
+
+  it.each([
+    undefined,
+    "",
+    "not a url",
+    "https://api.revivest.app.example.com",
+    "https://evil.example/https://api.revivest.app",
+    "http://api.revivest.app",
+    "https://api.revivest.app:8443",
+  ])("does not match %s", (url) => {
+    expect(isSameOrigin(url, SERVER)).toBe(false);
+  });
 });
