@@ -15,11 +15,11 @@ Responses that carry an `ETag` answer a request whose `If-None-Match` matches it
 
 ### `GET /streaming/sourceproviders`
 
-Returns an XML list of the supported streaming source providers. We only return `LOCAL_INTERNET_RADIO` (id: `10003`) to avoid confusing the device with deprecated cloud services. Includes an `ETag`.
+Returns the source providers the speaker resolves source provider ids against: `LOCAL_INTERNET_RADIO` (id `10003`) and `TUNEIN` (id `25`). Includes an `ETag`.
 
 ### `GET /streaming/account/:accountId/full`
 
-Returns the full account XML structure including the list of sources, root element is `<account>`. This is where the speaker discovers the `LOCAL_INTERNET_RADIO` source. Includes an `ETag`.
+Returns the full account XML structure including the list of sources, root element is `<account>`. The speaker copies the sources into its own source list at boot, and only plays and saves presets for sources listed there: `LOCAL_INTERNET_RADIO` (id `1`) for stations cast from the app, and `TUNEIN` (id `10004`). Includes an `ETag`.
 
 - **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
 
@@ -29,7 +29,7 @@ Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` 
 
 ### `PUT /streaming/account/:accountId/device/:deviceId/preset/:presetId`
 
-Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>`, copied from the account's sources in `/full`, identifies the source. A preset from any other source is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
+Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>` identifies the source: the id copied from the account's sources in `/full`, or, for TuneIn, the source's name. A preset from any other source is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
 
 ### `GET /streaming/software/update/account/:accountId`
 
@@ -46,3 +46,20 @@ Endpoint called by the speaker upon boot to signal it has turned on. We return a
 ### `POST /streaming/account/:accountId/device/`
 
 Endpoint called by the speaker after account configuration to register the device to the user account. We return a standard `<status>OK</status>` response with a `200 OK` status to complete the registration handshake.
+
+## BMX Endpoints
+
+### `GET /v2/registry.json`
+
+The BMX service registry (`bmxRegistryUrl`). It points the speaker at two adapters on this server, built from the host the speaker called: custom stations (`LOCAL_INTERNET_RADIO`) and TuneIn.
+
+### Custom stations: `/core02/svc-bmx-adapter-orion/prod/orion`
+
+- `GET /station?data=…`: plays the station encoded in `data`, URL-safe base64 of the JSON `{ streamUrl, name?, imageUrl? }`.
+- `POST /token`: an anonymous account token.
+
+### TuneIn: `/bmx/tunein`
+
+- `GET /v1/playback/station/:stationId`: resolves a TuneIn station to its streams through TuneIn's public OPML API. HLS streams are never requested, as speakers cannot play them. Returns `404` for a station TuneIn has no stream for, `503` when TuneIn is unavailable.
+- `POST /v1/token`: an anonymous account token. Speakers refuse a source whose token is empty.
+- `POST /v1/report`: listening reports, acknowledged and dropped.
