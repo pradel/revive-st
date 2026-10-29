@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
-import { Effect, Layer } from "effect";
+import { Effect, Fiber, Layer } from "effect";
 import { HttpClient, HttpClientResponse } from "effect/http";
+import { TestClock } from "effect/testing";
 
 import { parseDescribeResponse, parseTuneResponse, TuneIn } from "./tunein.ts";
 
@@ -22,8 +23,11 @@ const DESCRIBE_XML = `<?xml version="1.0" encoding="UTF-8"?>
 	</body>
 </opml>`;
 
-/** TuneIn serving `routes` by path; everything else is a 404. */
-const tuneInWith = (routes: Record<string, string>, seen: URL[] = []) =>
+/**
+ * TuneIn serving `routes` by path: `null` never answers, a missing path is a
+ * 404.
+ */
+const tuneInWith = (routes: Record<string, string | null>, seen: URL[] = []) =>
   TuneIn.layerNoDeps.pipe(
     Layer.provide(
       Layer.succeed(
@@ -31,14 +35,16 @@ const tuneInWith = (routes: Record<string, string>, seen: URL[] = []) =>
         HttpClient.make((request, url) => {
           seen.push(url);
           const body = routes[url.pathname];
-          return Effect.succeed(
-            HttpClientResponse.fromWeb(
-              request,
-              new Response(body ?? "", {
-                status: body === undefined ? 404 : 200,
-              }),
-            ),
-          );
+          return body === null
+            ? Effect.never
+            : Effect.succeed(
+                HttpClientResponse.fromWeb(
+                  request,
+                  new Response(body ?? "", {
+                    status: body === undefined ? 404 : 200,
+                  }),
+                ),
+              );
         }),
       ),
     ),
@@ -106,6 +112,25 @@ describe("TuneIn", () => {
       });
     }).pipe(
       Effect.provide(tuneInWith({ "/Tune.ashx": "http://a.example/1.mp3" })),
+    ),
+  );
+
+  it.effect("plays a station without waiting long for its description", () =>
+    Effect.gen(function* () {
+      const fiber = yield* Effect.forkChild((yield* TuneIn).station("s1"));
+      yield* TestClock.adjust("2 seconds");
+      assert.deepStrictEqual(yield* Fiber.join(fiber), {
+        streamUrls: ["http://a.example/1.mp3"],
+        name: "",
+        imageUrl: "",
+      });
+    }).pipe(
+      Effect.provide(
+        tuneInWith({
+          "/Tune.ashx": "http://a.example/1.mp3",
+          "/describe.ashx": null,
+        }),
+      ),
     ),
   );
 

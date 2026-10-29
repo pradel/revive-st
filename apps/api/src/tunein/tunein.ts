@@ -23,7 +23,7 @@ export class TuneInUnavailable extends Schema.TaggedError<TuneInUnavailable>()(
   { reason: Schema.Unknown },
 ) {}
 
-const TUNE_URL = "http://opml.radiotime.com/Tune.ashx";
+const TUNE_URL = "https://opml.radiotime.com/Tune.ashx";
 const DESCRIBE_URL = "https://opml.radiotime.com/describe.ashx";
 
 /**
@@ -95,11 +95,13 @@ export class TuneIn extends Context.Service<
         const [tune, describe] = yield* Effect.all(
           [
             getText(TUNE_URL, { id: stationId, formats: STREAM_FORMATS }),
-            // Name and logo are cosmetic: play the station without them.
+            // Name and logo are cosmetic: play the station without them, and
+            // without waiting long for them.
             getText(DESCRIBE_URL, { id: stationId }).pipe(
               Effect.flatMap((xml) =>
                 Effect.try(() => parseDescribeResponse(xml)),
               ),
+              Effect.timeout("2 seconds"),
               Effect.orElseSucceed(() => ({ name: "", imageUrl: "" })),
             ),
           ],
