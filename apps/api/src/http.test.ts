@@ -284,6 +284,51 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("drops synced presets from a source the account lacks", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.post(
+          "/api/internal/device/app-sync-mixed/presets",
+        ).pipe(
+          HttpClientRequest.bodyJsonUnsafe({
+            presets: [
+              {
+                id: 1,
+                contentItem: {
+                  source: "TUNEIN",
+                  type: "stationurl",
+                  location: "/v1/playback/station/s166521",
+                  sourceAccount: "",
+                  isPresetable: true,
+                  itemName: "SMOOTH JAZZ",
+                  containerArt: "",
+                },
+              },
+              {
+                id: 2,
+                contentItem: {
+                  source: "LOCAL_INTERNET_RADIO",
+                  type: "stationurl",
+                  location: STATION_LOCATION,
+                  sourceAccount: "revivest-user",
+                  isPresetable: true,
+                  itemName: "FIP",
+                  containerArt: "",
+                },
+              },
+            ],
+          }),
+        ),
+      );
+      assert.strictEqual(response.status, 200);
+
+      const body = yield* getPresetsXml("app-sync-mixed");
+      assert.notInclude(body, 'buttonNumber="1"');
+      assert.include(body, `<preset buttonNumber="2">`);
+      assert.include(body, LOCAL_RADIO_SOURCE_XML);
+    }),
+  );
+
   it.effect("rejects synced presets that do not match the schema", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.execute(
