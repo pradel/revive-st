@@ -685,6 +685,9 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         const household = yield* mintAccountId;
         const stranger = yield* mintAccountId;
         yield* registerDevice("victim", household);
+        yield* putPreset("victim", 1, speakerPresetXml({ name: "Ours" }), {
+          accountId: household,
+        });
 
         // Every call that pairs, made under another account with the
         // speaker's (public) device id.
@@ -703,6 +706,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(household)), [
           "victim",
         ]);
+        assert.include(
+          yield* getPresetsXml("victim", household),
+          "<name>Ours</name>",
+        );
       }),
   );
 

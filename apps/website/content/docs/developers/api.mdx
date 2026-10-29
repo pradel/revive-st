@@ -41,6 +41,10 @@ Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` 
 
 Called by the speaker when a preset button (1 to 6) is held. The speaker's `<sourceid>` identifies the source: the id copied from the account's sources in `/full`, or, for TuneIn, the source's name. A preset from any other source is rejected with `400`, rather than stored under the wrong source. Returns the stored preset.
 
+### `DELETE /streaming/account/:accountId/device/:deviceId/preset/:presetId`
+
+Called by the speaker when a preset is removed from it. Deletes the stored preset, so the speaker doesn't restore it at its next boot, and returns `200 OK` with `<status>OK</status>`.
+
 ### `GET /streaming/software/update/account/:accountId`
 
 Mandatory endpoint called by the speaker to check for firmware updates. Returns a `<software_update>` response with an empty `<softwareUpdateLocation>` stub to prevent the speaker from entering an update failure state.
