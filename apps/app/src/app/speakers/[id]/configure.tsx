@@ -1,5 +1,8 @@
 import { useQueryClient } from "@tanstack/react-query";
-import type { SocketModuleLike } from "bose-api-speaker-client";
+import {
+  BoseHttpAdapter,
+  type SocketModuleLike,
+} from "bose-api-speaker-client";
 import {
   Stack,
   useLocalSearchParams,
@@ -22,6 +25,7 @@ import { KeepAwake } from "@/components/KeepAwake";
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { resolveHouseholdAccountId } from "@/features/speakers/lib/account";
+import { syncPresetsToMarge } from "@/features/speakers/lib/marge-api";
 import {
   checkMargeAPIStatus,
   configureMargeAPI,
@@ -56,6 +60,7 @@ type ConfigState =
 
 const INITIAL_STEPS: Step[] = [
   { id: "resolve_account", label: "Getting your household account" },
+  { id: "save_presets", label: "Saving the speaker's presets" },
   { id: "telnet_connect", label: "Connecting via Telnet (port 17000)" },
   { id: "set_registry", label: "Setting BMX registry URL" },
   { id: "set_redirect", label: "Configuring boseurls redirect" },
@@ -121,6 +126,33 @@ export default function ConfigureSpeaker() {
         speaker,
         speakers.filter((other) => other.deviceID !== speaker.deviceID),
       );
+
+      // The speaker restores the presets stored for it at every boot, an
+      // empty list included, so they must be stored before it reboots.
+      activeStepIndex = INITIAL_STEPS.findIndex((s) => s.id === "save_presets");
+      setConfigState({
+        status: "running",
+        currentStepIndex: activeStepIndex,
+        rebootTimer: null,
+      });
+      addLog("Saving the speaker's presets to Revive ST...");
+      const presetsResult = await new BoseHttpAdapter({
+        ip: speaker.host,
+        port: speaker.port,
+      }).getPresets();
+      if (!presetsResult.isOk()) {
+        throw presetsResult.error;
+      }
+      await syncPresetsToMarge(
+        accountId,
+        speaker.deviceID,
+        presetsResult.value.presets,
+      );
+      addLog(
+        `Saved ${presetsResult.value.presets.length} preset(s).`,
+        "success",
+      );
+
       const configResult = await configureMargeAPI(
         speaker.host,
         TcpSocket as unknown as SocketModuleLike,
@@ -228,6 +260,9 @@ export default function ConfigureSpeaker() {
       if (failedStepId === "resolve_account") {
         suggestion =
           "Could not get your household account from the Revive ST server. Check that your phone is connected to the internet.";
+      } else if (failedStepId === "save_presets") {
+        suggestion =
+          "Could not save the speaker's presets to the Revive ST server, so configuring stopped before they could be lost. Check that your phone is connected to the internet and the speaker is powered on.";
       } else if (failedStepId === "telnet_connect") {
         suggestion =
           "Failed to establish Telnet. Confirm the speaker is powered on and connected to your Wi-Fi router. Verify its IP matches and port 17000 is not blocked.";
