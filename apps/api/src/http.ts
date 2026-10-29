@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { Cause, Effect, Layer } from "effect";
+import { Cause, Effect, Exit, Layer, Option } from "effect";
 import {
   HttpMiddleware,
   HttpRouter,
@@ -42,17 +42,37 @@ const truncateBody = (body: string) =>
 /** The path only: query strings carry encoded station data. */
 const pathOf = (url: string) => url.split("?", 1)[0];
 
+const ACCOUNT_SEGMENT = /(\/account\/)([^/]+)/;
+
+/** The id `POST /api/internal/accounts` mints, in its JSON reply. */
+const ACCOUNT_ID_FIELD = /("accountId"\s*:\s*")[^"]*(")/g;
+
+const decodePathSegment = (segment: string) => {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+};
+
 /**
- * The request path with its account id masked. The id is the only secret
- * guarding a household's presets, so no log line may carry it.
+ * The request path with its account id masked, and a function masking it in
+ * bodies. The id is the only secret guarding a household's presets, so no
+ * log line may carry it.
  */
 const redactedPath = (url: string) => {
   const path = pathOf(url);
-  const accountId = /\/account\/([^/]+)/.exec(path)?.[1];
+  const segment = ACCOUNT_SEGMENT.exec(path)?.[2];
+  const accountId =
+    segment === undefined ? undefined : decodePathSegment(segment);
   return {
-    path: accountId === undefined ? path : path.replace(accountId, "…"),
-    redact: (text: string) =>
-      accountId === undefined ? text : text.replaceAll(accountId, "…"),
+    path: path.replace(ACCOUNT_SEGMENT, "$1…"),
+    redact: (text: string) => {
+      const masked = text.replace(ACCOUNT_ID_FIELD, "$1…$2");
+      return accountId === undefined
+        ? masked
+        : masked.replaceAll(accountId, "…");
+    },
   };
 };
 
@@ -92,7 +112,8 @@ const LogBodiesLayer = HttpRouter.middleware(
 /**
  * Logs every response, unrouted ones included: a 404 is how a speaker call
  * this server lacks shows up. Replaces Effect's request logger, which would
- * log the account id.
+ * log the account id; like it, a request the client aborted is logged as a
+ * plain response.
  */
 const logResponses = <Failure, Requirements>(
   httpApp: Effect.Effect<
@@ -103,23 +124,45 @@ const logResponses = <Failure, Requirements>(
 ) =>
   HttpServerRequest.HttpServerRequest.use((request) => {
     const { path, redact } = redactedPath(request.url);
+    const annotate = (status: number) =>
+      Effect.annotateLogs({
+        "http.method": request.method,
+        "http.url": path,
+        "http.status": status,
+      });
     return httpApp.pipe(
-      Effect.tap((response) =>
-        Effect.logInfo("Sent HTTP response").pipe(
-          Effect.annotateLogs("http.status", response.status),
-        ),
-      ),
-      Effect.tapCause((cause) => {
-        const error = Cause.squash(cause);
-        return HttpServerError.isHttpServerError(error) &&
+      Effect.onExit((exit) => {
+        if (Exit.isSuccess(exit)) {
+          return Effect.logInfo("Sent HTTP response").pipe(
+            annotate(exit.value.status),
+          );
+        }
+        const [response, cause] = HttpServerError.causeResponseStripped(
+          exit.cause,
+        );
+        const clientAborted =
+          Option.isNone(cause) ||
+          cause.value.reasons.every(
+            (reason) =>
+              reason._tag === "Interrupt" &&
+              reason.annotations.has(HttpServerError.ClientAbort.key),
+          );
+        if (clientAborted) {
+          return Effect.logInfo("Sent HTTP response").pipe(
+            annotate(response.status),
+          );
+        }
+        const error = Cause.squash(cause.value);
+        return (
+          HttpServerError.isHttpServerError(error) &&
           error.reason._tag === "RouteNotFound"
-          ? Effect.logWarning("No route for request")
-          : Effect.logWarning(
-              "HTTP request failed",
-              redact(Cause.pretty(cause)),
-            );
+            ? Effect.logWarning("No route for request")
+            : Effect.logWarning(
+                "HTTP request failed",
+                redact(Cause.pretty(cause.value)),
+              )
+        ).pipe(annotate(response.status));
       }),
-      Effect.annotateLogs({ "http.method": request.method, "http.url": path }),
     );
   });
 
