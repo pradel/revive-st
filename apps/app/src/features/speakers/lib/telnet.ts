@@ -7,6 +7,8 @@ import {
 
 import { APP_CONFIG } from "@/config";
 
+import { isSafeAccountId } from "./account";
+
 export class MargeAPIConfigurationError extends TaggedError(
   "MargeAPIConfigurationError",
 )<{
@@ -34,11 +36,25 @@ export interface ConfigureMargeAPIOptions {
   onLog?: (text: string, type: "info" | "success" | "error" | "debug") => void;
 }
 
+/**
+ * Points the speaker at our server and, unless it already has an account of
+ * its own household, pairs it with `accountId`.
+ */
 export async function configureMargeAPI(
   host: string,
   socket: SocketModuleLike,
+  accountId: string,
   options?: ConfigureMargeAPIOptions,
 ): Promise<Result<void, MargeAPIConfigurationError>> {
+  if (!isSafeAccountId(accountId)) {
+    return new Err(
+      new MargeAPIConfigurationError({
+        host,
+        step: "set_account",
+        message: `Invalid account id: ${accountId}`,
+      }),
+    );
+  }
   const telnet = new TelnetClient({ host, socket });
 
   const run = async (): Promise<Result<void, MargeAPIConfigurationError>> => {
@@ -107,23 +123,18 @@ export async function configureMargeAPI(
     options?.onStepSuccess?.("set_redirect");
     options?.onLog?.("Redirect paths configured successfully.", "success");
 
-    // 4. Check if account is set
+    // 4. Pair with the household account, unless the speaker already has
+    // an account.
     options?.onStepStart?.("set_account");
-    let isAccountSet = false;
     const client = createClient({ ip: host });
     const infoResult = await client.getInfo();
-    if (infoResult.isOk() && infoResult.value.margeAccountUUID) {
-      isAccountSet = true;
-    }
+    const isAccountSet =
+      infoResult.isOk() && infoResult.value.margeAccountUUID !== "";
 
     if (!isAccountSet) {
-      // Set AccountId envswitch
-      options?.onLog?.(
-        "Executing: envswitch AccountId set revivest-user",
-        "info",
-      );
+      options?.onLog?.("Executing: envswitch accountid set <account>", "info");
       const accResult = await telnet.executeCommand(
-        "envswitch AccountId set revivest-user",
+        `envswitch accountid set ${accountId}`,
         1200,
       );
       if (!accResult.isOk()) {
@@ -147,7 +158,7 @@ export async function configureMargeAPI(
         "info",
       );
       const pairingPayload = `<PairDeviceWithAccount>
-  <accountId>revivest-user</accountId>
+  <accountId>${accountId}</accountId>
   <userAuthToken>dontcare</userAuthToken>
 </PairDeviceWithAccount>`;
 

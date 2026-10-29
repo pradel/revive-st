@@ -51,6 +51,10 @@ export interface SpeakerState {
   audioProductLevelControls?: AudioProductLevelControlsResponse | null;
   components?: DeviceComponent[];
   macAddress?: string;
+  /** The Marge account the speaker is paired with; empty when unpaired. */
+  margeAccountUUID?: string;
+  /** The Marge server the speaker calls. */
+  margeURL?: string;
 }
 
 export class Speaker {
@@ -91,6 +95,8 @@ export class Speaker {
       this.state.type = info.type;
       this.state.components = info.components;
       this.state.macAddress = info.networkInfo?.macAddress;
+      this.state.margeAccountUUID = info.margeAccountUUID;
+      this.state.margeURL = info.margeURL;
     }
 
     try {

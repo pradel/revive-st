@@ -21,6 +21,7 @@ import TcpSocket from "react-native-tcp-socket";
 import { KeepAwake } from "@/components/KeepAwake";
 import { Card } from "@/components/ui/Card";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { resolveHouseholdAccountId } from "@/features/speakers/lib/account";
 import {
   checkMargeAPIStatus,
   configureMargeAPI,
@@ -115,9 +116,14 @@ export default function ConfigureSpeaker() {
     let activeStepIndex = 0;
 
     try {
+      const accountId = await resolveHouseholdAccountId(
+        speaker,
+        speakers.filter((other) => other.deviceID !== speaker.deviceID),
+      );
       const configResult = await configureMargeAPI(
         speaker.host,
         TcpSocket as unknown as SocketModuleLike,
+        accountId,
         {
           onLog: (text, type) => {
             addLog(text, type);

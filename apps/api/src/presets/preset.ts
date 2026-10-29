@@ -1,5 +1,15 @@
 import { Schema } from "effect";
 
+/**
+ * The Marge account a speaker is paired with (its `margeAccountUUID`). Each
+ * household gets an unguessable one, so knowing it is what grants access to
+ * the household's presets.
+ */
+export const AccountId = Schema.String.check(Schema.isNonEmpty()).pipe(
+  Schema.brand("AccountId"),
+);
+export type AccountId = typeof AccountId.Type;
+
 export const DeviceId = Schema.String.pipe(Schema.brand("DeviceId"));
 export type DeviceId = typeof DeviceId.Type;
 
@@ -28,13 +38,3 @@ export class Preset extends Schema.Class<Preset>("Preset")({
   updatedOn: Schema.optional(Schema.Number),
   contentItem: ContentItem,
 }) {}
-
-/**
- * A preset as stored. Rows written before preset ids were validated may hold
- * any integer id, so reads accept them; writes still require a `PresetId`.
- */
-export const StoredPreset = Schema.Struct({
-  ...Preset.fields,
-  id: Schema.Int,
-});
-export type StoredPreset = typeof StoredPreset.Type;

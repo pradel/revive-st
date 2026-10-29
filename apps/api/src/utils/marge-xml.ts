@@ -4,7 +4,7 @@ import {
   SOURCE_PROVIDERS,
   sourceNamed,
 } from "../marge/sources.ts";
-import type { StoredPreset } from "../presets/preset.ts";
+import type { Preset } from "../presets/preset.ts";
 
 export const XML_HEADER =
   '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
@@ -80,7 +80,7 @@ export function createAccountFullXml(accountId: string): string {
  * A preset in Marge's shape: flat fields plus the `<source>` it plays from,
  * left out when the account has no such source.
  */
-function presetXml(preset: StoredPreset, accountId: string): string {
+function presetXml(preset: Preset, accountId: string): string {
   const { contentItem } = preset;
   const source = sourceNamed(contentItem.source);
   return [
@@ -98,7 +98,7 @@ function presetXml(preset: StoredPreset, accountId: string): string {
 }
 
 export function createPresetsXml(
-  presets: readonly StoredPreset[],
+  presets: readonly Preset[],
   accountId: string,
 ): string {
   if (presets.length === 0) {
@@ -108,10 +108,7 @@ export function createPresetsXml(
   return `${XML_HEADER}<presets>${items.join("")}</presets>`;
 }
 
-export function createPresetXml(
-  preset: StoredPreset,
-  accountId: string,
-): string {
+export function createPresetXml(preset: Preset, accountId: string): string {
   return `${XML_HEADER}${presetXml(preset, accountId)}`;
 }
 

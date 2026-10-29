@@ -1,27 +1,30 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
 import { presetsTable } from "../db/schema.ts";
-import { type DeviceId, type Preset, StoredPreset } from "./preset.ts";
+import { type AccountId, type DeviceId, Preset } from "./preset.ts";
 
-const decodeStoredPresets = Schema.decodeUnknownEffect(
-  Schema.Array(StoredPreset),
-);
+const decodePresets = Schema.decodeUnknownEffect(Schema.Array(Preset));
 
-/** Presets stored per device, served back to speakers by the Marge API. */
+/**
+ * Presets stored per account and device, served back to speakers by the
+ * Marge API. A device's presets in one account are invisible to every other.
+ */
 export class PresetsRepo extends Context.Service<
   PresetsRepo,
   {
     readonly findByDevice: (
+      accountId: AccountId,
       deviceId: DeviceId,
-    ) => Effect.Effect<readonly StoredPreset[]>;
+    ) => Effect.Effect<readonly Preset[]>;
     /**
      * Inserts or replaces presets by id. `updatedOn` is always the current
      * time; `createdOn` is kept from the stored row, else taken from the
      * preset, else the current time.
      */
     readonly upsert: (
+      accountId: AccountId,
       deviceId: DeviceId,
       presets: readonly Preset[],
     ) => Effect.Effect<void>;
@@ -33,14 +36,20 @@ export class PresetsRepo extends Context.Service<
       const db = yield* Database;
 
       const findByDevice = Effect.fn("PresetsRepo.findByDevice")(function* (
+        accountId: AccountId,
         deviceId: DeviceId,
       ) {
         const rows = yield* db
           .select()
           .from(presetsTable)
-          .where(eq(presetsTable.deviceId, deviceId))
+          .where(
+            and(
+              eq(presetsTable.accountId, accountId),
+              eq(presetsTable.deviceId, deviceId),
+            ),
+          )
           .orderBy(asc(presetsTable.presetId));
-        return yield* decodeStoredPresets(
+        return yield* decodePresets(
           rows.map((row) => ({
             id: row.presetId,
             createdOn: row.createdOn ?? undefined,
@@ -59,6 +68,7 @@ export class PresetsRepo extends Context.Service<
       }, Effect.orDie);
 
       const upsert = Effect.fn("PresetsRepo.upsert")(function* (
+        accountId: AccountId,
         deviceId: DeviceId,
         presets: readonly Preset[],
       ) {
@@ -70,6 +80,7 @@ export class PresetsRepo extends Context.Service<
           .insert(presetsTable)
           .values(
             presets.map((preset) => ({
+              accountId,
               deviceId,
               presetId: preset.id,
               createdOn: preset.createdOn ?? now,
@@ -84,7 +95,11 @@ export class PresetsRepo extends Context.Service<
             })),
           )
           .onConflictDoUpdate({
-            target: [presetsTable.deviceId, presetsTable.presetId],
+            target: [
+              presetsTable.accountId,
+              presetsTable.deviceId,
+              presetsTable.presetId,
+            ],
             set: {
               updatedOn: sql`excluded.updated_on`,
               source: sql`excluded.source`,

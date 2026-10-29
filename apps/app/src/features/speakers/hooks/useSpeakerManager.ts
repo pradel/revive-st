@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   Speaker,
   BoseHttpAdapter,
@@ -10,19 +10,18 @@ import {
   type AudioProductToneControlsResponse,
   type AudioProductLevelControlsResponse,
   type DeviceComponent,
-  type SocketModuleLike,
   type KeyValue,
   type AudioMode,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
-import TcpSocket from "react-native-tcp-socket";
 import Zeroconf, { type Service } from "react-native-zeroconf";
 
+import { APP_CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge } from "../lib/marge-api";
 import { buildMargeRadioPayload } from "../lib/radio";
-import { checkMargeAPIStatus, configureMargeAPI } from "../lib/telnet";
+import { checkMargeAPIStatus } from "../lib/telnet";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -48,6 +47,10 @@ export interface BoseSpeaker {
   audioProductLevelControls?: AudioProductLevelControlsResponse | null;
   components?: DeviceComponent[];
   macAddress?: string;
+  /** The Marge account the speaker is paired with; empty when unpaired. */
+  margeAccountId?: string;
+  /** The Marge server the speaker calls. */
+  margeURL?: string;
 }
 
 function flattenSpeakerState(
@@ -81,11 +84,12 @@ function flattenSpeakerState(
     audioProductLevelControls: state.audioProductLevelControls,
     components: state.components,
     macAddress: state.macAddress,
+    margeAccountId: state.margeAccountUUID,
+    margeURL: state.margeURL,
   };
 }
 
 export function useSpeakerManager(scanDurationMs = 5000) {
-  const queryClient = useQueryClient();
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
     {},
   );
@@ -192,8 +196,13 @@ export function useSpeakerManager(scanDurationMs = 5000) {
                   return;
                 }
 
-                if (state.presets) {
-                  syncPresetsToMarge(deviceID, state.presets).catch(
+                const accountId = state.margeAccountUUID;
+                if (
+                  state.presets &&
+                  accountId &&
+                  state.margeURL?.includes(APP_CONFIG.API_URL)
+                ) {
+                  syncPresetsToMarge(accountId, deviceID, state.presets).catch(
                     (err: unknown) => {
                       logger.warn(
                         "[useBoseScanner] Error syncing presets:",
@@ -487,7 +496,11 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       }
       setUpdating(deviceID, true);
       try {
-        const payload = buildMargeRadioPayload(uri, name);
+        const payload = buildMargeRadioPayload(
+          uri,
+          name,
+          speaker.getState().margeAccountUUID ?? "",
+        );
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
         const controller = new AbortController();
@@ -608,22 +621,6 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     },
   });
 
-  const configureMargeAPIMutation = useMutation({
-    mutationFn: async ({ host }: { host: string }) => {
-      const result = await configureMargeAPI(
-        host,
-        TcpSocket as unknown as SocketModuleLike,
-      );
-      if (!result.isOk()) {
-        throw result.error;
-      }
-    },
-    onSettled: (_data, err, { host }) => {
-      if (!err) {
-        queryClient.setQueryData(["marge-api-status", host], true);
-      }
-    },
-  });
   useEffect(() => {
     isMounted.current = true;
     startScan();
@@ -660,7 +657,6 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
-    configureMargeAPIMutation,
   };
 }
 

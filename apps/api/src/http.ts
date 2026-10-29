@@ -1,9 +1,10 @@
 import { fileURLToPath } from "node:url";
 
-import { Effect, Layer } from "effect";
+import { Cause, Effect, Layer } from "effect";
 import {
   HttpMiddleware,
   HttpRouter,
+  HttpServerError,
   HttpServerRequest,
   HttpServerResponse,
   HttpStaticServer,
@@ -41,15 +42,30 @@ const truncateBody = (body: string) =>
 /** The path only: query strings carry encoded station data. */
 const pathOf = (url: string) => url.split("?", 1)[0];
 
+/**
+ * The request path with its account id masked. The id is the only secret
+ * guarding a household's presets, so no log line may carry it.
+ */
+const redactedPath = (url: string) => {
+  const path = pathOf(url);
+  const accountId = /\/account\/([^/]+)/.exec(path)?.[1];
+  return {
+    path: accountId === undefined ? path : path.replace(accountId, "…"),
+    redact: (text: string) =>
+      accountId === undefined ? text : text.replaceAll(accountId, "…"),
+  };
+};
+
 /** Logs XML and JSON bodies: the record of what speakers actually send. */
 const LogBodiesLayer = HttpRouter.middleware(
   (httpEffect) =>
-    HttpServerRequest.HttpServerRequest.use((request) =>
-      Effect.gen(function* () {
+    HttpServerRequest.HttpServerRequest.use((request) => {
+      const { path, redact } = redactedPath(request.url);
+      return Effect.gen(function* () {
         if (isXmlOrJson(request.headers["content-type"])) {
           const body = yield* request.text.pipe(Effect.orElseSucceed(() => ""));
           if (body !== "") {
-            yield* Effect.logInfo("Request body", truncateBody(body));
+            yield* Effect.logInfo("Request body", truncateBody(redact(body)));
           }
         }
         const response = yield* httpEffect;
@@ -59,19 +75,53 @@ const LogBodiesLayer = HttpRouter.middleware(
         ) {
           yield* Effect.logInfo(
             "Response body",
-            truncateBody(textDecoder.decode(response.body.body)),
+            truncateBody(redact(textDecoder.decode(response.body.body))),
           ).pipe(Effect.annotateLogs("http.status", response.status));
         }
         return response;
       }).pipe(
         Effect.annotateLogs({
           "http.method": request.method,
-          "http.url": pathOf(request.url),
+          "http.url": path,
         }),
-      ),
-    ),
+      );
+    }),
   { global: true },
 );
+
+/**
+ * Logs every response, unrouted ones included: a 404 is how a speaker call
+ * this server lacks shows up. Replaces Effect's request logger, which would
+ * log the account id.
+ */
+const logResponses = <Failure, Requirements>(
+  httpApp: Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    Failure,
+    Requirements | HttpServerRequest.HttpServerRequest
+  >,
+) =>
+  HttpServerRequest.HttpServerRequest.use((request) => {
+    const { path, redact } = redactedPath(request.url);
+    return httpApp.pipe(
+      Effect.tap((response) =>
+        Effect.logInfo("Sent HTTP response").pipe(
+          Effect.annotateLogs("http.status", response.status),
+        ),
+      ),
+      Effect.tapCause((cause) => {
+        const error = Cause.squash(cause);
+        return HttpServerError.isHttpServerError(error) &&
+          error.reason._tag === "RouteNotFound"
+          ? Effect.logWarning("No route for request")
+          : Effect.logWarning(
+              "HTTP request failed",
+              redact(Cause.pretty(cause)),
+            );
+      }),
+      Effect.annotateLogs({ "http.method": request.method, "http.url": path }),
+    );
+  });
 
 /**
  * Answers a GET whose `If-None-Match` names the response's `ETag` with a bare
@@ -108,8 +158,10 @@ export const HttpAppLayer = HttpRouter.serve(
   {
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },
-    // `HttpMiddleware` erases types to `any`; this one only rewrites the
+    disableLogger: true,
+    // `HttpMiddleware` erases types to `any`; these only read or rewrite the
     // request, so the app's own types still hold.
-    middleware: (httpApp) => trustForwardedHeaders(httpApp) as typeof httpApp,
+    middleware: (httpApp) =>
+      trustForwardedHeaders(logResponses(httpApp)) as typeof httpApp,
   },
 );

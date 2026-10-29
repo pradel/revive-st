@@ -7,7 +7,7 @@ import {
   HttpApiSchema,
 } from "effect/http-api";
 
-import { DeviceId, PresetId } from "../presets/preset.ts";
+import { AccountId, DeviceId, PresetId } from "../presets/preset.ts";
 
 export const BOSE_XML_CONTENT_TYPE = "application/vnd.bose.streaming-v1.2+xml";
 
@@ -85,8 +85,8 @@ export const SpeakerRecentXml = speakerXml("recent", {
   lastplayedat: OptionalText,
 });
 
-const AccountParams = { accountId: Schema.String };
-const DeviceParams = { accountId: Schema.String, deviceId: DeviceId };
+const AccountParams = { accountId: AccountId };
+const DeviceParams = { accountId: AccountId, deviceId: DeviceId };
 
 /**
  * The subset of Bose's Marge streaming server that SoundTouch speakers call

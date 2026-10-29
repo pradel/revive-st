@@ -3,18 +3,17 @@ import type { Preset } from "bose-api-speaker-client";
 import { APP_CONFIG } from "@/config";
 import { logger } from "@/lib/logger";
 
-// The app knows the URL via telnet configuration, but we use the known domain here.
-const MARGE_API_BASE_URL = APP_CONFIG.API_URL;
-
 /**
- * Pushes updated presets to the Marge API server for a specific device.
+ * Pushes a speaker's presets to our server, under the account the speaker is
+ * paired with, so the speaker gets them back from the Marge API.
  */
 export async function syncPresetsToMarge(
+  accountId: string,
   deviceId: string,
   presets: Preset[],
 ): Promise<void> {
   try {
-    const url = `${MARGE_API_BASE_URL}/api/internal/device/${encodeURIComponent(deviceId)}/presets`;
+    const url = `${APP_CONFIG.API_URL}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
     const response = await fetch(url, {
       method: "POST",
       headers: {
