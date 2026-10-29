@@ -678,16 +678,45 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("lists a device only in the account it last paired with", () =>
+  it.effect(
+    "keeps a speaker in its account when another account pairs it",
+    () =>
+      Effect.gen(function* () {
+        const household = yield* mintAccountId;
+        const stranger = yield* mintAccountId;
+        yield* registerDevice("victim", household);
+
+        // Every call that pairs, made under another account with the
+        // speaker's (public) device id.
+        yield* registerDevice("victim", stranger);
+        yield* HttpClient.get(`${devicePath("victim", stranger)}/group/`);
+        yield* syncPresets("victim", [], stranger);
+        yield* putPreset("victim", 1, speakerPresetXml({ name: "Taken" }), {
+          accountId: stranger,
+        });
+        yield* HttpClient.execute(
+          HttpClientRequest.delete(
+            `${devicePath("victim", stranger)}/preset/1`,
+          ),
+        );
+
+        assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(household)), [
+          "victim",
+        ]);
+      }),
+  );
+
+  it.effect("does not pair a speaker whose preset or recent is malformed", () =>
     Effect.gen(function* () {
-      const before = yield* mintAccountId;
-      const after = yield* mintAccountId;
-      yield* registerDevice("moving", before);
-      yield* registerDevice("moving", after);
-      assert.include(yield* getFullXml(before), "<devices/>");
-      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(after)), [
-        "moving",
-      ]);
+      const accountId = yield* mintAccountId;
+      const preset = yield* putPreset("malformed", 1, "not xml", { accountId });
+      const recent = yield* HttpClient.execute(
+        HttpClientRequest.post(
+          `${devicePath("malformed", accountId)}/recent`,
+        ).pipe(HttpClientRequest.bodyText("not xml", BOSE_XML_CONTENT_TYPE)),
+      );
+      assert.deepStrictEqual([preset.status, recent.status], [400, 400]);
+      assert.include(yield* getFullXml(accountId), "<devices/>");
     }),
   );
 

@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "a297a6cc-686b-448a-b6cc-d89dac038298",
+  "id": "5b72be13-43a5-4c6f-a29e-62b600f1ebff",
   "prevIds": ["a1062f7d-c256-4372-a1c8-1ecc9c17330a"],
   "ddl": [
     {
@@ -14,9 +14,9 @@
     },
     {
       "table": "devices",
-      "name": "device_id",
+      "name": "account_id",
       "type": "text",
-      "notNull": false,
+      "notNull": true,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -24,7 +24,7 @@
     },
     {
       "table": "devices",
-      "name": "account_id",
+      "name": "device_id",
       "type": "text",
       "notNull": true,
       "autoincrement": false,
@@ -163,16 +163,16 @@
       "entityType": "columns"
     },
     {
-      "table": "presets",
-      "name": "presets_pk",
-      "columns": ["account_id", "device_id", "preset_id"],
+      "table": "devices",
+      "name": "devices_pk",
+      "columns": ["account_id", "device_id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
     {
-      "table": "devices",
-      "name": "devices_pk",
-      "columns": ["device_id"],
+      "table": "presets",
+      "name": "presets_pk",
+      "columns": ["account_id", "device_id", "preset_id"],
       "nameExplicit": false,
       "entityType": "pks"
     }

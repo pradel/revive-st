@@ -31,7 +31,7 @@ Returns the full account XML structure including the list of sources, root eleme
 
 `<devices>` lists every speaker paired with the account, each with its presets. A speaker missing from it drops its account and presets at boot. A speaker with no presets restores them from here; one that has presets keeps its own. A speaker with no stored presets is listed without a `<presets>` element, as an empty one wipes the speaker's presets. Only the device id is listed: the speaker's IP address, serial numbers and name are never stored.
 
-A speaker is paired with one account at a time: the last one it registered with, saved a preset or recent to, looked its group up in, or had its presets synced to by the app.
+A speaker is paired with an account when it registers with it, saves or deletes a preset or adds a recent in it, looks its group up in it, or has its presets synced to it by the app. Pairing never removes a speaker from another account: its device id is its MAC address, which anyone can name, so pairing it elsewhere must not unpair it from its household.
 
 ### `GET /streaming/account/:accountId/device/:deviceId/presets`
 
@@ -55,7 +55,11 @@ Endpoint called by the speaker upon boot to signal it has turned on. We return a
 
 ### `POST /streaming/account/:accountId/device/`
 
-Called by the speaker when it is paired with an account (`setMargeAccount` on the speaker). Pairs the device with the account and returns `201 Created` with a `<device>` document; answered `200 OK` with a bare status, the speaker refused the pairing (`SET_MARGE_ACCOUNT_ERROR`).
+Called by the speaker when it is paired with an account (`setMargeAccount` on the speaker). Pairs the device with the account and returns `201 Created` with a `<device>` document, which the speaker accepts.
+
+A bare `200 OK` status reply is not enough: the speaker then refuses the pairing with `SET_MARGE_ACCOUNT_ERROR`.
+
+A body without a `deviceid` gets `400 Bad Request`.
 
 ### `GET /streaming/account/:accountId/device/:deviceId/group/`
 
@@ -86,4 +90,4 @@ Returns a new household account id, `{ "accountId": "…" }`.
 
 ### `POST /api/internal/account/:accountId/device/:deviceId/presets`
 
-Stores the presets the app read from the speaker, `{ "presets": [...] }`, so the speaker gets them back from the presets endpoint. Presets from a source the account does not offer are dropped.
+Stores the presets the app read from the speaker, `{ "presets": [...] }`, so the speaker gets them back from the presets endpoint. Pairs the device with the account, and replaces the device's stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account does not offer are dropped.

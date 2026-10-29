@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
@@ -8,14 +8,16 @@ import { DeviceId } from "../presets/preset.ts";
 
 const decodeDeviceIds = Schema.decodeUnknownEffect(Schema.Array(DeviceId));
 
-/** Which account each speaker is paired with: one at a time. */
+/**
+ * The speakers paired with each account. Pairing only ever adds a speaker to
+ * an account: anyone can name a speaker's device id (its MAC address), so
+ * pairing it elsewhere must not drop it from its household's account, which
+ * would unpair it and wipe its presets at its next boot.
+ */
 export class DevicesRepo extends Context.Service<
   DevicesRepo,
   {
-    /**
-     * Records that `deviceId` is paired with `accountId`, moving it out of
-     * any account it was paired with before.
-     */
+    /** Records that `deviceId` is paired with `accountId`. */
     readonly pair: (
       accountId: AccountId,
       deviceId: DeviceId,
@@ -38,16 +40,8 @@ export class DevicesRepo extends Context.Service<
         const now = DateTime.toEpochMillis(yield* DateTime.now);
         yield* db
           .insert(devicesTable)
-          .values({ deviceId, accountId, pairedOn: now })
-          .onConflictDoUpdate({
-            target: devicesTable.deviceId,
-            set: {
-              accountId: sql`excluded.account_id`,
-              pairedOn: sql`excluded.paired_on`,
-            },
-            // Pairing again with the same account keeps the original date.
-            setWhere: sql`${devicesTable.accountId} <> excluded.account_id`,
-          });
+          .values({ accountId, deviceId, pairedOn: now })
+          .onConflictDoNothing();
       }, Effect.orDie);
 
       const findByAccount = Effect.fn("DevicesRepo.findByAccount")(function* (

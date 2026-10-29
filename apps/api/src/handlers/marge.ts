@@ -83,7 +83,6 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "savePreset",
           Effect.fn(function* ({ params, request }) {
-            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const preset = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerPreset),
               Effect.tapError((error) =>
@@ -91,6 +90,7 @@ export const MargeHandlers = HttpApiBuilder.group(
               ),
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const location = preset.location ?? "";
             const source = sourceWithId(preset.sourceid ?? "");
             if (source === undefined) {
@@ -149,7 +149,6 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "addRecent",
           Effect.fn(function* ({ params, request }) {
-            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const recent = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerRecent),
               Effect.tapError((error) =>
@@ -157,6 +156,7 @@ export const MargeHandlers = HttpApiBuilder.group(
               ),
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const location = recent.location ?? "";
             const source = sourceWithId(recent.sourceid ?? "");
             if (source === undefined) {
