@@ -193,8 +193,8 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
 
 /**
  * The HTTP application, served on whichever `HttpServer` is provided.
- * Requires `PresetsRepo`, `TuneIn` and the platform services of the server
- * layer.
+ * Requires `PresetsRepo`, `DevicesRepo`, `TuneIn` and the platform services
+ * of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
   Layer.mergeAll(ApiLayer, MediaLayer, NotModifiedLayer, LogBodiesLayer),

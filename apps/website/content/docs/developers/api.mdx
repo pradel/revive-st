@@ -29,6 +29,10 @@ Returns the full account XML structure including the list of sources, root eleme
 
 - **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
 
+`<devices>` lists every speaker paired with the account, each with its presets. A speaker missing from it drops its account and presets at boot. A speaker with no presets restores them from here; one that has presets keeps its own. A speaker with no stored presets is listed without a `<presets>` element, as an empty one wipes the speaker's presets. Only the device id is listed: the speaker's IP address, serial numbers and name are never stored.
+
+A speaker is paired with one account at a time: the last one it registered with, saved a preset or recent to, looked its group up in, or had its presets synced to by the app.
+
 ### `GET /streaming/account/:accountId/device/:deviceId/presets`
 
 Returns the device's presets in Marge's format: one `<preset buttonNumber="n">` per stored preset, with its location, name, artwork, content type and the `<source>` it plays from. Includes an `ETag` that changes whenever a preset does.
@@ -51,7 +55,11 @@ Endpoint called by the speaker upon boot to signal it has turned on. We return a
 
 ### `POST /streaming/account/:accountId/device/`
 
-Endpoint called by the speaker after account configuration to register the device to the user account. We return a standard `<status>OK</status>` response with a `200 OK` status to complete the registration handshake.
+Called by the speaker when it is paired with an account (`setMargeAccount` on the speaker). Pairs the device with the account and returns `201 Created` with a `<device>` document; answered `200 OK` with a bare status, the speaker refused the pairing (`SET_MARGE_ACCOUNT_ERROR`).
+
+### `GET /streaming/account/:accountId/device/:deviceId/group/`
+
+Called by the speaker at boot to look up its stereo pair group. Stereo pairs are not supported, so this always returns an empty `<group/>`.
 
 ## BMX Endpoints
 

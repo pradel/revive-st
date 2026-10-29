@@ -28,3 +28,14 @@ export const presetsTable = sqliteTable(
     }),
   ],
 );
+
+/**
+ * The account each speaker is paired with. Nothing else about the speaker
+ * (IP address, serial numbers, name) is stored: speakers don't need it back.
+ */
+export const devicesTable = sqliteTable("devices", {
+  deviceId: text("device_id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  /** Epoch milliseconds. */
+  pairedOn: integer("paired_on").notNull(),
+});

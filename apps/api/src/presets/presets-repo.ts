@@ -1,10 +1,11 @@
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, notInArray, sql } from "drizzle-orm";
+import type { EffectLibsqlDatabase } from "drizzle-orm/effect-libsql";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
 import { presetsTable } from "../db/schema.ts";
 import type { AccountId } from "../marge/account.ts";
-import { type DeviceId, Preset } from "./preset.ts";
+import { type DeviceId, Preset, type PresetId } from "./preset.ts";
 
 const decodePresets = Schema.decodeUnknownEffect(Schema.Array(Preset));
 
@@ -28,6 +29,21 @@ export class PresetsRepo extends Context.Service<
       accountId: AccountId,
       deviceId: DeviceId,
       presets: readonly Preset[],
+    ) => Effect.Effect<void>;
+    /**
+     * Makes `presets` the device's only presets: upserts them as `upsert`
+     * does and deletes every other slot. Speakers mirror their stored presets
+     * at boot, so a slot left behind would come back.
+     */
+    readonly replace: (
+      accountId: AccountId,
+      deviceId: DeviceId,
+      presets: readonly Preset[],
+    ) => Effect.Effect<void>;
+    readonly remove: (
+      accountId: AccountId,
+      deviceId: DeviceId,
+      presetId: PresetId,
     ) => Effect.Effect<void>;
   }
 >()("@revive-st/api/presets/PresetsRepo") {
@@ -68,7 +84,8 @@ export class PresetsRepo extends Context.Service<
         );
       }, Effect.orDie);
 
-      const upsert = Effect.fn("PresetsRepo.upsert")(function* (
+      const write = Effect.fnUntraced(function* (
+        executor: Pick<EffectLibsqlDatabase, "insert">,
         accountId: AccountId,
         deviceId: DeviceId,
         presets: readonly Preset[],
@@ -77,7 +94,7 @@ export class PresetsRepo extends Context.Service<
           return;
         }
         const now = DateTime.toEpochMillis(yield* DateTime.now);
-        yield* db
+        yield* executor
           .insert(presetsTable)
           .values(
             presets.map((preset) => ({
@@ -112,9 +129,55 @@ export class PresetsRepo extends Context.Service<
               containerArt: sql`excluded.container_art`,
             },
           });
+      });
+
+      const upsert = Effect.fn("PresetsRepo.upsert")(function* (
+        accountId: AccountId,
+        deviceId: DeviceId,
+        presets: readonly Preset[],
+      ) {
+        yield* write(db, accountId, deviceId, presets);
       }, Effect.orDie);
 
-      return PresetsRepo.of({ findByDevice, upsert });
+      const replace = Effect.fn("PresetsRepo.replace")(function* (
+        accountId: AccountId,
+        deviceId: DeviceId,
+        presets: readonly Preset[],
+      ) {
+        yield* db.transaction((tx) =>
+          Effect.gen(function* () {
+            yield* tx.delete(presetsTable).where(
+              and(
+                eq(presetsTable.accountId, accountId),
+                eq(presetsTable.deviceId, deviceId),
+                notInArray(
+                  presetsTable.presetId,
+                  presets.map(({ id }) => id),
+                ),
+              ),
+            );
+            yield* write(tx, accountId, deviceId, presets);
+          }),
+        );
+      }, Effect.orDie);
+
+      const remove = Effect.fn("PresetsRepo.remove")(function* (
+        accountId: AccountId,
+        deviceId: DeviceId,
+        presetId: PresetId,
+      ) {
+        yield* db
+          .delete(presetsTable)
+          .where(
+            and(
+              eq(presetsTable.accountId, accountId),
+              eq(presetsTable.deviceId, deviceId),
+              eq(presetsTable.presetId, presetId),
+            ),
+          );
+      }, Effect.orDie);
+
+      return PresetsRepo.of({ findByDevice, upsert, replace, remove });
     }),
   );
 

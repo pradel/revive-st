@@ -4,19 +4,28 @@ import { DateTime, Effect, Schema } from "effect";
 import { HttpApiBuilder, HttpApiError, HttpApiSchema } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
-import { SpeakerPresetXml, SpeakerRecentXml } from "../api/marge.ts";
+import {
+  SpeakerDeviceXml,
+  SpeakerPresetXml,
+  SpeakerRecentXml,
+} from "../api/marge.ts";
+import { DevicesRepo } from "../devices/devices-repo.ts";
 import { sourceWithId } from "../marge/sources.ts";
 import { ContentItem, Preset } from "../presets/preset.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
 import {
   createAccountFullXml,
+  createDeviceXml,
   createPresetsXml,
   createPresetXml,
   createRecentXml,
   createSoftwareUpdateXml,
   createSourceProvidersXml,
   createStatusOkXml,
+  XML_HEADER,
 } from "../utils/marge-xml.ts";
+
+const decodeSpeakerDevice = Schema.decodeEffect(SpeakerDeviceXml);
 
 const decodeSpeakerPreset = Schema.decodeEffect(SpeakerPresetXml);
 const decodeSpeakerRecent = Schema.decodeEffect(SpeakerRecentXml);
@@ -38,14 +47,26 @@ export const MargeHandlers = HttpApiBuilder.group(
   "marge",
   Effect.fn(function* (handlers) {
     const presetsRepo = yield* PresetsRepo;
+    const devicesRepo = yield* DevicesRepo;
 
     return (
       handlers
         .handle("sourceProviders", () =>
           Effect.succeed(withEtag(createSourceProvidersXml())),
         )
-        .handle("account", ({ params }) =>
-          Effect.succeed(withEtag(createAccountFullXml(params.accountId))),
+        .handle(
+          "account",
+          Effect.fn(function* ({ params }) {
+            const deviceIds = yield* devicesRepo.findByAccount(
+              params.accountId,
+            );
+            const devices = yield* Effect.forEach(deviceIds, (deviceId) =>
+              presetsRepo
+                .findByDevice(params.accountId, deviceId)
+                .pipe(Effect.map((presets) => ({ deviceId, presets }))),
+            );
+            return withEtag(createAccountFullXml(params.accountId, devices));
+          }),
         )
         .handle(
           "presets",
@@ -62,6 +83,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "savePreset",
           Effect.fn(function* ({ params, request }) {
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const preset = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerPreset),
               Effect.tapError((error) =>
@@ -107,6 +129,18 @@ export const MargeHandlers = HttpApiBuilder.group(
             return createPresetXml(saved, params.accountId);
           }),
         )
+        .handle(
+          "removePreset",
+          Effect.fn(function* ({ params }) {
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
+            yield* presetsRepo.remove(
+              params.accountId,
+              params.deviceId,
+              params.presetId,
+            );
+            return createStatusOkXml();
+          }),
+        )
         .handle("softwareUpdate", () =>
           Effect.succeed(createSoftwareUpdateXml()),
         )
@@ -115,6 +149,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "addRecent",
           Effect.fn(function* ({ params, request }) {
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
             const recent = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerRecent),
               Effect.tapError((error) =>
@@ -149,7 +184,32 @@ export const MargeHandlers = HttpApiBuilder.group(
           }),
         )
         .handle("powerOn", () => Effect.succeed(createStatusOkXml()))
-        .handle("registerDevice", () => Effect.succeed(createStatusOkXml()))
+        // Raw for the same reason as `savePreset`.
+        .handleRaw(
+          "registerDevice",
+          Effect.fn(function* ({ params, request }) {
+            const device = yield* request.text.pipe(
+              Effect.flatMap(decodeSpeakerDevice),
+              Effect.tapError((error) =>
+                Effect.logWarning("Rejected speaker device", error),
+              ),
+              Effect.mapError(() => new HttpApiError.BadRequest()),
+            );
+            yield* devicesRepo.pair(params.accountId, device.deviceId);
+            const now = DateTime.toEpochMillis(yield* DateTime.now);
+            return createDeviceXml(device.deviceId, device.name, now);
+          }),
+        )
+        // Speakers look their group up at every boot, so this also pairs
+        // speakers that paired before devices were recorded. No stereo pairs
+        // yet: every speaker stands alone.
+        .handle(
+          "deviceGroup",
+          Effect.fn(function* ({ params }) {
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
+            return `${XML_HEADER}<group/>`;
+          }),
+        )
     );
   }),
 );

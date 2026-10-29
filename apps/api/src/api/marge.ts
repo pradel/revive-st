@@ -86,6 +86,47 @@ export const SpeakerRecentXml = speakerXml("recent", {
   lastplayedat: OptionalText,
 });
 
+/** The `<device deviceid="…">` document a speaker POSTs when it pairs. */
+export const SpeakerDeviceXml = Schema.String.pipe(
+  Schema.decodeTo(
+    Schema.Struct({ deviceId: DeviceId, name: Schema.String }),
+    SchemaTransformation.transformEffect({
+      decode: (xml, options) =>
+        Effect.try({
+          try: () => parseXml(xml),
+          catch: () =>
+            new SchemaIssue.InvalidValue(
+              { message: "Invalid XML payload" },
+              xml,
+              options,
+            ),
+        }).pipe(
+          Effect.flatMap((root) => {
+            const deviceId = root.attributes.deviceid;
+            return deviceId === undefined || deviceId === ""
+              ? Effect.fail(
+                  new SchemaIssue.InvalidValue(
+                    { message: "Missing deviceid" },
+                    xml,
+                    options,
+                  ),
+                )
+              : Effect.succeed({
+                  deviceId,
+                  name:
+                    root.children.find((child) => child.name === "name")
+                      ?.text ?? "",
+                });
+          }),
+        ),
+      encode: ({ deviceId, name }) =>
+        Effect.succeed(
+          `<device deviceid="${escapeXml(deviceId)}"><name>${escapeXml(name)}</name></device>`,
+        ),
+    }),
+  ),
+);
+
 const AccountParams = { accountId: AccountId };
 const DeviceParams = { accountId: AccountId, deviceId: DeviceId };
 
@@ -119,6 +160,15 @@ export class MargeApi extends HttpApiGroup.make("marge")
         error: HttpApiError.BadRequest,
       },
     ),
+    /** Called by the speaker when a preset is removed from it. */
+    HttpApiEndpoint.delete(
+      "removePreset",
+      "/account/:accountId/device/:deviceId/preset/:presetId",
+      {
+        params: { ...DeviceParams, presetId: PresetId },
+        success: BoseXml,
+      },
+    ),
     HttpApiEndpoint.get(
       "softwareUpdate",
       "/software/update/account/:accountId",
@@ -141,7 +191,17 @@ export class MargeApi extends HttpApiGroup.make("marge")
     }),
     HttpApiEndpoint.post("registerDevice", "/account/:accountId/device", {
       params: AccountParams,
-      success: BoseXml,
+      payload: SpeakerDeviceXml.pipe(
+        HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
+      ),
+      success: BoseXml.pipe(HttpApiSchema.status(201)),
+      error: HttpApiError.BadRequest,
     }),
+    /** The speaker's stereo pair group; speakers look it up at boot. */
+    HttpApiEndpoint.get(
+      "deviceGroup",
+      "/account/:accountId/device/:deviceId/group",
+      { params: DeviceParams, success: BoseXml },
+    ),
   )
   .prefix("/streaming") {}

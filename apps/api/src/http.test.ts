@@ -12,6 +12,7 @@ import {
 
 import { BmxPlayback, BmxRegistry, BmxToken } from "./api/bmx.ts";
 import { BOSE_XML_CONTENT_TYPE } from "./api/marge.ts";
+import { DevicesRepo } from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { StationNotFound, TuneIn, TuneInUnavailable } from "./tunein/tunein.ts";
@@ -43,6 +44,7 @@ const logLines: string[] = [];
 const TestLayer = HttpAppLayer.pipe(
   Layer.provide([
     PresetsRepo.layerTest,
+    DevicesRepo.layerTest,
     TuneInTest,
     Logger.layer([
       Logger.map(Logger.formatJson, (line) => {
@@ -121,9 +123,12 @@ const MARGE_DATE = String.raw`\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{3}\+00:00`;
 /** `text` as a literal pattern inside a `RegExp`. */
 const literal = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const assertBoseXml = (response: HttpClientResponse.HttpClientResponse) =>
+const assertBoseXml = (
+  response: HttpClientResponse.HttpClientResponse,
+  status = 200,
+) =>
   Effect.gen(function* () {
-    assert.strictEqual(response.status, 200);
+    assert.strictEqual(response.status, status);
     assert.strictEqual(response.headers["content-type"], BOSE_XML_CONTENT_TYPE);
     const body = yield* response.text;
     assert.match(
@@ -132,6 +137,25 @@ const assertBoseXml = (response: HttpClientResponse.HttpClientResponse) =>
     );
     return body;
   });
+
+const getFullXml = (accountId: string) =>
+  HttpClient.get(`/streaming/account/${accountId}/full`).pipe(
+    Effect.flatMap((response) => response.text),
+  );
+
+const registerDevice = (deviceId: string, accountId: string) =>
+  HttpClient.execute(
+    HttpClientRequest.post(`/streaming/account/${accountId}/device/`).pipe(
+      HttpClientRequest.bodyText(
+        `<?xml version="1.0" encoding="UTF-8" ?><device deviceid="${deviceId}"><name>Bose SoundTouch 10</name><macaddress>${deviceId}</macaddress></device>`,
+        BOSE_XML_CONTENT_TYPE,
+      ),
+    ),
+  );
+
+/** The `<device>` ids listed in an account document, in order. */
+const listedDeviceIds = (fullXml: string) =>
+  [...fullXml.matchAll(/<device deviceid="([^"]*)">/g)].map(([, id]) => id);
 
 const getIfNoneMatch = (path: string, etag: string) =>
   HttpClient.execute(
@@ -454,6 +478,60 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("replaces a device's stored presets with the ones synced", () =>
+    Effect.gen(function* () {
+      const preset = (id: number, itemName: string) => ({
+        id,
+        contentItem: {
+          source: "LOCAL_INTERNET_RADIO",
+          type: "stationurl",
+          location: STATION_LOCATION,
+          sourceAccount: ACCOUNT,
+          isPresetable: true,
+          itemName,
+          containerArt: "",
+        },
+      });
+      yield* syncPresets("app-sync-replace", [
+        preset(1, "One"),
+        preset(2, "Two"),
+        preset(4, "Four"),
+      ]);
+      yield* syncPresets("app-sync-replace-other", [preset(1, "Other")]);
+
+      yield* syncPresets("app-sync-replace", [preset(2, "Two again")]);
+      const body = yield* getPresetsXml("app-sync-replace");
+      assert.deepStrictEqual(
+        [...body.matchAll(/buttonNumber="(\d)"/g)].map(([, id]) => id),
+        ["2"],
+      );
+      assert.include(body, "<name>Two again</name>");
+
+      yield* syncPresets("app-sync-replace", []);
+      assert.include(yield* getPresetsXml("app-sync-replace"), "<presets/>");
+      assert.include(
+        yield* getPresetsXml("app-sync-replace-other"),
+        "<name>Other</name>",
+      );
+    }),
+  );
+
+  it.effect("deletes a preset the speaker removes", () =>
+    Effect.gen(function* () {
+      yield* putPreset("removing", 1, speakerPresetXml({ name: "Kept" }));
+      yield* putPreset("removing", 3, speakerPresetXml({ name: "Removed" }));
+
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.delete(`${devicePath("removing")}/preset/3`),
+      );
+      assert.include(yield* assertBoseXml(response), "<status>OK</status>");
+
+      const body = yield* getPresetsXml("removing");
+      assert.include(body, "<name>Kept</name>");
+      assert.notInclude(body, 'buttonNumber="3"');
+    }),
+  );
+
   it.effect("rejects synced presets that do not match the schema", () =>
     Effect.gen(function* () {
       const response = yield* syncPresets("app-sync-invalid", [{ id: 1 }]);
@@ -529,8 +607,88 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
             ),
           ),
         );
-        assert.include(yield* assertBoseXml(response), "<status>OK</status>");
+        assert.match(
+          yield* assertBoseXml(response, 201),
+          new RegExp(
+            `<device deviceid="EC1127C25A50"><createdOn>${MARGE_DATE}</createdOn><name>Bose SoundTouch 10</name><updatedOn>${MARGE_DATE}</updatedOn></device>$`,
+          ),
+        );
       }),
+  );
+
+  it.effect("rejects a device registration without a device id", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.post(`/streaming/account/${ACCOUNT}/device`).pipe(
+          HttpClientRequest.bodyText(
+            "<device><name>Bose SoundTouch 10</name></device>",
+            BOSE_XML_CONTENT_TYPE,
+          ),
+        ),
+      );
+      assert.strictEqual(response.status, 400);
+    }),
+  );
+
+  it.effect("lists each paired device in the account with its presets", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      assert.include(yield* getFullXml(accountId), "<devices/>");
+
+      yield* registerDevice("registered", accountId);
+      yield* putPreset("preset-saver", 3, speakerPresetXml({ name: "Saved" }), {
+        accountId,
+      });
+      // Pairing again does not list the device twice.
+      yield* registerDevice("registered", accountId);
+
+      const full = yield* getFullXml(accountId);
+      assert.sameMembers(listedDeviceIds(full), ["registered", "preset-saver"]);
+      // A device without presets has no `<presets>`: an empty one wipes the
+      // speaker's own.
+      assert.include(full, '<device deviceid="registered"></device>');
+      assert.include(
+        full,
+        '<device deviceid="preset-saver"><presets><preset buttonNumber="3">',
+      );
+      assert.include(full, "<name>Saved</name>");
+    }),
+  );
+
+  it.effect("pairs a speaker that looks its group up at boot", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      const response = yield* HttpClient.get(
+        `${devicePath("booting", accountId)}/group/`,
+      );
+      assert.match(yield* assertBoseXml(response), /<group\/>$/);
+      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
+        "booting",
+      ]);
+    }),
+  );
+
+  it.effect("pairs a speaker whose presets the app syncs", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      yield* syncPresets("app-synced", [], accountId);
+      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
+        "app-synced",
+      ]);
+    }),
+  );
+
+  it.effect("lists a device only in the account it last paired with", () =>
+    Effect.gen(function* () {
+      const before = yield* mintAccountId;
+      const after = yield* mintAccountId;
+      yield* registerDevice("moving", before);
+      yield* registerDevice("moving", after);
+      assert.include(yield* getFullXml(before), "<devices/>");
+      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(after)), [
+        "moving",
+      ]);
+    }),
   );
 
   it.effect("points the BMX registry at the host the speaker called", () =>
