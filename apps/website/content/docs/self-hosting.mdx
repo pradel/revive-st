@@ -29,7 +29,7 @@ docker run -d --name revive-st --restart unless-stopped \
   ghcr.io/pradel/revive-st-api:latest
 ```
 
-To check it's running, open `http://192.168.1.10:3000/v2/registry.json` (with your server's address) in your phone's browser: it shows a list of services.
+To check it's running, open `http://192.168.1.10:3000` (with your server's address) in your phone's browser: it shows `Revive ST API` and the version it runs.
 
 Your accounts and presets are stored in the `/data` volume, in the database file `revivest.db`. Back up that volume to keep them.
 
@@ -59,7 +59,7 @@ docker compose pull
 docker compose up -d
 ```
 
-The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`.
+The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`. The server's address shows the version it runs.
 
 ## Tracing (optional)
 

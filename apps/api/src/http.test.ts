@@ -8,6 +8,7 @@ import {
   HttpIncomingMessage,
 } from "effect/http";
 
+import packageJson from "../package.json" with { type: "json" };
 import { BmxPlayback, BmxRegistry, BmxToken } from "./api/bmx.ts";
 import { BOSE_XML_CONTENT_TYPE } from "./api/marge.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
@@ -203,6 +204,27 @@ const postRecent = (body: string) =>
 
 // The server runs on live services: it stamps presets with the real clock.
 layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
+  it.effect("answers its root with its version and working doc links", () =>
+    Effect.gen(function* () {
+      const status = yield* HttpClient.get("/").pipe(
+        Effect.flatMap(
+          HttpIncomingMessage.schemaBodyJson(
+            Schema.Struct({
+              version: Schema.String,
+              docs: Schema.String,
+              openapi: Schema.String,
+            }),
+          ),
+        ),
+      );
+      assert.strictEqual(status.version, packageJson.version);
+      for (const path of [status.docs, status.openapi]) {
+        const response = yield* HttpClient.get(path);
+        assert.strictEqual(response.status, 200, path);
+      }
+    }),
+  );
+
   it.effect("serves the source providers", () =>
     Effect.gen(function* () {
       const body = yield* assertBoseXml(
