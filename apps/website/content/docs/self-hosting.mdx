@@ -59,6 +59,21 @@ docker compose up -d
 
 The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`.
 
+## Tracing (optional)
+
+The server can send a trace of every request it handles, the database queries it runs and the calls it makes to TuneIn and Radio Browser to any [OpenTelemetry](https://opentelemetry.io/) backend that accepts OTLP over HTTP, such as [Jaeger](https://www.jaegertracing.io/) or an OpenTelemetry Collector. Tracing is off unless you set these settings:
+
+| Setting                       | Example                    | What it does                                                                              |
+| ----------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
+| `OTEL_TRACES_EXPORTER`        | `otlp`                     | Turns tracing on.                                                                         |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://192.168.1.10:4318` | Your backend's OTLP/HTTP address. The server sends traces to `/v1/traces` on it.          |
+| `OTEL_SERVICE_NAME`           | `revive-st`                | The name the traces are filed under. Required when tracing is on.                         |
+| `OTEL_EXPORTER_OTLP_HEADERS`  | `authorization=Bearer abc` | Optional headers for backends that need a key, as `name=value` pairs separated by commas. |
+
+Traces are sent as protobuf over HTTP, usually on port `4318`; OTLP over gRPC isn't supported. With Docker Compose, add the settings under `environment:` in the compose file, then run `docker compose up -d`.
+
+Traces include the paths of the requests your speakers make, and those paths contain your household's account id. Only send them to a backend you trust.
+
 ## Go back to the Revive ST server
 
 In **Settings** → **Network** → **Server**, tap **Use the Revive ST server**, then configure each speaker again.
