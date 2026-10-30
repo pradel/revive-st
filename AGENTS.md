@@ -50,3 +50,15 @@ Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md
 - `packages/design/`: Shared colour palette (app and website) and the vector logo; `vp run design#icons` regenerates the app and website icons from `brand/*.svg`.
 - `docs/` — Project documentation including Bose API reference, agent skills guides.
 - `.github/workflows/` — CI/CD pipeline definitions.
+- `repos/` — Vendored reference repositories, gitignored; see below.
+
+## Vendored Repositories
+
+`pnpm repos:sync` (`scripts/sync-repos.sh`) clones or updates shallow copies of related SoundTouch projects under `repos/`:
+
+- `repos/soundcork/`: [soundcork](https://github.com/deborahgu/soundcork), a Python replacement for Bose's SoundTouch cloud servers.
+- `repos/Bose-SoundTouch/`: [Bose-SoundTouch](https://github.com/gesellix/Bose-SoundTouch), a Go client, CLI and local cloud service for SoundTouch speakers.
+
+- If `repos/` is missing or empty, run `pnpm repos:sync`.
+- Use them as read-only reference for how speakers and Bose's servers behave (Marge, BMX, the speaker API) before guessing or searching the web.
+- Do not edit files under `repos/` unless asked, and never import from it.

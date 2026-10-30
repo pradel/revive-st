@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { configDefaults, defineConfig } from "vite-plus";
 
 export default defineConfig({
   staged: {
@@ -7,11 +7,12 @@ export default defineConfig({
   fmt: {
     printWidth: 80,
     sortImports: true,
+    ignorePatterns: ["repos/**"],
   },
   lint: {
     options: { typeAware: true, typeCheck: true },
     jsPlugins: [{ name: "vite-plus", specifier: "vite-plus/oxlint-plugin" }],
-    ignorePatterns: ["apps/app/metro.config.js"],
+    ignorePatterns: ["apps/app/metro.config.js", "repos/**"],
     plugins: ["react", "typescript"],
     env: {
       browser: true,
@@ -144,6 +145,10 @@ export default defineConfig({
         },
       },
     ],
+  },
+  test: {
+    // Vendored repositories ship their own tests (`pnpm repos:sync`).
+    exclude: [...configDefaults.exclude, "repos/**"],
   },
   run: {
     cache: true,
