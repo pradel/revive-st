@@ -1,6 +1,7 @@
 import { Err, Ok, type Result, TaggedError } from "better-result";
 import {
   boseSpeakerClient as createClient,
+  escapeXml,
   TelnetClient,
   type SocketModuleLike,
 } from "bose-api-speaker-client";
@@ -36,12 +37,16 @@ export interface ConfigureMargeAPIOptions {
   onLog?: (text: string, type: "info" | "success" | "error" | "debug") => void;
 }
 
+/** How long the speaker gets to fetch its sources before it restarts. */
+const SOURCES_REFRESH_MS = 5000;
+
 /**
  * Points the speaker at our server and, unless it already has an account,
  * pairs it with `accountId`.
  */
 export async function configureMargeAPI(
   host: string,
+  deviceId: string,
   socket: SocketModuleLike,
   accountId: string,
   options?: ConfigureMargeAPIOptions,
@@ -204,6 +209,27 @@ export async function configureMargeAPI(
       );
       options?.onStepSuccess?.("set_account");
       options?.onStepSuccess?.("pair_device");
+    }
+
+    // The speaker only activates source types it had saved when it starts:
+    // have it fetch and save the server's sources now, or a source it learns
+    // at the coming boot would only play after another restart.
+    options?.onLog?.("Refreshing the speaker's sources...", "info");
+    try {
+      const response = await fetch(`http://${host}:8090/notification`, {
+        method: "POST",
+        headers: { "Content-Type": "application/xml" },
+        body: `<updates deviceID="${escapeXml(deviceId)}"><sourcesUpdated/></updates>`,
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      await new Promise((resolve) => setTimeout(resolve, SOURCES_REFRESH_MS));
+    } catch (e) {
+      options?.onLog?.(
+        `Could not refresh the speaker's sources (${String(e)}); a new source may need another restart.`,
+        "info",
+      );
     }
 
     // 5. Reboot

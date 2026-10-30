@@ -9,25 +9,25 @@ Revive ST hosts a custom API server that acts both as the backend for our applic
 
 Each household gets its own Marge account, and presets are stored per account and device, so knowing a household's account id is what grants access to its presets. The id is never logged: the server masks it in every log line.
 
-The id is not secret on the household's own network. SoundTouch speakers only speak plain HTTP: a speaker reports its account id unauthenticated in its `/info`, and the app sends it over HTTP when pairing a speaker (`setMargeAccount`) and when casting a station (as `sourceAccount`). Anyone on that network can read it; this risk is accepted, as no speaker offers HTTPS. For the same reason the Android app allows cleartext HTTP, which can't be limited to speakers: their addresses are discovered at runtime. Every request to the Revive ST server uses HTTPS.
+The id is not secret on the household's own network. SoundTouch speakers only speak plain HTTP: a speaker reports its account id unauthenticated in its `/info`, and the app sends it over HTTP when pairing a speaker (`setMargeAccount`). Anyone on that network can read it; this risk is accepted, as no speaker offers HTTPS. For the same reason the Android app allows cleartext HTTP, which can't be limited to speakers: their addresses are discovered at runtime. Every request to the Revive ST server uses HTTPS.
 
 When the app configures a speaker that is not paired with an account yet, it pairs it with the household's account: the one another of the household's speakers on this server uses, else the one the phone used before, else a new one minted by `POST /api/internal/accounts`. Only ids minted by the server are shared this way. A speaker already paired with an account keeps it.
 
 ## Marge Emulation Endpoints (Bose SoundTouch)
 
-These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services to trick the speaker into playing custom network streams via the `LOCAL_INTERNET_RADIO` source type.
+These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services so the speakers play internet radio from TuneIn and Radio Browser.
 
 Responses that carry an `ETag` answer a request whose `If-None-Match` matches it with a bare `304 Not Modified`. The tag is derived from the body, and the header is spelled exactly `ETag`: SoundTouch firmware ignores any other spelling.
 
 ### `GET /streaming/sourceproviders`
 
-Returns the source providers the speaker resolves source provider ids against: `LOCAL_INTERNET_RADIO` (id `10003`) and `TUNEIN` (id `25`). Includes an `ETag`.
+Returns the source providers the speaker resolves source provider ids against: `TUNEIN` (id `25`) and `RADIO_BROWSER` (id `39`). Includes an `ETag`.
 
 ### `GET /streaming/account/:accountId/full`
 
-Returns the full account XML structure including the list of sources, root element is `<account>`. The speaker copies the sources into its own source list at boot, and only plays and saves presets for sources listed there: `LOCAL_INTERNET_RADIO` (id `1`) for stations cast from the app, and `TUNEIN` (id `10004`). The local radio source's username, which the speaker uses as `sourceAccount`, is the account id. Includes an `ETag`.
+Returns the full account XML structure including the list of sources, root element is `<account>`. The speaker copies the sources into its own source list at boot, and only plays and saves presets for sources listed there: `TUNEIN` (id `10004`) and `RADIO_BROWSER` (id `10005`). Neither belongs to a user, so their `<username>` is empty. Includes an `ETag`.
 
-- **Note**: The actual stream URL is not returned here; it is requested by the speaker at playback time via a `POST` request to its local `:8090/select` endpoint.
+The speaker activates the source types it had saved when it started. A source it learns from this document only becomes playable at its next boot, so after the sources change a speaker needs to restart twice, unless it fetched this document before restarting.
 
 `<devices>` lists every speaker paired with the account, each with its presets. A speaker missing from it drops its account and presets at boot. A speaker with no presets restores them from here; one that has presets keeps its own. A speaker with no stored presets is listed without a `<presets>` element, as an empty one wipes the speaker's presets. Only the device id is listed: the speaker's IP address, serial numbers and name are never stored.
 
@@ -77,18 +77,18 @@ Called by the speaker at boot to read the account's music provider settings. Ret
 
 ### `GET /v2/registry.json`
 
-The BMX service registry (`bmxRegistryUrl`). It points the speaker at two adapters on this server, built from the host the speaker called: custom stations (`LOCAL_INTERNET_RADIO`) and TuneIn.
-
-### Custom stations: `/core02/svc-bmx-adapter-orion/prod/orion`
-
-- `GET /station?data=…`: plays the station encoded in `data`, URL-safe base64 of the JSON `{ streamUrl, name?, imageUrl? }`.
-- `POST /token`: an anonymous account token.
+The BMX service registry (`bmxRegistryUrl`). It points the speaker at two adapters on this server, built from the host the speaker called: TuneIn and Radio Browser.
 
 ### TuneIn: `/bmx/tunein`
 
 - `GET /v1/playback/station/:stationId`: resolves a TuneIn station to its streams through TuneIn's public OPML API. HLS streams are never requested, as speakers cannot play them. Returns `404` for a station TuneIn has no stream for, `503` when TuneIn is unavailable.
 - `POST /v1/token`: an anonymous account token. Speakers refuse a source whose token is empty.
 - `POST /v1/report`: listening reports, acknowledged and dropped.
+
+### Radio Browser: `/bmx/radiobrowser`
+
+- `GET /stations/byuuid/:stationUuid`: plays a [Radio Browser](https://www.radio-browser.info) station by its `stationuuid`. A Radio Browser preset's location is `/stations/byuuid/<uuid>`, relative to the registry's base URL, so it names the station rather than its stream and holds no server address. Every play looks the station up through Radio Browser's API and returns its current stream (`url_resolved`, else `url`), name and logo. Returns `404` for a station Radio Browser doesn't know or that only has an HLS stream, which speakers cannot play, and `503` when Radio Browser is unavailable. A failed lookup is tried once more.
+- `POST /token`: an anonymous account token.
 
 ## App Endpoints
 

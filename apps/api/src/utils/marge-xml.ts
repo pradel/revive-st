@@ -33,9 +33,10 @@ const element = (name: string, value: string) =>
 
 /**
  * A `<source>` as speakers decode it. Every field is required: one missing
- * aborts the speaker's whole account sync.
+ * aborts the speaker's whole account sync. Neither source belongs to a user,
+ * so `<username>` is empty.
  */
-function sourceXml(source: MargeSource, accountId: AccountId): string {
+function sourceXml(source: MargeSource): string {
   return [
     `<source id="${source.id}" type="Audio">`,
     element("createdOn", source.createdOn),
@@ -45,7 +46,7 @@ function sourceXml(source: MargeSource, accountId: AccountId): string {
     element("sourcename", source.sourceName),
     "<sourceSettings/>",
     element("updatedOn", source.updatedOn),
-    element("username", source.username(accountId)),
+    "<username></username>",
     "</source>",
   ].join("");
 }
@@ -84,12 +85,12 @@ export function createAccountFullXml(
   accountId: AccountId,
   devices: readonly AccountDevice[],
 ): string {
-  const sources = ACCOUNT_SOURCES.map((source) => sourceXml(source, accountId));
+  const sources = ACCOUNT_SOURCES.map(sourceXml);
   const devicesXml = devices.map(({ deviceId, presets }) => {
     const presetsXml =
       presets.length === 0
         ? ""
-        : `<presets>${presets.map((preset) => presetXml(preset, accountId)).join("")}</presets>`;
+        : `<presets>${presets.map(presetXml).join("")}</presets>`;
     return `<device deviceid="${escapeXml(deviceId)}">${presetsXml}</device>`;
   });
   return [
@@ -110,7 +111,7 @@ export function createAccountFullXml(
  * A preset in Marge's shape: flat fields plus the `<source>` it plays from,
  * left out when the account has no such source.
  */
-function presetXml(preset: Preset, accountId: AccountId): string {
+function presetXml(preset: Preset): string {
   const { contentItem } = preset;
   const source = sourceNamed(contentItem.source);
   return [
@@ -120,26 +121,22 @@ function presetXml(preset: Preset, accountId: AccountId): string {
     element("createdOn", formatMargeDate(preset.createdOn)),
     element("location", contentItem.location),
     element("name", contentItem.itemName),
-    source ? sourceXml(source, accountId) : "",
+    source ? sourceXml(source) : "",
     element("updatedOn", formatMargeDate(preset.updatedOn)),
     element("username", contentItem.itemName),
     "</preset>",
   ].join("");
 }
 
-export function createPresetsXml(
-  presets: readonly Preset[],
-  accountId: AccountId,
-): string {
+export function createPresetsXml(presets: readonly Preset[]): string {
   if (presets.length === 0) {
     return `${XML_HEADER}<presets/>`;
   }
-  const items = presets.map((preset) => presetXml(preset, accountId));
-  return `${XML_HEADER}<presets>${items.join("")}</presets>`;
+  return `${XML_HEADER}<presets>${presets.map(presetXml).join("")}</presets>`;
 }
 
-export function createPresetXml(preset: Preset, accountId: AccountId): string {
-  return `${XML_HEADER}${presetXml(preset, accountId)}`;
+export function createPresetXml(preset: Preset): string {
+  return `${XML_HEADER}${presetXml(preset)}`;
 }
 
 export interface Recent {
@@ -154,7 +151,7 @@ export interface Recent {
   readonly createdOn: number;
 }
 
-export function createRecentXml(recent: Recent, accountId: AccountId): string {
+export function createRecentXml(recent: Recent): string {
   return [
     XML_HEADER,
     `<recent id="${recent.id}">`,
@@ -163,7 +160,7 @@ export function createRecentXml(recent: Recent, accountId: AccountId): string {
     element("lastplayedat", formatMargeDate(recent.lastPlayedAt)),
     element("location", recent.location),
     element("name", recent.name),
-    sourceXml(recent.source, accountId),
+    sourceXml(recent.source),
     element("sourceid", recent.source.id),
     element("updatedOn", formatMargeDate(recent.createdOn)),
     "</recent>",

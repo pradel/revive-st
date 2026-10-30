@@ -117,7 +117,11 @@ export default function RadioBrowser() {
   const handleStationPress = (station: RadioStation) => {
     router.push({
       pathname: "/cast",
-      params: { name: station.name, url: station.url_resolved || station.url },
+      params: {
+        stationuuid: station.stationuuid,
+        name: station.name,
+        favicon: station.favicon,
+      },
     });
   };
 

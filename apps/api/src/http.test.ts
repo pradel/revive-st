@@ -1,5 +1,3 @@
-import { Buffer } from "node:buffer";
-
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { Effect, Layer, Logger, Schema } from "effect";
@@ -15,6 +13,11 @@ import { BOSE_XML_CONTENT_TYPE } from "./api/marge.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
+import {
+  RadioBrowser,
+  RadioBrowserStationNotFound,
+  RadioBrowserUnavailable,
+} from "./radio-browser/radio-browser.ts";
 import { StationNotFound, TuneIn, TuneInUnavailable } from "./tunein/tunein.ts";
 
 /** TuneIn as the tests need it: `s1` plays, `s404` is gone, `s503` fails. */
@@ -38,6 +41,31 @@ const TuneInTest = Layer.succeed(
   }),
 );
 
+const STATION_UUID = "9610c454-0601-11e8-ae97-52543be04c81";
+const MISSING_UUID = "00000000-0000-0000-0000-000000000404";
+const UNAVAILABLE_UUID = "00000000-0000-0000-0000-000000000503";
+
+/** Radio Browser as the tests need it: one station, one gone, one failing. */
+const RadioBrowserTest = Layer.succeed(
+  RadioBrowser,
+  RadioBrowser.of({
+    station: (stationUuid) => {
+      switch (stationUuid) {
+        case MISSING_UUID:
+          return Effect.fail(new RadioBrowserStationNotFound({ stationUuid }));
+        case UNAVAILABLE_UUID:
+          return Effect.fail(new RadioBrowserUnavailable({ reason: "down" }));
+        default:
+          return Effect.succeed({
+            streamUrls: ["http://mp3channels.example/chillout"],
+            name: "Antenne Bayern - Chillout",
+            imageUrl: "https://cdn.example/antenne.png",
+          });
+      }
+    },
+  }),
+);
+
 /** Every log line the server writes, as JSON. */
 const logLines: string[] = [];
 
@@ -46,6 +74,7 @@ const TestLayer = HttpAppLayer.pipe(
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
     TuneInTest,
+    RadioBrowserTest,
     Logger.layer([
       Logger.map(Logger.formatJson, (line) => {
         logLines.push(line);
@@ -94,12 +123,11 @@ const mintAccountId = HttpClient.post("/api/internal/accounts").pipe(
   Effect.map(({ accountId }) => accountId),
 );
 
-const STATION_LOCATION =
-  "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion/station?data=eyJ9";
+const STATION_LOCATION = `/stations/byuuid/${STATION_UUID}`;
 
 /** The document a speaker PUTs, as captured from SoundTouch firmware. */
 const speakerPresetXml = ({
-  sourceId = "1",
+  sourceId = "10005",
   name,
   location = STATION_LOCATION,
   art = "",
@@ -111,7 +139,8 @@ const speakerPresetXml = ({
 }) =>
   `<?xml version="1.0" encoding="UTF-8" ?><preset buttonNumber="1"><sourceid>${sourceId}</sourceid><name>${name}</name><username>${name}</username><location>${location}</location><contentItemType>stationurl</contentItemType><containerArt>${art}</containerArt></preset>`;
 
-const LOCAL_RADIO_SOURCE_XML = `<source id="1" type="Audio"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><credential type="token"></credential><name>LOCAL_INTERNET_RADIO</name><sourceproviderid>10003</sourceproviderid><sourcename>Local Radio Source</sourcename><sourceSettings/><updatedOn>2012-09-19T12:43:00.000+00:00</updatedOn><username>${ACCOUNT}</username></source>`;
+const RADIO_BROWSER_SOURCE_XML =
+  '<source id="10005" type="Audio"><createdOn>2026-10-30T00:00:00.000+00:00</createdOn><credential type="token">eyJzZXJpYWwiOiJyYWRpb2Jyb3dzZXIifQ==</credential><name>RADIO_BROWSER</name><sourceproviderid>39</sourceproviderid><sourcename></sourcename><sourceSettings/><updatedOn>2026-10-30T00:00:00.000+00:00</updatedOn><username></username></source>';
 
 const TUNEIN_SOURCE_XML =
   '<source id="10004" type="Audio"><createdOn>2017-07-20T16:43:48.000+00:00</createdOn><credential type="token">eyJzZXJpYWwiOiJ0dW5laW4ifQ==</credential><name>TUNEIN</name><sourceproviderid>25</sourceproviderid><sourcename></sourcename><sourceSettings/><updatedOn>2017-07-20T16:43:48.000+00:00</updatedOn><username></username></source>';
@@ -171,12 +200,6 @@ const postRecent = (body: string) =>
     ),
   );
 
-/** URL-safe base64 of UTF-8 JSON, as the app encodes station data. */
-const encodeStation = (station: object) =>
-  Buffer.from(JSON.stringify(station)).toString("base64url");
-
-const stationPath = "/core02/svc-bmx-adapter-orion/prod/orion/station";
-
 // The server runs on live services: it stamps presets with the real clock.
 layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("serves the source providers", () =>
@@ -186,7 +209,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       );
       assert.include(
         body,
-        '<sourceprovider id="10003"><createdOn>2012-09-19T12:43:00.000+00:00</createdOn><name>LOCAL_INTERNET_RADIO</name>',
+        '<sourceprovider id="39"><createdOn>2026-10-30T00:00:00.000+00:00</createdOn><name>RADIO_BROWSER</name>',
       );
       assert.include(
         body,
@@ -213,7 +236,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("offers local radio and TuneIn sources in the account", () =>
+  it.effect("offers TuneIn and Radio Browser sources in the account", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get(
         `/streaming/account/${ACCOUNT}/full`,
@@ -222,7 +245,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.isString(response.headers.etag);
       assert.include(
         body,
-        `<sources>${LOCAL_RADIO_SOURCE_XML}${TUNEIN_SOURCE_XML}</sources>`,
+        `<sources>${TUNEIN_SOURCE_XML}${RADIO_BROWSER_SOURCE_XML}</sources>`,
       );
     }),
   );
@@ -234,7 +257,6 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       );
       const body = yield* assertBoseXml(response);
       assert.include(body, '<account id="a&amp;&quot;b">');
-      assert.include(body, "<username>a&amp;&quot;b</username>");
     }),
   );
 
@@ -258,7 +280,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         const body = yield* assertBoseXml(response);
         assert.isString(response.headers.etag);
         const preset = new RegExp(
-          `<preset buttonNumber="2"><containerArt>https://cdn\\.example/logo\\.png</containerArt><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><location>${literal(STATION_LOCATION)}</location><name>Dance Wave!</name>${literal(LOCAL_RADIO_SOURCE_XML)}<updatedOn>${MARGE_DATE}</updatedOn><username>Dance Wave!</username></preset>`,
+          `<preset buttonNumber="2"><containerArt>https://cdn\\.example/logo\\.png</containerArt><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><location>${literal(STATION_LOCATION)}</location><name>Dance Wave!</name>${literal(RADIO_BROWSER_SOURCE_XML)}<updatedOn>${MARGE_DATE}</updatedOn><username>Dance Wave!</username></preset>`,
         );
         assert.match(body, preset);
         assert.match(echoed, preset);
@@ -414,10 +436,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("serves presets synced by the app, in preset order", () =>
     Effect.gen(function* () {
       const contentItem = (itemName: string) => ({
-        source: "LOCAL_INTERNET_RADIO",
+        source: "RADIO_BROWSER",
         type: "stationurl",
         location: STATION_LOCATION,
-        sourceAccount: ACCOUNT,
+        sourceAccount: "",
         isPresetable: true,
         itemName,
         containerArt: "",
@@ -459,10 +481,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         {
           id: 2,
           contentItem: {
-            source: "LOCAL_INTERNET_RADIO",
+            source: "RADIO_BROWSER",
             type: "stationurl",
             location: STATION_LOCATION,
-            sourceAccount: ACCOUNT,
+            sourceAccount: "",
             isPresetable: true,
             itemName: "FIP",
             containerArt: "",
@@ -474,7 +496,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const body = yield* getPresetsXml("app-sync-mixed");
       assert.notInclude(body, 'buttonNumber="1"');
       assert.include(body, `<preset buttonNumber="2">`);
-      assert.include(body, LOCAL_RADIO_SOURCE_XML);
+      assert.include(body, RADIO_BROWSER_SOURCE_XML);
     }),
   );
 
@@ -483,10 +505,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const preset = (id: number, itemName: string) => ({
         id,
         contentItem: {
-          source: "LOCAL_INTERNET_RADIO",
+          source: "RADIO_BROWSER",
           type: "stationurl",
           location: STATION_LOCATION,
-          sourceAccount: ACCOUNT,
+          sourceAccount: "",
           isPresetable: true,
           itemName,
           containerArt: "",
@@ -567,7 +589,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("acknowledges a recent with the source it played from", () =>
     Effect.gen(function* () {
       const response = yield* postRecent(
-        `<?xml version="1.0" encoding="UTF-8" ?><recent><lastplayedat>2026-03-29T21:33:00+00:00</lastplayedat><sourceid>1</sourceid><name>FIP</name><location>${STATION_LOCATION}</location><contentItemType>stationurl</contentItemType></recent>`,
+        `<?xml version="1.0" encoding="UTF-8" ?><recent><lastplayedat>2026-03-29T21:33:00+00:00</lastplayedat><sourceid>10005</sourceid><name>FIP</name><location>${STATION_LOCATION}</location><contentItemType>stationurl</contentItemType></recent>`,
       );
       assert.strictEqual(response.status, 201);
       assert.strictEqual(
@@ -578,7 +600,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.match(
         yield* response.text,
         new RegExp(
-          `<recent id="\\d+"><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><lastplayedat>2026-03-29T21:33:00\\.000\\+00:00</lastplayedat><location>${literal(STATION_LOCATION)}</location><name>FIP</name>${literal(LOCAL_RADIO_SOURCE_XML)}<sourceid>1</sourceid>`,
+          `<recent id="\\d+"><contentItemType>stationurl</contentItemType><createdOn>${MARGE_DATE}</createdOn><lastplayedat>2026-03-29T21:33:00\\.000\\+00:00</lastplayedat><location>${literal(STATION_LOCATION)}</location><name>FIP</name>${literal(RADIO_BROWSER_SOURCE_XML)}<sourceid>10005</sourceid>`,
         ),
       );
     }),
@@ -757,12 +779,8 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
           service.baseUrl,
         ]),
         [
-          [
-            "LOCAL_INTERNET_RADIO",
-            11,
-            "https://api.revivest.app/core02/svc-bmx-adapter-orion/prod/orion",
-          ],
           ["TUNEIN", 25, "https://api.revivest.app/bmx/tunein"],
+          ["RADIO_BROWSER", 39, "https://api.revivest.app/bmx/radiobrowser"],
         ],
       );
       assert.strictEqual(
@@ -775,7 +793,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       );
       assert.match(
         direct.bmx_services[0].baseUrl,
-        /^http:\/\/127\.0\.0\.1:\d+\/core02\/svc-bmx-adapter-orion\/prod\/orion$/,
+        /^http:\/\/127\.0\.0\.1:\d+\/bmx\/tunein$/,
       );
     }),
   );
@@ -789,19 +807,18 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect.each([
-    "/core02/svc-bmx-adapter-orion/prod/orion/token",
-    "/bmx/tunein/v1/token",
-  ])("hands out a non-empty anonymous token at %s", (path) =>
-    Effect.gen(function* () {
-      const token = yield* HttpClient.execute(
-        HttpClientRequest.post(path).pipe(
-          HttpClientRequest.bodyJsonUnsafe({ grant_type: "refresh_token" }),
-        ),
-      ).pipe(Effect.flatMap(HttpIncomingMessage.schemaBodyJson(BmxToken)));
-      assert.isNotEmpty(token.access_token);
-      assert.isNotEmpty(token.refresh_token);
-    }),
+  it.effect.each(["/bmx/radiobrowser/token", "/bmx/tunein/v1/token"])(
+    "hands out a non-empty anonymous token at %s",
+    (path) =>
+      Effect.gen(function* () {
+        const token = yield* HttpClient.execute(
+          HttpClientRequest.post(path).pipe(
+            HttpClientRequest.bodyJsonUnsafe({ grant_type: "refresh_token" }),
+          ),
+        ).pipe(Effect.flatMap(HttpIncomingMessage.schemaBodyJson(BmxToken)));
+        assert.isNotEmpty(token.access_token);
+        assert.isNotEmpty(token.refresh_token);
+      }),
   );
 
   it.effect("plays a TuneIn station from its streams", () =>
@@ -858,57 +875,35 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("plays a station encoded by the app", () =>
+  it.effect("plays a Radio Browser station from its current stream", () =>
     Effect.gen(function* () {
-      const name = "Éveil & München & Русский";
-      const data = encodeStation({
-        streamUrl: "http://stream.example.com",
-        name,
-        imageUrl: "http://image.example.com/art.png",
-      });
       const playback = yield* HttpClient.get(
-        `${stationPath}?data=${encodeURIComponent(data)}`,
+        `/bmx/radiobrowser${STATION_LOCATION}`,
       ).pipe(Effect.flatMap(HttpIncomingMessage.schemaBodyJson(BmxPlayback)));
+      const stream = {
+        hasPlaylist: true,
+        isRealtime: true,
+        streamUrl: "http://mp3channels.example/chillout",
+      };
       assert.deepStrictEqual(playback, {
-        audio: {
-          hasPlaylist: true,
-          isRealtime: true,
-          streamUrl: "http://stream.example.com",
-          streams: [
-            {
-              hasPlaylist: true,
-              isRealtime: true,
-              streamUrl: "http://stream.example.com",
-            },
-          ],
-        },
-        imageUrl: "http://image.example.com/art.png",
-        name,
+        audio: { ...stream, streams: [stream] },
+        imageUrl: "https://cdn.example/antenne.png",
+        name: "Antenne Bayern - Chillout",
         streamType: "liveRadio",
       });
     }),
   );
 
-  it.effect("defaults a station's name and image", () =>
-    Effect.gen(function* () {
-      const data = encodeStation({ streamUrl: "http://stream.example.com" });
-      const playback = yield* HttpClient.get(
-        `${stationPath}?data=${data}`,
-      ).pipe(Effect.flatMap(HttpIncomingMessage.schemaBodyJson(BmxPlayback)));
-      assert.strictEqual(playback.name, "Custom Stream");
-      assert.strictEqual(playback.imageUrl, "");
-    }),
-  );
-
   it.effect.each([
-    ["missing data", ""],
-    ["data that is not base64", "?data=%25%25%25"],
-    ["data that is not JSON", `?data=${encodeStation({}).slice(1)}`],
-    ["a station without a stream", `?data=${encodeStation({ name: "x" })}`],
-  ])("rejects a station with %s", ([, query]) =>
+    ["an unknown station", MISSING_UUID, 404],
+    ["Radio Browser being down", UNAVAILABLE_UUID, 503],
+    ["a malformed station id", "s166521", 400],
+  ] as const)("fails a Radio Browser station for %s", ([, uuid, status]) =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.get(`${stationPath}${query}`);
-      assert.strictEqual(response.status, 400);
+      const response = yield* HttpClient.get(
+        `/bmx/radiobrowser/stations/byuuid/${uuid}`,
+      );
+      assert.strictEqual(response.status, status);
     }),
   );
 });
