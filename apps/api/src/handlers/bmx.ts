@@ -3,8 +3,9 @@ import { HttpServerRequest } from "effect/http";
 import { HttpApiBuilder, HttpApiError } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
-import { ORION_BASE_PATH, TUNEIN_BASE_PATH } from "../api/bmx.ts";
-import { TUNEIN } from "../marge/sources.ts";
+import { RADIO_BROWSER_BASE_PATH, TUNEIN_BASE_PATH } from "../api/bmx.ts";
+import { RADIO_BROWSER, TUNEIN } from "../marge/sources.ts";
+import { RadioBrowser } from "../radio-browser/radio-browser.ts";
 import { TuneIn } from "../tunein/tunein.ts";
 
 const playback = (station: {
@@ -32,14 +33,12 @@ const anonymousToken = (token: string) => ({
   refresh_token: token,
 });
 
-/** Base64 of `{"serial":"orion"}`, the shape Bose's adapters issued. */
-const ORION_TOKEN = "eyJzZXJpYWwiOiJvcmlvbiJ9";
-
 export const BmxHandlers = HttpApiBuilder.group(
   ReviveApi,
   "bmx",
   Effect.fn(function* (handlers) {
     const tuneIn = yield* TuneIn;
+    const radioBrowser = yield* RadioBrowser;
 
     return handlers
       .handle(
@@ -67,20 +66,6 @@ export const BmxHandlers = HttpApiBuilder.group(
             askAgainAfter: 1230482,
             bmx_services: [
               {
-                _links: { bmx_token: { href: "/token" }, self: { href: "/" } },
-                askAdapter: false,
-                assets: {
-                  color: "#000000",
-                  description: "Custom radio stations with BMX.",
-                  icons,
-                  name: "Custom Stations",
-                },
-                authenticationModel: anonymousAccount,
-                baseUrl: `${baseUrl}${ORION_BASE_PATH}`,
-                id: { name: "LOCAL_INTERNET_RADIO", value: 11 },
-                streamTypes: ["liveRadio"],
-              },
-              {
                 _links: {
                   bmx_token: { href: "/v1/token" },
                   self: { href: "/" },
@@ -97,20 +82,24 @@ export const BmxHandlers = HttpApiBuilder.group(
                 id: { name: "TUNEIN", value: TUNEIN.providerId },
                 streamTypes: ["liveRadio", "onDemand"],
               },
+              {
+                _links: { bmx_token: { href: "/token" }, self: { href: "/" } },
+                askAdapter: false,
+                assets: {
+                  color: "#000000",
+                  description: "Radio stations from Radio Browser.",
+                  icons,
+                  name: "Radio Browser",
+                },
+                authenticationModel: anonymousAccount,
+                baseUrl: `${baseUrl}${RADIO_BROWSER_BASE_PATH}`,
+                id: { name: "RADIO_BROWSER", value: RADIO_BROWSER.providerId },
+                streamTypes: ["liveRadio"],
+              },
             ],
           };
         }),
       )
-      .handle("station", ({ query: { data } }) =>
-        Effect.succeed(
-          playback({
-            streamUrls: [data.streamUrl],
-            name: data.name ?? "Custom Stream",
-            imageUrl: data.imageUrl ?? "",
-          }),
-        ),
-      )
-      .handle("orionToken", () => Effect.succeed(anonymousToken(ORION_TOKEN)))
       .handle("tuneInStation", ({ params }) =>
         tuneIn.station(params.stationId).pipe(
           Effect.map(playback),
@@ -128,6 +117,27 @@ export const BmxHandlers = HttpApiBuilder.group(
       .handle("tuneInToken", () =>
         Effect.succeed(anonymousToken(TUNEIN.credential)),
       )
-      .handle("tuneInReport", () => Effect.succeed({}));
+      .handle("tuneInReport", () => Effect.succeed({}))
+      .handle("radioBrowserStation", ({ params }) =>
+        radioBrowser.station(params.stationUuid).pipe(
+          Effect.map(playback),
+          Effect.catchTags({
+            RadioBrowserStationNotFound: () =>
+              Effect.fail(new HttpApiError.NotFound()),
+            RadioBrowserUnavailable: (error) =>
+              Effect.logWarning(
+                "Radio Browser is unavailable",
+                error.reason,
+              ).pipe(
+                Effect.andThen(
+                  Effect.fail(new HttpApiError.ServiceUnavailable()),
+                ),
+              ),
+          }),
+        ),
+      )
+      .handle("radioBrowserToken", () =>
+        Effect.succeed(anonymousToken(RADIO_BROWSER.credential)),
+      );
   }),
 );

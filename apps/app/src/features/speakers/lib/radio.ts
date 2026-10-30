@@ -1,35 +1,22 @@
 import { escapeXml } from "bose-api-speaker-client";
 
-import { getServerUrl } from "@/features/server/server";
+/** The Radio Browser station fields a speaker needs to play it. */
+export interface CastStation {
+  readonly stationuuid: string;
+  readonly name: string;
+  readonly favicon: string;
+}
 
 /**
- * The ContentItem that plays `uri` through our Orion station adapter.
- * `accountId` is the speaker's Marge account: its local radio source is
- * registered under it.
+ * The ContentItem that plays a Radio Browser station. Its location names the
+ * station, not its stream: the server's Radio Browser adapter looks the
+ * stream up every time it plays, so a preset follows the station when it
+ * moves its stream. The location holds no server address either, so it plays
+ * through whichever Revive ST server the speaker uses.
  */
-export function buildMargeRadioPayload(
-  uri: string,
-  name: string,
-  accountId: string,
-): string {
-  const data = {
-    streamUrl: uri,
-    name,
-    imageUrl: "",
-  };
-  const base64Data = btoa(
-    Array.from(new TextEncoder().encode(JSON.stringify(data)), (byte) =>
-      String.fromCodePoint(byte),
-    ).join(""),
-  )
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_");
-  const locationUrl = `${getServerUrl()}/core02/svc-bmx-adapter-orion/prod/orion/station?data=${encodeURIComponent(
-    base64Data,
-  )}`;
-  return `<ContentItem source="LOCAL_INTERNET_RADIO" type="stationurl" location="${escapeXml(
-    locationUrl,
-  )}" sourceAccount="${escapeXml(accountId)}"><itemName>${escapeXml(
-    name,
-  )}</itemName></ContentItem>`;
-}
+export const buildRadioBrowserPayload = (station: CastStation): string =>
+  `<ContentItem source="RADIO_BROWSER" type="stationurl" location="/stations/byuuid/${escapeXml(
+    station.stationuuid,
+  )}" sourceAccount="" isPresetable="true"><itemName>${escapeXml(
+    station.name,
+  )}</itemName><containerArt>${escapeXml(station.favicon)}</containerArt></ContentItem>`;

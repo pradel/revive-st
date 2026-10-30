@@ -1,6 +1,7 @@
 import { Schema } from "effect";
 import { HttpApiEndpoint, HttpApiError, HttpApiGroup } from "effect/http-api";
 
+import { StationUuid } from "../radio-browser/radio-browser.ts";
 import { StationId } from "../tunein/tunein.ts";
 
 const Link = Schema.Struct({ href: Schema.String });
@@ -36,18 +37,6 @@ export const BmxRegistry = Schema.Struct({
   ),
 });
 
-/** The station the app encodes into a preset's `location` URL. */
-export const BmxStation = Schema.Struct({
-  streamUrl: Schema.String,
-  name: Schema.optional(Schema.String),
-  imageUrl: Schema.optional(Schema.String),
-});
-
-/** URL-safe base64 of the UTF-8 JSON of a {@link BmxStation}. */
-const BmxStationData = Schema.StringFromBase64Url.pipe(
-  Schema.decodeTo(Schema.fromJsonString(BmxStation)),
-);
-
 const BmxStream = Schema.Struct({
   hasPlaylist: Schema.Boolean,
   isRealtime: Schema.Boolean,
@@ -80,24 +69,17 @@ export const BmxToken = Schema.Struct({
   refresh_token: Schema.String,
 });
 
-export const ORION_BASE_PATH = "/core02/svc-bmx-adapter-orion/prod/orion";
 export const TUNEIN_BASE_PATH = "/bmx/tunein";
+export const RADIO_BROWSER_BASE_PATH = "/bmx/radiobrowser";
 
 /**
  * The BMX service registry (`bmxRegistryUrl`) and the adapters it
- * advertises: custom stations (Orion) and TuneIn.
+ * advertises: TuneIn and Radio Browser.
  */
 export class BmxApi extends HttpApiGroup.make("bmx").add(
   HttpApiEndpoint.get("registry", "/v2/registry.json", {
     success: BmxRegistry,
     error: HttpApiError.BadRequest,
-  }),
-  HttpApiEndpoint.get("station", `${ORION_BASE_PATH}/station`, {
-    query: { data: BmxStationData },
-    success: BmxPlayback,
-  }),
-  HttpApiEndpoint.post("orionToken", `${ORION_BASE_PATH}/token`, {
-    success: BmxToken,
   }),
   HttpApiEndpoint.get(
     "tuneInStation",
@@ -115,4 +97,25 @@ export class BmxApi extends HttpApiGroup.make("bmx").add(
   HttpApiEndpoint.post("tuneInReport", `${TUNEIN_BASE_PATH}/v1/report`, {
     success: Schema.Struct({}),
   }),
+  /**
+   * A Radio Browser preset's `location` is `/stations/byuuid/<uuid>`, the same
+   * path as Radio Browser's own SoundTouch API, so the registry can point at
+   * either without touching presets.
+   */
+  HttpApiEndpoint.get(
+    "radioBrowserStation",
+    `${RADIO_BROWSER_BASE_PATH}/stations/byuuid/:stationUuid`,
+    {
+      params: { stationUuid: StationUuid },
+      success: BmxPlayback,
+      error: [HttpApiError.NotFound, HttpApiError.ServiceUnavailable],
+    },
+  ),
+  HttpApiEndpoint.post(
+    "radioBrowserToken",
+    `${RADIO_BROWSER_BASE_PATH}/token`,
+    {
+      success: BmxToken,
+    },
+  ),
 ) {}

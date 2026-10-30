@@ -155,6 +155,7 @@ export default function ConfigureSpeaker() {
 
       const configResult = await configureMargeAPI(
         speaker.host,
+        speaker.deviceID,
         TcpSocket as unknown as SocketModuleLike,
         accountId,
         {

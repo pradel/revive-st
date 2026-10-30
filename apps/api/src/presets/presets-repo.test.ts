@@ -20,10 +20,10 @@ const preset = (
     id: PresetId.make(id),
     ...timestamps,
     contentItem: new ContentItem({
-      source: "LOCAL_INTERNET_RADIO",
+      source: "RADIO_BROWSER",
       type: "stationurl",
-      location: `https://example.com/${itemName}`,
-      sourceAccount: "household",
+      location: `/stations/byuuid/${itemName}`,
+      sourceAccount: "",
       isPresetable: id % 2 === 1,
       itemName,
       containerArt: `https://example.com/${itemName}.png`,

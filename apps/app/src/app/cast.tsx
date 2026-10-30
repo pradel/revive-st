@@ -25,8 +25,12 @@ import { artwork, color, radius, space } from "@/ui/tokens";
 /** "Play on…" sheet: streams a radio station to the chosen speaker. */
 export default function CastSheet() {
   const router = useRouter();
-  const station = useLocalSearchParams<{ name: string; url: string }>();
-  const { speakers, playStreamMutation } = useBose();
+  const station = useLocalSearchParams<{
+    stationuuid: string;
+    name: string;
+    favicon: string;
+  }>();
+  const { speakers, playStationMutation } = useBose();
   const [castingToSpeakerId, setCastingToSpeakerId] = useState<string | null>(
     null,
   );
@@ -45,12 +49,15 @@ export default function CastSheet() {
   const castToSpeaker = async (speaker: BoseSpeaker) => {
     setCastError(null);
     setCastingToSpeakerId(speaker.deviceID);
-    logger.info(`[cast] Casting ${station.url} to ${speaker.host}`);
+    logger.info(`[cast] Casting ${station.name} to ${speaker.host}`);
     try {
-      await playStreamMutation.mutateAsync({
+      await playStationMutation.mutateAsync({
         deviceID: speaker.deviceID,
-        uri: station.url,
-        name: station.name,
+        station: {
+          stationuuid: station.stationuuid,
+          name: station.name,
+          favicon: station.favicon ?? "",
+        },
       });
       // Success shows up in the mini player; no need to interrupt.
       haptics.success();

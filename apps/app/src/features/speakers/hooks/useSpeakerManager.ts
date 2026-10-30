@@ -20,7 +20,7 @@ import { useServerUrl } from "@/features/server/server";
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
-import { buildMargeRadioPayload } from "../lib/radio";
+import { buildRadioBrowserPayload, type CastStation } from "../lib/radio";
 import { checkMargeAPIStatus } from "../lib/telnet";
 
 export interface BoseSpeaker {
@@ -480,15 +480,13 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     },
   });
 
-  const playStreamMutation = useMutation({
+  const playStationMutation = useMutation({
     mutationFn: async ({
       deviceID,
-      uri,
-      name,
+      station,
     }: {
       deviceID: string;
-      uri: string;
-      name: string;
+      station: CastStation;
     }) => {
       const speaker = speakersMapRef.current.get(deviceID);
       if (!speaker) {
@@ -498,24 +496,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       try {
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
-        // The local radio source is registered under the speaker's account:
-        // read it fresh, as pairing changes it after the state was read.
-        const info = await new BoseHttpAdapter({
-          ip: speakerIp,
-          port: speakerPort,
-        }).getInfo();
-        if (!info.isOk()) {
-          throw info.error;
-        }
-        if (info.value.margeAccountUUID === "") {
-          // An unpaired speaker has no local radio source to play from.
-          throw new Error("UNKNOWN_SOURCE_ERROR");
-        }
-        const payload = buildMargeRadioPayload(
-          uri,
-          name,
-          info.value.margeAccountUUID,
-        );
+        const payload = buildRadioBrowserPayload(station);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           controller.abort();
@@ -665,7 +646,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     selectSourceMutation,
     savePresetMutation,
     setBassMutation,
-    playStreamMutation,
+    playStationMutation,
     setNameMutation,
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,

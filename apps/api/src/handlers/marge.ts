@@ -76,7 +76,7 @@ export const MargeHandlers = HttpApiBuilder.group(
               params.accountId,
               params.deviceId,
             );
-            return withEtag(createPresetsXml(presets, params.accountId));
+            return withEtag(createPresetsXml(presets));
           }),
         )
         // Raw: speakers are not guaranteed to label the XML body with the
@@ -110,7 +110,7 @@ export const MargeHandlers = HttpApiBuilder.group(
                   source: source.name,
                   type: preset.contentItemType ?? "stationurl",
                   location,
-                  sourceAccount: source.username(params.accountId),
+                  sourceAccount: "",
                   isPresetable: true,
                   itemName: preset.name ?? preset.username ?? "Unknown Preset",
                   containerArt: preset.containerArt ?? "",
@@ -127,7 +127,7 @@ export const MargeHandlers = HttpApiBuilder.group(
                 "A stored preset could not be read back",
               );
             }
-            return createPresetXml(saved, params.accountId);
+            return createPresetXml(saved);
           }),
         )
         .handle(
@@ -169,19 +169,16 @@ export const MargeHandlers = HttpApiBuilder.group(
             }
             const now = DateTime.toEpochMillis(yield* DateTime.now);
             const lastPlayedAt = Date.parse(recent.lastplayedat ?? "");
-            return createRecentXml(
-              {
-                // Seconds fit the int32 speakers store recent ids in.
-                id: Math.floor(now / 1000),
-                source,
-                name: recent.name ?? "",
-                location,
-                contentItemType: recent.contentItemType ?? "stationurl",
-                lastPlayedAt: Number.isNaN(lastPlayedAt) ? now : lastPlayedAt,
-                createdOn: now,
-              },
-              params.accountId,
-            );
+            return createRecentXml({
+              // Seconds fit the int32 speakers store recent ids in.
+              id: Math.floor(now / 1000),
+              source,
+              name: recent.name ?? "",
+              location,
+              contentItemType: recent.contentItemType ?? "stationurl",
+              lastPlayedAt: Number.isNaN(lastPlayedAt) ? now : lastPlayedAt,
+              createdOn: now,
+            });
           }),
         )
         .handle("powerOn", () => Effect.succeed(createStatusOkXml()))

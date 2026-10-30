@@ -65,7 +65,6 @@ In **Settings** → **Network** → **Server**, tap **Use the Revive ST server**
 
 ## Good to know
 
-- **Keep the server running.** Speakers fetch their account and presets from it every time they start, and TuneIn and the stations you cast from the app play through it. A speaker that starts while the server is down keeps its presets, but can't play those stations until the server is back.
-- **Stations cast before switching servers** still play through the server they were cast with. Cast them again, and save them to a preset again, to move them to your server.
+- **Keep the server running.** Speakers fetch their account and presets from it every time they start, and TuneIn and Radio Browser stations play through it. A speaker that starts while the server is down keeps its presets, but can't play those stations until the server is back.
 - **Keep the server on your home network.** Anyone who can reach it and knows your household's account id can read and change your presets, and the account id travels unencrypted on your network. If the computer is also reachable from the internet, publish the port on its home-network address only, for example `"192.168.1.10:3000:3000"` in the compose file, or block it with a firewall.
 - On **iOS**, the app can only reach a plain `http://` server at a local address, which is why other names need HTTPS.
