@@ -6,7 +6,7 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 
 **Available on:** [iOS (coming soon)](#TODO) · [Android (coming soon)](#TODO)
 
-**Website & Documentation:** [revivest.app](https://www.revivest.app)
+**Website & Documentation:** [revivest.app](https://www.revivest.app) · [Self-hosting](https://www.revivest.app/docs/self-hosting)
 
 ---
 
