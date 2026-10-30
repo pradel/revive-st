@@ -5,7 +5,7 @@
 ### Patch Changes
 
 - 188f94a: First public preview of Revive ST.
-  
+
   - App: a new design with a speaker-first home, a mini player, native controls and navigation, and long-press menus for presets, sources and power.
   - App: speaker setup on Android is a single guided screen that reports a wrong Wi-Fi password, lets you name the speaker and offers a manual connection when it isn't found.
   - App: iOS finds speakers on the local network, and Android release builds can reach them; speaker setup stays Android-only for now.

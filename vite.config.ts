@@ -7,7 +7,8 @@ export default defineConfig({
   fmt: {
     printWidth: 80,
     sortImports: true,
-    ignorePatterns: ["repos/**"],
+    // Changesets writes the changelogs in its release commit.
+    ignorePatterns: ["repos/**", "**/CHANGELOG.md"],
   },
   lint: {
     options: { typeAware: true, typeCheck: true },
