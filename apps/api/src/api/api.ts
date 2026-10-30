@@ -1,9 +1,9 @@
 import { HttpApi, OpenApi } from "effect/http-api";
 
-import packageJson from "../../package.json" with { type: "json" };
 import { BmxApi } from "./bmx.ts";
 import { InternalApi } from "./internal.ts";
 import { MargeApi } from "./marge.ts";
+import { SERVER_NAME, SERVER_VERSION, ServerApi } from "./server.ts";
 
 /**
  * Each path parameter's OpenAPI description. Set on the parameter rather than
@@ -62,13 +62,14 @@ const describeOperations = (openApiSpec: Record<string, unknown>) => {
 };
 
 export class ReviveApi extends HttpApi.make("revive-st")
+  .add(ServerApi)
   .add(MargeApi)
   .add(BmxApi)
   .add(InternalApi)
   .annotateMerge(
     OpenApi.annotations({
-      title: "Revive ST API",
-      version: packageJson.version,
+      title: SERVER_NAME,
+      version: SERVER_VERSION,
       description: [
         "The Revive ST server: it emulates the Bose SoundTouch Marge streaming server and BMX services for SoundTouch speakers, and backs the Revive ST app.",
         "Each household has its own Marge account, and presets are stored per account and device. Knowing a household's account id is what grants access to its presets: no endpoint takes credentials.",

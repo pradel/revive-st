@@ -18,6 +18,7 @@
     "runtime": "V2",
     "numReplicas": 1,
     "startCommand": "node dist/main.mjs",
+    "healthcheckPath": "/",
     "limitOverride": {
       "containers": {
         "cpu": 1,

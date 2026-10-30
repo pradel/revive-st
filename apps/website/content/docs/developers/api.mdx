@@ -7,6 +7,8 @@ Revive ST hosts a custom API server that acts both as the backend for our applic
 
 Every endpoint is also described in an OpenAPI document, `/openapi.json`, with an interactive reference at [`/docs`](https://api.revivest.app/docs). A self-hosted server serves both too.
 
+`GET /` answers whenever the server is up with its name, version and the paths of both, `{ "name": "Revive ST API", "version": "…", "docs": "/docs", "openapi": "/openapi.json" }`. Railway uses it as the deployment health check.
+
 ## Accounts
 
 Each household gets its own Marge account, and presets are stored per account and device, so knowing a household's account id is what grants access to its presets. The id is never logged: the server masks it in every log line.

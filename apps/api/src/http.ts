@@ -12,19 +12,23 @@ import {
 import { HttpApiBuilder, HttpApiScalar } from "effect/http-api";
 
 import { ReviveApi } from "./api/api.ts";
+import { DOCS_PATH, OPENAPI_PATH } from "./api/server.ts";
 import { BmxHandlers } from "./handlers/bmx.ts";
 import { InternalHandlers } from "./handlers/internal.ts";
 import { MargeHandlers } from "./handlers/marge.ts";
+import { ServerHandlers } from "./handlers/server.ts";
 
 const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
-  openapiPath: "/openapi.json",
-}).pipe(Layer.provide([MargeHandlers, BmxHandlers, InternalHandlers]));
+  openapiPath: OPENAPI_PATH,
+}).pipe(
+  Layer.provide([ServerHandlers, MargeHandlers, BmxHandlers, InternalHandlers]),
+);
 
 /**
- * The API reference at `/docs`, rendering `/openapi.json`. Scalar loads from
+ * The API reference, rendering the OpenAPI document. Scalar loads from
  * jsDelivr rather than being bundled into the server (3 MB).
  */
-const DocsLayer = HttpApiScalar.layerCdn(ReviveApi, { path: "/docs" });
+const DocsLayer = HttpApiScalar.layerCdn(ReviveApi, { path: DOCS_PATH });
 
 /** Icons referenced by the BMX registry. */
 const MediaLayer = HttpStaticServer.layer({
