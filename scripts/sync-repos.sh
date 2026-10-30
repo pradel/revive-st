@@ -8,6 +8,7 @@ mkdir -p "$REPOS_DIR"
 
 # Format: "dir_name|repo_url|branch"
 REPOS=(
+  "effect|https://github.com/Effect-TS/effect.git|main"
   "soundcork|https://github.com/deborahgu/soundcork.git|main"
   "Bose-SoundTouch|https://github.com/gesellix/Bose-SoundTouch.git|main"
 )

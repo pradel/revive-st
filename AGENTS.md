@@ -54,11 +54,16 @@ Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md
 
 ## Vendored Repositories
 
-`pnpm repos:sync` (`scripts/sync-repos.sh`) clones or updates shallow copies of related SoundTouch projects under `repos/`:
+This project vendors external repositories under `repos/` (gitignored), cloned or updated by `pnpm repos:sync` (`scripts/sync-repos.sh`):
 
+- `repos/effect/`: [Effect](https://github.com/Effect-TS/effect), the library the API server is built on.
 - `repos/soundcork/`: [soundcork](https://github.com/deborahgu/soundcork), a Python replacement for Bose's SoundTouch cloud servers.
 - `repos/Bose-SoundTouch/`: [Bose-SoundTouch](https://github.com/gesellix/Bose-SoundTouch), a Go client, CLI and local cloud service for SoundTouch speakers.
 
-- If `repos/` is missing or empty, run `pnpm repos:sync`.
-- Use them as read-only reference for how speakers and Bose's servers behave (Marge, BMX, the speaker API) before guessing or searching the web.
-- Do not edit files under `repos/` unless asked, and never import from it.
+- If `repos/effect`, `repos/soundcork` or `repos/Bose-SoundTouch` is missing or empty, run `pnpm repos:sync` to clone/update the vendored repositories
+- Use vendored repositories as read-only reference material when working with related libraries
+- Prefer examples and patterns from the vendored source code over generated guesses or web search results
+- Do not edit files under `repos/` unless explicitly asked
+- Do not import from `repos/` - application code should continue importing from normal package dependencies
+- When writing Effect code, inspect `repos/effect/` for examples of idiomatic usage, tests, module structure, and API design. Treat it as the source of truth for Effect patterns.
+- When emulating Bose's servers or talking to a speaker, inspect `repos/soundcork/` and `repos/Bose-SoundTouch/` for how SoundTouch speakers and Bose's Marge and BMX services behave.

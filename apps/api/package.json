@@ -13,14 +13,14 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@effect/platform-node": "4.0.6",
-    "@effect/sql-libsql": "4.0.6",
+    "@effect/platform-node": "4.1.0",
+    "@effect/sql-libsql": "4.1.0",
     "bose-api-speaker-client": "workspace:*",
     "drizzle-orm": "1.0.0-rc.5",
-    "effect": "4.0.6"
+    "effect": "4.1.0"
   },
   "devDependencies": {
-    "@effect/vitest": "4.0.6",
+    "@effect/vitest": "4.1.0",
     "@types/node": "26.6.5",
     "drizzle-kit": "1.0.0-rc.5",
     "typescript": "7.0.2",
