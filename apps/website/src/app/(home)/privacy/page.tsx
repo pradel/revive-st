@@ -46,12 +46,12 @@ export default function PrivacyPage() {
           </p>
           <ul>
             <li>
-              <strong>Speaker setup (Android).</strong> To connect a new speaker
-              to your Wi-Fi, the App lists nearby Wi-Fi networks and sends the
-              network name and password you enter directly to the speaker.
-              Android requires the location permission to list Wi-Fi networks;
-              the App doesn&apos;t use it to determine your location. The Wi-Fi
-              password is never sent to us.
+              <strong>Speaker setup.</strong> To connect a new speaker to your
+              Wi-Fi, the App lists nearby Wi-Fi networks and sends the network
+              name and password you enter directly to the speaker. Android
+              requires the location permission to list Wi-Fi networks; the App
+              doesn&apos;t use it to determine your location. The Wi-Fi password
+              is never sent to us.
             </li>
             <li>
               <strong>Stored on your phone.</strong> Your household account id
@@ -164,10 +164,6 @@ export default function PrivacyPage() {
             <code>margeAccountUUID</code> at{" "}
             <code>http://&lt;speaker-ip&gt;:8090/info</code> in a browser on
             your home network. Send requests to {contactLink}.
-          </p>
-          <p>
-            You can also lodge a complaint with your data protection authority;
-            in France, the CNIL.
           </p>
 
           <h2>Children</h2>
