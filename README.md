@@ -71,4 +71,6 @@ A huge thanks to the maintainers and contributors of the following projects, who
 
 ## License
 
+Revive ST is released under the [MIT License](LICENSE).
+
 _Revive ST is not affiliated with or endorsed by Bose Corporation. Bose and SoundTouch are trademarks of Bose Corporation._
