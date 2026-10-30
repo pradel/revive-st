@@ -1,13 +1,4 @@
-# Only the API container image builds from the repository root: send it the
-# workspace files and the packages the server needs, nothing else.
-*
-!package.json
-!pnpm-lock.yaml
-!pnpm-workspace.yaml
-!patches/
-!tsconfig.json
-!apps/api/
-!packages/bose-api-speaker-client/
+# Applies to every image built from the repository root (the website). The API
+# image has its own apps/api/Dockerfile.dockerignore.
+.git
 **/node_modules
-**/dist
-**/*.db
