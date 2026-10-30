@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { Footer } from "@/components/footer";
+import { WEBSITE_CONFIG } from "@/config";
 
 export const metadata: Metadata = {
   title: "Privacy Policy — Revive ST",
@@ -9,137 +10,189 @@ export const metadata: Metadata = {
   },
 };
 
+const contactLink = (
+  <a href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}>
+    {WEBSITE_CONFIG.CONTACT_EMAIL}
+  </a>
+);
+
 export default function PrivacyPage() {
   return (
     <div className="flex flex-col min-h-screen bg-bg text-fg selection:bg-accent-muted">
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose max-w-none">
           <h1 className="mb-2">🔒 Privacy Policy</h1>
-          <p className="text-fg-tertiary mb-8">Effective as of: 2026-06-24</p>
+          <p className="text-fg-tertiary mb-8">Effective as of: 2026-10-30</p>
 
           <p>
-            This privacy policy applies to the Revive ST app for mobile devices,
-            together with any related services operated by Incognito Labs
-            (collectively, the &quot;Application&quot;). Incognito Labs is
-            hereby referred to as the &quot;Service Provider&quot;.
+            This policy explains what data Revive ST handles and why. It covers
+            the Revive ST mobile app (the &quot;App&quot;), the Revive ST server
+            at <code>api.revivest.app</code> (the &quot;Server&quot;) and this
+            website. They are operated by <strong>Incognito Labs</strong>{" "}
+            (&quot;we&quot;, &quot;us&quot;), which is responsible for the data
+            described here.
+          </p>
+          <p>
+            Revive ST has no user accounts: we never ask for your name, email
+            address or any other identity. We don&apos;t show ads, sell data or
+            track you across other apps and websites.
           </p>
 
-          <h2>
-            What information does the Application obtain and how is it used?
-          </h2>
+          <h2>On your phone and your home network</h2>
           <p>
-            The Application does not collect, log, or store any personal
-            information when you download and use it. Registration is not
-            required. If the Application is used with an active internet
-            connection, technical protocol data (such as your ephemeral IP
-            address) is transmitted to facilitate network connectivity, but this
-            data is not retained or used for tracking.
+            The App finds and controls your speakers directly on your local
+            network. Playback, volume, sources and settings never go through our
+            Server.
+          </p>
+          <ul>
+            <li>
+              <strong>Speaker setup (Android).</strong> To connect a new speaker
+              to your Wi-Fi, the App lists nearby Wi-Fi networks and sends the
+              network name and password you enter directly to the speaker.
+              Android requires the location permission to list Wi-Fi networks;
+              the App doesn&apos;t use it to determine your location. The Wi-Fi
+              password is never sent to us.
+            </li>
+            <li>
+              <strong>Stored on your phone.</strong> Your household account id
+              (see below), the address of the server you chose, your favorite
+              radio stations and the App&apos;s diagnostic logs. These stay on
+              your phone unless you choose to share the logs, for example with
+              us when reporting a problem. Uninstalling the App deletes them.
+            </li>
+          </ul>
+
+          <h2>On the Revive ST server</h2>
+          <p>
+            Since Bose shut down its cloud, your speakers need a server to fetch
+            their account, presets and radio stations from when they start up.
+            By default, the App configures your speakers to use ours. The Server
+            stores:
+          </p>
+          <ul>
+            <li>
+              <strong>A household account id:</strong> a random identifier the
+              Server generates the first time you configure a speaker. It
+              isn&apos;t linked to your name, email address or phone.
+            </li>
+            <li>
+              <strong>Your speakers&apos; device ids</strong> (each
+              speaker&apos;s network hardware address) and the date each one was
+              paired with your household account.
+            </li>
+            <li>
+              <strong>Your presets:</strong> for each of the 6 preset buttons,
+              the station or content name, its source (such as TuneIn or Radio
+              Browser), its address and its artwork address.
+            </li>
+          </ul>
+          <p>
+            We use this data only to give your speakers their presets and radio
+            stations back. We keep it for as long as your speakers use the
+            Server, or until you ask us to delete it.
+          </p>
+          <p>
+            You don&apos;t have to use our Server. You can{" "}
+            <a href="/docs/self-hosting">run your own</a> and point the App and
+            your speakers to it, in which case none of the data in this section
+            reaches us.
           </p>
 
-          <h2>
-            Does the Application collect precise real time location information
-            of the device?
-          </h2>
+          <h2>Logs and diagnostics</h2>
           <p>
-            This Application does not collect precise information about the
-            location of your mobile device.
+            Like any web server, the Server records the requests it receives:
+            the requesting IP address, the time and the requested address, which
+            can contain your household account id. When a request fails, it also
+            records what the speaker or App sent, with the account id masked. We
+            use these records only to keep the Server working and secure. Our
+            hosting provider deletes them automatically after at most 30 days.
           </p>
 
-          <h2>
-            Do third parties see and/or have access to information obtained by
-            the Application?
-          </h2>
+          <h2>Third parties</h2>
+          <ul>
+            <li>
+              <strong>Railway</strong> hosts the Server and this website, in its
+              EU West region (Amsterdam, Netherlands).
+            </li>
+            <li>
+              <strong>Radio Browser</strong>, a community radio directory,
+              receives your searches directly from the App, along with your IP
+              address. The Server also looks up stations there when your speaker
+              plays one.
+            </li>
+            <li>
+              <strong>TuneIn</strong> receives station lookups from the Server
+              when a speaker plays a TuneIn preset. These requests come from the
+              Server, not from your network.
+            </li>
+            <li>
+              <strong>Radio stations</strong> stream directly to your speakers,
+              so the broadcaster sees your home IP address, as with any internet
+              radio.
+            </li>
+            <li>
+              <strong>Expo</strong>, the platform the App is built with,
+              receives an event each time the App starts: a random install
+              identifier, the App version, the platform and the operating system
+              version. We use it to count active installs and versions.
+            </li>
+            <li>
+              <strong>Fathom Analytics</strong> counts visits to this website
+              without cookies and without collecting personal data.
+            </li>
+            <li>
+              <strong>Apple and Google</strong> handle App downloads under their
+              own privacy policies.
+            </li>
+          </ul>
+
+          <h2>Legal basis</h2>
           <p>
-            Since the Application does not collect any information, no data is
-            shared with third parties.
+            We process the data stored on the Server because it is necessary to
+            provide the service you ask for when you configure a speaker to use
+            it. We process logs, launch events and website statistics based on
+            our legitimate interest in keeping Revive ST working, secure and
+            improving.
           </p>
 
-          <h2>What are my opt-out rights?</h2>
+          <h2>Your rights</h2>
           <p>
-            Since the Application does not collect personal information through
-            normal use, uninstalling it simply removes the Application from your
-            device.
+            Depending on where you live, including under the GDPR, you can ask
+            us to access, correct, export or delete your data, and object to its
+            processing. Because we don&apos;t know who you are, include your
+            household account id in your request: it is shown as{" "}
+            <code>margeAccountUUID</code> at{" "}
+            <code>http://&lt;speaker-ip&gt;:8090/info</code> in a browser on
+            your home network. Send requests to {contactLink}.
           </p>
           <p>
-            If you contact the Service Provider directly or voluntarily provide
-            information by other means, you may request deletion of that
-            information by contacting{" "}
-            <a href="mailto:incognitolabs@gmail.com">incognitolabs@gmail.com</a>
-            .
+            You can also lodge a complaint with your data protection authority;
+            in France, the CNIL.
           </p>
 
           <h2>Children</h2>
           <p>
-            The Application is not intended for children under 16 years of age,
-            or such higher age as required by applicable law. The Service
-            Provider does not knowingly solicit data from children or market to
-            them. Since the Application does not collect personal information
-            through normal use, children&apos;s data is not at risk from use of
-            the Application alone. If you voluntarily provide personal
-            information through other means and are under 16 years of age, your
-            parent or guardian must provide consent on your behalf where
-            permitted by law.
+            Revive ST is not directed at children under 16 and collects no data
+            that identifies them.
           </p>
 
           <h2>Security</h2>
           <p>
-            Because the Application does not collect personal data, the risk of
-            personal data exposure is minimal. However, no security system is
-            completely secure. The Service Provider implements reasonable
-            safeguards to protect systems and any data it holds.
-          </p>
-
-          <h2>Data Breach Notification</h2>
-          <p>
-            Since the Application does not collect personal data through normal
-            use, the risk of a data breach affecting your personal data is
-            minimal. If a breach occurs involving any data you have voluntarily
-            provided, the Service Provider will notify you as required by
-            applicable law.
+            The App and your speakers connect to our Server over HTTPS. Your
+            household account id is what gives access to your presets: treat it
+            as private. If a data breach affects your data, we will notify you
+            and the authorities as required by law.
           </p>
 
           <h2>Changes</h2>
           <p>
-            The Service Provider may update this Privacy Policy from time to
-            time. The Service Provider will notify you of material changes by
-            posting the updated Privacy Policy with an effective date. Where
-            required by law, the Service Provider will seek your consent to
-            material changes before they take effect.
-          </p>
-          <p>
-            Previous versions of this Privacy Policy will be maintained and made
-            available upon request by contacting the Service Provider at{" "}
-            <a href="mailto:incognitolabs@gmail.com">incognitolabs@gmail.com</a>
-            .
+            We will post any update to this policy on this page with a new
+            effective date. Previous versions are available in the{" "}
+            <a href={WEBSITE_CONFIG.GITHUB_URL}>Revive ST repository</a>.
           </p>
 
-          <h2>Your Consent</h2>
-          <p>
-            If you voluntarily provide information to the Service Provider and
-            processing is based on consent, you may withdraw that consent at any
-            time without affecting processing carried out before withdrawal.
-          </p>
-
-          <h2>Contact Us</h2>
-          <p>
-            If you have any questions regarding privacy while using the
-            Application, or have questions about the practices, please contact
-            the Service Provider via email at{" "}
-            <a href="mailto:incognitolabs@gmail.com">incognitolabs@gmail.com</a>
-            .
-          </p>
-
-          <hr />
-          <p className="text-sm text-fg-tertiary">
-            This privacy policy page was generated by{" "}
-            <a
-              href="https://app-privacy-policy-generator.nisrulz.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              App Privacy Policy Generator
-            </a>
-          </p>
+          <h2>Contact us</h2>
+          <p>Questions about privacy in Revive ST: {contactLink}.</p>
         </div>
       </main>
 
