@@ -1,15 +1,22 @@
 {
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
-    "builder": "RAILPACK",
-    "buildCommand": "pnpm --filter @revive-st/api build",
-    "watchPatterns": ["/apps/api/**"],
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "apps/api/Dockerfile",
+    "watchPatterns": [
+      "/apps/api/**",
+      "/packages/bose-api-speaker-client/**",
+      "/patches/**",
+      "/package.json",
+      "/pnpm-lock.yaml",
+      "/pnpm-workspace.yaml",
+      "/tsconfig.json"
+    ],
     "buildEnvironment": "V3"
   },
   "deploy": {
     "runtime": "V2",
     "numReplicas": 1,
-    "startCommand": "pnpm --filter @revive-st/api start",
     "limitOverride": {
       "containers": {
         "cpu": 1,
