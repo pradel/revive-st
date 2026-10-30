@@ -952,4 +952,50 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.strictEqual(response.status, status);
     }),
   );
+
+  it.effect("documents every endpoint and its path parameters", () =>
+    Effect.gen(function* () {
+      const spec = yield* HttpClient.get("/openapi.json").pipe(
+        Effect.flatMap(
+          HttpIncomingMessage.schemaBodyJson(
+            Schema.Struct({
+              paths: Schema.Record(
+                Schema.String,
+                Schema.Record(
+                  Schema.String,
+                  Schema.Struct({
+                    summary: Schema.optional(Schema.String),
+                    description: Schema.optional(Schema.String),
+                    parameters: Schema.Array(
+                      Schema.Struct({
+                        name: Schema.String,
+                        description: Schema.optional(Schema.String),
+                      }),
+                    ),
+                  }),
+                ),
+              ),
+            }),
+          ),
+        ),
+      );
+      const operations = Object.entries(spec.paths).flatMap(([path, item]) =>
+        Object.entries(item).map(([method, operation]) => ({
+          route: `${method.toUpperCase()} ${path}`,
+          ...operation,
+        })),
+      );
+      assert.isNotEmpty(operations);
+      for (const { route, summary, description, parameters } of operations) {
+        assert.isNotEmpty(summary, route);
+        assert.isNotEmpty(description, route);
+        for (const parameter of parameters) {
+          assert.isNotEmpty(
+            parameter.description,
+            `${route} ${parameter.name}`,
+          );
+        }
+      }
+    }),
+  );
 });

@@ -9,16 +9,22 @@ import {
   HttpServerResponse,
   HttpStaticServer,
 } from "effect/http";
-import { HttpApiBuilder } from "effect/http-api";
+import { HttpApiBuilder, HttpApiScalar } from "effect/http-api";
 
 import { ReviveApi } from "./api/api.ts";
 import { BmxHandlers } from "./handlers/bmx.ts";
 import { InternalHandlers } from "./handlers/internal.ts";
 import { MargeHandlers } from "./handlers/marge.ts";
 
-const ApiLayer = HttpApiBuilder.layer(ReviveApi).pipe(
-  Layer.provide([MargeHandlers, BmxHandlers, InternalHandlers]),
-);
+const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
+  openapiPath: "/openapi.json",
+}).pipe(Layer.provide([MargeHandlers, BmxHandlers, InternalHandlers]));
+
+/**
+ * The API reference at `/docs`, rendering `/openapi.json`. Scalar loads from
+ * jsDelivr rather than being bundled into the server (3 MB).
+ */
+const DocsLayer = HttpApiScalar.layerCdn(ReviveApi, { path: "/docs" });
 
 /** Icons referenced by the BMX registry. */
 const MediaLayer = HttpStaticServer.layer({
@@ -179,7 +185,7 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
  * platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
-  Layer.mergeAll(ApiLayer, MediaLayer, NotModifiedLayer),
+  Layer.mergeAll(ApiLayer, DocsLayer, MediaLayer, NotModifiedLayer),
   {
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },
