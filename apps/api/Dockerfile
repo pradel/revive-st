@@ -43,6 +43,5 @@ COPY apps/api/public public
 COPY --from=build /repo/apps/api/dist dist
 RUN mkdir /data && chown node:node /data
 USER node
-VOLUME /data
 EXPOSE 3000
 CMD ["node", "dist/main.mjs"]
