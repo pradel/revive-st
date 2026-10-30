@@ -216,10 +216,17 @@ export async function configureMargeAPI(
     // at the coming boot would only play after another restart.
     options?.onLog?.("Refreshing the speaker's sources...", "info");
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, SOURCES_REFRESH_MS);
       const response = await fetch(`http://${host}:8090/notification`, {
         method: "POST",
         headers: { "Content-Type": "application/xml" },
         body: `<updates deviceID="${escapeXml(deviceId)}"><sourcesUpdated/></updates>`,
+        signal: controller.signal,
+      }).finally(() => {
+        clearTimeout(timeoutId);
       });
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
