@@ -2,11 +2,16 @@
   "$schema": "https://unpkg.com/@changesets/config@4.0.1/schema.json",
   "changelog": "@changesets/cli/changelog",
   "commit": false,
-  "fixed": [],
+  "fixed": [["@revive-st/app", "@revive-st/api"]],
   "linked": [],
   "access": "restricted",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",
   "privatePackages": { "version": true, "tag": true },
-  "ignore": []
+  "ignore": [
+    "@revive-st/website",
+    "@revive-st/design",
+    "bose-api-speaker-client",
+    "expo-bose-wifi"
+  ]
 }
