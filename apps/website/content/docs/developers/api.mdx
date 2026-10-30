@@ -5,6 +5,8 @@ description: Documentation of the Revive ST streaming API and Bose SoundTouch Ma
 
 Revive ST hosts a custom API server that acts both as the backend for our application and as an emulator for the Bose SoundTouch "Marge" streaming server.
 
+Every endpoint is also described in an OpenAPI document, `/openapi.json`, with an interactive reference at [`/docs`](https://api.revivest.app/docs). A self-hosted server serves both too.
+
 ## Accounts
 
 Each household gets its own Marge account, and presets are stored per account and device, so knowing a household's account id is what grants access to its presets. The id is never logged: the server masks it in every log line.

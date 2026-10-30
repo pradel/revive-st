@@ -10,18 +10,25 @@ export const PresetId = Schema.Int.check(
 export type PresetId = typeof PresetId.Type;
 
 export class ContentItem extends Schema.Class<ContentItem>("ContentItem")({
-  source: Schema.String,
-  /** `stationurl`, `tracklisturl`, …; Marge calls it `contentItemType`. */
-  type: Schema.String,
-  location: Schema.String,
+  source: Schema.String.annotate({
+    description:
+      "The source it plays from, e.g. `TUNEIN` or `RADIO_BROWSER`. Presets from other sources are dropped.",
+  }),
+  type: Schema.String.annotate({
+    description: "`stationurl`, `tracklisturl`, …; Marge's `contentItemType`.",
+  }),
+  location: Schema.String.annotate({
+    description:
+      "Where the source finds it, e.g. `/stations/byuuid/<uuid>` for Radio Browser.",
+  }),
   sourceAccount: Schema.String,
   isPresetable: Schema.Boolean,
-  itemName: Schema.String,
-  containerArt: Schema.String,
+  itemName: Schema.String.annotate({ description: "The name shown." }),
+  containerArt: Schema.String.annotate({ description: "The artwork URL." }),
 }) {}
 
 export class Preset extends Schema.Class<Preset>("Preset")({
-  id: PresetId,
+  id: PresetId.annotate({ description: "The preset button, 1 to 6." }),
   /** Epoch milliseconds. */
   createdOn: Schema.optional(Schema.Number),
   /** Epoch milliseconds. */
