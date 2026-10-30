@@ -24,6 +24,14 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 
 ---
 
+## Feedback & support
+
+- **Questions, ideas and feedback:** [GitHub Discussions](https://github.com/pradel/revive-st/discussions).
+- **Bugs:** [GitHub Issues](https://github.com/pradel/revive-st/issues).
+- **Support the project:** [sponsor it on GitHub](https://github.com/sponsors/pradel).
+
+---
+
 ## Development
 
 ### Prerequisites

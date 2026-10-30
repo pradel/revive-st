@@ -29,6 +29,22 @@ export function Footer({ className }: { className?: string }) {
         >
           GitHub Repository
         </a>
+        <a
+          href={WEBSITE_CONFIG.FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-fg transition-colors"
+        >
+          Feedback
+        </a>
+        <a
+          href={WEBSITE_CONFIG.SPONSOR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-fg transition-colors"
+        >
+          Sponsor
+        </a>
       </div>
     </footer>
   );
