@@ -9,6 +9,7 @@ import { ServerPort } from "./config.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { EtagCasingServerResponse } from "./etag-header.ts";
 import { HttpAppLayer } from "./http.ts";
+import { LoggingLayer } from "./logging.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RadioBrowser } from "./radio-browser/radio-browser.ts";
 import { TuneIn } from "./tunein/tunein.ts";
@@ -37,7 +38,8 @@ const TracingLayer = OtlpTracer.layerFromConfig().pipe(
   Layer.provide([OtlpSerialization.layerProtobuf, FetchHttpClient.layer]),
 );
 
-// Provided last so every layer build and request is traced.
-Layer.launch(MainLayer.pipe(Layer.provide(TracingLayer))).pipe(
-  NodeRuntime.runMain,
-);
+// Provided last so every layer build and request is traced and logged with
+// them, the exporter's own errors included.
+Layer.launch(
+  MainLayer.pipe(Layer.provide(TracingLayer), Layer.provide(LoggingLayer)),
+).pipe(NodeRuntime.runMain);
