@@ -36,8 +36,6 @@ const isXmlOrJson = (contentType: string | undefined) =>
   contentType !== undefined &&
   (contentType.includes("xml") || contentType.includes("json"));
 
-const textDecoder = new TextDecoder();
-
 const MAX_LOGGED_BODY_LENGTH = 4096;
 
 const truncateBody = (body: string) =>
@@ -82,44 +80,12 @@ const redactedPath = (url: string) => {
   };
 };
 
-/** Logs XML and JSON bodies: the record of what speakers actually send. */
-const LogBodiesLayer = HttpRouter.middleware(
-  (httpEffect) =>
-    HttpServerRequest.HttpServerRequest.use((request) => {
-      const { path, redact } = redactedPath(request.url);
-      return Effect.gen(function* () {
-        if (isXmlOrJson(request.headers["content-type"])) {
-          const body = yield* request.text.pipe(Effect.orElseSucceed(() => ""));
-          if (body !== "") {
-            yield* Effect.logInfo("Request body", truncateBody(redact(body)));
-          }
-        }
-        const response = yield* httpEffect;
-        if (
-          isXmlOrJson(response.headers["content-type"]) &&
-          response.body._tag === "Uint8Array"
-        ) {
-          yield* Effect.logInfo(
-            "Response body",
-            truncateBody(redact(textDecoder.decode(response.body.body))),
-          ).pipe(Effect.annotateLogs("http.status", response.status));
-        }
-        return response;
-      }).pipe(
-        Effect.annotateLogs({
-          "http.method": request.method,
-          "http.url": path,
-        }),
-      );
-    }),
-  { global: true },
-);
-
 /**
- * Logs every response, unrouted ones included: a 404 is how a speaker call
- * this server lacks shows up. Replaces Effect's request logger, which would
- * log the account id; like it, a request the client aborted is logged as a
- * plain response.
+ * Logs responses with a 4xx or 5xx status, with the XML or JSON body of the
+ * request: a 404 is how a speaker call this server lacks shows up, a 400 what
+ * a speaker sent that it rejected. Other responses log at Debug; Railway's
+ * HTTP logs and the request's trace already record them. Replaces Effect's
+ * request logger, which would log the account id.
  */
 const logResponses = <Failure, Requirements>(
   httpApp: Effect.Effect<
@@ -130,46 +96,62 @@ const logResponses = <Failure, Requirements>(
 ) =>
   HttpServerRequest.HttpServerRequest.use((request) => {
     const { path, redact } = redactedPath(request.url);
-    const annotate = (status: number) =>
-      Effect.annotateLogs({
-        "http.method": request.method,
-        "http.url": path,
-        "http.status": status,
-      });
-    return httpApp.pipe(
-      Effect.onExit((exit) => {
-        if (Exit.isSuccess(exit)) {
-          return Effect.logInfo("Sent HTTP response").pipe(
-            annotate(exit.value.status),
+    return Effect.gen(function* () {
+      // Read before the handler, which reads it again from the request's cache.
+      const body = isXmlOrJson(request.headers["content-type"])
+        ? yield* request.text.pipe(Effect.orElseSucceed(() => ""))
+        : "";
+      const annotate = (status: number) =>
+        Effect.annotateLogs({
+          "http.method": request.method,
+          "http.url": path,
+          "http.status": status,
+          ...(status >= 400 && body !== ""
+            ? { "http.request.body": truncateBody(redact(body)) }
+            : {}),
+        });
+      const logAtStatus = (status: number, message: string) =>
+        (status >= 500
+          ? Effect.logError(message)
+          : status >= 400
+            ? Effect.logWarning(message)
+            : Effect.logDebug(message)
+        ).pipe(annotate(status));
+      return yield* httpApp.pipe(
+        Effect.onExit((exit) => {
+          if (Exit.isSuccess(exit)) {
+            return logAtStatus(exit.value.status, "Sent HTTP response");
+          }
+          const [response, cause] = HttpServerError.causeResponseStripped(
+            exit.cause,
           );
-        }
-        const [response, cause] = HttpServerError.causeResponseStripped(
-          exit.cause,
-        );
-        const clientAborted =
-          Option.isNone(cause) ||
-          cause.value.reasons.every(
-            (reason) =>
-              reason._tag === "Interrupt" &&
-              reason.annotations.has(HttpServerError.ClientAbort.key),
+          const clientAborted =
+            Option.isNone(cause) ||
+            cause.value.reasons.every(
+              (reason) =>
+                reason._tag === "Interrupt" &&
+                reason.annotations.has(HttpServerError.ClientAbort.key),
+            );
+          if (clientAborted) {
+            return Effect.logDebug("Client aborted request").pipe(
+              annotate(response.status),
+            );
+          }
+          const error = Cause.squash(cause.value);
+          if (
+            HttpServerError.isHttpServerError(error) &&
+            error.reason._tag === "RouteNotFound"
+          ) {
+            return Effect.logWarning("No route for request").pipe(
+              annotate(response.status),
+            );
+          }
+          return logAtStatus(response.status, "HTTP request failed").pipe(
+            Effect.annotateLogs("error", redact(Cause.pretty(cause.value))),
           );
-        if (clientAborted) {
-          return Effect.logInfo("Sent HTTP response").pipe(
-            annotate(response.status),
-          );
-        }
-        const error = Cause.squash(cause.value);
-        return (
-          HttpServerError.isHttpServerError(error) &&
-          error.reason._tag === "RouteNotFound"
-            ? Effect.logWarning("No route for request")
-            : Effect.logWarning(
-                "HTTP request failed",
-                redact(Cause.pretty(cause.value)),
-              )
-        ).pipe(annotate(response.status));
-      }),
-    );
+        }),
+      );
+    });
   });
 
 /**
@@ -203,13 +185,7 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
  * platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
-  Layer.mergeAll(
-    ApiLayer,
-    DocsLayer,
-    MediaLayer,
-    NotModifiedLayer,
-    LogBodiesLayer,
-  ),
+  Layer.mergeAll(ApiLayer, DocsLayer, MediaLayer, NotModifiedLayer),
   {
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },

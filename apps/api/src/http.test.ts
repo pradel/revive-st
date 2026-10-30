@@ -1,6 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
-import { Effect, Layer, Logger, Schema } from "effect";
+import { Effect, Layer, Logger, References, Schema } from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -66,7 +66,7 @@ const RadioBrowserTest = Layer.succeed(
   }),
 );
 
-/** Every log line the server writes, as JSON. */
+/** Every log line the server writes, Debug included, as JSON. */
 const logLines: string[] = [];
 
 const TestLayer = HttpAppLayer.pipe(
@@ -80,6 +80,7 @@ const TestLayer = HttpAppLayer.pipe(
         logLines.push(line);
       }),
     ]),
+    Layer.succeed(References.MinimumLogLevel, "All"),
   ]),
   Layer.provideMerge(NodeHttpServer.layerTest),
 );
@@ -417,6 +418,14 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       yield* syncPresets("logged", [], accountId);
       yield* HttpClient.get(`/streaming/account/${accountId}/unknown-route`);
       yield* HttpClient.get(`/streaming/account/${accountId}/full`);
+      yield* HttpClient.execute(
+        HttpClientRequest.post(`/streaming/account/${accountId}/device/`).pipe(
+          HttpClientRequest.bodyText(
+            `<device account="${accountId}"/>`,
+            BOSE_XML_CONTENT_TYPE,
+          ),
+        ),
+      );
 
       // Unrouted speaker calls stay visible, with their status.
       assert.isTrue(
@@ -429,6 +438,43 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       );
       for (const line of logLines) {
         assert.notInclude(line, accountId);
+      }
+    }),
+  );
+
+  it.effect("logs rejected requests with what was sent, not served ones", () =>
+    Effect.gen(function* () {
+      const rejected = "<device><name>No id</name></device>";
+      yield* HttpClient.execute(
+        HttpClientRequest.post(`/streaming/account/${ACCOUNT}/device/`).pipe(
+          HttpClientRequest.bodyText(rejected, BOSE_XML_CONTENT_TYPE),
+        ),
+      );
+      yield* getPresetsXml("served");
+
+      const parsed = logLines.map(
+        (line) =>
+          JSON.parse(line) as {
+            level: string;
+            annotations: Record<string, unknown>;
+          },
+      );
+      assert.isTrue(
+        parsed.some(
+          ({ level, annotations }) =>
+            level === "WARN" &&
+            annotations["http.status"] === 400 &&
+            annotations["http.request.body"] === rejected,
+        ),
+      );
+      const served = parsed.filter(
+        ({ annotations }) =>
+          annotations["http.url"] ===
+          "/streaming/account/…/device/served/presets",
+      );
+      assert.isNotEmpty(served);
+      for (const { level } of served) {
+        assert.strictEqual(level, "DEBUG");
       }
     }),
   );

@@ -33,10 +33,12 @@ To check it's running, open `http://192.168.1.10:3000/v2/registry.json` (with yo
 
 Your accounts and presets are stored in the `/data` volume, in the database file `revivest.db`. Back up that volume to keep them.
 
-| Setting        | Default                  | What it does                                         |
-| -------------- | ------------------------ | ---------------------------------------------------- |
-| `PORT`         | `3000`                   | The port the server listens on inside the container. |
-| `DATABASE_URL` | `file:/data/revivest.db` | Where accounts and presets are stored.               |
+| Setting        | Default                  | What it does                                                                                                                    |
+| -------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`         | `3000`                   | The port the server listens on inside the container.                                                                            |
+| `DATABASE_URL` | `file:/data/revivest.db` | Where accounts and presets are stored.                                                                                          |
+| `LOG_LEVEL`    | `info`                   | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
+| `LOG_FORMAT`   | `pretty`                 | `json` writes one JSON object per line, for log collectors.                                                                     |
 
 ## Point the app at your server
 
