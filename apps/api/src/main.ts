@@ -2,6 +2,8 @@ import { createServer } from "node:http";
 
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
 import { Layer } from "effect";
+import { FetchHttpClient } from "effect/http";
+import { OtlpSerialization, OtlpTracer } from "effect/observability";
 
 import { ServerPort } from "./config.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
@@ -26,4 +28,16 @@ const MainLayer = HttpAppLayer.pipe(
   ),
 );
 
-Layer.launch(MainLayer).pipe(NodeRuntime.runMain);
+/**
+ * Exports spans over OTLP/HTTP protobuf when `OTEL_TRACES_EXPORTER=otlp` and an
+ * OTLP endpoint are set (Railway provides the endpoint, headers and service
+ * name once tracing is on); otherwise a no-op.
+ */
+const TracingLayer = OtlpTracer.layerFromConfig().pipe(
+  Layer.provide([OtlpSerialization.layerProtobuf, FetchHttpClient.layer]),
+);
+
+// Provided last so every layer build and request is traced.
+Layer.launch(MainLayer.pipe(Layer.provide(TracingLayer))).pipe(
+  NodeRuntime.runMain,
+);
