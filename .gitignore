@@ -25,3 +25,6 @@ dist-ssr
 
 # AI agent worktrees
 .claude/worktrees/
+
+# Vendored reference repositories (`pnpm repos:sync`)
+repos

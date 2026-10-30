@@ -194,9 +194,6 @@ export const HttpAppLayer = HttpRouter.serve(
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },
     disableLogger: true,
-    // `HttpMiddleware` erases types to `any`; these only read or rewrite the
-    // request, so the app's own types still hold.
-    middleware: (httpApp) =>
-      trustForwardedHeaders(logResponses(httpApp)) as typeof httpApp,
+    middleware: (httpApp) => trustForwardedHeaders(logResponses(httpApp)),
   },
 );

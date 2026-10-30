@@ -5,6 +5,7 @@
     "release:app": "./scripts/release-app.sh",
     "ready": "vp check && vp run -r test && vp run -r build",
     "dev": "vp run website#dev",
+    "repos:sync": "./scripts/sync-repos.sh",
     "prepare": "vp config"
   },
   "devDependencies": {
