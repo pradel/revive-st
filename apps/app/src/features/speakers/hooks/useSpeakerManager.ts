@@ -136,6 +136,21 @@ function rememberedSpeaker(
   };
 }
 
+/** Asks the speaker at `address` for its `/info`, giving up after `PROBE_TIMEOUT_MS`. */
+async function probeInfo(address: string, port: number) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, PROBE_TIMEOUT_MS);
+  try {
+    return await new BoseHttpAdapter({ ip: address, port }).getInfo({
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /** Who started a scan: the app (launch, return to foreground) or the user. */
 type ScanKind = "auto" | "user";
 
@@ -161,6 +176,12 @@ export function useSpeakerManager({
 
   const speakersMapRef = useRef<Map<string, Speaker>>(new Map());
   const isUpdatingRef = useRef<Record<string, boolean>>({});
+  /**
+   * Bumped by each `forgetSpeaker`, which records the new value for the
+   * speaker: a connection attempt started before that can't bring it back.
+   */
+  const forgetCountRef = useRef(0);
+  const forgottenAtRef = useRef<Record<string, number>>({});
 
   const stopScan = useCallback(() => {
     if (scanTimeoutRef.current) {
@@ -196,22 +217,16 @@ export function useSpeakerManager({
    */
   const connectAt = useCallback(
     async (address: string, port: number, expectedDeviceID?: string) => {
-      const controller = new AbortController();
-      const timer = setTimeout(() => {
-        controller.abort();
-      }, PROBE_TIMEOUT_MS);
-      const infoResult = await new BoseHttpAdapter({ ip: address, port })
-        .getInfo({ signal: controller.signal })
-        .finally(() => {
-          clearTimeout(timer);
-        });
+      const startedAt = forgetCountRef.current;
+      const infoResult = await probeInfo(address, port);
       if (!isMounted.current || !infoResult.isOk()) {
         return false;
       }
       const deviceID = infoResult.value.deviceID;
       if (
         !deviceID ||
-        (expectedDeviceID !== undefined && deviceID !== expectedDeviceID)
+        (expectedDeviceID !== undefined && deviceID !== expectedDeviceID) ||
+        (forgottenAtRef.current[deviceID] ?? -1) > startedAt
       ) {
         return false;
       }
@@ -230,6 +245,9 @@ export function useSpeakerManager({
       // read anything; its card waits for the first full state instead of
       // showing an empty one.
       let ready = false;
+      // False once the speaker is forgotten or replaced by a newer connection.
+      const isCurrent = () =>
+        isMounted.current && speakersMapRef.current.get(deviceID) === speaker;
       const publish = (state: SpeakerState) => {
         const accountId = state.margeAccountUUID;
         if (state.presets && accountId && usesOurServer(state.margeURL)) {
@@ -255,7 +273,7 @@ export function useSpeakerManager({
         port,
         deviceID,
         onStateUpdate: (state) => {
-          if (isMounted.current && ready) {
+          if (ready && isCurrent()) {
             publish(state);
           }
         },
@@ -265,10 +283,7 @@ export function useSpeakerManager({
       // Connect to WebSocket and fetch initial state
       speaker.connect();
       await speaker.initialize();
-      if (
-        !isMounted.current ||
-        speakersMapRef.current.get(deviceID) !== speaker
-      ) {
+      if (!isCurrent()) {
         return true;
       }
       ready = true;
@@ -371,6 +386,45 @@ export function useSpeakerManager({
   );
 
   /**
+   * Reconnects a reached speaker and re-reads its state, or shows it offline
+   * if it no longer answers (`initialize` alone succeeds even then). Dropped
+   * from the connections, it's then reached again like a remembered one.
+   */
+  const refreshReached = useCallback(
+    async (deviceID: string, speaker: Speaker) => {
+      const answered = await probeInfo(
+        speaker.options.ip,
+        speaker.options.port ?? 8090,
+      ).then(
+        (result) => result.isOk(),
+        () => false,
+      );
+      if (
+        !isMounted.current ||
+        speakersMapRef.current.get(deviceID) !== speaker
+      ) {
+        return;
+      }
+      if (answered) {
+        speaker.connect();
+        void speaker.initialize();
+        return;
+      }
+      // Removed first, so the state `disconnect` emits isn't published.
+      speakersMapRef.current.delete(deviceID);
+      speaker.disconnect();
+      setSpeakersData((prev) => {
+        const entry = prev[deviceID];
+        if (entry?.status !== "online") {
+          return prev;
+        }
+        return { ...prev, [deviceID]: { ...entry, status: "offline" } };
+      });
+    },
+    [],
+  );
+
+  /**
    * Reconnects every listed speaker (remembered ones at their last address)
    * and scans for the rest: on launch and when the app returns to the
    * foreground, where sockets may have been dropped while it was away.
@@ -380,15 +434,14 @@ export function useSpeakerManager({
       for (const entry of entries) {
         const speaker = speakersMapRef.current.get(entry.deviceID);
         if (speaker && entry.status === "online") {
-          speaker.connect();
-          void speaker.initialize();
+          void refreshReached(entry.deviceID, speaker);
         } else {
           void reachRemembered(entry.deviceID, entry.host, entry.port);
         }
       }
       startScan("auto");
     },
-    [reachRemembered, startScan],
+    [reachRemembered, refreshReached, startScan],
   );
 
   /** An offline speaker, tried again: at its last address and by scanning. */
@@ -409,8 +462,12 @@ export function useSpeakerManager({
 
   /** Stops listing a speaker and remembering it, until the scan finds it again. */
   const forgetSpeaker = useCallback((deviceID: string) => {
-    speakersMapRef.current.get(deviceID)?.disconnect();
+    forgetCountRef.current += 1;
+    forgottenAtRef.current[deviceID] = forgetCountRef.current;
+    // Removed before disconnecting, so the state it emits isn't published.
+    const speaker = speakersMapRef.current.get(deviceID);
     speakersMapRef.current.delete(deviceID);
+    speaker?.disconnect();
     setSpeakersData((prev) =>
       Object.fromEntries(
         Object.entries(prev).filter(([id]) => id !== deviceID),
@@ -866,11 +923,14 @@ export function useSpeakerManager({
     }
     reconnectAll(Object.values(speakersDataRef.current));
 
-    let previous = AppState.currentState;
+    // Away once in the background; iOS can pass through `inactive` on the
+    // way back to `active`.
+    let away = false;
     const subscription = AppState.addEventListener("change", (next) => {
-      const wasInBackground = previous === "background";
-      previous = next;
-      if (next === "active" && wasInBackground) {
+      if (next === "background") {
+        away = true;
+      } else if (next === "active" && away) {
+        away = false;
         reconnectAll(Object.values(speakersDataRef.current));
       }
     });
