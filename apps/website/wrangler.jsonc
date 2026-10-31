@@ -9,6 +9,7 @@
   // URL for each build of a branch other than main.
   "workers_dev": true,
   "preview_urls": true,
+  "previews": {},
   "assets": {
     "directory": "./out",
     // `/docs` serves `docs.html`, `/docs/self-hosting` `docs/self-hosting.html`.
