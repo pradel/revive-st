@@ -1,5 +1,5 @@
 import { and, asc, eq, notInArray, sql } from "drizzle-orm";
-import type { EffectLibsqlDatabase } from "drizzle-orm/effect-libsql";
+import type { EffectSQLiteNodeDatabase } from "drizzle-orm/effect-sqlite-node";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
@@ -85,7 +85,7 @@ export class PresetsRepo extends Context.Service<
       }, Effect.orDie);
 
       const write = Effect.fnUntraced(function* (
-        executor: Pick<EffectLibsqlDatabase, "insert">,
+        executor: Pick<EffectSQLiteNodeDatabase, "insert">,
         accountId: AccountId,
         deviceId: DeviceId,
         presets: readonly Preset[],

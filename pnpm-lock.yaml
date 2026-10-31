@@ -195,7 +195,7 @@ importers:
       '@effect/platform-node':
         specifier: 4.1.0
         version: 4.1.0(effect@4.1.0)(redis@6.3.0)
-      '@effect/sql-libsql':
+      '@effect/sql-sqlite-node':
         specifier: 4.1.0
         version: 4.1.0(effect@4.1.0)
       bose-api-speaker-client:
@@ -203,7 +203,7 @@ importers:
         version: link:../../packages/bose-api-speaker-client
       drizzle-orm:
         specifier: 1.0.0-rc.5
-        version: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
+        version: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
       effect:
         specifier: 4.1.0
         version: 4.1.0
@@ -216,7 +216,7 @@ importers:
         version: 26.6.5
       drizzle-kit:
         specifier: 1.0.0-rc.5
-        version: 1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7))
+        version: 1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7))
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -989,6 +989,11 @@ packages:
 
   '@effect/sql-libsql@4.1.0':
     resolution: {integrity: sha512-mr5b0rDgNmczFEC00Vgr6a+nGkoq1XWcvCMdeqPaq55Ienm0KO8cEppxYWF691D7V2TJW+XLtV6sgm1fktKlaQ==}
+    peerDependencies:
+      effect: ^4.1.0
+
+  '@effect/sql-sqlite-node@4.1.0':
+    resolution: {integrity: sha512-Z8PxzlVlfp5JCGYAg9CwehHkvLEwMf/NF7htdDkKy65G4vE78ARkDMUSyeIzZ1zpadMxbbCEUJ2FM9M5/0Nxgg==}
     peerDependencies:
       effect: ^4.1.0
 
@@ -7032,6 +7037,10 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
+  '@effect/sql-sqlite-node@4.1.0(effect@4.1.0)':
+    dependencies:
+      effect: 4.1.0
+
   '@effect/vitest@4.1.0(effect@4.1.0)(vitest@5.0.5)':
     dependencies:
       effect: 4.1.0
@@ -9866,13 +9875,14 @@ snapshots:
 
   dom-accessibility-api@0.5.16: {}
 
-  drizzle-kit@1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)):
+  drizzle-kit@1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)):
     optionalDependencies:
-      drizzle-orm: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
+      drizzle-orm: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
 
-  drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7):
+  drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7):
     optionalDependencies:
       '@effect/sql-libsql': 4.1.0(effect@4.1.0)
+      '@effect/sql-sqlite-node': 4.1.0(effect@4.1.0)
       '@libsql/client': 0.18.0
       effect: 4.1.0
       zod: 4.6.7

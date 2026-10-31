@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "3de1dffa-f1c3-48e9-8b85-86f51aed46e7",
-  "prevIds": ["5b72be13-43a5-4c6f-a29e-62b600f1ebff"],
+  "id": "34e526b9-cd59-445f-8d3f-cab8d7267340",
+  "prevIds": ["00000000-0000-0000-0000-000000000000"],
   "ddl": [
     {
       "name": "device_contacts",

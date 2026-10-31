@@ -21,8 +21,9 @@ COPY apps/api apps/api
 COPY packages/bose-api-speaker-client packages/bose-api-speaker-client
 RUN pnpm --filter @revive-st/api bundle
 
-# Production dependencies, installed on the target platform: `@libsql/*` ships
-# native binaries per platform.
+# Production dependencies the bundle leaves external, installed on the target
+# platform in case one ships a native binary. The database is Node's built-in
+# `node:sqlite`.
 FROM node:26-slim AS deps
 WORKDIR /repo
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -36,7 +37,7 @@ FROM node:26-slim
 WORKDIR /app
 ENV NODE_ENV=production \
     PORT=3000 \
-    DATABASE_URL=file:/data/revivest.db
+    DATABASE_PATH=/data/revivest.db
 COPY --from=deps /prod/node_modules node_modules
 COPY apps/api/drizzle drizzle
 COPY apps/api/public public

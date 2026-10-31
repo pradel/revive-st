@@ -31,14 +31,14 @@ docker run -d --name revive-st --restart unless-stopped \
 
 To check it's running, open `http://192.168.1.10:3000` (with your server's address) in your phone's browser: it shows `Revive ST API` and the version it runs.
 
-Your accounts and presets are stored in the `/data` volume, in the database file `revivest.db`. Back up that volume to keep them.
+Your accounts and presets are stored in the `/data` volume, in the SQLite database file `revivest.db` (with `revivest.db-wal` and `revivest.db-shm` beside it while the server runs). Back up that whole volume to keep them.
 
-| Setting        | Default                  | What it does                                                                                                                    |
-| -------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`         | `3000`                   | The port the server listens on inside the container.                                                                            |
-| `DATABASE_URL` | `file:/data/revivest.db` | Where accounts and presets are stored.                                                                                          |
-| `LOG_LEVEL`    | `info`                   | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
-| `LOG_FORMAT`   | `pretty`                 | `json` writes one JSON object per line, for log collectors.                                                                     |
+| Setting         | Default             | What it does                                                                                                                    |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`          | `3000`              | The port the server listens on inside the container.                                                                            |
+| `DATABASE_PATH` | `/data/revivest.db` | The SQLite database file where accounts and presets are stored.                                                                 |
+| `LOG_LEVEL`     | `info`              | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
+| `LOG_FORMAT`    | `pretty`            | `json` writes one JSON object per line, for log collectors.                                                                     |
 
 ## Point the app at your server
 
