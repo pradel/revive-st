@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 
 /**
  * Mobile-only download bar, shown once the hero (`#hero`) has scrolled away
- * and hidden again while the download section (`#download`) is on screen.
+ * and hidden again while the download section (`#download`) or the footer is
+ * on screen.
  */
 export function StickyCta() {
   const [visible, setVisible] = useState(false);
@@ -15,15 +16,19 @@ export function StickyCta() {
     if (!hero || !download) {
       return;
     }
+    const hiders = [hero, download, document.querySelector("footer")].filter(
+      (element) => element !== null,
+    );
     const onScreen = new Map<Element, boolean>();
     const observer = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         onScreen.set(entry.target, entry.isIntersecting);
       }
-      setVisible(!onScreen.get(hero) && !onScreen.get(download));
+      setVisible(!hiders.some((element) => onScreen.get(element)));
     });
-    observer.observe(hero);
-    observer.observe(download);
+    for (const element of hiders) {
+      observer.observe(element);
+    }
     return () => {
       observer.disconnect();
     };
@@ -32,7 +37,7 @@ export function StickyCta() {
   return (
     <div
       inert={!visible}
-      className={`fixed inset-x-3 bottom-3 z-40 md:hidden transition duration-300 ${
+      className={`fixed inset-x-3 bottom-3 z-40 md:hidden transition duration-300 motion-reduce:transition-none ${
         visible ? "translate-y-0 opacity-100" : "translate-y-24 opacity-0"
       }`}
     >

@@ -181,9 +181,9 @@ export function PresetDemo() {
           </div>
         </div>
 
-        {/* What the speaker plays */}
+        {/* What the speaker plays; announced only once the visitor takes over */}
         <div
-          aria-live="polite"
+          aria-live={pressedByVisitor ? "polite" : "off"}
           className="mt-6 flex items-center gap-4 rounded-2xl bg-bg px-4 py-3.5"
         >
           <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-accent-muted font-mono font-bold text-accent">
