@@ -9,7 +9,7 @@ import {
 } from "effect/http-api";
 
 import { AccountId } from "../marge/account.ts";
-import { DeviceId, PresetId } from "../presets/preset.ts";
+import { PresetId, PresetText, SpeakerDeviceId } from "../presets/preset.ts";
 
 export const BOSE_XML_CONTENT_TYPE = "application/vnd.bose.streaming-v1.2+xml";
 
@@ -87,12 +87,12 @@ const OptionalText = Schema.optional(Schema.String);
 export const SpeakerPresetXml = speakerXml(
   "preset",
   {
-    sourceid: OptionalText,
-    name: OptionalText,
-    username: OptionalText,
-    location: OptionalText,
-    contentItemType: OptionalText,
-    containerArt: OptionalText,
+    sourceid: Schema.optional(PresetText.source),
+    name: Schema.optional(PresetText.itemName),
+    username: Schema.optional(PresetText.itemName),
+    location: Schema.optional(PresetText.location),
+    contentItemType: Schema.optional(PresetText.type),
+    containerArt: Schema.optional(PresetText.containerArt),
   },
   {
     description:
@@ -126,7 +126,7 @@ export const SpeakerDeviceXml = SpeakerXmlText({
     '<?xml version="1.0" encoding="UTF-8" ?><device deviceid="EC1127C25A50"><name>Kitchen</name><macaddress>EC1127C25A50</macaddress></device>',
 }).pipe(
   Schema.decodeTo(
-    Schema.Struct({ deviceId: DeviceId, name: Schema.String }),
+    Schema.Struct({ deviceId: SpeakerDeviceId, name: Schema.String }),
     SchemaTransformation.transformEffect({
       decode: (xml, options) =>
         Effect.try({
@@ -165,7 +165,7 @@ export const SpeakerDeviceXml = SpeakerXmlText({
 );
 
 const AccountParams = { accountId: AccountId };
-const DeviceParams = { accountId: AccountId, deviceId: DeviceId };
+const DeviceParams = { accountId: AccountId, deviceId: SpeakerDeviceId };
 
 /**
  * The subset of Bose's Marge streaming server that SoundTouch speakers call
@@ -228,7 +228,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
       OpenApi.annotations({
         summary: "Save a preset",
         description:
-          "Called by the speaker when a preset button is held. Pairs the speaker with the account. A preset from a source the account doesn't offer, or a body that isn't a `<preset>` document, gets `400`. The body is read as XML whatever its content type.",
+          "Called by the speaker when a preset button is held. Pairs the speaker with the account. A preset from a source the account doesn't offer, a body that isn't a `<preset>` document, or a field over its maximum length (`name` 512 characters, `location` 4096, `containerArt` 2048) gets `400`. The body is read as XML whatever its content type.",
       }),
     ),
     HttpApiEndpoint.delete(
@@ -314,7 +314,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
       OpenApi.annotations({
         summary: "Pair a speaker",
         description:
-          "Called by the speaker when it is paired with an account (`setMargeAccount`). The path also matches with a trailing slash, which is how speakers call it. A bare `200` would make the speaker refuse the pairing with `SET_MARGE_ACCOUNT_ERROR`. A body without a `deviceid` gets `400`.",
+          "Called by the speaker when it is paired with an account (`setMargeAccount`). The path also matches with a trailing slash, which is how speakers call it. A bare `200` would make the speaker refuse the pairing with `SET_MARGE_ACCOUNT_ERROR`. A body without a `deviceid`, or with one that isn't 12 hex digits, gets `400`.",
       }),
     ),
     HttpApiEndpoint.put(
@@ -368,6 +368,6 @@ export class MargeApi extends HttpApiGroup.make("marge")
     OpenApi.annotations({
       title: "Marge",
       description:
-        "The subset of Bose's Marge streaming server that SoundTouch speakers call once their `margeServerUrl` points at this server. Bodies are Bose XML (`application/vnd.bose.streaming-v1.2+xml`). Every call naming a speaker's device id records the speaker's contact, which the app reads back.",
+        "The subset of Bose's Marge streaming server that SoundTouch speakers call once their `margeServerUrl` points at this server. Bodies are Bose XML (`application/vnd.bose.streaming-v1.2+xml`). Every call naming a speaker's device id records the speaker's contact, which the app reads back. A device id that isn't 12 hex digits (a MAC address), or an account id over 64 characters, gets `400`.",
     }),
   ) {}

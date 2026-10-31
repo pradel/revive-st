@@ -220,7 +220,7 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
  * from the app, a speaker's boot report) are a few kilobytes; a larger body
  * gets `413` before it is buffered.
  */
-const MAX_BODY_SIZE = ByteSize.kibibytes(64);
+const MAX_BODY_SIZE = ByteSize.kibibytes(32);
 
 /**
  * The HTTP application, served on whichever `HttpServer` is provided.

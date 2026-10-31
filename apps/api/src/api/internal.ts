@@ -8,7 +8,7 @@ import {
 
 import { MAX_DEVICES_PER_ACCOUNT } from "../devices/devices-repo.ts";
 import { AccountId } from "../marge/account.ts";
-import { DeviceId, Preset, SpeakerDeviceId } from "../presets/preset.ts";
+import { Preset, SpeakerDeviceId } from "../presets/preset.ts";
 
 /** A speaker's presets: at most one per button, so at most six. */
 const DevicePresets = Schema.Array(Preset).check(
@@ -38,7 +38,7 @@ export class InternalApi extends HttpApiGroup.make("internal")
       "syncPresets",
       "/account/:accountId/device/:deviceId/presets",
       {
-        params: { accountId: AccountId, deviceId: DeviceId },
+        params: { accountId: AccountId, deviceId: SpeakerDeviceId },
         payload: Schema.Struct({ presets: DevicePresets }).annotate({
           description: "Every preset the speaker has.",
         }),
@@ -50,7 +50,7 @@ export class InternalApi extends HttpApiGroup.make("internal")
     ).annotateMerge(
       OpenApi.annotations({
         summary: "Sync a speaker's presets",
-        description: `Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped. At most one preset per button. \`409\` when the account already has ${MAX_DEVICES_PER_ACCOUNT} other speakers; nothing is stored then.`,
+        description: `Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped. At most one preset per button, each field within its maximum length. A device id that isn't 12 hex digits gets \`400\`. \`409\` when the account already has ${MAX_DEVICES_PER_ACCOUNT} other speakers; nothing is stored then.`,
       }),
     ),
     HttpApiEndpoint.get("deviceContact", "/device/:deviceId/contact", {
