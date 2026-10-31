@@ -1,5 +1,8 @@
 import { useSyncExternalStore } from "react";
 
+import { RADIO_SETUP_QUERY_KEY } from "@/features/speakers/hooks/useSpeakerManager";
+import { queryClient } from "@/lib/query-client";
+
 import { createConfigureDeps } from "./adapters";
 import { createConfigureSession } from "./session/session";
 import type { ScenarioName } from "./session/testing/scenarios";
@@ -62,6 +65,14 @@ export function startConfigure(
     session,
     target: simulated?.target ?? target,
     ...(simulated ? { scenario } : {}),
+  });
+  // The speaker's radio status changes once the run is done, whether or not
+  // a screen is showing it.
+  const unsubscribe = session.subscribe(() => {
+    if (session.getView().kind === "done") {
+      unsubscribe();
+      void queryClient.invalidateQueries({ queryKey: [RADIO_SETUP_QUERY_KEY] });
+    }
   });
   session.start();
   notify();

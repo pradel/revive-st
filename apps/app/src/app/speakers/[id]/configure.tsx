@@ -1,4 +1,3 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import { ScrollView, type TextStyle, type ViewStyle } from "react-native";
@@ -23,10 +22,7 @@ import {
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import {
-  RADIO_SETUP_QUERY_KEY,
-  useRadioSetupQuery,
-} from "@/features/speakers/hooks/useSpeakerManager";
+import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -35,9 +31,8 @@ import { Screen } from "@/ui/ds/Screen";
 import { Text } from "@/ui/ds/Text";
 import { space } from "@/ui/tokens";
 
-/** Haptics and the radio status refresh, once per finished run seen on screen. */
+/** Haptics, once per finished run seen on screen. */
 function useOutcomeEffects(view: ConfigureView | undefined) {
-  const queryClient = useQueryClient();
   const previous = useRef(view);
   useEffect(() => {
     const before = previous.current;
@@ -47,13 +42,10 @@ function useOutcomeEffects(view: ConfigureView | undefined) {
     }
     if (view.kind === "done") {
       haptics.success();
-      void queryClient.invalidateQueries({
-        queryKey: [RADIO_SETUP_QUERY_KEY],
-      });
     } else if (view.kind === "failed") {
       haptics.error();
     }
-  }, [view, queryClient]);
+  }, [view]);
 }
 
 export default function ConfigureSpeaker() {

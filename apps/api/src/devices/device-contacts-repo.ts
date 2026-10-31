@@ -1,9 +1,11 @@
 import { eq } from "drizzle-orm";
-import { Context, DateTime, Effect, Layer } from "effect";
+import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
 import { deviceContactsTable } from "../db/schema.ts";
-import type { DeviceId } from "../presets/preset.ts";
+import { type DeviceId, SpeakerDeviceId } from "../presets/preset.ts";
+
+const isSpeakerDeviceId = Schema.is(SpeakerDeviceId);
 
 /**
  * When each speaker last made a request to this server, so the app can
@@ -15,8 +17,9 @@ export class DeviceContactsRepo extends Context.Service<
   DeviceContactsRepo,
   {
     /**
-     * Records that `deviceId` contacted the server now. Never fails: a speaker
-     * request must not fail for want of recording it, so errors are logged.
+     * Records that `deviceId` contacted the server now; an id that isn't a
+     * MAC address is not stored. Never fails: a speaker request must not fail
+     * for want of recording it, so errors are logged.
      */
     readonly record: (deviceId: DeviceId) => Effect.Effect<void>;
     /** When `deviceId` last contacted the server, in epoch milliseconds. */
@@ -32,6 +35,9 @@ export class DeviceContactsRepo extends Context.Service<
 
       const record = Effect.fn("DeviceContactsRepo.record")(
         function* (deviceId: DeviceId) {
+          if (!isSpeakerDeviceId(deviceId)) {
+            return;
+          }
           const now = DateTime.toEpochMillis(yield* DateTime.now);
           yield* db
             .insert(deviceContactsTable)
