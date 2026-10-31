@@ -25,7 +25,7 @@
         "memoryBytes": 500000000
       }
     },
-    "sleepApplication": true,
+    "sleepApplication": false,
     "useLegacyStacker": false,
     "ipv6EgressEnabled": false,
     "multiRegionConfig": {

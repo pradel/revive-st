@@ -5,7 +5,9 @@ import { Layer } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 
+import { BackupLayer } from "./backup/backup.ts";
 import { ServerPort } from "./config.ts";
+import { Database } from "./db/database.ts";
 import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { EtagCasingServerResponse } from "./etag-header.ts";
@@ -15,20 +17,24 @@ import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RadioBrowser } from "./radio-browser/radio-browser.ts";
 import { TuneIn } from "./tunein/tunein.ts";
 
-const MainLayer = HttpAppLayer.pipe(
-  Layer.provide([
-    PresetsRepo.layer,
-    DevicesRepo.layer,
-    DeviceContactsRepo.layer,
-    TuneIn.layer,
-    RadioBrowser.layer,
-  ]),
-  Layer.provide(
-    NodeHttpServer.layerConfig(
-      () => createServer({ ServerResponse: EtagCasingServerResponse }),
-      { port: ServerPort },
+const MainLayer = Layer.mergeAll(
+  HttpAppLayer.pipe(
+    Layer.provide([
+      PresetsRepo.layer,
+      DevicesRepo.layer,
+      DeviceContactsRepo.layer,
+      TuneIn.layer,
+      RadioBrowser.layer,
+    ]),
+    Layer.provide(
+      NodeHttpServer.layerConfig(
+        () => createServer({ ServerResponse: EtagCasingServerResponse }),
+        { port: ServerPort },
+      ),
     ),
   ),
+  // The same `Database.layer` as the repositories: one database, built once.
+  BackupLayer.pipe(Layer.provide(Database.layer)),
 );
 
 /**

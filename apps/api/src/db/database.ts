@@ -7,11 +7,14 @@ import { DatabasePath, migrationsFolder } from "../config.ts";
 
 /**
  * The Drizzle database on Node's built-in SQLite (`node:sqlite`), migrated
- * with `drizzle/` before first use.
+ * with `drizzle/` before first use. `$client` is the underlying SQLite client,
+ * for what Drizzle doesn't cover (online backups).
  */
 export class Database extends Context.Service<
   Database,
-  SqliteDrizzle.EffectSQLiteNodeDatabase
+  SqliteDrizzle.EffectSQLiteNodeDatabase & {
+    readonly $client: SqliteClient.SqliteClient;
+  }
 >()("@revive-st/api/db/Database") {
   static readonly layerNoDeps = Layer.effect(
     Database,

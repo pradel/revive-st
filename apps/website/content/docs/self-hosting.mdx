@@ -40,6 +40,21 @@ Your accounts and presets are stored in the `/data` volume, in the SQLite databa
 | `LOG_LEVEL`     | `info`              | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
 | `LOG_FORMAT`    | `pretty`            | `json` writes one JSON object per line, for log collectors.                                                                     |
 
+### Daily backups to S3 storage (optional)
+
+The server can store a gzipped snapshot of its database in a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…) every day at 03:00 UTC, taken while it keeps serving. At start, it takes one right away if the newest snapshot is more than a day old, so a restart never costs a day. Snapshots are named `db/<date and time>.db.gz`; to keep only the last 30 days, add a lifecycle rule to the bucket.
+
+| Setting                | What it does                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `S3_BUCKET`            | The bucket. Backups are off without it.                                                                                        |
+| `S3_ENDPOINT`          | The storage's S3 API address, like `https://<account id>.r2.cloudflarestorage.com` for R2. The bucket is addressed path-style. |
+| `S3_REGION`            | Defaults to `auto`, which R2 expects. On AWS, the bucket's region.                                                             |
+| `S3_ACCESS_KEY_ID`     | An access key allowed to read and write objects in this bucket only (on R2: an API token with **Object Read & Write** on it).  |
+| `S3_SECRET_ACCESS_KEY` | That key's secret.                                                                                                             |
+| `BACKUP_HEARTBEAT_URL` | Optional. Called after each stored snapshot: a heartbeat monitor (healthchecks.io, Better Stack) alerts when one is missing.   |
+
+To restore a snapshot, stop the server, download the snapshot, unzip it (`gunzip`) into `/data/revivest.db`, delete `revivest.db-wal` and `revivest.db-shm`, and start the server.
+
 ## Point the app at your server
 
 In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching.
