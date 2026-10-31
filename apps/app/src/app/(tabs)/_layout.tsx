@@ -1,4 +1,5 @@
 import { NativeTabs } from "expo-router/native-tabs";
+import { Platform } from "react-native";
 
 import {
   NowPlayingAccessory,
@@ -7,14 +8,34 @@ import {
 } from "@/features/speakers/components/NowPlayingBar";
 import { color } from "@/ui/tokens";
 
+const android = Platform.OS === "android";
+
+/**
+ * Android: the Material bar on a raised surface, with the mini player docked
+ * on top of it (`NowPlayingBar`), a mint selection pill and grey unselected
+ * tabs. iOS keeps the system bar.
+ */
+const androidBar = android
+  ? {
+      indicatorColor: color.accentMuted,
+      rippleColor: color.accentMuted,
+      iconColor: { default: color.textSecondary, selected: color.accent },
+      labelStyle: {
+        default: { color: color.textSecondary },
+        selected: { color: color.accent, fontWeight: "600" as const },
+      },
+    }
+  : {};
+
 export default function TabLayout() {
   const nowPlaying = useNowPlaying();
 
   return (
     <NativeTabs
-      backgroundColor={color.bg}
+      backgroundColor={android ? color.surface1 : color.bg}
       tintColor={color.accent}
       minimizeBehavior="onScrollDown"
+      {...androidBar}
     >
       {usesTabBarAccessory && nowPlaying ? (
         <NativeTabs.BottomAccessory>
