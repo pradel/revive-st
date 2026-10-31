@@ -5,8 +5,7 @@ import { DatabaseSync } from "node:sqlite";
 import { gunzipSync } from "node:zlib";
 
 import { assert, describe, it } from "@effect/vitest";
-import { Clock, Effect, Fiber, Layer, Option, Queue, Redacted } from "effect";
-import { HttpClient, HttpClientResponse } from "effect/http";
+import { Clock, Effect, Fiber, Layer, Option, Queue } from "effect";
 import { TestClock } from "effect/testing";
 
 import { Database } from "../db/database.ts";
@@ -57,24 +56,10 @@ const memoryBucket = Effect.gen(function* () {
 
 type MemoryBucket = Effect.Success<typeof memoryBucket>;
 
-const HEARTBEAT_URL = "https://hc-ping.example/backup";
-
-/** A heartbeat endpoint recording the URLs it is called with. */
-const heartbeatServer = (pings: string[]) =>
-  Layer.succeed(
-    HttpClient.HttpClient,
-    HttpClient.make((request, url) => {
-      pings.push(url.toString());
-      return Effect.succeed(
-        HttpClientResponse.fromWeb(request, new Response("OK")),
-      );
-    }),
-  );
-
-const backupWith = (bucket: MemoryBucket, pings: string[] = []) =>
-  DatabaseBackup.layerNoDeps(Option.some(Redacted.make(HEARTBEAT_URL))).pipe(
+const backupWith = (bucket: MemoryBucket) =>
+  DatabaseBackup.layerNoDeps.pipe(
     Layer.provideMerge(Database.layerTest),
-    Layer.provide([bucket.layer, heartbeatServer(pings)]),
+    Layer.provide(bucket.layer),
   );
 
 /** The `device_id`s of `devices` in a gzipped database snapshot. */
@@ -96,7 +81,6 @@ describe("DatabaseBackup", () => {
   it.effect("stores a gzipped, readable copy of the database", () =>
     Effect.gen(function* () {
       const bucket = yield* memoryBucket;
-      const pings: string[] = [];
       yield* Effect.gen(function* () {
         const db = yield* Database;
         yield* db
@@ -110,24 +94,9 @@ describe("DatabaseBackup", () => {
         assert.deepStrictEqual(devicesIn(bucket.objects[0].body), [
           "AABBCCDDEEFF",
         ]);
-        assert.deepStrictEqual(pings, [HEARTBEAT_URL]);
-      }).pipe(Effect.provide(backupWith(bucket, pings)));
+      }).pipe(Effect.provide(backupWith(bucket)));
     }),
   );
-
-  it.effect("does not report a snapshot it failed to store", () =>
-    Effect.gen(function* () {
-      const bucket = yield* memoryBucket;
-      bucket.state.failPuts = 1;
-      const pings: string[] = [];
-      const error = yield* Effect.flip(
-        Effect.flatMap(DatabaseBackup, (backup) => backup.snapshot),
-      ).pipe(Effect.provide(backupWith(bucket, pings)));
-      assert.strictEqual(error._tag, "BucketError");
-      assert.deepStrictEqual(pings, []);
-    }),
-  );
-
   it.effect("catches up only when the newest snapshot is a day old", () =>
     Effect.gen(function* () {
       const bucket = yield* memoryBucket;

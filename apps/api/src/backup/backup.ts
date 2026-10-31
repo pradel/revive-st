@@ -14,10 +14,8 @@ import {
   Effect,
   Layer,
   Option,
-  Redacted,
   Schema,
 } from "effect";
-import { FetchHttpClient, HttpClient } from "effect/http";
 
 import { BackupConfig } from "../config.ts";
 import { Database } from "../db/database.ts";
@@ -62,83 +60,62 @@ export class DatabaseBackup extends Context.Service<
     readonly snapshotIfDue: Effect.Effect<boolean, BackupError | BucketError>;
   }
 >()("@revive-st/api/backup/DatabaseBackup") {
-  /**
-   * `heartbeatUrl` is requested after each stored snapshot, so a monitor
-   * alerts when one goes missing; a failed request is only logged.
-   */
-  static readonly layerNoDeps = (
-    heartbeatUrl: Option.Option<Redacted.Redacted>,
-  ) =>
-    Layer.effect(
-      DatabaseBackup,
-      Effect.gen(function* () {
-        const db = yield* Database;
-        const bucket = yield* BackupBucket;
-        const http = yield* HttpClient.HttpClient;
+  static readonly layerNoDeps = Layer.effect(
+    DatabaseBackup,
+    Effect.gen(function* () {
+      const db = yield* Database;
+      const bucket = yield* BackupBucket;
 
-        const ping = Option.match(heartbeatUrl, {
-          onNone: () => Effect.void,
-          onSome: (url) =>
-            http.get(Redacted.value(url)).pipe(
-              Effect.timeout("10 seconds"),
-              Effect.tapError((error) =>
-                Effect.logWarning("Backup heartbeat failed", error),
-              ),
-              Effect.ignore,
-            ),
+      const snapshot = Effect.gen(function* () {
+        const startedAt = yield* Clock.currentTimeMillis;
+        const key = snapshotKey(yield* DateTime.now);
+        const path = join(tmpdir(), `revivest-${randomUUID()}.db`);
+        const body = yield* Effect.gen(function* () {
+          // An online backup: a consistent copy while requests keep writing.
+          yield* db.$client
+            .backup(path)
+            .pipe(Effect.mapError((reason) => new BackupError({ reason })));
+          return yield* Effect.tryPromise({
+            try: async () => gzipAsync(await readFile(path)),
+            catch: (reason) => new BackupError({ reason }),
+          });
+        }).pipe(
+          Effect.ensuring(
+            Effect.promise(async () => rm(path, { force: true })),
+          ),
+        );
+        yield* bucket.put(key, body);
+        yield* Effect.logInfo("Database snapshot stored", {
+          key,
+          bytes: body.byteLength,
+          ms: (yield* Clock.currentTimeMillis) - startedAt,
         });
+        return { key, bytes: body.byteLength } as const;
+      }).pipe(Effect.withSpan("DatabaseBackup.snapshot"));
 
-        const snapshot = Effect.gen(function* () {
-          const startedAt = yield* Clock.currentTimeMillis;
-          const key = snapshotKey(yield* DateTime.now);
-          const path = join(tmpdir(), `revivest-${randomUUID()}.db`);
-          const body = yield* Effect.gen(function* () {
-            // An online backup: a consistent copy while requests keep writing.
-            yield* db.$client
-              .backup(path)
-              .pipe(Effect.mapError((reason) => new BackupError({ reason })));
-            return yield* Effect.tryPromise({
-              try: async () => gzipAsync(await readFile(path)),
-              catch: (reason) => new BackupError({ reason }),
-            });
-          }).pipe(
-            Effect.ensuring(
-              Effect.promise(async () => rm(path, { force: true })),
-            ),
-          );
-          yield* bucket.put(key, body);
-          yield* Effect.logInfo("Database snapshot stored", {
-            key,
-            bytes: body.byteLength,
-            ms: (yield* Clock.currentTimeMillis) - startedAt,
-          });
-          yield* ping;
-          return { key, bytes: body.byteLength } as const;
-        }).pipe(Effect.withSpan("DatabaseBackup.snapshot"));
+      const snapshotIfDue = Effect.gen(function* () {
+        const last = yield* bucket.lastStoredAt(SNAPSHOT_PREFIX);
+        const now = yield* Clock.currentTimeMillis;
+        const due = Option.match(last, {
+          onNone: () => true,
+          onSome: (storedAt) =>
+            now - storedAt >= Duration.toMillis(SNAPSHOT_MAX_AGE),
+        });
+        if (due) {
+          yield* snapshot;
+        }
+        return due;
+      }).pipe(Effect.withSpan("DatabaseBackup.snapshotIfDue"));
 
-        const snapshotIfDue = Effect.gen(function* () {
-          const last = yield* bucket.lastStoredAt(SNAPSHOT_PREFIX);
-          const now = yield* Clock.currentTimeMillis;
-          const due = Option.match(last, {
-            onNone: () => true,
-            onSome: (storedAt) =>
-              now - storedAt >= Duration.toMillis(SNAPSHOT_MAX_AGE),
-          });
-          if (due) {
-            yield* snapshot;
-          }
-          return due;
-        }).pipe(Effect.withSpan("DatabaseBackup.snapshotIfDue"));
-
-        return DatabaseBackup.of({ snapshot, snapshotIfDue });
-      }),
-    );
+      return DatabaseBackup.of({ snapshot, snapshotIfDue });
+    }),
+  );
 }
 
 /**
  * Catches up at boot, then stores a snapshot on `SNAPSHOT_SCHEDULE` for as
- * long as the server runs. A failed run is logged and the schedule goes on:
- * the heartbeat monitor reports the missing snapshot.
+ * long as the server runs. A failed run is logged (`Database snapshot
+ * failed`) and the schedule goes on.
  */
 export const runBackups = Effect.gen(function* () {
   const backup = yield* DatabaseBackup;
@@ -165,15 +142,13 @@ export const BackupLayer = Layer.effectDiscard(
       yield* Effect.logInfo("Database backups off: S3_BUCKET is not set");
       return;
     }
-    const { heartbeatUrl, ...bucket } = config.value;
     yield* Effect.forkScoped(
       runBackups.pipe(
         Effect.provide(
-          DatabaseBackup.layerNoDeps(heartbeatUrl).pipe(
-            Layer.provide([
-              Layer.succeed(BackupBucket, BackupBucket.s3(bucket)),
-              FetchHttpClient.layer,
-            ]),
+          DatabaseBackup.layerNoDeps.pipe(
+            Layer.provide(
+              Layer.succeed(BackupBucket, BackupBucket.s3(config.value)),
+            ),
           ),
         ),
       ),

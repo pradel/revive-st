@@ -21,9 +21,6 @@ export const DatabasePath = Config.String("DATABASE_PATH").pipe(
  * (`<S3_ENDPOINT>/<S3_BUCKET>/<key>`). Backups are off without `S3_BUCKET`;
  * with it, `S3_ENDPOINT` and the access keys are required. `S3_REGION`
  * defaults to `auto`, which R2 expects; AWS needs the bucket's region.
- * `BACKUP_HEARTBEAT_URL`, optional, is called after each snapshot is stored,
- * so a monitor (healthchecks.io, Better Stack) can alert when one goes
- * missing.
  */
 export const BackupConfig = Config.option(Config.String("S3_BUCKET")).pipe(
   Config.flatMap(
@@ -38,7 +35,6 @@ export const BackupConfig = Config.option(Config.String("S3_BUCKET")).pipe(
           region: Config.String("S3_REGION").pipe(Config.withDefault("auto")),
           accessKeyId: Config.Redacted("S3_ACCESS_KEY_ID"),
           secretAccessKey: Config.Redacted("S3_SECRET_ACCESS_KEY"),
-          heartbeatUrl: Config.option(Config.Redacted("BACKUP_HEARTBEAT_URL")),
         }).pipe(Config.map(Option.some)),
     }),
   ),
