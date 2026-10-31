@@ -72,6 +72,14 @@ describe("confirmStationPlaying", () => {
     ).rejects.toBeInstanceOf(StationNotStartedError);
   });
 
+  it("ignores the previous station's failure until the speaker switches", async () => {
+    const { read } = speaker(
+      nowPlaying("INVALID_PLAY_STATE", PREVIOUS),
+      nowPlaying("PLAY_STATE"),
+    );
+    await confirmStationPlaying(read, LOCATION, NO_DELAYS);
+  });
+
   it("counts a station still buffering at the last readback as started", async () => {
     const { read } = speaker(nowPlaying("BUFFERING_STATE"));
     await confirmStationPlaying(read, LOCATION, NO_DELAYS);

@@ -85,7 +85,11 @@ export default function RadioBrowser() {
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
   const [selectedTag, setSelectedTag] = useState("All");
-  const { data: filters } = useRadioFilters();
+  const {
+    data: filters,
+    isError: filtersFailed,
+    refetch: refetchFilters,
+  } = useRadioFilters();
   const { mutate: setFilter } = useSetRadioFilter();
   const country = filters?.country ?? null;
   const language = filters?.language ?? null;
@@ -114,12 +118,13 @@ export default function RadioBrowser() {
   const {
     data,
     isPending,
-    isError,
+    isLoadingError,
     error,
     refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    isFetchNextPageError,
   } = useRadioStations(
     // Waits for the saved filters rather than loading every station first.
     filters
@@ -269,6 +274,25 @@ export default function RadioBrowser() {
   );
 
   const renderBrowseEmpty = () => {
+    // Stations wait for the saved filters, so a filter failure comes first.
+    if (filtersFailed) {
+      return (
+        <EmptyState
+          icon={icons.warning}
+          title="Couldn't load your filters"
+          description="Your country and language filters couldn't be read."
+          actions={
+            <Button
+              label="Retry"
+              variant="secondary"
+              onPress={() => {
+                void refetchFilters();
+              }}
+            />
+          }
+        />
+      );
+    }
     if (isPending) {
       return (
         <View style={$loading}>
@@ -279,7 +303,7 @@ export default function RadioBrowser() {
         </View>
       );
     }
-    if (isError) {
+    if (isLoadingError) {
       return (
         <EmptyState
           icon={icons.warning}
@@ -372,7 +396,7 @@ export default function RadioBrowser() {
             )}
           </Shelf>
         )}
-      {!isPending && !isError && stations.length > 0 && (
+      {!isPending && !isLoadingError && stations.length > 0 && (
         <SectionHeader title={listTitle} />
       )}
     </>
@@ -404,7 +428,7 @@ export default function RadioBrowser() {
 
       {activeTab === "search" ? (
         <FlatList
-          data={isPending || isError ? [] : stations}
+          data={isPending || isLoadingError ? [] : stations}
           keyExtractor={(item) => item.stationuuid}
           renderItem={renderStationRow}
           ListHeaderComponent={browseHeader}
@@ -414,10 +438,24 @@ export default function RadioBrowser() {
               <View style={$loadingMore}>
                 <ActivityIndicator size="small" color={color.textSecondary} />
               </View>
+            ) : isFetchNextPageError ? (
+              <View style={$loadingMore}>
+                <Text variant="subhead" color="textSecondary">
+                  Couldn't load more stations.
+                </Text>
+                <Button
+                  label="Retry"
+                  variant="secondary"
+                  onPress={() => {
+                    void fetchNextPage();
+                  }}
+                />
+              </View>
             ) : undefined
           }
           onEndReached={() => {
-            if (hasNextPage && !isFetchingNextPage && !isError) {
+            // After a failed page, loading more waits for the Retry button.
+            if (hasNextPage && !isFetchingNextPage && !isFetchNextPageError) {
               void fetchNextPage();
             }
           }}
@@ -487,5 +525,6 @@ const $loading: ViewStyle = {
 
 const $loadingMore: ViewStyle = {
   alignItems: "center",
+  gap: space.sm,
   paddingVertical: space.lg,
 };

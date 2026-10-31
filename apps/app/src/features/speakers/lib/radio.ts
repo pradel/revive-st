@@ -45,6 +45,12 @@ export function stationPlayback(
   nowPlaying: Pick<NowPlayingResponse, "source" | "playStatus" | "contentItem">,
   location: string,
 ): StationPlayback {
+  const reported = nowPlaying.contentItem.location;
+  // Until it switches, the speaker still reports what it played before,
+  // including that station's own failure. A failed station has no location.
+  if (reported && reported !== location) {
+    return "waiting";
+  }
   if (
     nowPlaying.source === "INVALID_SOURCE" ||
     nowPlaying.source.endsWith("_ERROR") ||
@@ -54,8 +60,7 @@ export function stationPlayback(
   ) {
     return "failed";
   }
-  // Until it switches, the speaker still reports what it played before.
-  if (nowPlaying.contentItem.location !== location) {
+  if (!reported) {
     return "waiting";
   }
   if (nowPlaying.playStatus === "PLAY_STATE") {

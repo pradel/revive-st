@@ -100,6 +100,9 @@ function flattenSpeakerState(
  */
 const RENAME_TIMEOUT_MS = 15_000;
 
+/** How long one readback of what a speaker plays may take while starting a station. */
+const READBACK_TIMEOUT_MS = 2000;
+
 export function useSpeakerManager(scanDurationMs = 5000) {
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
     {},
@@ -541,8 +544,20 @@ export function useSpeakerManager(scanDurationMs = 5000) {
           port: speakerPort,
         });
         await confirmStationPlaying(async () => {
-          const nowPlaying = await http.getNowPlaying();
-          return nowPlaying.isOk() ? nowPlaying.value : null;
+          // A readback the speaker never answers counts as unanswered, so the
+          // confirmation keeps to its schedule.
+          const readController = new AbortController();
+          const readTimeoutId = setTimeout(() => {
+            readController.abort();
+          }, READBACK_TIMEOUT_MS);
+          try {
+            const nowPlaying = await http.getNowPlaying({
+              signal: readController.signal,
+            });
+            return nowPlaying.isOk() ? nowPlaying.value : null;
+          } finally {
+            clearTimeout(readTimeoutId);
+          }
         }, radioBrowserLocation(station.stationuuid));
       } finally {
         setUpdating(deviceID, false);
