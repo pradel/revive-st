@@ -79,15 +79,20 @@ export default function CastSheet() {
     };
   }, []);
 
-  // With a single speaker, saving goes straight to its presets.
+  // With a single speaker, saving goes straight to its presets, once it's
+  // configured for the Marge API: until then the speaker list shows its status
+  // and offers to configure it, as when choosing among several.
+  const onlySpeaker =
+    mode === "preset" && speakers.length === 1 ? speakers[0] : undefined;
+  const onlySpeakerStatus = useMargeAPIStatusQuery(onlySpeaker?.host ?? "");
+  const presetSpeakerId =
+    chosenSpeakerId ??
+    (onlySpeaker && onlySpeakerStatus.data === true
+      ? onlySpeaker.deviceID
+      : null);
   const presetSpeaker =
     mode === "preset"
-      ? speakers.find(
-          (speaker) =>
-            speaker.deviceID ===
-            (chosenSpeakerId ??
-              (speakers.length === 1 ? speakers[0].deviceID : null)),
-        )
+      ? speakers.find((speaker) => speaker.deviceID === presetSpeakerId)
       : undefined;
 
   const castToSpeaker = async (speaker: BoseSpeaker) => {
