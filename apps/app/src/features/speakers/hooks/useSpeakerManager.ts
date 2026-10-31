@@ -23,6 +23,7 @@ import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
 import {
   buildRadioBrowserPayload,
   confirmStationPlaying,
+  radioBrowserContentItem,
   radioBrowserLocation,
   type CastStation,
 } from "../lib/radio";
@@ -494,6 +495,32 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     },
   });
 
+  const storeStationPresetMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      presetId,
+      station,
+    }: {
+      deviceID: string;
+      presetId: 1 | 2 | 3 | 4 | 5 | 6;
+      station: CastStation;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.storePreset(
+        presetId,
+        radioBrowserContentItem(station),
+      );
+      if (!res.isOk()) {
+        throw res.error;
+      }
+      // Reloads the presets, which also stores them on our server.
+      await speaker.initialize();
+    },
+  });
+
   const playStationMutation = useMutation({
     mutationFn: async ({
       deviceID,
@@ -690,6 +717,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     keyMutation,
     selectSourceMutation,
     savePresetMutation,
+    storeStationPresetMutation,
     setBassMutation,
     playStationMutation,
     setNameMutation,

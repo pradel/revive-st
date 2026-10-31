@@ -11,7 +11,7 @@ export function boseSpeakerClient(opts: {
 
 export { BoseHttpAdapter as BoseSpeakerClient } from "./http-adapter.ts";
 export { BoseHttpAdapter } from "./http-adapter.ts";
-export { escapeXml } from "./http-adapter.ts";
+export { contentItemXml, escapeXml } from "./http-adapter.ts";
 export { parseXml } from "./xml-parser.ts";
 export type { XmlNode } from "./xml-parser.ts";
 

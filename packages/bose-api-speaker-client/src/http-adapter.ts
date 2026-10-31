@@ -442,6 +442,24 @@ export class BoseHttpAdapter {
     );
   }
 
+  /**
+   * Stores `contentItem` in preset slot `id`, replacing what was there, without
+   * playing it. Missing from Bose's API reference; seen working on a
+   * SoundTouch 10 (firmware 27), which then reports the preset to its Marge
+   * server.
+   */
+  async storePreset(
+    id: 1 | 2 | 3 | 4 | 5 | 6,
+    contentItem: ContentItem,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.post(
+      "/storePreset",
+      `<preset id="${id}">${contentItemXml(contentItem)}</preset>`,
+      options,
+    );
+  }
+
   async getInfo(
     options?: RequestOptions,
   ): Promise<Result<InfoResponse, BoseApiError>> {
@@ -811,6 +829,17 @@ function tryParseApiErrorsFromNode(
     rawXml,
     requestXml,
   });
+}
+
+/** A `<ContentItem>` as `/select` and `/storePreset` take it. */
+export function contentItemXml(item: ContentItem): string {
+  return `<ContentItem source="${escapeXml(item.source)}" type="${escapeXml(
+    item.type,
+  )}" location="${escapeXml(item.location)}" sourceAccount="${escapeXml(
+    item.sourceAccount,
+  )}" isPresetable="${item.isPresetable}"><itemName>${escapeXml(
+    item.itemName,
+  )}</itemName><containerArt>${escapeXml(item.containerArt)}</containerArt></ContentItem>`;
 }
 
 export function escapeXml(str: string): string {

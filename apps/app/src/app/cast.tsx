@@ -1,3 +1,4 @@
+import { ApiError } from "bose-api-speaker-client";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -15,7 +16,10 @@ import {
   useMargeAPIStatusQuery,
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
-import { StationNotStartedError } from "@/features/speakers/lib/radio";
+import {
+  radioBrowserLocation,
+  StationNotStartedError,
+} from "@/features/speakers/lib/radio";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -24,18 +28,37 @@ import { ListRow } from "@/ui/ds/ListRow";
 import { Text } from "@/ui/ds/Text";
 import { artwork, color, radius, space } from "@/ui/tokens";
 
-/** "Play on…" sheet: streams a radio station to the chosen speaker. */
+/** Play the station now, or store it on one of the speaker's presets. */
+type Mode = "play" | "preset";
+
+const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
+type PresetSlot = (typeof PRESET_SLOTS)[number];
+
+/**
+ * "Play on…" and "Save to preset" sheet for a radio station: picks a speaker,
+ * then plays the station on it or stores it on one of its six presets.
+ */
 export default function CastSheet() {
   const router = useRouter();
-  const station = useLocalSearchParams<{
+  const {
+    mode = "play",
+    stationuuid,
+    name,
+    favicon,
+  } = useLocalSearchParams<{
     stationuuid: string;
     name: string;
     favicon: string;
+    mode?: Mode;
   }>();
-  const { speakers, playStationMutation } = useBose();
+  const station = { stationuuid, name, favicon: favicon ?? "" };
+  const { speakers, playStationMutation, storeStationPresetMutation } =
+    useBose();
   const [castingToSpeakerId, setCastingToSpeakerId] = useState<string | null>(
     null,
   );
+  const [chosenSpeakerId, setChosenSpeakerId] = useState<string | null>(null);
+  const [savingSlot, setSavingSlot] = useState<PresetSlot | null>(null);
   const [castError, setCastError] = useState<string | null>(null);
 
   // The cast can finish after the user has already closed the sheet; going
@@ -48,22 +71,29 @@ export default function CastSheet() {
     };
   }, []);
 
+  // With a single speaker, saving goes straight to its presets.
+  const presetSpeaker =
+    mode === "preset"
+      ? speakers.find(
+          (speaker) =>
+            speaker.deviceID ===
+            (chosenSpeakerId ??
+              (speakers.length === 1 ? speakers[0].deviceID : null)),
+        )
+      : undefined;
+
   const castToSpeaker = async (speaker: BoseSpeaker) => {
     setCastError(null);
     setCastingToSpeakerId(speaker.deviceID);
-    logger.info(`[cast] Casting ${station.name} to ${speaker.host}`);
+    logger.info(`[cast] Casting ${name} to ${speaker.host}`);
     try {
       await playStationMutation.mutateAsync({
         deviceID: speaker.deviceID,
-        station: {
-          stationuuid: station.stationuuid,
-          name: station.name,
-          favicon: station.favicon ?? "",
-        },
+        station,
       });
       // Success shows up in the mini player; no need to interrupt.
       haptics.success();
-      countStationClick(station.stationuuid).catch((err: unknown) => {
+      countStationClick(stationuuid).catch((err: unknown) => {
         logger.warn("[cast] Couldn't count the station's play", err);
       });
       if (mountedRef.current) {
@@ -72,10 +102,66 @@ export default function CastSheet() {
     } catch (err) {
       logger.error(err);
       haptics.error();
-      setCastError(castErrorMessage(err, speaker.name));
+      setCastError(sheetErrorMessage(err, speaker.name, mode));
     } finally {
       setCastingToSpeakerId(null);
     }
+  };
+
+  const storeInSlot = async (speaker: BoseSpeaker, slot: PresetSlot) => {
+    setCastError(null);
+    setSavingSlot(slot);
+    logger.info(`[cast] Saving ${name} to preset ${slot} on ${speaker.host}`);
+    try {
+      await storeStationPresetMutation.mutateAsync({
+        deviceID: speaker.deviceID,
+        presetId: slot,
+        station,
+      });
+      haptics.success();
+      if (mountedRef.current) {
+        router.back();
+      }
+    } catch (err) {
+      logger.error(err);
+      haptics.error();
+      setCastError(sheetErrorMessage(err, speaker.name, mode));
+    } finally {
+      setSavingSlot(null);
+    }
+  };
+
+  const chooseSlot = (speaker: BoseSpeaker, slot: PresetSlot) => {
+    const current = speaker.presets?.find((preset) => preset.id === slot);
+    // A speaker keeps a station on one preset only: storing it on another
+    // moves it there and empties the one it was on.
+    const savedOn = speaker.presets?.find(
+      (preset) =>
+        preset.contentItem.location === radioBrowserLocation(stationuuid),
+    )?.id;
+    const consequences = [
+      current && `"${current.contentItem.itemName}" will be replaced.`,
+      savedOn !== undefined &&
+        `"${name}" moves from preset ${savedOn}, which becomes empty.`,
+    ].filter(Boolean);
+    if (consequences.length === 0) {
+      void storeInSlot(speaker, slot);
+      return;
+    }
+    Alert.alert(
+      current ? `Replace preset ${slot}?` : `Move to preset ${slot}?`,
+      consequences.join(" "),
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: current ? "Replace" : "Move",
+          style: current ? "destructive" : "default",
+          onPress: () => {
+            void storeInSlot(speaker, slot);
+          },
+        },
+      ],
+    );
   };
 
   const askToConfigure = (speaker: BoseSpeaker) => {
@@ -97,14 +183,90 @@ export default function CastSheet() {
     );
   };
 
+  const renderBody = () => {
+    if (presetSpeaker) {
+      return (
+        <View>
+          {PRESET_SLOTS.map((slot) => {
+            const preset = presetSpeaker.presets?.find(
+              (entry) => entry.id === slot,
+            );
+            const holdsStation =
+              preset?.contentItem.location ===
+              radioBrowserLocation(stationuuid);
+            return (
+              <ListRow
+                key={slot}
+                title={preset ? preset.contentItem.itemName : "Empty"}
+                subtitle={
+                  holdsStation
+                    ? `Preset ${slot} · Already this station`
+                    : `Preset ${slot}`
+                }
+                artworkUri={preset?.contentItem.containerArt ?? null}
+                fallbackIcon={preset ? icons.radio : icons.add}
+                disabled={holdsStation || savingSlot !== null}
+                trailing={
+                  savingSlot === slot ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={color.textSecondary}
+                    />
+                  ) : undefined
+                }
+                onPress={() => {
+                  chooseSlot(presetSpeaker, slot);
+                }}
+              />
+            );
+          })}
+        </View>
+      );
+    }
+    if (speakers.length === 0) {
+      return (
+        <EmptyState
+          icon={icons.wifiOff}
+          title="No speakers discovered"
+          description="Make sure your SoundTouch speaker is online and on the same Wi-Fi."
+        />
+      );
+    }
+    return (
+      <View>
+        {speakers.map((speaker) => (
+          <SpeakerCastItem
+            key={speaker.deviceID}
+            speaker={speaker}
+            mode={mode}
+            isCasting={castingToSpeakerId === speaker.deviceID}
+            disabled={castingToSpeakerId !== null}
+            onCast={(isConfigured) => {
+              if (!isConfigured) {
+                askToConfigure(speaker);
+              } else if (mode === "play") {
+                void castToSpeaker(speaker);
+              } else {
+                setCastError(null);
+                setChosenSpeakerId(speaker.deviceID);
+              }
+            }}
+          />
+        ))}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView edges={["bottom"]} style={$sheet}>
       <View style={$header}>
         <Text variant="title" accessibilityRole="header">
-          Play on…
+          {mode === "play" ? "Play on…" : "Save to preset"}
         </Text>
         <Text variant="body" color="textSecondary" numberOfLines={2}>
-          {`Choose a speaker for "${station.name}".`}
+          {presetSpeaker
+            ? `Choose a preset on ${presetSpeaker.name} for "${name}".`
+            : `Choose a speaker for "${name}".`}
         </Text>
       </View>
 
@@ -117,52 +279,44 @@ export default function CastSheet() {
         </View>
       )}
 
-      {speakers.length === 0 ? (
-        <EmptyState
-          icon={icons.wifiOff}
-          title="No speakers discovered"
-          description="Make sure your SoundTouch speaker is online and on the same Wi-Fi."
-        />
-      ) : (
-        <View>
-          {speakers.map((speaker) => (
-            <SpeakerCastItem
-              key={speaker.deviceID}
-              speaker={speaker}
-              isCasting={castingToSpeakerId === speaker.deviceID}
-              disabled={castingToSpeakerId !== null}
-              onCast={(isConfigured) => {
-                if (isConfigured) {
-                  void castToSpeaker(speaker);
-                } else {
-                  askToConfigure(speaker);
-                }
-              }}
-            />
-          ))}
-        </View>
-      )}
+      {renderBody()}
     </SafeAreaView>
   );
 }
 
-function castErrorMessage(err: unknown, speakerName: string) {
+/** The speaker has no Radio Browser source, e.g. after a factory reset. */
+function isMissingSourceError(err: unknown) {
+  return (
+    (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") ||
+    (err instanceof ApiError &&
+      err.errors.some(
+        (entry) =>
+          entry.name === "UNKNOWN_SOURCE_ERROR" || entry.value === 1005,
+      ))
+  );
+}
+
+function sheetErrorMessage(err: unknown, speakerName: string, mode: Mode) {
   if (err instanceof StationNotStartedError) {
     return `${speakerName} couldn't start this station. It may be offline right now; try another one.`;
   }
-  if (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") {
+  if (isMissingSourceError(err)) {
     return `${speakerName} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`;
   }
-  return `Couldn't play this station on ${speakerName}. Check that the speaker is on and try again.`;
+  return mode === "play"
+    ? `Couldn't play this station on ${speakerName}. Check that the speaker is on and try again.`
+    : `Couldn't save this station on ${speakerName}. Check that the speaker is on and try again.`;
 }
 
 function SpeakerCastItem({
   speaker,
+  mode,
   isCasting,
   disabled,
   onCast,
 }: {
   speaker: BoseSpeaker;
+  mode: Mode;
   isCasting: boolean;
   disabled: boolean;
   onCast: (isConfigured: boolean) => void;
@@ -202,7 +356,13 @@ function SpeakerCastItem({
       return <Icon name={icons.warning} size={16} color="danger" />;
     }
     if (isConfigured) {
-      return <Icon name={icons.play} size={16} color="textPrimary" />;
+      return (
+        <Icon
+          name={mode === "play" ? icons.play : icons.chevronRight}
+          size={16}
+          color="textPrimary"
+        />
+      );
     }
     return <Icon name={icons.lock} size={16} color="textTertiary" />;
   };

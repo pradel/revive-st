@@ -175,13 +175,17 @@ export default function RadioBrowser() {
     router.push({ pathname: "/radio-filter", params: { kind } });
   };
 
-  const handleStationPress = (station: RadioStation) => {
+  const openStationSheet = (
+    station: RadioStation,
+    mode: "play" | "preset" = "play",
+  ) => {
     router.push({
       pathname: "/cast",
       params: {
         stationuuid: station.stationuuid,
         name: station.name,
         favicon: station.favicon,
+        mode,
       },
     });
   };
@@ -200,6 +204,7 @@ export default function RadioBrowser() {
     return {
       actions: [
         { id: "play", title: "Play on…", icon: nativeIcons.cast },
+        { id: "preset", title: "Save to preset…", icon: nativeIcons.save },
         {
           id: "favorite",
           title: isFav ? "Remove from favorites" : "Add to favorites",
@@ -209,7 +214,9 @@ export default function RadioBrowser() {
       ],
       onAction: (id) => {
         if (id === "play") {
-          handleStationPress(station);
+          openStationSheet(station);
+        } else if (id === "preset") {
+          openStationSheet(station, "preset");
         } else if (id === "favorite") {
           toggleStationFavorite(station);
         } else {
@@ -240,7 +247,7 @@ export default function RadioBrowser() {
         artworkUri={item.favicon || null}
         fallbackIcon={icons.radio}
         onPress={() => {
-          handleStationPress(item);
+          openStationSheet(item);
         }}
         menu={stationMenu(item)}
         trailing={
@@ -267,7 +274,7 @@ export default function RadioBrowser() {
       artworkUri={station.favicon || null}
       fallbackIcon={icons.radio}
       onPress={() => {
-        handleStationPress(station);
+        openStationSheet(station);
       }}
       menu={stationMenu(station)}
     />

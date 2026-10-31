@@ -1,4 +1,8 @@
-import { escapeXml, type NowPlayingResponse } from "bose-api-speaker-client";
+import {
+  contentItemXml,
+  type ContentItem,
+  type NowPlayingResponse,
+} from "bose-api-speaker-client";
 
 /** The Radio Browser station fields a speaker needs to play it. */
 export interface CastStation {
@@ -12,18 +16,25 @@ export const radioBrowserLocation = (stationuuid: string) =>
   `/stations/byuuid/${stationuuid}`;
 
 /**
- * The ContentItem that plays a Radio Browser station. Its location names the
- * station, not its stream: the server's Radio Browser adapter looks the
- * stream up every time it plays, so a preset follows the station when it
- * moves its stream. The location holds no server address either, so it plays
- * through whichever Revive ST server the speaker uses.
+ * The ContentItem that plays a Radio Browser station, now or from a preset.
+ * Its location names the station, not its stream: the server's Radio Browser
+ * adapter looks the stream up every time it plays, so a preset follows the
+ * station when it moves its stream. The location holds no server address
+ * either, so it plays through whichever Revive ST server the speaker uses.
  */
+export const radioBrowserContentItem = (station: CastStation): ContentItem => ({
+  source: "RADIO_BROWSER",
+  type: "stationurl",
+  location: radioBrowserLocation(station.stationuuid),
+  sourceAccount: "",
+  isPresetable: true,
+  itemName: station.name,
+  containerArt: station.favicon,
+});
+
+/** The `/select` body that plays a Radio Browser station. */
 export const buildRadioBrowserPayload = (station: CastStation): string =>
-  `<ContentItem source="RADIO_BROWSER" type="stationurl" location="${escapeXml(
-    radioBrowserLocation(station.stationuuid),
-  )}" sourceAccount="" isPresetable="true"><itemName>${escapeXml(
-    station.name,
-  )}</itemName><containerArt>${escapeXml(station.favicon)}</containerArt></ContentItem>`;
+  contentItemXml(radioBrowserContentItem(station));
 
 /** The speaker took the station but never started it. */
 export class StationNotStartedError extends Error {

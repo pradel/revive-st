@@ -451,6 +451,29 @@ describe("boseSpeakerClient", () => {
     });
   });
 
+  describe("/storePreset", () => {
+    it("posts the slot and an escaped ContentItem", async () => {
+      const fetchMock = mockFetch(200, "<presets></presets>");
+      const result = await client.storePreset(3, {
+        source: "RADIO_BROWSER",
+        type: "stationurl",
+        location: "/stations/byuuid/9610c454-0601-11e8-ae97-52543be04c81",
+        sourceAccount: "",
+        isPresetable: true,
+        itemName: "Rock & Roll <Radio>",
+        containerArt: "https://cdn.example/logo.png?a=1&b=2",
+      });
+      expect(Result.isOk(result)).toBe(true);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/storePreset`,
+        expect.objectContaining({
+          method: "POST",
+          body: '<preset id="3"><ContentItem source="RADIO_BROWSER" type="stationurl" location="/stations/byuuid/9610c454-0601-11e8-ae97-52543be04c81" sourceAccount="" isPresetable="true"><itemName>Rock &amp; Roll &lt;Radio&gt;</itemName><containerArt>https://cdn.example/logo.png?a=1&amp;b=2</containerArt></ContentItem></preset>',
+        }),
+      );
+    });
+  });
+
   describe("/name", () => {
     it("sends setName POST", async () => {
       const fetchMock = mockFetch(200, "<status>OK</status>");
