@@ -732,6 +732,46 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  const putDevice = (deviceId: string, body: string, accountId = ACCOUNT) =>
+    HttpClient.execute(
+      HttpClientRequest.put(devicePath(deviceId, accountId)).pipe(
+        HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
+      ),
+    );
+
+  it.effect("accepts a speaker's rename and pairs it", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      const response = yield* putDevice(
+        "EC1127C25A50",
+        `<?xml version="1.0" encoding="UTF-8" ?><device deviceid="EC1127C25A50"><name>Kitchen &amp; Co</name><macaddress>EC1127C25A50</macaddress></device>`,
+        accountId,
+      );
+      assert.match(
+        yield* assertBoseXml(response),
+        new RegExp(
+          `<device deviceid="EC1127C25A50"><createdOn>${MARGE_DATE}</createdOn><name>Kitchen &amp; Co</name><updatedOn>${MARGE_DATE}</updatedOn></device>$`,
+        ),
+      );
+      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
+        "EC1127C25A50",
+      ]);
+    }),
+  );
+
+  it.effect("rejects a rename for another speaker than the path's", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      const response = yield* putDevice(
+        "EC1127C25A50",
+        `<device deviceid="OTHER"><name>Kitchen</name></device>`,
+        accountId,
+      );
+      assert.strictEqual(response.status, 400);
+      assert.include(yield* getFullXml(accountId), "<devices/>");
+    }),
+  );
+
   it.effect("lists each paired device in the account with its presets", () =>
     Effect.gen(function* () {
       const accountId = yield* mintAccountId;
