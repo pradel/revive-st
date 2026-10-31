@@ -200,8 +200,9 @@ export default function HomePage() {
 
         <SupportedSpeakers />
 
-        {/* Preset demo */}
-        <section id="presets" className="px-4 py-24 lg:py-32">
+        {/* Preset demo. The demo's glow reaches past narrow screens; clip it so
+            the page doesn't scroll sideways. */}
+        <section id="presets" className="overflow-x-clip px-4 py-24 lg:py-32">
           <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="text-center lg:text-left">
               <Eyebrow>The feature you missed most</Eyebrow>

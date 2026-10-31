@@ -152,3 +152,11 @@ html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
 }
+
+/*
+ * Docs headings like `PUT /streaming/account/:accountId/device/:deviceId` have
+ * no space to wrap at; let them break anywhere so phones don't scroll sideways.
+ */
+.prose :is(h1, h2, h3, h4) code {
+  overflow-wrap: anywhere;
+}
