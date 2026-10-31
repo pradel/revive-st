@@ -175,7 +175,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
   .add(
     HttpApiEndpoint.get("sourceProviders", "/sourceproviders", {
       success: boseXmlWithEtag(
-        "`<sourceProviders>`: `TUNEIN` (id `25`) and `RADIO_BROWSER` (id `39`).",
+        "`<sourceProviders>`: `TUNEIN` (id `25`), `RADIO_BROWSER` (id `39`) and `LOCAL_INTERNET_RADIO` (id `11`).",
       ),
     }).annotateMerge(
       OpenApi.annotations({
@@ -193,7 +193,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
       OpenApi.annotations({
         summary: "Get the full account",
         description: [
-          "Fetched by the speaker at boot. It copies `<sources>` into its own source list and only plays and saves presets for sources listed there: `TUNEIN` (id `10004`) and `RADIO_BROWSER` (id `10005`).",
+          "Fetched by the speaker at boot. It copies `<sources>` into its own source list and only plays and saves presets for sources listed there: `TUNEIN` (id `10004`), `RADIO_BROWSER` (id `10005`) and `LOCAL_INTERNET_RADIO` (id `10006`, custom stations).",
           "`<devices>` lists every speaker paired with the account, each with its presets. A speaker missing from it drops its account and presets at boot; a speaker with no presets restores them from here. A speaker with no stored presets has no `<presets>` element, as an empty one wipes the speaker's presets.",
         ].join("\n\n"),
       }),

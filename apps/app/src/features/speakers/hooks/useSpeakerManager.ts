@@ -12,6 +12,7 @@ import {
   type DeviceComponent,
   type KeyValue,
   type AudioMode,
+  contentItemXml,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type Service } from "react-native-zeroconf";
@@ -21,10 +22,8 @@ import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
 import {
-  buildRadioBrowserPayload,
   confirmStationPlaying,
-  radioBrowserContentItem,
-  radioBrowserLocation,
+  stationContentItem,
   type CastStation,
 } from "../lib/radio";
 import { checkMargeAPIStatus } from "../lib/telnet";
@@ -511,7 +510,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       }
       const res = await speaker.storePreset(
         presetId,
-        radioBrowserContentItem(station),
+        stationContentItem(station),
       );
       if (!res.isOk()) {
         throw res.error;
@@ -537,7 +536,8 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       try {
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
-        const payload = buildRadioBrowserPayload(station);
+        const contentItem = stationContentItem(station);
+        const payload = contentItemXml(contentItem);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           controller.abort();
@@ -585,7 +585,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
           } finally {
             clearTimeout(readTimeoutId);
           }
-        }, radioBrowserLocation(station.stationuuid));
+        }, contentItem.location);
       } finally {
         setUpdating(deviceID, false);
         void speaker.initialize();

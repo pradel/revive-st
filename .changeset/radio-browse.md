@@ -2,11 +2,10 @@
 "@revive-st/app": patch
 ---
 
-App: the Radio tab is easier to browse and more reliable.
+App: Radio tab improvements.
 
-- Playing a station now waits until the speaker actually starts it. A station that won't play is reported as an error instead of closing the sheet as if it had worked.
-- "Save to preset…" in a station's menu stores it on any of a speaker's six presets without playing it or interrupting what's playing. It asks before replacing a preset or moving a station off the preset it was already on.
-- Stations speakers can't play (HLS-only streams) no longer show up.
-- New country and language filters, remembered between launches. They combine with search and genres, and the list keeps loading as you scroll instead of stopping at 30 stations.
-- Browsing opens on the stations popular near you and worldwide right now, rather than the most voted of all time.
-- Searches go to any Radio Browser server instead of a single one. A server that doesn't answer is given up on and another one is tried. Every station you start now counts towards its popularity on Radio Browser.
+- Playing a station confirms the speaker started it, and reports it when it didn't.
+- "Save to preset…" stores a station on a speaker preset without playing it.
+- Country and language filters, popular stations near you, and a list that loads more as you scroll.
+- Stations speakers can't play (HLS-only) are hidden.
+- Play or save any stream by URL, playlists included. Speakers get custom stations once configured again.

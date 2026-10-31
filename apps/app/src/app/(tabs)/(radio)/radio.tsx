@@ -411,6 +411,15 @@ export default function RadioBrowser() {
 
   return (
     <Screen inTabs footer={<NowPlayingBar />}>
+      <Stack.Toolbar placement="right">
+        <Stack.Toolbar.Button
+          icon={nativeIcons.add}
+          accessibilityLabel="Play a stream URL"
+          onPress={() => {
+            router.push("/stream-url");
+          }}
+        />
+      </Stack.Toolbar>
       <Stack.SearchBar
         placeholder="Search stations"
         autoCapitalize="none"

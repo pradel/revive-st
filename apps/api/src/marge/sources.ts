@@ -13,7 +13,7 @@ export interface MargeSource {
   readonly sourceName: string;
 }
 
-export type SourceName = "TUNEIN" | "RADIO_BROWSER";
+export type SourceName = "TUNEIN" | "RADIO_BROWSER" | "LOCAL_INTERNET_RADIO";
 
 /**
  * TuneIn stations, played through the TuneIn adapter. The credential is
@@ -45,7 +45,28 @@ export const RADIO_BROWSER: MargeSource = {
   sourceName: "",
 };
 
-export const ACCOUNT_SOURCES: readonly MargeSource[] = [TUNEIN, RADIO_BROWSER];
+/**
+ * Streams added by URL ("Custom Stations"), played through the custom stations
+ * adapter. A station's location carries the stream itself:
+ * `/station?data=<base64 of {"name","imageUrl","streamUrl"}>`, the format other
+ * SoundTouch servers use, so presets keep working on them. Provider `11` is the
+ * id Bose gave this source.
+ */
+export const LOCAL_INTERNET_RADIO: MargeSource = {
+  id: "10006",
+  name: "LOCAL_INTERNET_RADIO",
+  providerId: 11,
+  credential: "eyJzZXJpYWwiOiJjdXN0b20ifQ==",
+  createdOn: "2026-10-31T00:00:00.000+00:00",
+  updatedOn: "2026-10-31T00:00:00.000+00:00",
+  sourceName: "",
+};
+
+export const ACCOUNT_SOURCES: readonly MargeSource[] = [
+  TUNEIN,
+  RADIO_BROWSER,
+  LOCAL_INTERNET_RADIO,
+];
 
 /**
  * The source a preset or recent a speaker sends belongs to, by its
@@ -72,5 +93,10 @@ export const SOURCE_PROVIDERS: readonly {
     id: 39,
     name: "RADIO_BROWSER",
     createdOn: "2026-10-30T00:00:00.000+00:00",
+  },
+  {
+    id: 11,
+    name: "LOCAL_INTERNET_RADIO",
+    createdOn: "2026-10-31T00:00:00.000+00:00",
   },
 ];

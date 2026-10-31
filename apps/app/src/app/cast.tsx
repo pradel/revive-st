@@ -17,8 +17,9 @@ import {
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
 import {
-  radioBrowserLocation,
   StationNotStartedError,
+  stationContentItem,
+  type CastStation,
 } from "@/features/speakers/lib/radio";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
@@ -35,23 +36,30 @@ const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 type PresetSlot = (typeof PRESET_SLOTS)[number];
 
 /**
- * "Play on…" and "Save to preset" sheet for a radio station: picks a speaker,
- * then plays the station on it or stores it on one of its six presets.
+ * "Play on…" and "Save to preset" sheet for a station: picks a speaker, then
+ * plays the station on it or stores it on one of its six presets. A Radio
+ * Browser station comes as `stationuuid`, a stream added by URL as
+ * `streamUrl`.
  */
 export default function CastSheet() {
   const router = useRouter();
   const {
     mode = "play",
-    stationuuid,
+    stationuuid = "",
+    streamUrl,
     name,
-    favicon,
+    favicon = "",
   } = useLocalSearchParams<{
-    stationuuid: string;
+    stationuuid?: string;
+    streamUrl?: string;
     name: string;
-    favicon: string;
+    favicon?: string;
     mode?: Mode;
   }>();
-  const station = { stationuuid, name, favicon: favicon ?? "" };
+  const station: CastStation = streamUrl
+    ? { kind: "custom", streamUrl, name, favicon }
+    : { kind: "radioBrowser", stationuuid, name, favicon };
+  const location = stationContentItem(station).location;
   const { speakers, playStationMutation, storeStationPresetMutation } =
     useBose();
   const [castingToSpeakerId, setCastingToSpeakerId] = useState<string | null>(
@@ -93,16 +101,16 @@ export default function CastSheet() {
       });
       // Success shows up in the mini player; no need to interrupt.
       haptics.success();
-      countStationClick(stationuuid).catch((err: unknown) => {
-        logger.warn("[cast] Couldn't count the station's play", err);
-      });
+      if (station.kind === "radioBrowser") {
+        countStationClick(station.stationuuid).catch((err: unknown) => {
+          logger.warn("[cast] Couldn't count the station's play", err);
+        });
+      }
       if (mountedRef.current) {
         router.back();
       }
     } catch (err) {
-      logger.error(err);
-      haptics.error();
-      setCastError(sheetErrorMessage(err, speaker.name, mode));
+      showFailure(err, speaker);
     } finally {
       setCastingToSpeakerId(null);
     }
@@ -123,9 +131,7 @@ export default function CastSheet() {
         router.back();
       }
     } catch (err) {
-      logger.error(err);
-      haptics.error();
-      setCastError(sheetErrorMessage(err, speaker.name, mode));
+      showFailure(err, speaker);
     } finally {
       setSavingSlot(null);
     }
@@ -136,8 +142,7 @@ export default function CastSheet() {
     // A speaker keeps a station on one preset only: storing it on another
     // moves it there and empties the one it was on.
     const savedOn = speaker.presets?.find(
-      (preset) =>
-        preset.contentItem.location === radioBrowserLocation(stationuuid),
+      (preset) => preset.contentItem.location === location,
     )?.id;
     const consequences = [
       current && `"${current.contentItem.itemName}" will be replaced.`,
@@ -164,23 +169,38 @@ export default function CastSheet() {
     );
   };
 
-  const askToConfigure = (speaker: BoseSpeaker) => {
-    Alert.alert(
-      "Configuration required",
-      `${speaker.name} must be configured for the Marge API before it can play internet radio.`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Configure",
-          onPress: () => {
-            router.back();
-            router.push(
-              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
-            );
-          },
+  const askToConfigure = (
+    speaker: BoseSpeaker,
+    title = "Configuration required",
+    message = `${speaker.name} must be configured for the Marge API before it can play internet radio.`,
+  ) => {
+    Alert.alert(title, message, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Configure",
+        onPress: () => {
+          router.back();
+          router.push(
+            `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+          );
         },
-      ],
-    );
+      },
+    ]);
+  };
+
+  const showFailure = (err: unknown, speaker: BoseSpeaker) => {
+    logger.error(err);
+    haptics.error();
+    setCastError(sheetErrorMessage(err, speaker.name, mode, station.kind));
+    // Speakers configured before custom stations existed lack the source
+    // until they fetch it again, which configuring does.
+    if (station.kind === "custom" && isMissingSourceError(err)) {
+      askToConfigure(
+        speaker,
+        `Add custom stations to ${speaker.name}?`,
+        `${speaker.name} gets custom stations when it's configured again. Configuring restarts it.`,
+      );
+    }
   };
 
   const renderBody = () => {
@@ -191,9 +211,7 @@ export default function CastSheet() {
             const preset = presetSpeaker.presets?.find(
               (entry) => entry.id === slot,
             );
-            const holdsStation =
-              preset?.contentItem.location ===
-              radioBrowserLocation(stationuuid);
+            const holdsStation = preset?.contentItem.location === location;
             return (
               <ListRow
                 key={slot}
@@ -284,7 +302,7 @@ export default function CastSheet() {
   );
 }
 
-/** The speaker has no Radio Browser source, e.g. after a factory reset. */
+/** The speaker lacks the station's source, e.g. after a factory reset. */
 function isMissingSourceError(err: unknown) {
   return (
     (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") ||
@@ -296,12 +314,21 @@ function isMissingSourceError(err: unknown) {
   );
 }
 
-function sheetErrorMessage(err: unknown, speakerName: string, mode: Mode) {
+function sheetErrorMessage(
+  err: unknown,
+  speakerName: string,
+  mode: Mode,
+  kind: CastStation["kind"],
+) {
   if (err instanceof StationNotStartedError) {
-    return `${speakerName} couldn't start this station. It may be offline right now; try another one.`;
+    return kind === "custom"
+      ? `${speakerName} couldn't start this stream. Check that it's online and isn't an HLS stream.`
+      : `${speakerName} couldn't start this station. It may be offline right now; try another one.`;
   }
   if (isMissingSourceError(err)) {
-    return `${speakerName} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`;
+    return kind === "custom"
+      ? `${speakerName} doesn't have custom stations yet. Configure it again from its settings to add them.`
+      : `${speakerName} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`;
   }
   return mode === "play"
     ? `Couldn't play this station on ${speakerName}. Check that the speaker is on and try again.`

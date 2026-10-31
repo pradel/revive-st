@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   confirmStationPlaying,
+  customStationLocation,
   radioBrowserLocation,
   StationNotStartedError,
 } from "./radio";
@@ -9,6 +10,26 @@ import {
 const LOCATION = radioBrowserLocation("9610c454-0601-11e8-ae97-52543be04c81");
 const PREVIOUS = radioBrowserLocation("2470f399-4883-44fb-8eb4-f54a6df61e72");
 const NO_DELAYS = [0, 0, 0, 0];
+
+describe("customStationLocation", () => {
+  it("carries the station as UTF-8 base64 JSON the server can decode", () => {
+    const location = customStationLocation({
+      streamUrl: "http://stream.example:8000/live?x=1&y=2",
+      name: "Radio Ñandú 東京",
+      favicon: "https://cdn.example/logo.png",
+    });
+    const data = new URLSearchParams(location.split("?")[1]).get("data") ?? "";
+    const json = new TextDecoder().decode(
+      Uint8Array.from(atob(data), (char) => char.charCodeAt(0)),
+    );
+    expect(location.startsWith("/station?data=")).toBe(true);
+    expect(JSON.parse(json)).toEqual({
+      name: "Radio Ñandú 東京",
+      imageUrl: "https://cdn.example/logo.png",
+      streamUrl: "http://stream.example:8000/live?x=1&y=2",
+    });
+  });
+});
 
 const nowPlaying = (
   playStatus: string,

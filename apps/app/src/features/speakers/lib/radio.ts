@@ -1,40 +1,73 @@
-import {
-  contentItemXml,
-  type ContentItem,
-  type NowPlayingResponse,
-} from "bose-api-speaker-client";
+import type { ContentItem, NowPlayingResponse } from "bose-api-speaker-client";
 
-/** The Radio Browser station fields a speaker needs to play it. */
-export interface CastStation {
-  readonly stationuuid: string;
-  readonly name: string;
-  readonly favicon: string;
-}
+/** A station a speaker can play or keep on a preset. */
+export type CastStation =
+  /** A Radio Browser station. */
+  | {
+      readonly kind: "radioBrowser";
+      readonly stationuuid: string;
+      readonly name: string;
+      readonly favicon: string;
+    }
+  /** A stream added by URL; `streamUrl` is the stream itself, not a playlist. */
+  | {
+      readonly kind: "custom";
+      readonly streamUrl: string;
+      readonly name: string;
+      readonly favicon: string;
+    };
 
 /** Where the server's Radio Browser adapter finds a station. */
 export const radioBrowserLocation = (stationuuid: string) =>
   `/stations/byuuid/${stationuuid}`;
 
+/** UTF-8, so names beyond Latin-1 survive the server's decoding. */
+const base64 = (text: string) =>
+  btoa(String.fromCodePoint(...new TextEncoder().encode(text)));
+
 /**
- * The ContentItem that plays a Radio Browser station, now or from a preset.
- * Its location names the station, not its stream: the server's Radio Browser
- * adapter looks the stream up every time it plays, so a preset follows the
- * station when it moves its stream. The location holds no server address
- * either, so it plays through whichever Revive ST server the speaker uses.
+ * Where the server's custom stations adapter finds a stream added by URL: the
+ * location carries the stream itself, in the format other SoundTouch servers
+ * use, so its presets keep working on them.
  */
-export const radioBrowserContentItem = (station: CastStation): ContentItem => ({
-  source: "RADIO_BROWSER",
+export const customStationLocation = (station: {
+  readonly streamUrl: string;
+  readonly name: string;
+  readonly favicon: string;
+}) =>
+  `/station?data=${encodeURIComponent(
+    base64(
+      JSON.stringify({
+        name: station.name,
+        imageUrl: station.favicon,
+        streamUrl: station.streamUrl,
+      }),
+    ),
+  )}`;
+
+/**
+ * The ContentItem that plays a station, now or from a preset. A Radio Browser
+ * station's location names the station, not its stream: the server's Radio
+ * Browser adapter looks the stream up every time it plays, so a preset follows
+ * the station when it moves its stream. Neither location holds a server
+ * address, so they play through whichever Revive ST server the speaker uses.
+ */
+export const stationContentItem = (station: CastStation): ContentItem => ({
+  ...(station.kind === "radioBrowser"
+    ? {
+        source: "RADIO_BROWSER",
+        location: radioBrowserLocation(station.stationuuid),
+      }
+    : {
+        source: "LOCAL_INTERNET_RADIO",
+        location: customStationLocation(station),
+      }),
   type: "stationurl",
-  location: radioBrowserLocation(station.stationuuid),
   sourceAccount: "",
   isPresetable: true,
   itemName: station.name,
   containerArt: station.favicon,
 });
-
-/** The `/select` body that plays a Radio Browser station. */
-export const buildRadioBrowserPayload = (station: CastStation): string =>
-  contentItemXml(radioBrowserContentItem(station));
 
 /** The speaker took the station but never started it. */
 export class StationNotStartedError extends Error {

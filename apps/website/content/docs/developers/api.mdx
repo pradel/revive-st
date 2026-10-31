@@ -25,11 +25,11 @@ Responses that carry an `ETag` answer a request whose `If-None-Match` matches it
 
 ### `GET /streaming/sourceproviders`
 
-Returns the source providers the speaker resolves source provider ids against: `TUNEIN` (id `25`) and `RADIO_BROWSER` (id `39`). Includes an `ETag`.
+Returns the source providers the speaker resolves source provider ids against: `TUNEIN` (id `25`), `RADIO_BROWSER` (id `39`) and `LOCAL_INTERNET_RADIO` (id `11`). Includes an `ETag`.
 
 ### `GET /streaming/account/:accountId/full`
 
-Returns the full account XML structure including the list of sources, root element is `<account>`. The speaker copies the sources into its own source list at boot, and only plays and saves presets for sources listed there: `TUNEIN` (id `10004`) and `RADIO_BROWSER` (id `10005`). Neither belongs to a user, so their `<username>` is empty. Includes an `ETag`.
+Returns the full account XML structure including the list of sources, root element is `<account>`. The speaker copies the sources into its own source list at boot, and only plays and saves presets for sources listed there: `TUNEIN` (id `10004`), `RADIO_BROWSER` (id `10005`) and `LOCAL_INTERNET_RADIO` (id `10006`, custom stations). None belongs to a user, so their `<username>` is empty. Includes an `ETag`.
 
 The speaker activates the source types it had saved when it started. A source it learns from this document only becomes playable at its next boot, so after the sources change a speaker needs to restart twice, unless it fetched this document before restarting.
 
@@ -91,7 +91,7 @@ Called by the speaker at boot to read the account's music provider settings. Ret
 
 ### `GET /v2/registry.json`
 
-The BMX service registry (`bmxRegistryUrl`). It points the speaker at two adapters on this server, built from the host the speaker called: TuneIn and Radio Browser.
+The BMX service registry (`bmxRegistryUrl`). It points the speaker at three adapters on this server, built from the host the speaker called: TuneIn, Radio Browser and custom stations.
 
 ### TuneIn: `/bmx/tunein`
 
@@ -102,6 +102,11 @@ The BMX service registry (`bmxRegistryUrl`). It points the speaker at two adapte
 ### Radio Browser: `/bmx/radiobrowser`
 
 - `GET /stations/byuuid/:stationUuid`: plays a [Radio Browser](https://www.radio-browser.info) station by its `stationuuid`. A Radio Browser preset's location is `/stations/byuuid/<uuid>`, relative to the registry's base URL, so it names the station rather than its stream and holds no server address. Every play looks the station up through Radio Browser's API and returns its current stream (`url_resolved`, else `url`), name and logo. Returns `404` for a station Radio Browser doesn't know or that only has an HLS stream, which speakers cannot play, and `503` when Radio Browser is unavailable. A failed lookup is tried once more.
+- `POST /token`: an anonymous account token.
+
+### Custom stations: `/bmx/orion`
+
+- `GET /station?data=<base64>`: plays a stream added by URL (`LOCAL_INTERNET_RADIO`). `data` is base64 of `{"streamUrl","name","imageUrl"}`, the location format other SoundTouch servers use, so these presets keep working on them. The location carries the stream itself, so this answers without calling anything; the app opens playlists and refuses HLS streams before saving a station. Returns `400` when `data` isn't such a station.
 - `POST /token`: an anonymous account token.
 
 ## App Endpoints

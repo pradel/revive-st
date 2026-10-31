@@ -85,10 +85,27 @@ export const BmxToken = Schema.Struct({
 
 export const TUNEIN_BASE_PATH = "/bmx/tunein";
 export const RADIO_BROWSER_BASE_PATH = "/bmx/radiobrowser";
+export const CUSTOM_STATIONS_BASE_PATH = "/bmx/orion";
+
+/**
+ * A custom station as its location carries it: base64 of a JSON object, the
+ * format other SoundTouch servers use for `LOCAL_INTERNET_RADIO`.
+ */
+export const CustomStationData = Schema.StringFromBase64.pipe(
+  Schema.decodeTo(
+    Schema.fromJsonString(
+      Schema.Struct({
+        streamUrl: Schema.String.check(Schema.isPattern(/^https?:\/\/\S+$/i)),
+        name: Schema.optional(Schema.String),
+        imageUrl: Schema.optional(Schema.String),
+      }),
+    ),
+  ),
+);
 
 /**
  * The BMX service registry (`bmxRegistryUrl`) and the adapters it
- * advertises: TuneIn and Radio Browser.
+ * advertises: TuneIn, Radio Browser and custom stations.
  */
 export class BmxApi extends HttpApiGroup.make("bmx")
   .add(
@@ -99,7 +116,7 @@ export class BmxApi extends HttpApiGroup.make("bmx")
       OpenApi.annotations({
         summary: "Get the BMX service registry",
         description:
-          "The registry at the speaker's `bmxRegistryUrl`. It points the speaker at two adapters on this server, TuneIn and Radio Browser, with URLs built from the host and protocol the speaker called.",
+          "The registry at the speaker's `bmxRegistryUrl`. It points the speaker at three adapters on this server, TuneIn, Radio Browser and custom stations, with URLs built from the host and protocol the speaker called.",
       }),
     ),
     HttpApiEndpoint.get(
@@ -164,11 +181,38 @@ export class BmxApi extends HttpApiGroup.make("bmx")
           "An anonymous account token. Speakers refuse a source whose token is empty.",
       }),
     ),
+    HttpApiEndpoint.get(
+      "customStation",
+      `${CUSTOM_STATIONS_BASE_PATH}/station`,
+      {
+        query: { data: CustomStationData },
+        success: BmxPlayback,
+      },
+    ).annotateMerge(
+      OpenApi.annotations({
+        summary: "Play a custom station",
+        description: [
+          "Plays a stream added by URL (`LOCAL_INTERNET_RADIO`). The station's location, `/station?data=<base64 JSON>`, carries the stream URL, name and logo, so this answers from it alone without calling anything.",
+          "The app opens playlists and refuses HLS streams before saving a station, so the stream URL is played as given. `400` when `data` isn't such a station.",
+        ].join("\n\n"),
+      }),
+    ),
+    HttpApiEndpoint.post(
+      "customStationsToken",
+      `${CUSTOM_STATIONS_BASE_PATH}/token`,
+      { success: BmxToken },
+    ).annotateMerge(
+      OpenApi.annotations({
+        summary: "Get a custom stations token",
+        description:
+          "An anonymous account token. Speakers refuse a source whose token is empty.",
+      }),
+    ),
   )
   .annotateMerge(
     OpenApi.annotations({
       title: "BMX",
       description:
-        "The BMX service registry and the TuneIn and Radio Browser adapters it advertises, which speakers play stations through.",
+        "The BMX service registry and the TuneIn, Radio Browser and custom stations adapters it advertises, which speakers play stations through.",
     }),
   ) {}
