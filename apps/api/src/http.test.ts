@@ -510,6 +510,46 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("logs the app version and platform the app names", () =>
+    Effect.gen(function* () {
+      // Other tests log calls to the same routes.
+      const firstLine = logLines.length;
+      yield* HttpClient.execute(
+        HttpClientRequest.post("/api/internal/accounts").pipe(
+          HttpClientRequest.setHeaders({
+            "X-Revive-App-Version": "1.2.3",
+            "X-Revive-App-Platform": "ios",
+          }),
+        ),
+      );
+      yield* HttpClient.get("/v2/registry.json");
+
+      // The test logger writes these lines; their shape is its JSON format.
+      const parsed = logLines
+        .slice(firstLine)
+        .map(
+          (line) =>
+            JSON.parse(line) as { annotations: Record<string, unknown> },
+        );
+      const annotationsOf = (url: string) =>
+        parsed
+          .map(({ annotations }) => annotations)
+          .filter((annotations) => annotations["http.url"] === url);
+      const fromApp = annotationsOf("/api/internal/accounts");
+      assert.isNotEmpty(fromApp);
+      for (const annotations of fromApp) {
+        assert.strictEqual(annotations["app.version"], "1.2.3");
+        assert.strictEqual(annotations["app.platform"], "ios");
+      }
+      const fromSpeaker = annotationsOf("/v2/registry.json");
+      assert.isNotEmpty(fromSpeaker);
+      for (const annotations of fromSpeaker) {
+        assert.notProperty(annotations, "app.version");
+        assert.notProperty(annotations, "app.platform");
+      }
+    }),
+  );
+
   it.effect("serves presets synced by the app, in preset order", () =>
     Effect.gen(function* () {
       const contentItem = (itemName: string) => ({

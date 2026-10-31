@@ -1,6 +1,6 @@
 import type { Preset } from "bose-api-speaker-client";
 
-import { getServerUrl } from "@/features/server/server";
+import { getServerUrl, serverFetch } from "@/features/server/server";
 
 import { isHouseholdAccountId, isSameOrigin } from "./account-id";
 
@@ -10,9 +10,12 @@ export const usesOurServer = (margeURL: string | undefined) =>
 
 /** A new household account id, minted by our server. */
 export async function mintAccountId(): Promise<string> {
-  const response = await fetch(`${getServerUrl()}/api/internal/accounts`, {
-    method: "POST",
-  });
+  const response = await serverFetch(
+    `${getServerUrl()}/api/internal/accounts`,
+    {
+      method: "POST",
+    },
+  );
   if (!response.ok) {
     throw new Error(
       `Could not create an account: ${response.status} ${response.statusText}`,
@@ -37,7 +40,7 @@ export async function syncPresetsToMarge(
   presets: Preset[],
 ): Promise<void> {
   const url = `${getServerUrl()}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
-  const response = await fetch(url, {
+  const response = await serverFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

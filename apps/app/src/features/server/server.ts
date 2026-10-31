@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useSyncExternalStore } from "react";
+import { Platform } from "react-native";
 
+import { appVersion } from "@/lib/app-version";
 import { logger } from "@/lib/logger";
 
 import { DEFAULT_SERVER_URL, isSafeServerUrl } from "./server-url";
@@ -59,6 +61,24 @@ export async function saveServerUrl(url: string): Promise<void> {
 }
 
 /**
+ * Names this build to the server, which counts the app versions still in use
+ * to tell when an old one can be dropped.
+ */
+const APP_HEADERS = {
+  "X-Revive-App-Version": appVersion,
+  "X-Revive-App-Platform": Platform.OS,
+};
+
+/** `fetch` for a Revive ST server: the request names this build. */
+export async function serverFetch(url: string, init?: RequestInit) {
+  const headers = new Headers(init?.headers);
+  for (const [name, value] of Object.entries(APP_HEADERS)) {
+    headers.set(name, value);
+  }
+  return fetch(url, { ...init, headers });
+}
+
+/**
  * Checks that a Revive ST server answers at `url`: its speaker registry,
  * which the speakers fetch first, lists the BMX services. Returns the
  * problem, if any.
@@ -69,7 +89,7 @@ export async function checkServer(url: string): Promise<string | undefined> {
     controller.abort();
   }, CHECK_TIMEOUT_MS);
   try {
-    const response = await fetch(`${url}/v2/registry.json`, {
+    const response = await serverFetch(`${url}/v2/registry.json`, {
       signal: controller.signal,
     });
     if (!response.ok) {

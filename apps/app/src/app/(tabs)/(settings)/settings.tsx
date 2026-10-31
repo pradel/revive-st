@@ -1,5 +1,4 @@
 import { FieldGroup, Text } from "@expo/ui";
-import Constants from "expo-constants";
 import { useRouter } from "expo-router";
 import { Linking } from "react-native";
 
@@ -12,6 +11,7 @@ import {
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { appVersion } from "@/lib/app-version";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
@@ -19,8 +19,6 @@ import { formIcons } from "@/ui/form/icons";
 import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
 import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
-
-const version = Constants.expoConfig?.version ?? "0.0.0";
 
 export default function AppSettings() {
   const router = useRouter();
@@ -35,7 +33,7 @@ export default function AppSettings() {
           <FormValueRow
             icon={formIcons.speaker}
             label="Revive SoundTouch"
-            value={`Version ${version}`}
+            value={`Version ${appVersion}`}
           />
           <FormLinkRow
             icon={formIcons.website}

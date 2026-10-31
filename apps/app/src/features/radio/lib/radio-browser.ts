@@ -1,3 +1,5 @@
+import { appVersion } from "@/lib/app-version";
+
 /**
  * Radio Browser's API. The name resolves to one of its servers at random, so
  * a failed request (retried by TanStack Query) likely lands on another one.
@@ -5,7 +7,9 @@
 const API_URL = "https://all.api.radio-browser.info/json";
 
 /** Radio Browser asks clients to identify themselves. */
-const HEADERS = { "User-Agent": "ReviveST/1.0 (+https://www.revivest.app)" };
+const HEADERS = {
+  "User-Agent": `ReviveST/${appVersion} (+https://www.revivest.app)`,
+};
 
 /** A server that accepts the connection but never answers moves on to the next try. */
 const REQUEST_TIMEOUT_MS = 8000;

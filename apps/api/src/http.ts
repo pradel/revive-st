@@ -85,6 +85,26 @@ const redactedPath = (url: string) => {
 };
 
 /**
+ * The build the Revive ST app names in its request headers, as log and span
+ * attributes, to count the app versions still in use. None for speakers and
+ * older apps, which don't send them.
+ */
+const appAttributes = (
+  headers: HttpServerRequest.HttpServerRequest["headers"],
+) => {
+  const attributes: Record<string, string> = {};
+  const version = headers["x-revive-app-version"];
+  const platform = headers["x-revive-app-platform"];
+  if (version !== undefined) {
+    attributes["app.version"] = version;
+  }
+  if (platform !== undefined) {
+    attributes["app.platform"] = platform;
+  }
+  return attributes;
+};
+
+/**
  * Logs responses with a 4xx or 5xx status, with the XML or JSON body of the
  * request: a 404 is how a speaker call this server lacks shows up, a 400 what
  * a speaker sent that it rejected. Other responses log at Debug; Railway's
@@ -100,7 +120,9 @@ const logResponses = <Failure, Requirements>(
 ) =>
   HttpServerRequest.HttpServerRequest.use((request) => {
     const { path, redact } = redactedPath(request.url);
+    const app = appAttributes(request.headers);
     return Effect.gen(function* () {
+      yield* Effect.annotateCurrentSpan(app);
       // Read before the handler, which reads it again from the request's cache.
       const body = isXmlOrJson(request.headers["content-type"])
         ? yield* request.text.pipe(Effect.orElseSucceed(() => ""))
@@ -110,6 +132,7 @@ const logResponses = <Failure, Requirements>(
           "http.method": request.method,
           "http.url": path,
           "http.status": status,
+          ...app,
           ...(status >= 400 && body !== ""
             ? { "http.request.body": truncateBody(redact(body)) }
             : {}),
