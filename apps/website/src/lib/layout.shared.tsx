@@ -1,5 +1,6 @@
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
+import { LogoMark } from "@/components/logo-mark";
 import { WEBSITE_CONFIG } from "@/config";
 
 import { appName } from "./shared";
@@ -7,8 +8,12 @@ import { appName } from "./shared";
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      // JSX supported
-      title: appName,
+      title: (
+        <>
+          <LogoMark className="h-5" />
+          {appName}
+        </>
+      ),
     },
     links: [
       {

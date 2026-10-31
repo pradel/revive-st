@@ -306,6 +306,24 @@ export class MargeApi extends HttpApiGroup.make("marge")
           "Called by the speaker when it is paired with an account (`setMargeAccount`). The path also matches with a trailing slash, which is how speakers call it. A bare `200` would make the speaker refuse the pairing with `SET_MARGE_ACCOUNT_ERROR`. A body without a `deviceid` gets `400`.",
       }),
     ),
+    HttpApiEndpoint.put(
+      "updateDevice",
+      "/account/:accountId/device/:deviceId",
+      {
+        params: DeviceParams,
+        payload: SpeakerDeviceXml.pipe(
+          HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
+        ),
+        success: boseXml("`<device>`: the speaker with its new name."),
+        error: HttpApiError.BadRequest,
+      },
+    ).annotateMerge(
+      OpenApi.annotations({
+        summary: "Rename a speaker",
+        description:
+          "Called by the speaker when it is renamed (`POST /name` on the speaker), with the same `<device>` document as pairing. Without a `2xx` reply the speaker keeps its old name. Names aren't stored: the reply echoes the new one. Pairs the speaker with the account. A body without a `deviceid`, or with another speaker's, gets `400`.",
+      }),
+    ),
     HttpApiEndpoint.get(
       "deviceGroup",
       "/account/:accountId/device/:deviceId/group",

@@ -198,6 +198,30 @@ export const MargeHandlers = HttpApiBuilder.group(
             return createDeviceXml(device.deviceId, device.name, now);
           }),
         )
+        // Raw for the same reason as `savePreset`. Speakers call this when
+        // renamed and keep their old name unless it succeeds.
+        .handleRaw(
+          "updateDevice",
+          Effect.fn(function* ({ params, request }) {
+            const device = yield* request.text.pipe(
+              Effect.flatMap(decodeSpeakerDevice),
+              Effect.tapError((error) =>
+                Effect.logWarning("Rejected speaker device", error),
+              ),
+              Effect.mapError(() => new HttpApiError.BadRequest()),
+            );
+            if (device.deviceId !== params.deviceId) {
+              yield* Effect.logWarning("Rejected rename of another speaker", {
+                path: params.deviceId,
+                body: device.deviceId,
+              });
+              return yield* new HttpApiError.BadRequest();
+            }
+            yield* devicesRepo.pair(params.accountId, params.deviceId);
+            const now = DateTime.toEpochMillis(yield* DateTime.now);
+            return createDeviceXml(params.deviceId, device.name, now);
+          }),
+        )
         // Speakers look their group up at every boot, so this also pairs
         // speakers that paired before devices were recorded. No stereo pairs
         // yet: every speaker stands alone.

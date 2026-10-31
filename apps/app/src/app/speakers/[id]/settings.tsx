@@ -6,11 +6,13 @@ import { useEffect, useState } from "react";
 import { validateSpeakerName } from "@/features/onboarding/session/naming";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerManager";
+import { sourceLabel } from "@/features/speakers/lib/playback";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
+import { formIcons, type FormIcon } from "@/ui/form/icons";
 import {
   FormButtonRow,
   FormFooterText,
@@ -47,6 +49,22 @@ const AUDIO_MODES: readonly {
     description: "Reduces dynamic range.",
   },
 ];
+
+/** Row icon for what a preset plays. */
+function sourceIcon(source: string): FormIcon {
+  switch (sourceLabel(source)) {
+    case "Radio":
+      return formIcons.radio;
+    case "Bluetooth":
+      return formIcons.bluetooth;
+    case "AUX":
+      return formIcons.aux;
+    case "AirPlay":
+      return formIcons.airplay;
+    default:
+      return formIcons.music;
+  }
+}
 
 export default function SpeakerSettings() {
   const router = useRouter();
@@ -337,9 +355,9 @@ export default function SpeakerSettings() {
             speaker.presets.map((preset) => (
               <FormValueRow
                 key={preset.id}
-                label={`Preset ${preset.id}`}
-                description={preset.contentItem.location || undefined}
-                value={preset.contentItem.source}
+                icon={sourceIcon(preset.contentItem.source)}
+                label={preset.contentItem.itemName || `Preset ${preset.id}`}
+                description={`Preset ${preset.id} · ${sourceLabel(preset.contentItem.source)}`}
               />
             ))
           ) : (
@@ -375,6 +393,7 @@ export default function SpeakerSettings() {
                 label={component.componentCategory || "Component"}
                 value={component.softwareVersion}
                 copyable
+                stacked
               />
             ))}
           </FormSection>

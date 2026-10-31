@@ -97,7 +97,6 @@ export function SpeakerCard({
             </Text>
           ) : null}
         </View>
-        <Icon name={icons.chevronRight} size={14} color="textTertiary" />
       </Pressable>
     </Link>
   );

@@ -69,6 +69,12 @@ A bare `200 OK` status reply is not enough: the speaker then refuses the pairing
 
 A body without a `deviceid` gets `400 Bad Request`.
 
+### `PUT /streaming/account/:accountId/device/:deviceId`
+
+Called by the speaker when it is renamed (`POST /name` on the speaker), with the same `<device>` document as pairing. Returns `200 OK` with the `<device>` and its new name; without a successful reply the speaker keeps its old name. Names are not stored. Pairs the device with the account.
+
+A body without a `deviceid`, or with another device's, gets `400 Bad Request`.
+
 ### `GET /streaming/account/:accountId/device/:deviceId/group/`
 
 Called by the speaker at boot to look up its stereo pair group. Stereo pairs are not supported, so this always returns an empty `<group/>`.

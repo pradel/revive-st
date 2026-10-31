@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="250 310 524 290" width="524" height="290">
+  <title>Revive ST mark</title>
+  <!--
+    Source of every logo asset: `vp run design#icons` builds the app icons,
+    splash, favicons and the website copies from it.
+    Colour: the stroke of the "art" group (the dark-theme accent); the script
+    swaps in the palette's light-theme accent for light backgrounds.
+    One 40-wide stroke draws the S, the T's bar and its stem; 20-wide level bars
+    sit on both sides, mirrored on the axis x = 512.
+  -->
+  <defs>
+    <!-- S → T bar: the S's top tail runs into the bar. -->
+    <path id="st" d="M410 499.5C410 524 431 541 457 541C484 541 506 523 506 500C506 478 488 463 458 450C430 438 411 415 411 390C411 362 432 340 457 340C483 340 497 355 500 372C503 388 512 394 530 394H646"/>
+    <path id="stem" d="M586 394V569.5"/>
+    <g id="bars">
+      <path d="M350 410V500"/>
+      <path d="M310 430V480"/>
+      <path d="M270 448V462"/>
+    </g>
+  </defs>
+  <g id="art" fill="none" stroke="#2EDCA0" stroke-linecap="round" stroke-linejoin="round">
+    <g stroke-width="40"><use href="#st"/><use href="#stem"/></g>
+    <g id="level-bars" stroke-width="20"><use href="#bars"/><use href="#bars" transform="matrix(-1 0 0 1 1024 0)"/></g>
+  </g>
+</svg>

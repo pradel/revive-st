@@ -72,6 +72,7 @@ export function sourceLabel(source: string) {
     case "INTERNET_RADIO":
     case "LOCAL_INTERNET_RADIO":
     case "TUNEIN":
+    case "RADIO_BROWSER":
       return "Radio";
     case "PANDORA":
       return "Pandora";
