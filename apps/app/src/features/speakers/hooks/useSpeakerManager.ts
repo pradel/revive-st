@@ -89,6 +89,12 @@ function flattenSpeakerState(
   };
 }
 
+/**
+ * How long a rename may take. The speaker normally answers within a second;
+ * it only takes longer while its Marge server fails.
+ */
+const RENAME_TIMEOUT_MS = 15_000;
+
 export function useSpeakerManager(scanDurationMs = 5000) {
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
     {},
@@ -544,9 +550,20 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       if (!speaker) {
         throw new Error("Speaker not connected");
       }
-      const res = await speaker.setName(name);
-      if (!res.isOk()) {
-        throw res.error;
+      // A rename waits on the speaker's Marge server, and the speaker can hold
+      // its reply while that server fails; give up instead of leaving
+      // "Saving…" up forever.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        controller.abort();
+      }, RENAME_TIMEOUT_MS);
+      try {
+        const res = await speaker.setName(name, { signal: controller.signal });
+        if (!res.isOk()) {
+          throw res.error;
+        }
+      } finally {
+        clearTimeout(timeoutId);
       }
     },
   });

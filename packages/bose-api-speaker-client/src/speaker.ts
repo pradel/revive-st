@@ -13,6 +13,7 @@ import type {
   Preset,
   AudioMode,
   KeyValue,
+  RequestOptions,
 } from "./types/index.ts";
 import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
 
@@ -364,8 +365,11 @@ export class Speaker {
     return this.http.setBass(value);
   }
 
-  async setName(name: string): Promise<Result<void, BoseApiError>> {
-    return this.http.setName(name);
+  async setName(
+    name: string,
+    options?: RequestOptions,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.http.setName(name, options);
   }
 
   async setAudioDspControls(
