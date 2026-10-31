@@ -20,6 +20,7 @@ import { HeroPhone } from "@/components/hero-phone";
 import { PresetDemo } from "@/components/preset-demo";
 import { StickyCta } from "@/components/sticky-cta";
 import { StoreBadges } from "@/components/store-badges";
+import { SupportedSpeakers } from "@/components/supported-speakers";
 import { WEBSITE_CONFIG } from "@/config";
 
 export const metadata: Metadata = {
@@ -73,13 +74,6 @@ const FAQS = [
     answer:
       "Revive ST is a community project. Share feedback and ideas in GitHub Discussions, and report bugs or contribute code on GitHub. If you want to support the work, buy the app from the store or sponsor the project on GitHub Sponsors.",
   },
-];
-
-const STATS = [
-  { value: "6", label: "preset buttons working again" },
-  { value: "4", label: "SoundTouch models supported" },
-  { value: "$0", label: "subscription, ever" },
-  { value: "MIT", label: "open-source licence" },
 ];
 
 const BEFORE = [
@@ -199,23 +193,7 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Stats */}
-        <section className="px-4">
-          <dl className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-px overflow-hidden rounded-3xl bg-separator">
-            {STATS.map((stat) => (
-              <div
-                key={stat.label}
-                className="flex flex-col gap-1 bg-surface-1 px-6 py-7"
-              >
-                <dt className="sr-only">{stat.label}</dt>
-                <dd className="text-4xl md:text-5xl font-bold tracking-tighter text-fg">
-                  {stat.value}
-                </dd>
-                <dd className="text-sm text-fg-secondary">{stat.label}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+        <SupportedSpeakers />
 
         {/* Preset demo */}
         <section id="presets" className="px-4 py-24 lg:py-32">

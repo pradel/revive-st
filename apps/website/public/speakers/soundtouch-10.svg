@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 56 88" width="56" height="88">
+  <title>SoundTouch 10</title>
+  <!-- Front view, 10 units per inch. Black finish. Source: packages/design/speakers. -->
+  <defs>
+    <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DCDCE0"/>
+      <stop offset="1" stop-color="#A2A2A8"/>
+    </linearGradient>
+    <linearGradient id="chrome" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F2F2F4"/>
+      <stop offset="0.5" stop-color="#9A9AA0"/>
+      <stop offset="1" stop-color="#DADADE"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2E2E33"/>
+      <stop offset="0.35" stop-color="#121214"/>
+      <stop offset="1" stop-color="#0B0B0C"/>
+    </linearGradient>
+    <pattern id="grille" width="2.4" height="2.4" patternUnits="userSpaceOnUse">
+      <rect width="2.4" height="2.4" fill="#1A1A1D"/>
+      <circle cx="1.2" cy="1.2" r="0.5" fill="#232327"/>
+    </pattern>
+    <linearGradient id="body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2C2C30"/>
+      <stop offset="1" stop-color="#18181B"/>
+    </linearGradient>
+    <clipPath id="outline">
+      <rect x="0" y="4" width="56" height="84" rx="7"/>
+    </clipPath>
+  </defs>
+  <!-- Keypad tray on top: Power/AUX, presets, volume -->
+  <rect x="11" y="1" width="34" height="6" rx="2" fill="#8E8E94"/>
+  <rect x="12" y="2" width="5" height="2.6" rx="1" fill="#C8C8CD"/>
+  <rect x="18" y="2" width="20" height="2.6" rx="1" fill="#C8C8CD"/>
+  <rect x="39" y="2" width="5" height="2.6" rx="1" fill="#C8C8CD"/>
+  <!-- Body: solid top panel, chrome band, grille -->
+  <g clip-path="url(#outline)">
+    <rect x="0" y="4" width="56" height="84" fill="url(#body)"/>
+    <rect x="0" y="38.08" width="56" height="49.92" fill="url(#grille)"/>
+    <rect x="0" y="35.08" width="56" height="3" fill="url(#chrome)"/>
+  </g>
+  <rect x="0.4" y="4.4" width="55.2" height="83.2" rx="6.6" fill="none" stroke="#45454B" stroke-width="0.8"/>
+  <!-- Status lights: Wi-Fi (lit), Bluetooth, AUX, and wordmark -->
+  <circle cx="11.2" cy="16.6" r="0.9" fill="#2EDCA0"/>
+  <circle cx="22.4" cy="16.6" r="0.9" fill="#6E6E74"/>
+  <circle cx="33.6" cy="16.6" r="0.9" fill="#6E6E74"/>
+  <circle cx="44.8" cy="16.6" r="0.9" fill="#6E6E74"/>
+  <rect x="22" y="25.84" width="12" height="2" rx="1" fill="#9A9AA0"/>
+</svg>

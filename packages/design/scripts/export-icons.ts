@@ -1,7 +1,13 @@
-// Regenerates the app and website icons, and the website's copy of the mark,
-// from the vector sources in brand/.
-// Run with `vp run design#icons` after editing brand/logo.svg or brand/logo-mark.svg.
-import { readFile, writeFile } from "node:fs/promises";
+// Regenerates the app and website icons from the vector sources in brand/, and
+// copies the mark and the speaker drawings (speakers/) into the website.
+// Run with `vp run design#icons` after editing brand/*.svg or speakers/*.svg.
+import {
+  copyFile,
+  mkdir,
+  readdir,
+  readFile,
+  writeFile,
+} from "node:fs/promises";
 import { stdout } from "node:process";
 
 import { Resvg } from "@resvg/resvg-js";
@@ -79,3 +85,11 @@ for (const { svg, size, files } of outputs) {
 const markCopy = "apps/website/public/logo-mark.svg";
 await writeFile(new URL(markCopy, repoRoot), mark);
 stdout.write(`${markCopy}\n`);
+
+const speakersDir = new URL("speakers/", packageRoot);
+const speakersCopy = new URL("apps/website/public/speakers/", repoRoot);
+await mkdir(speakersCopy, { recursive: true });
+for (const file of await readdir(speakersDir)) {
+  await copyFile(new URL(file, speakersDir), new URL(file, speakersCopy));
+  stdout.write(`apps/website/public/speakers/${file}\n`);
+}
