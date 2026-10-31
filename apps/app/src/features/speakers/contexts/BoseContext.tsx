@@ -4,6 +4,7 @@ import {
   useSpeakerManager,
   type BoseSpeaker,
 } from "../hooks/useSpeakerManager";
+import { useLocalNetworkIntro } from "../lib/local-network";
 
 export type { BoseSpeaker };
 
@@ -12,7 +13,11 @@ type BoseContextType = ReturnType<typeof useSpeakerManager>;
 const BoseContext = createContext<BoseContextType | null>(null);
 
 export function BoseProvider({ children }: { children: ReactNode }) {
-  const manager = useSpeakerManager();
+  // On iOS the first scan triggers the Local Network prompt, so it waits for
+  // the screen explaining it.
+  const manager = useSpeakerManager({
+    enabled: useLocalNetworkIntro() === "done",
+  });
 
   // We memoize the manager to avoid unnecessary re-renders.
   // Note: manager itself contains functions that are stable or state that changes,
