@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer } from "effect";
 import { HttpClient, HttpClientResponse } from "effect/http";
+import { TestClock } from "effect/testing";
 
 import { RadioBrowser } from "./radio-browser.ts";
 
@@ -107,6 +108,48 @@ describe("RadioBrowser", () => {
     Effect.gen(function* () {
       const error = yield* Effect.flip((yield* RadioBrowser).station(UUID));
       assert.strictEqual(error._tag, "RadioBrowserUnavailable");
+    }).pipe(
+      Effect.provide(
+        radioBrowserWith([
+          { status: 503, body: null },
+          { status: 503, body: null },
+          { status: 200, body: [station()] },
+        ]),
+      ),
+    ),
+  );
+
+  it.effect("asks Radio Browser once per station for five minutes", () => {
+    const seen: { url: URL; userAgent: string | undefined }[] = [];
+    return Effect.gen(function* () {
+      const radioBrowser = yield* RadioBrowser;
+      yield* radioBrowser.station(UUID);
+      yield* TestClock.adjust("4 minutes");
+      yield* radioBrowser.station(UUID);
+      assert.strictEqual(seen.length, 1);
+
+      yield* TestClock.adjust("1 minute");
+      yield* radioBrowser.station(UUID);
+      assert.strictEqual(seen.length, 2);
+    }).pipe(
+      Effect.provide(
+        radioBrowserWith(
+          [
+            { status: 200, body: [station()] },
+            { status: 200, body: [station()] },
+          ],
+          seen,
+        ),
+      ),
+    );
+  });
+
+  it.effect("asks Radio Browser again right after it failed", () =>
+    Effect.gen(function* () {
+      const radioBrowser = yield* RadioBrowser;
+      yield* Effect.flip(radioBrowser.station(UUID));
+      const { name } = yield* radioBrowser.station(UUID);
+      assert.strictEqual(name, "Antenne Bayern - Chillout");
     }).pipe(
       Effect.provide(
         radioBrowserWith([

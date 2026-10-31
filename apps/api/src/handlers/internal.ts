@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { Effect } from "effect";
-import { HttpApiBuilder } from "effect/http-api";
+import { HttpApiBuilder, HttpApiError } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
 import { DeviceContactsRepo } from "../devices/device-contacts-repo.ts";
@@ -26,7 +26,9 @@ export const InternalHandlers = HttpApiBuilder.group(
         "syncPresets",
         Effect.fn(function* ({ params, payload }) {
           // The app reads the account from the speaker itself.
-          yield* devicesRepo.pair(params.accountId, params.deviceId);
+          if (!(yield* devicesRepo.pair(params.accountId, params.deviceId))) {
+            return yield* new HttpApiError.Conflict();
+          }
           // The app syncs every slot the speaker has, and the speaker mirrors
           // the stored presets at boot, so they replace what was stored. Only
           // presets from a source the account offers can be served back.

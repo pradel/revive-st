@@ -1,8 +1,24 @@
 import { Schema } from "effect";
-import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api";
+import {
+  HttpApiEndpoint,
+  HttpApiError,
+  HttpApiGroup,
+  OpenApi,
+} from "effect/http-api";
 
+import { MAX_DEVICES_PER_ACCOUNT } from "../devices/devices-repo.ts";
 import { AccountId } from "../marge/account.ts";
 import { DeviceId, Preset, SpeakerDeviceId } from "../presets/preset.ts";
+
+/** A speaker's presets: at most one per button, so at most six. */
+const DevicePresets = Schema.Array(Preset).check(
+  Schema.isMaxLength(6),
+  Schema.makeFilter(
+    (presets: readonly Preset[]) =>
+      new Set(presets.map(({ id }) => id)).size === presets.length,
+    { expected: "at most one preset per button" },
+  ),
+);
 
 /** Endpoints the revive-st app calls directly. */
 export class InternalApi extends HttpApiGroup.make("internal")
@@ -23,18 +39,18 @@ export class InternalApi extends HttpApiGroup.make("internal")
       "/account/:accountId/device/:deviceId/presets",
       {
         params: { accountId: AccountId, deviceId: DeviceId },
-        payload: Schema.Struct({ presets: Schema.Array(Preset) }).annotate({
+        payload: Schema.Struct({ presets: DevicePresets }).annotate({
           description: "Every preset the speaker has.",
         }),
         success: Schema.Struct({ success: Schema.Literal(true) }).annotate({
           description: "The presets are stored.",
         }),
+        error: HttpApiError.Conflict,
       },
     ).annotateMerge(
       OpenApi.annotations({
         summary: "Sync a speaker's presets",
-        description:
-          "Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped.",
+        description: `Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped. At most one preset per button. \`409\` when the account already has ${MAX_DEVICES_PER_ACCOUNT} other speakers; nothing is stored then.`,
       }),
     ),
     HttpApiEndpoint.get("deviceContact", "/device/:deviceId/contact", {

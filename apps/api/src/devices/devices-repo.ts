@@ -1,4 +1,4 @@
-import { asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
 import { Database } from "../db/database.ts";
@@ -9,6 +9,13 @@ import { DeviceId } from "../presets/preset.ts";
 const decodeDeviceIds = Schema.decodeUnknownEffect(Schema.Array(DeviceId));
 
 /**
+ * The most speakers one account can be paired with: more than any household
+ * has, and few enough that an account id, which anyone can make up, can't be
+ * used to store unlimited presets.
+ */
+export const MAX_DEVICES_PER_ACCOUNT = 50;
+
+/**
  * The speakers paired with each account. Pairing only ever adds a speaker to
  * an account: anyone can name a speaker's device id (its MAC address), so
  * pairing it elsewhere must not drop it from its household's account, which
@@ -17,11 +24,14 @@ const decodeDeviceIds = Schema.decodeUnknownEffect(Schema.Array(DeviceId));
 export class DevicesRepo extends Context.Service<
   DevicesRepo,
   {
-    /** Records that `deviceId` is paired with `accountId`. */
+    /**
+     * Pairs `deviceId` with `accountId` unless the account already has
+     * `MAX_DEVICES_PER_ACCOUNT` speakers. Whether the device is paired.
+     */
     readonly pair: (
       accountId: AccountId,
       deviceId: DeviceId,
-    ) => Effect.Effect<void>;
+    ) => Effect.Effect<boolean>;
     /** The devices paired with `accountId`, oldest pairing first. */
     readonly findByAccount: (
       accountId: AccountId,
@@ -38,10 +48,30 @@ export class DevicesRepo extends Context.Service<
         deviceId: DeviceId,
       ) {
         const now = DateTime.toEpochMillis(yield* DateTime.now);
-        yield* db
-          .insert(devicesTable)
-          .values({ accountId, deviceId, pairedOn: now })
-          .onConflictDoNothing();
+        // One statement, so concurrent pairings can't overfill the account.
+        yield* db.run(sql`
+          INSERT INTO devices (account_id, device_id, paired_on)
+          SELECT ${accountId}, ${deviceId}, ${now}
+          WHERE (SELECT count(*) FROM devices WHERE account_id = ${accountId})
+            < ${MAX_DEVICES_PER_ACCOUNT}
+          ON CONFLICT DO NOTHING
+        `);
+        const [row] = yield* db
+          .select({ deviceId: devicesTable.deviceId })
+          .from(devicesTable)
+          .where(
+            and(
+              eq(devicesTable.accountId, accountId),
+              eq(devicesTable.deviceId, deviceId),
+            ),
+          );
+        if (row === undefined) {
+          // Never log the account id: it guards the household's presets.
+          yield* Effect.logWarning("Account full: speaker not paired", {
+            deviceId,
+          });
+        }
+        return row !== undefined;
       }, Effect.orDie);
 
       const findByAccount = Effect.fn("DevicesRepo.findByAccount")(function* (
