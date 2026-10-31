@@ -8,9 +8,9 @@ import { $setupButtons, SetupHeader } from "./SetupLayout";
 /** Setup needs Wi-Fi scanning, which only Android exposes to apps. */
 export const SPEAKER_SETUP_SUPPORTED = Platform.OS === "android";
 
-const UNAVAILABLE_TITLE = "Setup not available";
+const UNAVAILABLE_TITLE = "Coming soon";
 const UNAVAILABLE_MESSAGE =
-  "Speaker setup is only available on Android for now. Set the speaker up from an Android phone, or the Bose app, then it will appear here.";
+  "Speaker setup on iPhone is coming soon. For now, set the speaker up from an Android phone or the Bose app, then it will appear here.";
 
 /**
  * Opens speaker setup. Where setup isn't supported, the setup route explains

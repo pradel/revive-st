@@ -8,10 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import {
-  SPEAKER_SETUP_SUPPORTED,
-  useOpenSpeakerSetup,
-} from "@/features/onboarding/components/SetupUnavailable";
+import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
@@ -194,7 +191,6 @@ export default function Index() {
         <Stack.Toolbar.Button
           icon={nativeIcons.add}
           accessibilityLabel="Add speaker"
-          hidden={!SPEAKER_SETUP_SUPPORTED}
           onPress={openSpeakerSetup}
         />
       </Stack.Toolbar>
