@@ -1,4 +1,5 @@
-// Regenerates the app and website icons from the vector sources in brand/.
+// Regenerates the app and website icons, and the website's copy of the mark,
+// from the vector sources in brand/.
 // Run with `vp run design#icons` after editing brand/logo.svg or brand/logo-mark.svg.
 import { readFile, writeFile } from "node:fs/promises";
 import { stdout } from "node:process";
@@ -74,3 +75,7 @@ for (const { svg, size, files } of outputs) {
     stdout.write(`${file} (${size}×${size})\n`);
   }
 }
+
+const markCopy = "apps/website/public/logo-mark.svg";
+await writeFile(new URL(markCopy, repoRoot), mark);
+stdout.write(`${markCopy}\n`);
