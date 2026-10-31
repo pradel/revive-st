@@ -8,6 +8,7 @@ import InputIcon from "@expo/material-symbols/input.xml";
 import MoreIcon from "@expo/material-symbols/more_vert.xml";
 import PlayIcon from "@expo/material-symbols/play_arrow.xml";
 import PowerIcon from "@expo/material-symbols/power_settings_new.xml";
+import RefreshIcon from "@expo/material-symbols/refresh.xml";
 import SaveIcon from "@expo/material-symbols/save.xml";
 import SettingsIcon from "@expo/material-symbols/settings.xml";
 import ShareIcon from "@expo/material-symbols/share.xml";
@@ -33,6 +34,7 @@ export const nativeIcons = {
   play: ios ? "play.fill" : PlayIcon,
   power: ios ? "power" : PowerIcon,
   save: ios ? "square.and.arrow.down" : SaveIcon,
+  refresh: ios ? "arrow.clockwise" : RefreshIcon,
   settings: ios ? "gearshape" : SettingsIcon,
   share: ios ? "square.and.arrow.up" : ShareIcon,
   source: ios ? "rectangle.connected.to.line.below" : InputIcon,

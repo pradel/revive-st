@@ -2,6 +2,8 @@ import type { KeyValue } from "bose-api-speaker-client";
 import { Stack, useRouter } from "expo-router";
 import {
   Alert,
+  Linking,
+  Platform,
   RefreshControl,
   ScrollView,
   View,
@@ -32,6 +34,7 @@ import { icons } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Shelf } from "@/ui/ds/Shelf";
 import { SpeakerCard } from "@/ui/ds/SpeakerCard";
+import { Text } from "@/ui/ds/Text";
 import { Tile } from "@/ui/ds/Tile";
 import { nativeIcons } from "@/ui/nativeIcons";
 import { PulseRing } from "@/ui/PulseRing";
@@ -39,12 +42,29 @@ import { color, space } from "@/ui/tokens";
 
 const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 
+/**
+ * iOS can't tell the app that Local Network access was refused: scans just
+ * find nothing. Wherever no speaker answers, this says where to turn it on.
+ */
+const LOCAL_NETWORK_HINT =
+  Platform.OS === "ios"
+    ? " If you didn't allow Local Network access, turn it on in Settings."
+    : "";
+
+const openAppSettings = () => {
+  void Linking.openSettings();
+};
+
 export default function Index() {
   const router = useRouter();
   const {
     speakers,
+    listedSpeakers,
     isScanning,
+    isRefreshing,
     rescan,
+    retrySpeaker,
+    forgetSpeaker,
     volumeMutation,
     playPauseMutation,
     keyMutation,
@@ -139,6 +159,30 @@ export default function Index() {
     },
   });
 
+  const unreachableMenu = (speaker: BoseSpeaker): ContextMenuConfig => ({
+    actions: [
+      { id: "retry", title: "Try again", icon: nativeIcons.refresh },
+      {
+        id: "forget",
+        title: "Forget speaker",
+        icon: nativeIcons.delete,
+        destructive: true,
+      },
+    ],
+    onAction: (id) => {
+      if (id === "retry") {
+        retrySpeaker(speaker);
+      } else {
+        forgetSpeaker(speaker.deviceID);
+      }
+    },
+  });
+
+  const allOffline =
+    !isScanning &&
+    listedSpeakers.length > 0 &&
+    listedSpeakers.every((speaker) => speaker.status === "offline");
+
   const savePreset = (speaker: BoseSpeaker, slot: number) => {
     savePresetMutation.mutate(
       { deviceID: speaker.deviceID, presetId: slot },
@@ -195,12 +239,17 @@ export default function Index() {
         />
       </Stack.Toolbar>
       <ScrollView
-        contentContainerStyle={[$content, speakers.length === 0 && $centered]}
+        contentContainerStyle={[
+          $content,
+          listedSpeakers.length === 0 && $centered,
+        ]}
         contentInsetAdjustmentBehavior="automatic"
         showsVerticalScrollIndicator={false}
         refreshControl={
+          // Only a scan the user asked for shows the spinner: the automatic
+          // one at launch would push the list down while it's already shown.
           <RefreshControl
-            refreshing={isScanning}
+            refreshing={isRefreshing}
             onRefresh={rescan}
             tintColor={color.textSecondary}
             colors={[color.accent]}
@@ -208,7 +257,7 @@ export default function Index() {
           />
         }
       >
-        {speakers.length === 0 ? (
+        {listedSpeakers.length === 0 ? (
           <EmptyState
             icon={isScanning ? icons.waveform : icons.wifiOff}
             iconDecoration={
@@ -224,7 +273,7 @@ export default function Index() {
             description={
               isScanning
                 ? "Scanning your local network for Bose SoundTouch speakers."
-                : "Make sure your SoundTouch speakers are powered on and on the same Wi-Fi network as your phone."
+                : `Make sure your SoundTouch speakers are powered on and on the same Wi-Fi network as your phone.${LOCAL_NETWORK_HINT}`
             }
             actions={
               <>
@@ -239,18 +288,33 @@ export default function Index() {
                   loading={isScanning}
                   onPress={rescan}
                 />
+                {LOCAL_NETWORK_HINT ? (
+                  <Button
+                    label="Open Settings"
+                    variant="ghost"
+                    onPress={openAppSettings}
+                  />
+                ) : null}
               </>
             }
           />
         ) : (
           <>
             <View style={$cards}>
-              {speakers.map((speaker) => {
+              {listedSpeakers.map((speaker) => {
                 const hasMedia = hasLoadedMedia(speaker);
+                const reachable = speaker.status === "online";
                 return (
                   <SpeakerCard
                     key={speaker.deviceID}
                     name={speaker.name}
+                    status={
+                      speaker.status === "online" ? undefined : speaker.status
+                    }
+                    onRetry={() => {
+                      haptics.tap();
+                      retrySpeaker(speaker);
+                    }}
                     nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
                     detail={[speaker.artist, playStatusLabel(speaker)]
                       .filter(Boolean)
@@ -274,11 +338,32 @@ export default function Index() {
                     onOpenSettings={() => {
                       openSettings(speaker);
                     }}
-                    menu={speakerMenu(speaker)}
+                    menu={
+                      reachable
+                        ? speakerMenu(speaker)
+                        : speaker.status === "offline"
+                          ? unreachableMenu(speaker)
+                          : undefined
+                    }
                   />
                 );
               })}
             </View>
+
+            {allOffline ? (
+              <View style={$offlineHint}>
+                <Text variant="subhead" color="textSecondary">
+                  {`Can't reach your speakers. Make sure they're on and on the same Wi-Fi network as your phone.${LOCAL_NETWORK_HINT}`}
+                </Text>
+                {LOCAL_NETWORK_HINT ? (
+                  <Button
+                    label="Open Settings"
+                    variant="secondary"
+                    onPress={openAppSettings}
+                  />
+                ) : null}
+              </View>
+            ) : null}
 
             {presetSpeaker?.presets && (
               <Shelf
@@ -340,5 +425,11 @@ const $centered: ViewStyle = {
 };
 
 const $cards: ViewStyle = {
+  gap: space.sm,
+};
+
+const $offlineHint: ViewStyle = {
+  marginHorizontal: space.screen,
+  marginTop: space.md,
   gap: space.sm,
 };

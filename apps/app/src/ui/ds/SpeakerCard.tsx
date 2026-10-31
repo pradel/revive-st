@@ -37,6 +37,13 @@ export interface SpeakerCardProps {
   onOpenSettings: () => void;
   /** Long-press menu on the speaker's artwork and name. */
   menu?: ContextMenuConfig;
+  /**
+   * A remembered speaker not reached yet (`connecting`) or that didn't answer
+   * (`offline`): its controls are dimmed and inactive, and tapping an offline
+   * one tries it again (`onRetry`).
+   */
+  status?: "connecting" | "offline";
+  onRetry?: () => void;
 }
 
 export function SpeakerCard({
@@ -53,57 +60,108 @@ export function SpeakerCard({
   playerHref,
   onOpenSettings,
   menu,
+  status,
+  onRetry,
 }: SpeakerCardProps) {
   const volumeDraft = useSliderDraft(volume, onVolumeCommit);
   // `Link asChild` takes only a flat style object (no function or array), so
   // the pressed state is tracked here.
   const [isPressed, setIsPressed] = useState(false);
+  const reachable = status === undefined;
+  const statusLine =
+    status === "connecting"
+      ? "Connecting…"
+      : status === "offline"
+        ? "Offline · Tap to try again"
+        : (nowPlaying ?? "Nothing playing");
 
-  const renderMain = (triggerProps?: ContextMenuTriggerProps) => (
-    <Link href={playerHref} asChild>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
-        accessibilityHint="Opens the player"
-        {...triggerProps}
-        onPressIn={() => {
-          setIsPressed(true);
-        }}
-        onPressOut={() => {
-          setIsPressed(false);
-        }}
-        style={isPressed ? $mainPressed : $main}
-      >
-        <Link.AppleZoom>
-          <Artwork
-            uri={artworkUri}
-            title={nowPlaying ?? name}
-            size={artwork.card}
-            radius={radius.sm}
-            fallbackIcon={nowPlaying ? icons.music : icons.speaker}
-            fallbackDrawing={nowPlaying ? undefined : modelDrawing}
-          />
-        </Link.AppleZoom>
-        <View style={$text}>
-          <Text variant="headline" numberOfLines={1}>
-            {name}
-          </Text>
-          <Text
-            variant="subhead"
-            color={nowPlaying ? "textSecondary" : "textTertiary"}
-            numberOfLines={1}
-          >
-            {nowPlaying ?? "Nothing playing"}
-          </Text>
-          {detail ? (
-            <Text variant="caption" color="textTertiary" numberOfLines={1}>
-              {detail}
-            </Text>
-          ) : null}
-        </View>
-      </Pressable>
-    </Link>
+  const artworkView = (
+    <Artwork
+      uri={reachable ? artworkUri : null}
+      title={nowPlaying ?? name}
+      size={artwork.card}
+      radius={radius.sm}
+      fallbackIcon={nowPlaying ? icons.music : icons.speaker}
+      fallbackDrawing={nowPlaying ? undefined : modelDrawing}
+    />
   );
+
+  const content = (
+    <>
+      {/* The zoom into the player needs the `Link` only reachable cards have. */}
+      {reachable ? <Link.AppleZoom>{artworkView}</Link.AppleZoom> : artworkView}
+      <View style={$text}>
+        <Text variant="headline" numberOfLines={1}>
+          {name}
+        </Text>
+        <Text
+          variant="subhead"
+          color={reachable && nowPlaying ? "textSecondary" : "textTertiary"}
+          numberOfLines={1}
+        >
+          {statusLine}
+        </Text>
+        {reachable && detail ? (
+          <Text variant="caption" color="textTertiary" numberOfLines={1}>
+            {detail}
+          </Text>
+        ) : null}
+      </View>
+    </>
+  );
+
+  const pressHandlers = {
+    onPressIn: () => {
+      setIsPressed(true);
+    },
+    onPressOut: () => {
+      setIsPressed(false);
+    },
+  };
+
+  const renderMain = (triggerProps?: ContextMenuTriggerProps) => {
+    if (status === "connecting") {
+      return (
+        <View
+          accessible
+          accessibilityLabel={`${name}, connecting`}
+          style={$main}
+        >
+          {content}
+        </View>
+      );
+    }
+    if (status === "offline") {
+      return (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${name}, offline`}
+          accessibilityHint="Tries to reach the speaker again"
+          {...triggerProps}
+          onPress={onRetry}
+          // Its own pressed state: the card swaps this for a plain view while
+          // connecting, which would leave a tracked press stuck on.
+          style={({ pressed }) => (pressed ? $mainPressed : $main)}
+        >
+          {content}
+        </Pressable>
+      );
+    }
+    return (
+      <Link href={playerHref} asChild>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
+          accessibilityHint="Opens the player"
+          {...triggerProps}
+          {...pressHandlers}
+          style={isPressed ? $mainPressed : $main}
+        >
+          {content}
+        </Pressable>
+      </Link>
+    );
+  };
 
   return (
     <View style={$card}>
@@ -115,20 +173,28 @@ export function SpeakerCard({
         ) : (
           renderMain()
         )}
-        <IconButton
-          icon={icons.settings}
-          accessibilityLabel={`${name} settings`}
-          onPress={onOpenSettings}
-        />
+        {reachable ? (
+          <IconButton
+            icon={icons.settings}
+            accessibilityLabel={`${name} settings`}
+            onPress={onOpenSettings}
+          />
+        ) : null}
       </View>
 
-      <View style={$controls}>
+      {/* Kept while not reachable, dimmed, so the card doesn't change height. */}
+      <View
+        style={[$controls, !reachable && $inactive]}
+        pointerEvents={reachable ? "auto" : "none"}
+        accessibilityElementsHidden={!reachable}
+        importantForAccessibility={reachable ? "auto" : "no-hide-descendants"}
+      >
         <IconButton
           icon={isPlaying ? icons.pause : icons.play}
           accessibilityLabel={isPlaying ? "Pause" : "Play"}
           variant="filled"
           onPress={onPlayPause}
-          disabled={!canPlayPause}
+          disabled={!reachable || !canPlayPause}
           iconSize={18}
         />
         <Icon name={icons.volume} size={16} />
@@ -140,12 +206,16 @@ export function SpeakerCard({
           style={$slider}
         />
         <Text variant="caption" color="textSecondary" style={$volumeValue}>
-          {volumeDraft.value}
+          {reachable ? String(volumeDraft.value) : "–"}
         </Text>
       </View>
     </View>
   );
 }
+
+const $inactive: ViewStyle = {
+  opacity: 0.35,
+};
 
 const $card: ViewStyle = {
   marginHorizontal: space.screen,

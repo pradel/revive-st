@@ -7,7 +7,7 @@ import { stackScreenOptions } from "@/ui/navigation";
  * stack with its first route in file order, `server` (before `settings`).
  */
 export const unstable_settings = {
-  initialRouteName: "settings",
+  anchor: "settings",
 };
 
 export default function SettingsLayout() {
