@@ -20,7 +20,12 @@ import { useServerUrl } from "@/features/server/server";
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
-import { buildRadioBrowserPayload, type CastStation } from "../lib/radio";
+import {
+  buildRadioBrowserPayload,
+  confirmStationPlaying,
+  radioBrowserLocation,
+  type CastStation,
+} from "../lib/radio";
 import { checkMargeAPIStatus } from "../lib/telnet";
 
 export interface BoseSpeaker {
@@ -531,9 +536,17 @@ export function useSpeakerManager(scanDurationMs = 5000) {
             `Failed to play URI: ${response.status} ${response.statusText} - ${errorText}`,
           );
         }
-        setTimeout(async () => speaker.initialize(), 1500);
+        const http = new BoseHttpAdapter({
+          ip: speakerIp,
+          port: speakerPort,
+        });
+        await confirmStationPlaying(async () => {
+          const nowPlaying = await http.getNowPlaying();
+          return nowPlaying.isOk() ? nowPlaying.value : null;
+        }, radioBrowserLocation(station.stationuuid));
       } finally {
         setUpdating(deviceID, false);
+        void speaker.initialize();
       }
     },
   });

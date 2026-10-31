@@ -299,7 +299,7 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FeatureCard
                 title="Internet radio, rebuilt"
-                description="Search thousands of stations from Radio Browser by name or genre, save your favorites, and put any of them on a preset."
+                description="Search thousands of stations from Radio Browser by name, genre, country or language, save your favorites, and put any of them on a preset."
                 className="md:col-span-2"
               >
                 <ScreenshotPeek

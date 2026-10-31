@@ -1,6 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { getLocales } from "expo-localization";
 import { router, Stack } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -8,16 +8,23 @@ import {
   View,
   type ViewStyle,
 } from "react-native";
-import type { SearchBarCommands } from "react-native-screens";
 
 import {
   useRadioFavorites,
   useRadioToggleFavorite,
 } from "@/features/radio/hooks/useRadioFavorites";
 import {
+  useRadioFilters,
+  useSetRadioFilter,
+  type RadioFilterKind,
+} from "@/features/radio/hooks/useRadioFilters";
+import {
+  usePopularStations,
+  useRadioCountries,
+  useRadioLanguages,
   useRadioStations,
-  type RadioStation,
 } from "@/features/radio/hooks/useRadioStations";
+import type { RadioStation } from "@/features/radio/lib/radio-browser";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { copyText } from "@/lib/clipboard";
 import { haptics } from "@/lib/haptics";
@@ -66,14 +73,23 @@ function stationDetail(station: RadioStation) {
     .join(" · ");
 }
 
-export default function RadioBrowser() {
-  const queryClient = useQueryClient();
+/** Pages can overlap when the ranking shifts between two loads. */
+function uniqueStations(stations: RadioStation[]) {
+  return [
+    ...new Map(stations.map((station) => [station.stationuuid, station])),
+  ].map(([, station]) => station);
+}
 
+export default function RadioBrowser() {
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeTab, setActiveTab] = useState<"search" | "favorites">("search");
-  const [selectedTag, setSelectedTag] = useState<string | null>("All");
-  const searchBarRef = useRef<SearchBarCommands>(null);
+  const [selectedTag, setSelectedTag] = useState("All");
+  const { data: filters } = useRadioFilters();
+  const { mutate: setFilter } = useSetRadioFilter();
+  const country = filters?.country ?? null;
+  const language = filters?.language ?? null;
+  const regionCode = getLocales()[0]?.regionCode ?? null;
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -86,32 +102,72 @@ export default function RadioBrowser() {
 
   const { data: favorites = [] } = useRadioFavorites();
   const { mutate: toggleFavorite } = useRadioToggleFavorite();
+  // Name the chips of the chosen filters; loading them here also opens the
+  // pickers on a ready list.
+  const { data: countries } = useRadioCountries();
+  const { data: languages } = useRadioLanguages();
+  // A chosen country already fills the list with its popular stations.
+  const { data: popularNearby = [] } = usePopularStations(
+    filters && !country ? regionCode : null,
+  );
 
   const {
-    data: stations,
-    isLoading,
+    data,
+    isPending,
     isError,
     error,
-    refetch: refetchStations,
+    refetch,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
   } = useRadioStations(
-    debouncedQuery,
-    selectedTag === "All" ? null : selectedTag,
+    // Waits for the saved filters rather than loading every station first.
+    filters
+      ? {
+          query: debouncedQuery,
+          tag: selectedTag === "All" ? null : selectedTag,
+          countryCode: country,
+          language,
+        }
+      : null,
+  );
+  const stations = uniqueStations(
+    data?.pages.flatMap((page) => page.stations) ?? [],
   );
 
   const [refreshing, setRefreshing] = useState(false);
   const refreshStations = async () => {
     setRefreshing(true);
-    await refetchStations();
+    await refetch();
     setRefreshing(false);
   };
 
-  const isSearching = Boolean(debouncedQuery) || selectedTag !== "All";
+  // Country and language narrow the browse list; only a search or a genre
+  // turns it into results and hides the shelves.
+  const isSearching = Boolean(debouncedQuery.trim()) || selectedTag !== "All";
 
-  const handleSearch = (searchQuery = query, tag = selectedTag) => {
-    setQuery(searchQuery);
-    setDebouncedQuery(searchQuery);
-    setSelectedTag(tag ?? "All");
-    setActiveTab("search");
+  const countryName = country
+    ? (countries?.find((entry) => entry.code === country)?.name ?? country)
+    : null;
+  const languageName = language
+    ? (languages?.find((entry) => entry.name === language)?.label ?? language)
+    : null;
+
+  const listTitle = isSearching
+    ? "Search results"
+    : countryName
+      ? `Popular in ${countryName}`
+      : languageName
+        ? `Popular in ${languageName}`
+        : "Popular worldwide";
+
+  const activeFilters = (["country", "language"] as const).filter((kind) =>
+    Boolean(filters?.[kind]),
+  );
+
+  const openFilter = (kind: RadioFilterKind) => {
+    haptics.selection();
+    router.push({ pathname: "/radio-filter", params: { kind } });
   };
 
   const handleStationPress = (station: RadioStation) => {
@@ -198,8 +254,22 @@ export default function RadioBrowser() {
     );
   };
 
+  const renderStationTile = (station: RadioStation, subtitle?: string) => (
+    <Tile
+      key={station.stationuuid}
+      title={station.name}
+      subtitle={subtitle}
+      artworkUri={station.favicon || null}
+      fallbackIcon={icons.radio}
+      onPress={() => {
+        handleStationPress(station);
+      }}
+      menu={stationMenu(station)}
+    />
+  );
+
   const renderBrowseEmpty = () => {
-    if (isLoading) {
+    if (isPending) {
       return (
         <View style={$loading}>
           <ActivityIndicator size="small" color={color.textSecondary} />
@@ -224,9 +294,7 @@ export default function RadioBrowser() {
               label="Retry"
               variant="secondary"
               onPress={() => {
-                void queryClient.refetchQueries({
-                  queryKey: ["radio-stations"],
-                });
+                void refetch();
               }}
             />
           }
@@ -237,7 +305,7 @@ export default function RadioBrowser() {
       <EmptyState
         icon={icons.radio}
         title="No stations found"
-        description="Try a different search term or genre tag."
+        description="Try a different search term, genre, country or language."
       />
     );
   };
@@ -256,35 +324,56 @@ export default function RadioBrowser() {
     <>
       {controls}
       <FilterChips
+        options={[
+          {
+            value: "country",
+            label: countryName ?? "Any country",
+          },
+          {
+            value: "language",
+            label: languageName ?? "Any language",
+          },
+        ]}
+        value={activeFilters}
+        style={$tags}
+        onSelect={openFilter}
+      />
+      <FilterChips
         options={GENRE_OPTIONS}
-        value={selectedTag ?? "All"}
+        value={selectedTag}
         style={$tags}
         onSelect={(tag) => {
           haptics.selection();
-          const nextTag = selectedTag === tag ? "All" : tag;
-          searchBarRef.current?.clearText();
-          handleSearch("", nextTag);
+          setSelectedTag(selectedTag === tag ? "All" : tag);
         }}
       />
       {favorites.length > 0 && !isSearching && (
         <Shelf title="Your favorites">
-          {favorites.map((station) => (
-            <Tile
-              key={station.stationuuid}
-              title={station.name}
-              subtitle={station.country || undefined}
-              artworkUri={station.favicon || null}
-              fallbackIcon={icons.radio}
-              onPress={() => {
-                handleStationPress(station);
-              }}
-              menu={stationMenu(station)}
-            />
-          ))}
+          {favorites.map((station) =>
+            renderStationTile(station, station.country),
+          )}
         </Shelf>
       )}
-      {!isLoading && !isError && stations && stations.length > 0 && (
-        <SectionHeader title={isSearching ? "Search results" : "Trending"} />
+      {regionCode !== null &&
+        !country &&
+        popularNearby.length > 0 &&
+        !isSearching && (
+          <Shelf
+            title="Popular near you"
+            action={{
+              label: "See all",
+              onPress: () => {
+                setFilter({ kind: "country", value: regionCode });
+              },
+            }}
+          >
+            {popularNearby.map((station) =>
+              renderStationTile(station, station.tags.split(",")[0]),
+            )}
+          </Shelf>
+        )}
+      {!isPending && !isError && stations.length > 0 && (
+        <SectionHeader title={listTitle} />
       )}
     </>
   );
@@ -292,21 +381,18 @@ export default function RadioBrowser() {
   return (
     <Screen inTabs footer={<NowPlayingBar />}>
       <Stack.SearchBar
-        ref={searchBarRef}
         placeholder="Search stations"
         autoCapitalize="none"
         onChangeText={(event) => {
-          const text = event.nativeEvent.text;
-          setQuery(text);
-          // Clearing the field (including `clearText()` when a genre is
-          // picked) keeps the genre; typing a query searches all genres.
-          if (text !== "") {
-            setSelectedTag("All");
+          setQuery(event.nativeEvent.text);
+          if (event.nativeEvent.text !== "") {
             setActiveTab("search");
           }
         }}
         onSearchButtonPress={(event) => {
-          handleSearch(event.nativeEvent.text, "All");
+          setQuery(event.nativeEvent.text);
+          setDebouncedQuery(event.nativeEvent.text);
+          setActiveTab("search");
         }}
         onCancelButtonPress={() => {
           setQuery("");
@@ -318,11 +404,24 @@ export default function RadioBrowser() {
 
       {activeTab === "search" ? (
         <FlatList
-          data={isLoading || isError ? [] : (stations ?? [])}
+          data={isPending || isError ? [] : stations}
           keyExtractor={(item) => item.stationuuid}
           renderItem={renderStationRow}
           ListHeaderComponent={browseHeader}
           ListEmptyComponent={renderBrowseEmpty()}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={$loadingMore}>
+                <ActivityIndicator size="small" color={color.textSecondary} />
+              </View>
+            ) : undefined
+          }
+          onEndReached={() => {
+            if (hasNextPage && !isFetchingNextPage && !isError) {
+              void fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
           keyboardShouldPersistTaps="handled"
@@ -384,4 +483,9 @@ const $loading: ViewStyle = {
   alignItems: "center",
   gap: space.sm,
   paddingVertical: space.xxxl,
+};
+
+const $loadingMore: ViewStyle = {
+  alignItems: "center",
+  paddingVertical: space.lg,
 };

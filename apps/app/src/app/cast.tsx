@@ -9,11 +9,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { countStationClick } from "@/features/radio/lib/radio-browser";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
   useMargeAPIStatusQuery,
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
+import { StationNotStartedError } from "@/features/speakers/lib/radio";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -61,17 +63,16 @@ export default function CastSheet() {
       });
       // Success shows up in the mini player; no need to interrupt.
       haptics.success();
+      countStationClick(station.stationuuid).catch((err: unknown) => {
+        logger.warn("[cast] Couldn't count the station's play", err);
+      });
       if (mountedRef.current) {
         router.back();
       }
     } catch (err) {
       logger.error(err);
       haptics.error();
-      setCastError(
-        err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR"
-          ? `${speaker.name} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`
-          : `Couldn't play this station on ${speaker.name}. Check that the speaker is on and try again.`,
-      );
+      setCastError(castErrorMessage(err, speaker.name));
     } finally {
       setCastingToSpeakerId(null);
     }
@@ -145,6 +146,16 @@ export default function CastSheet() {
   );
 }
 
+function castErrorMessage(err: unknown, speakerName: string) {
+  if (err instanceof StationNotStartedError) {
+    return `${speakerName} couldn't start this station. It may be offline right now; try another one.`;
+  }
+  if (err instanceof Error && err.message === "UNKNOWN_SOURCE_ERROR") {
+    return `${speakerName} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`;
+  }
+  return `Couldn't play this station on ${speakerName}. Check that the speaker is on and try again.`;
+}
+
 function SpeakerCastItem({
   speaker,
   isCasting,
@@ -165,6 +176,9 @@ function SpeakerCastItem({
   const isLoading = margeAPIStatus.isLoading;
 
   const getStatusText = () => {
+    if (isCasting) {
+      return "Starting station…";
+    }
     if (isLoading) {
       return "Checking configuration…";
     }

@@ -1,45 +1,55 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
-export interface RadioStation {
-  changeid: string;
-  stationuuid: string;
-  name: string;
-  url: string;
-  url_resolved: string;
-  favicon: string;
-  tags: string;
-  country: string;
-  codec: string;
-  bitrate: number;
-}
+import {
+  fetchCountries,
+  fetchLanguages,
+  searchStations,
+  type StationFilters,
+} from "../lib/radio-browser";
 
-function buildUrl(query: string, tag: string | null) {
-  if (tag) {
-    return `https://de1.api.radio-browser.info/json/stations/search?tag=${encodeURIComponent(tag.toLowerCase())}&limit=30&hidebroken=true&order=votes&reverse=true`;
-  }
-  if (query.trim()) {
-    return `https://de1.api.radio-browser.info/json/stations/search?name=${encodeURIComponent(query.trim())}&limit=30&hidebroken=true&order=votes&reverse=true`;
-  }
-  return "https://de1.api.radio-browser.info/json/stations/search?limit=30&hidebroken=true&order=votes&reverse=true";
-}
+/** Countries and languages barely change; a day keeps the pickers instant. */
+const FILTER_OPTIONS_STALE_MS = 24 * 60 * 60 * 1000;
 
-async function fetchStations(
-  query: string,
-  tag: string | null,
-): Promise<RadioStation[]> {
-  const url = buildUrl(query, tag);
-  const res = await fetch(url, {
-    headers: { "User-Agent": "ReviveST/1.0" },
+/** Stations matching `filters`, a page at a time; idle until they're known. */
+export function useRadioStations(filters: StationFilters | null) {
+  return useInfiniteQuery({
+    queryKey: ["radio-stations", filters],
+    queryFn: async ({ pageParam, signal }) =>
+      searchStations(filters!, pageParam, signal),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => lastPage.nextOffset,
+    enabled: filters !== null,
   });
-  if (!res.ok) {
-    throw new Error("API request failed");
-  }
-  return res.json() as Promise<RadioStation[]>;
 }
 
-export function useRadioStations(query: string, tag: string | null) {
+/** The most played stations in a country right now; idle without one. */
+export function usePopularStations(countryCode: string | null) {
   return useQuery({
-    queryKey: ["radio-stations", query, tag],
-    queryFn: async () => fetchStations(query, tag),
+    queryKey: ["radio-popular", countryCode],
+    queryFn: async ({ signal }) => {
+      const page = await searchStations(
+        { query: "", tag: null, countryCode, language: null },
+        0,
+        signal,
+      );
+      return page.stations;
+    },
+    enabled: countryCode !== null,
+  });
+}
+
+export function useRadioCountries() {
+  return useQuery({
+    queryKey: ["radio-countries"],
+    queryFn: async ({ signal }) => fetchCountries(signal),
+    staleTime: FILTER_OPTIONS_STALE_MS,
+  });
+}
+
+export function useRadioLanguages() {
+  return useQuery({
+    queryKey: ["radio-languages"],
+    queryFn: async ({ signal }) => fetchLanguages(signal),
+    staleTime: FILTER_OPTIONS_STALE_MS,
   });
 }

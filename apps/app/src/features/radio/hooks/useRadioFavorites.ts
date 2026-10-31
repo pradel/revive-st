@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { RadioStation } from "./useRadioStations";
+import type { RadioStation } from "../lib/radio-browser";
 
 const FAVORITES_KEY = "radio_favorites";
 

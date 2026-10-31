@@ -56,9 +56,10 @@ export default function PrivacyPage() {
             <li>
               <strong>Stored on your phone.</strong> Your household account id
               (see below), the address of the server you chose, your favorite
-              radio stations and the App&apos;s diagnostic logs. These stay on
-              your phone unless you choose to share the logs, for example with
-              us when reporting a problem. Uninstalling the App deletes them.
+              radio stations, the country and language you filter stations by
+              and the App&apos;s diagnostic logs. These stay on your phone
+              unless you choose to share the logs, for example with us when
+              reporting a problem. Uninstalling the App deletes them.
             </li>
           </ul>
 
@@ -116,9 +117,11 @@ export default function PrivacyPage() {
             </li>
             <li>
               <strong>Radio Browser</strong>, a community radio directory,
-              receives your searches directly from the App, along with your IP
-              address. The Server also looks up stations there when your speaker
-              plays one.
+              receives your searches, the region set on your phone (to list the
+              stations popular near you) and the stations you start directly
+              from the App, along with your IP address, and counts each start
+              towards the station&apos;s popularity. The Server also looks up
+              stations there when your speaker plays one.
             </li>
             <li>
               <strong>TuneIn</strong> receives station lookups from the Server
