@@ -28,3 +28,4 @@ dist-ssr
 
 # Vendored reference repositories (`pnpm repos:sync`)
 repos
+.vitest/
