@@ -6,7 +6,8 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "start": "next start",
+    "preview": "wrangler dev",
+    "deploy": "wrangler deploy",
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit",
     "postinstall": "fumadocs-mdx"
   },
@@ -31,6 +32,7 @@
     "postcss": "8.5.31",
     "schema-dts": "^2.1.0",
     "tailwindcss": "4.3.3",
-    "typescript": "7.0.2"
+    "typescript": "7.0.2",
+    "wrangler": "4.156.0"
   }
 }

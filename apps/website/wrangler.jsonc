@@ -1,0 +1,15 @@
+// The website is a static export (`output: "export"`): `next build` writes it
+// to `out/`, which Cloudflare serves as Workers static assets, with no Worker
+// script. https://developers.cloudflare.com/workers/static-assets/
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "revive-st-website",
+  "compatibility_date": "2026-10-30",
+  "assets": {
+    "directory": "./out",
+    // `/docs` serves `docs.html`, `/docs/self-hosting` `docs/self-hosting.html`.
+    "html_handling": "auto-trailing-slash",
+    // Unknown paths get Next's `404.html` with a 404 status.
+    "not_found_handling": "404-page",
+  },
+}

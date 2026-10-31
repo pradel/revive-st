@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose max-w-none">
           <h1 className="mb-2">🔒 Privacy Policy</h1>
-          <p className="text-fg-tertiary mb-8">Effective as of: 2026-10-30</p>
+          <p className="text-fg-tertiary mb-8">Effective as of: 2026-10-31</p>
 
           <p>
             This policy explains what data Revive ST handles and why. It covers
@@ -112,8 +112,13 @@ export default function PrivacyPage() {
           <h2>Third parties</h2>
           <ul>
             <li>
-              <strong>Railway</strong> hosts the Server and this website, in its
-              EU West region (Amsterdam, Netherlands).
+              <strong>Railway</strong> hosts the Server, in its EU West region
+              (Amsterdam, Netherlands).
+            </li>
+            <li>
+              <strong>Cloudflare</strong> hosts this website and serves it from
+              its global network, which receives the IP address of every
+              visitor.
             </li>
             <li>
               <strong>Radio Browser</strong>, a community radio directory,
