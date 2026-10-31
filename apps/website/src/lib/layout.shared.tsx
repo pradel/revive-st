@@ -21,11 +21,6 @@ export function baseOptions(): BaseLayoutProps {
         url: WEBSITE_CONFIG.FEEDBACK_URL,
         external: true,
       },
-      {
-        type: "button",
-        text: "Get the app",
-        url: "/#download",
-      },
     ],
     githubUrl: WEBSITE_CONFIG.GITHUB_URL,
   };
