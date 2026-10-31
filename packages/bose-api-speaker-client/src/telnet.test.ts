@@ -80,15 +80,18 @@ describe("TelnetClient", () => {
     vi.useRealTimers();
   });
 
+  /** Connects with no greeting from the speaker. */
+  async function connectQuietly() {
+    const connectPromise = client.connect();
+    await vi.advanceTimersByTimeAsync(1500);
+    const result = await connectPromise;
+    expect(result.isOk()).toBe(true);
+    return mockSocketModule.mockSocket!;
+  }
+
   describe("connect", () => {
     it("should resolve with Ok(undefined) on successful connection", async () => {
-      const connectPromise = client.connect();
-
-      // Trigger the setTimeout for connectionListener
-      vi.advanceTimersByTime(0);
-
-      const result = await connectPromise;
-      expect(result.isOk()).toBe(true);
+      await connectQuietly();
       expect(mockSocketModule.createConnection).toHaveBeenCalledWith(
         { host: "192.168.1.10", port: 17000 },
         expect.any(Function),
@@ -128,6 +131,22 @@ describe("TelnetClient", () => {
         expect(result.error.message).toBe("Telnet connection timed out");
       }
     });
+
+    it("does not take the greeting for the first command's reply", async () => {
+      const connectPromise = client.connect();
+      await vi.advanceTimersByTimeAsync(0);
+      const socket = mockSocketModule.mockSocket!;
+      socket.trigger("data", "Welcome to the TAP console\r\n-> ");
+      await vi.advanceTimersByTimeAsync(300);
+      expect((await connectPromise).isOk()).toBe(true);
+
+      const cmdPromise = client.executeCommand("sys ver");
+      socket.trigger("data", "OK\r\n");
+      await vi.advanceTimersByTimeAsync(600);
+
+      const result = await cmdPromise;
+      expect(result.isOk() && result.value).toBe("OK\r\n");
+    });
   });
 
   describe("executeCommand", () => {
@@ -136,84 +155,109 @@ describe("TelnetClient", () => {
       expect(result.isOk()).toBe(false);
       if (!result.isOk()) {
         expect(result.error).toBeInstanceOf(TelnetCommandError);
-        expect(result.error.message).toBe("Client not connected");
+        expect(result.error.reason).toBe("notConnected");
       }
     });
 
-    it("should write command and collect data responses", async () => {
-      // First, connect
-      const connectPromise = client.connect();
-      vi.advanceTimersByTime(0);
-      await connectPromise;
+    it("resolves with the reply once the speaker goes quiet", async () => {
+      const socket = await connectQuietly();
 
-      const cmdPromise = client.executeCommand("sys info", 100);
+      const cmdPromise = client.executeCommand("sys info");
+      expect(socket.write).toHaveBeenCalledWith("sys info\r\n");
 
-      await Promise.resolve();
-      expect(mockSocketModule.mockSocket?.write).toHaveBeenCalledWith(
-        "sys info\r\n",
-      );
-
-      // Simulate receiving data in chunks
-      mockSocketModule.mockSocket?.trigger("data", "SoundTouch 10\r\n");
-      mockSocketModule.mockSocket?.trigger("data", "OK\r\n");
-
-      // Advance timers past command wait timeout (100ms)
-      vi.advanceTimersByTime(100);
+      // Chunks closer together than the quiet period belong to one reply.
+      socket.trigger("data", "SoundTouch 10\r\n");
+      await vi.advanceTimersByTimeAsync(500);
+      socket.trigger("data", "OK\r\n");
+      await vi.advanceTimersByTimeAsync(599);
+      let settled = false;
+      void cmdPromise.then(() => {
+        settled = true;
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
 
       const result = await cmdPromise;
-      expect(result.isOk()).toBe(true);
-      if (result.isOk()) {
-        expect(result.value).toBe("SoundTouch 10\r\nOK\r\n");
-      }
+      expect(result.isOk() && result.value).toBe("SoundTouch 10\r\nOK\r\n");
+    });
 
-      // Verify data and error listeners are cleaned up
-      expect(mockSocketModule.mockSocket?.onHandlers.data).toHaveLength(0);
-      expect(mockSocketModule.mockSocket?.onHandlers.error).toHaveLength(1);
+    it("waits for a slow first byte instead of returning an empty reply", async () => {
+      const socket = await connectQuietly();
+
+      const cmdPromise = client.executeCommand(
+        "getpdo CurrentSystemConfiguration",
+      );
+      await vi.advanceTimersByTimeAsync(2500);
+      socket.trigger("data", "margeServerUrl {\r\n");
+      await vi.advanceTimersByTimeAsync(600);
+
+      const result = await cmdPromise;
+      expect(result.isOk() && result.value).toBe("margeServerUrl {\r\n");
+    });
+
+    it("fails with noReply when nothing comes back before the timeout", async () => {
+      await connectQuietly();
+
+      const cmdPromise = client.executeCommand("sys info", { timeoutMs: 2000 });
+      await vi.advanceTimersByTimeAsync(2000);
+
+      const result = await cmdPromise;
+      expect(!result.isOk() && result.error.reason).toBe("noReply");
+    });
+
+    it("fails with closed, keeping the partial reply, when the speaker hangs up", async () => {
+      const socket = await connectQuietly();
+
+      const cmdPromise = client.executeCommand("sys reboot");
+      socket.trigger("data", "Rebooting");
+      socket.trigger("close", false);
+
+      const result = await cmdPromise;
+      expect(result.isOk()).toBe(false);
+      if (!result.isOk()) {
+        expect(result.error.reason).toBe("closed");
+        expect(result.error.reply).toBe("Rebooting");
+      }
+      expect(client.isConnected).toBe(false);
     });
 
     it("should return Err(TelnetCommandError) if socket encounters an error during execution", async () => {
-      const connectPromise = client.connect();
-      vi.advanceTimersByTime(0);
-      await connectPromise;
+      const socket = await connectQuietly();
 
-      const cmdPromise = client.executeCommand("sys info", 100);
-
-      await Promise.resolve();
-      mockSocketModule.mockSocket?.trigger(
-        "error",
-        new Error("Socket write failed"),
-      );
+      const cmdPromise = client.executeCommand("sys info");
+      socket.trigger("error", new Error("Socket write failed"));
 
       const result = await cmdPromise;
       expect(result.isOk()).toBe(false);
       if (!result.isOk()) {
         expect(result.error).toBeInstanceOf(TelnetCommandError);
+        expect(result.error.reason).toBe("transport");
         expect(result.error.message).toBe("Socket write failed");
       }
+    });
 
-      // Verify cleanup occurred
-      expect(mockSocketModule.mockSocket?.onHandlers.data).toHaveLength(0);
-      expect(mockSocketModule.mockSocket?.onHandlers.error).toHaveLength(1);
+    it("refuses a second command while one is running", async () => {
+      await connectQuietly();
+
+      const first = client.executeCommand("sys info", { timeoutMs: 100 });
+      const second = await client.executeCommand("sys ver");
+      expect(!second.isOk() && second.error.reason).toBe("busy");
+      await vi.advanceTimersByTimeAsync(100);
+      await first;
     });
   });
 
   describe("disconnect", () => {
     it("should destroy the socket if connected", async () => {
-      const connectPromise = client.connect();
-      vi.advanceTimersByTime(0);
-      await connectPromise;
-
-      const socket = mockSocketModule.mockSocket;
+      const socket = await connectQuietly();
       client.disconnect();
 
-      expect(socket?.destroy).toHaveBeenCalled();
+      expect(socket.destroy).toHaveBeenCalled();
 
       // Subsequent commands should fail since client is disconnected
       const result = await client.executeCommand("sys info");
-      expect(result.isOk()).toBe(false);
-      if (!result.isOk()) {
-        expect(result.error.message).toBe("Client not connected");
-      }
+      expect(!result.isOk() && result.error.reason).toBe("notConnected");
     });
 
     it("should do nothing if not connected", () => {

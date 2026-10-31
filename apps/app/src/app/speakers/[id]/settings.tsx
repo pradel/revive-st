@@ -3,9 +3,10 @@ import type { AudioMode } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
+import { useConfigureRun } from "@/features/configure/store";
 import { validateSpeakerName } from "@/features/onboarding/session/naming";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useMargeAPIStatusQuery } from "@/features/speakers/hooks/useSpeakerManager";
+import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
 import { sourceLabel } from "@/features/speakers/lib/playback";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -90,7 +91,8 @@ export default function SpeakerSettings() {
     }
   }, [speaker?.deviceID, loadPresets]);
 
-  const margeAPIStatus = useMargeAPIStatusQuery(speaker?.host ?? "");
+  const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
+  const configureRun = useConfigureRun(id);
 
   if (!speaker) {
     return (
@@ -114,11 +116,11 @@ export default function SpeakerSettings() {
   }
 
   // Re-reads the speaker's state (name, audio, presets, info) and re-checks
-  // the Marge API configuration.
+  // its internet radio setup.
   const refresh = async () => {
     await Promise.allSettled([
       loadPresets(speaker.deviceID),
-      margeAPIStatus.refetch(),
+      radioSetup.refetch(),
     ]);
   };
 
@@ -158,17 +160,21 @@ export default function SpeakerSettings() {
 
   const nameChanged = nameDraft !== null && nameDraft.trim() !== speaker.name;
 
-  const margeStatus = (() => {
-    if (margeAPIStatus.isLoading) {
+  const settingUp = configureRun.view?.kind === "working";
+  const radioStatus = (() => {
+    if (settingUp) {
+      return { label: "Setting up…", color: color.textSecondary };
+    }
+    if (radioSetup.isLoading) {
       return { label: "Checking…", color: color.textSecondary };
     }
-    if (margeAPIStatus.isError) {
-      return { label: "Connection failed", color: color.danger };
+    if (radioSetup.isError) {
+      return { label: "Can't reach speaker", color: color.danger };
     }
-    if (margeAPIStatus.data) {
-      return { label: "Configured", color: color.textPrimary };
+    if (radioSetup.data) {
+      return { label: "Ready", color: color.textPrimary };
     }
-    return { label: "Not configured", color: color.textSecondary };
+    return { label: "Needs setup", color: color.textSecondary };
   })();
 
   return (
@@ -317,25 +323,29 @@ export default function SpeakerSettings() {
 
         <FormSection title="Internet radio">
           <FormValueRow
-            label="Marge API radio"
-            value={margeStatus.label}
-            valueColor={margeStatus.color}
+            label="Status"
+            value={radioStatus.label}
+            valueColor={radioStatus.color}
           />
-          {margeAPIStatus.isError ? (
+          {settingUp ? (
             <FormButtonRow
-              label="Retry connection"
+              label="Show progress"
               onPress={() => {
-                void margeAPIStatus.refetch();
+                router.push("./configure");
               }}
             />
           ) : null}
-          {!margeAPIStatus.isLoading && !margeAPIStatus.isError ? (
+          {!settingUp && radioSetup.isError ? (
             <FormButtonRow
-              label={
-                margeAPIStatus.data
-                  ? "Re-configure for Marge API"
-                  : "Configure for Marge API"
-              }
+              label="Check again"
+              onPress={() => {
+                void radioSetup.refetch();
+              }}
+            />
+          ) : null}
+          {!settingUp && !radioSetup.isLoading && !radioSetup.isError ? (
+            <FormButtonRow
+              label={radioSetup.data ? "Set up again" : "Set up internet radio"}
               onPress={() => {
                 router.push("./configure");
               }}
@@ -343,9 +353,9 @@ export default function SpeakerSettings() {
           ) : null}
           <FieldGroup.SectionFooter>
             <FormFooterText>
-              {margeAPIStatus.isError
-                ? "Couldn't reach the speaker over Telnet. Make sure your phone is on the same network."
-                : "Lets the speaker play custom internet radio streams. Configuring reboots the speaker."}
+              {radioSetup.isError && !settingUp
+                ? "Couldn't reach the speaker. Make sure your phone is on the same Wi-Fi network."
+                : "Connects the speaker to Revive ST for internet radio and presets. Setting it up restarts the speaker."}
             </FormFooterText>
           </FieldGroup.SectionFooter>
         </FormSection>

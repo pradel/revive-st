@@ -30,6 +30,8 @@ export type {
   TcpSocketLike,
   SocketModuleLike,
   TelnetClientOptions,
+  TelnetCommandFailure,
+  TelnetCommandOptions,
 } from "./telnet.ts";
 
 export type { BoseApiError } from "./errors.ts";

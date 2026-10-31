@@ -26,7 +26,7 @@ import {
   stationContentItem,
   type CastStation,
 } from "../lib/radio";
-import { checkMargeAPIStatus } from "../lib/telnet";
+import { isSetUpForRadio } from "../lib/radio-setup";
 
 export interface BoseSpeaker {
   deviceID: string;
@@ -727,12 +727,18 @@ export function useSpeakerManager(scanDurationMs = 5000) {
   };
 }
 
-/** Whether the speaker at `host` uses our server; re-checked when it changes. */
-export function useMargeAPIStatusQuery(host: string) {
+/** The speaker list's query key for `useRadioSetupQuery`, to refetch it. */
+export const RADIO_SETUP_QUERY_KEY = "radio-setup";
+
+/**
+ * Whether the speaker at `host` is set up for internet radio on our server;
+ * re-checked when the server changes.
+ */
+export function useRadioSetupQuery(host: string) {
   const serverUrl = useServerUrl();
   return useQuery({
-    queryKey: ["marge-api-status", host, serverUrl],
-    queryFn: async () => checkMargeAPIStatus(host),
+    queryKey: [RADIO_SETUP_QUERY_KEY, host, serverUrl],
+    queryFn: async () => isSetUpForRadio(host),
     enabled: host.length > 0,
     retry: false,
     staleTime: 1000 * 60 * 5,

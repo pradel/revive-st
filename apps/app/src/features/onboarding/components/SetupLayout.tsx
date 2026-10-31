@@ -24,6 +24,8 @@ interface SetupHeaderProps {
   title: string;
   description?: ReactNode;
   tone?: "default" | "error" | "success";
+  /** Small heading above the icon. */
+  overline?: string;
 }
 
 const TONE_COLOR: Record<NonNullable<SetupHeaderProps["tone"]>, ColorName> = {
@@ -38,11 +40,12 @@ export function SetupHeader({
   title,
   description,
   tone = "default",
+  overline = "Speaker setup",
 }: SetupHeaderProps) {
   return (
     <View style={$header}>
       <Text variant="overline" color="textSecondary" style={$overline}>
-        Speaker setup
+        {overline}
       </Text>
       <View style={$iconWell}>
         <Icon name={icon} size={40} color={TONE_COLOR[tone]} />

@@ -3,6 +3,7 @@ import { useRouter } from "expo-router";
 import { Linking } from "react-native";
 
 import { APP_CONFIG } from "@/config";
+import { simulatedConfigureScenarios } from "@/features/configure/simulated";
 import { simulatedScenarios } from "@/features/onboarding/adapters/simulated";
 import {
   HOME_PASSWORD,
@@ -112,6 +113,25 @@ export default function AppSettings() {
                 {`Fake speaker and phone; ${HOME_SSID} password: ${HOME_PASSWORD}`}
               </Text>
             </FieldGroup.SectionFooter>
+          </FormSection>
+        )}
+
+        {/* Dev builds only: runs internet radio setup against a fake scenario. */}
+        {__DEV__ && (
+          <FormSection title="Simulate internet radio setup">
+            {simulatedConfigureScenarios().map(({ name, description }) => (
+              <FormLinkRow
+                key={name}
+                label={name}
+                description={description}
+                onPress={() => {
+                  router.push({
+                    pathname: "/speakers/[id]/configure",
+                    params: { id: `simulated-${name}`, simulate: name },
+                  });
+                }}
+              />
+            ))}
           </FormSection>
         )}
       </Form>

@@ -33,7 +33,8 @@ export const presetsTable = sqliteTable(
  * The speakers paired with each account. A speaker can be listed in several
  * accounts: pairing never removes it from one, as its device id (its MAC
  * address) is no secret. Nothing else about the speaker (IP address, serial
- * numbers, name) is stored: speakers don't need it back.
+ * numbers, name) is stored: speakers don't need it back. The time of each
+ * speaker's last request is kept apart, in `deviceContactsTable`.
  */
 export const devicesTable = sqliteTable(
   "devices",
@@ -45,3 +46,14 @@ export const devicesTable = sqliteTable(
   },
   (table) => [primaryKey({ columns: [table.accountId, table.deviceId] })],
 );
+
+/**
+ * When each speaker last made a request to this server, keyed by device id
+ * (upper-case), so the app can confirm a speaker it configured reached the
+ * server. See docs/adr/0001-record-speaker-contacts.md.
+ */
+export const deviceContactsTable = sqliteTable("device_contacts", {
+  deviceId: text("device_id").primaryKey(),
+  /** Epoch milliseconds. */
+  lastContactAt: integer("last_contact_at").notNull(),
+});

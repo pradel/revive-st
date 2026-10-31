@@ -8,9 +8,27 @@ export class TelnetConnectionError extends TaggedError(
   cause?: unknown;
 }> {}
 
+/**
+ * Why a command failed:
+ * - `notConnected` / `busy`: nothing was sent.
+ * - `noReply`: sent, but nothing came back before the timeout.
+ * - `closed`: the speaker closed the connection (e.g. `sys reboot`); `reply`
+ *   holds what arrived before.
+ * - `transport`: a socket error.
+ */
+export type TelnetCommandFailure =
+  | "notConnected"
+  | "busy"
+  | "noReply"
+  | "closed"
+  | "transport";
+
 export class TelnetCommandError extends TaggedError("TelnetCommandError")<{
   command: string;
+  reason: TelnetCommandFailure;
   message: string;
+  /** What the speaker sent before the failure. */
+  reply?: string;
   cause?: unknown;
 }> {}
 
@@ -35,6 +53,29 @@ export interface TelnetClientOptions {
   connectTimeoutMs?: number;
 }
 
+export interface TelnetCommandOptions {
+  /** The reply is complete once the speaker has been silent this long after its first byte. */
+  quietMs?: number;
+  /** Give up after this long; whatever arrived by then is the reply. */
+  timeoutMs?: number;
+}
+
+/**
+ * Firmware 27.0.6 sometimes takes over 2 s to accept a connection or answer
+ * a command (repos/Bose-SoundTouch pkg/telnet).
+ */
+const DEFAULT_CONNECT_TIMEOUT_MS = 5000;
+const DEFAULT_QUIET_MS = 600;
+const DEFAULT_REPLY_TIMEOUT_MS = 7000;
+/** The console may greet a new connection; it's read and dropped so it isn't taken for the first reply. */
+const BANNER_QUIET_MS = 300;
+const BANNER_TIMEOUT_MS = 1500;
+
+/**
+ * The SoundTouch TAP console (port 17000): plain TCP, one command at a time,
+ * each followed by CRLF. A reply is whatever the speaker sends until it goes
+ * quiet; replies are not interpreted here.
+ */
 export class TelnetClient {
   private client: TcpSocketLike | null = null;
   private isExecuting = false;
@@ -47,80 +88,85 @@ export class TelnetClient {
     this.host = options.host;
     this.port = options.port ?? 17000;
     this.socket = options.socket;
-    this.connectTimeoutMs = options.connectTimeoutMs ?? 10000;
+    this.connectTimeoutMs =
+      options.connectTimeoutMs ?? DEFAULT_CONNECT_TIMEOUT_MS;
   }
 
   get isConnected(): boolean {
     return this.client !== null;
   }
 
+  /** Connects, then reads and drops any greeting. */
   async connect(): Promise<Result<void, TelnetConnectionError>> {
     if (this.client) {
       return new Ok(undefined);
     }
 
+    const opened = await this.open();
+    if (opened.isErr()) {
+      return opened;
+    }
+    await this.exchange("<banner>", undefined, {
+      quietMs: BANNER_QUIET_MS,
+      timeoutMs: BANNER_TIMEOUT_MS,
+    });
+    return new Ok(undefined);
+  }
+
+  private async open(): Promise<Result<void, TelnetConnectionError>> {
     return new Promise((resolve) => {
-      let resolved = false;
+      let settled = false;
 
-      const connection = this.socket.createConnection(
-        { host: this.host, port: this.port },
-        () => {
-          cleanup();
-          // Register a fallback no-op error handler to prevent unhandled node crashes when socket is idle
-          connection.on("error", () => {
-            // Silent fallback to prevent unhandled crashes
-          });
-          this.client = connection;
-          resolved = true;
-          resolve(new Ok(undefined));
-        },
-      );
-
-      const errorHandler = (error: unknown) => {
+      const fail = (message: string, cause?: unknown) => {
+        if (settled) {
+          return;
+        }
+        settled = true;
         cleanup();
         connection.destroy();
-        resolved = true;
         resolve(
           new Err(
             new TelnetConnectionError({
               host: this.host,
-              message: error instanceof Error ? error.message : String(error),
-              cause: error,
+              message,
+              ...(cause === undefined ? {} : { cause }),
             }),
           ),
         );
       };
 
+      const connection = this.socket.createConnection(
+        { host: this.host, port: this.port },
+        () => {
+          if (settled) {
+            return;
+          }
+          settled = true;
+          cleanup();
+          // Idle sockets may still emit errors; an unhandled one would crash.
+          connection.on("error", () => undefined);
+          connection.on("close", () => {
+            if (this.client === connection) {
+              this.client = null;
+            }
+          });
+          this.client = connection;
+          resolve(new Ok(undefined));
+        },
+      );
+
+      const errorHandler = (error: unknown) => {
+        fail(error instanceof Error ? error.message : String(error), error);
+      };
       const timeoutHandler = () => {
-        cleanup();
-        connection.destroy();
-        resolved = true;
-        resolve(
-          new Err(
-            new TelnetConnectionError({
-              host: this.host,
-              message: "Telnet connection timed out",
-            }),
-          ),
-        );
+        fail("Telnet connection timed out");
       };
 
       connection.on("error", errorHandler);
       connection.on("timeout", timeoutHandler);
 
       const timer = setTimeout(() => {
-        if (!resolved) {
-          cleanup();
-          connection.destroy();
-          resolve(
-            new Err(
-              new TelnetConnectionError({
-                host: this.host,
-                message: `Connection timed out after ${this.connectTimeoutMs}ms`,
-              }),
-            ),
-          );
-        }
+        fail(`Connection timed out after ${this.connectTimeoutMs}ms`);
       }, this.connectTimeoutMs);
 
       const cleanup = () => {
@@ -131,74 +177,132 @@ export class TelnetClient {
     });
   }
 
+  /**
+   * Sends `command` and resolves with the speaker's reply once it goes quiet.
+   * `Err` when nothing was sent, nothing came back, or the connection failed.
+   */
   async executeCommand(
     command: string,
-    waitMs = 500,
+    options: TelnetCommandOptions = {},
   ): Promise<Result<string, TelnetCommandError>> {
     if (!this.client) {
       return new Err(
         new TelnetCommandError({
           command,
+          reason: "notConnected",
           message: "Client not connected",
         }),
       );
     }
-
     if (this.isExecuting) {
       return new Err(
         new TelnetCommandError({
           command,
+          reason: "busy",
           message: "Another command is currently executing",
         }),
       );
     }
+    return this.exchange(command, `${command}\r\n`, options);
+  }
 
+  /** Writes `line` (if any) and collects the reply. */
+  private async exchange(
+    command: string,
+    line: string | undefined,
+    options: TelnetCommandOptions,
+  ): Promise<Result<string, TelnetCommandError>> {
+    const client = this.client;
+    if (!client) {
+      return new Err(
+        new TelnetCommandError({
+          command,
+          reason: "notConnected",
+          message: "Client not connected",
+        }),
+      );
+    }
+    const quietMs = options.quietMs ?? DEFAULT_QUIET_MS;
+    const timeoutMs = options.timeoutMs ?? DEFAULT_REPLY_TIMEOUT_MS;
     this.isExecuting = true;
 
     return new Promise((resolve) => {
-      let response = "";
+      let reply = "";
+      let quietTimer: ReturnType<typeof setTimeout> | undefined;
+
+      const finish = (result: Result<string, TelnetCommandError>) => {
+        cleanup();
+        resolve(result);
+      };
+      const failure = (
+        reason: TelnetCommandFailure,
+        message: string,
+        cause?: unknown,
+      ) =>
+        new Err<string, TelnetCommandError>(
+          new TelnetCommandError({
+            command,
+            reason,
+            message,
+            ...(reply === "" ? {} : { reply }),
+            ...(cause === undefined ? {} : { cause }),
+          }),
+        );
 
       const dataHandler = (data: unknown) => {
-        const chunk = String(data);
-        response += chunk;
+        reply += String(data);
+        clearTimeout(quietTimer);
+        quietTimer = setTimeout(() => {
+          finish(new Ok(reply));
+        }, quietMs);
       };
-
       const errorHandler = (error: unknown) => {
-        cleanup();
-        resolve(
-          new Err(
-            new TelnetCommandError({
-              command,
-              message: error instanceof Error ? error.message : String(error),
-              cause: error,
-            }),
+        finish(
+          failure(
+            "transport",
+            error instanceof Error ? error.message : String(error),
+            error,
           ),
         );
       };
+      const closeHandler = () => {
+        if (this.client === client) {
+          this.client = null;
+        }
+        finish(failure("closed", "Connection closed by the speaker"));
+      };
 
-      this.client?.on("data", dataHandler);
-      this.client?.on("error", errorHandler);
-
-      const timer = setTimeout(() => {
-        cleanup();
-        resolve(new Ok(response));
-      }, waitMs);
+      const overall = setTimeout(() => {
+        finish(
+          reply === ""
+            ? failure("noReply", `No reply within ${timeoutMs}ms`)
+            : new Ok(reply),
+        );
+      }, timeoutMs);
 
       const cleanup = () => {
         this.isExecuting = false;
-        clearTimeout(timer);
-        this.client?.off("data", dataHandler);
-        this.client?.off("error", errorHandler);
+        clearTimeout(quietTimer);
+        clearTimeout(overall);
+        client.off("data", dataHandler);
+        client.off("error", errorHandler);
+        client.off("close", closeHandler);
       };
 
-      this.client?.write(`${command}\r\n`);
+      client.on("data", dataHandler);
+      client.on("error", errorHandler);
+      client.on("close", closeHandler);
+      if (line !== undefined) {
+        client.write(line);
+      }
     });
   }
 
   disconnect() {
     if (this.client) {
-      this.client.destroy();
+      const client = this.client;
       this.client = null;
+      client.destroy();
     }
   }
 }
