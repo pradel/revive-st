@@ -185,7 +185,8 @@ const $slider: ViewStyle = {
   flex: 1,
 };
 
+/** As wide as the settings button above, so the number sits centred under it. */
 const $volumeValue: TextStyle = {
-  width: 28,
-  textAlign: "right",
+  width: 40,
+  textAlign: "center",
 };

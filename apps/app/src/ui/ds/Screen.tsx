@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { StyleSheet, View, type ViewStyle } from "react-native";
+import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 export interface ScreenProps {
@@ -17,6 +17,12 @@ export interface ScreenProps {
    *   so only the bottom (gesture bar) inset applies.
    */
   presentation?: "stack" | "fullscreen" | "sheet";
+  /**
+   * The screen is a tab. On Android the tab bar below it already clears the
+   * gesture bar, so the footer sits right on the tab bar instead of above a
+   * second inset. iOS reports the tab bar in the safe area, so it keeps it.
+   */
+  inTabs?: boolean;
 }
 
 const edges: Record<NonNullable<ScreenProps["presentation"]>, Edge[]> = {
@@ -37,6 +43,7 @@ export function Screen({
   footer,
   backdrop,
   presentation = "stack",
+  inTabs = false,
 }: ScreenProps) {
   return (
     <View style={$fill}>
@@ -46,7 +53,11 @@ export function Screen({
       <SafeAreaView style={$fill} edges={edges[presentation]}>
         <View style={$fill}>{children}</View>
         {footer ? (
-          <SafeAreaView edges={["bottom"]}>{footer}</SafeAreaView>
+          inTabs && Platform.OS === "android" ? (
+            footer
+          ) : (
+            <SafeAreaView edges={["bottom"]}>{footer}</SafeAreaView>
+          )
         ) : null}
       </SafeAreaView>
     </View>

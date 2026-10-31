@@ -290,7 +290,7 @@ export default function RadioBrowser() {
   );
 
   return (
-    <Screen footer={<NowPlayingBar />}>
+    <Screen inTabs footer={<NowPlayingBar />}>
       <Stack.SearchBar
         ref={searchBarRef}
         placeholder="Search stations"

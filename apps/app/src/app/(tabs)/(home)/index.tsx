@@ -188,7 +188,7 @@ export default function Index() {
   });
 
   return (
-    <Screen footer={<NowPlayingBar />}>
+    <Screen inTabs footer={<NowPlayingBar />}>
       <Stack.Toolbar placement="right">
         <Stack.Toolbar.Button
           icon={nativeIcons.add}
