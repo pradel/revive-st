@@ -3,16 +3,41 @@ import { fileURLToPath } from "node:url";
 import { Config, Option } from "effect";
 
 /**
- * libSQL URL of the presets database: `DATABASE_URL`, else a file on the
+ * The SQLite file of the presets database: `DATABASE_PATH`, else a file on the
  * Railway volume, else `revivest.db` in the working directory.
  */
-export const DatabaseUrl = Config.String("DATABASE_URL").pipe(
+export const DatabasePath = Config.String("DATABASE_PATH").pipe(
   Config.orElse(() =>
     Config.String("RAILWAY_VOLUME_MOUNT_PATH").pipe(
-      Config.map((directory) => `file:${directory}/revivest.db`),
+      Config.map((directory) => `${directory}/revivest.db`),
     ),
   ),
-  Config.withDefault("file:revivest.db"),
+  Config.withDefault("revivest.db"),
+);
+
+/**
+ * Where the daily database snapshots go: a bucket on any S3-compatible
+ * storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), addressed path-style
+ * (`<S3_ENDPOINT>/<S3_BUCKET>/<key>`). Backups are off without `S3_BUCKET`;
+ * with it, `S3_ENDPOINT` and the access keys are required. `S3_REGION`
+ * defaults to `auto`, which R2 expects; AWS needs the bucket's region.
+ */
+export const BackupConfig = Config.option(Config.String("S3_BUCKET")).pipe(
+  Config.flatMap(
+    Option.match({
+      onNone: () => Config.succeed(Option.none()),
+      onSome: (bucket) =>
+        Config.all({
+          bucket: Config.succeed(bucket),
+          endpoint: Config.URL("S3_ENDPOINT").pipe(
+            Config.map((url) => url.origin),
+          ),
+          region: Config.String("S3_REGION").pipe(Config.withDefault("auto")),
+          accessKeyId: Config.Redacted("S3_ACCESS_KEY_ID"),
+          secretAccessKey: Config.Redacted("S3_SECRET_ACCESS_KEY"),
+        }).pipe(Config.map(Option.some)),
+    }),
+  ),
 );
 
 export const ServerPort = Config.Port("PORT").pipe(Config.withDefault(3000));

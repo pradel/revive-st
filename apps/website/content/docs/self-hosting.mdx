@@ -31,14 +31,28 @@ docker run -d --name revive-st --restart unless-stopped \
 
 To check it's running, open `http://192.168.1.10:3000` (with your server's address) in your phone's browser: it shows `Revive ST API` and the version it runs.
 
-Your accounts and presets are stored in the `/data` volume, in the database file `revivest.db`. Back up that volume to keep them.
+Your accounts and presets are stored in the `/data` volume, in the SQLite database file `revivest.db` (with `revivest.db-wal` and `revivest.db-shm` beside it while the server runs). Back up that whole volume to keep them.
 
-| Setting        | Default                  | What it does                                                                                                                    |
-| -------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
-| `PORT`         | `3000`                   | The port the server listens on inside the container.                                                                            |
-| `DATABASE_URL` | `file:/data/revivest.db` | Where accounts and presets are stored.                                                                                          |
-| `LOG_LEVEL`    | `info`                   | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
-| `LOG_FORMAT`   | `pretty`                 | `json` writes one JSON object per line, for log collectors.                                                                     |
+| Setting         | Default             | What it does                                                                                                                    |
+| --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| `PORT`          | `3000`              | The port the server listens on inside the container.                                                                            |
+| `DATABASE_PATH` | `/data/revivest.db` | The SQLite database file where accounts and presets are stored.                                                                 |
+| `LOG_LEVEL`     | `info`              | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
+| `LOG_FORMAT`    | `pretty`            | `json` writes one JSON object per line, for log collectors.                                                                     |
+
+### Daily backups to S3 storage (optional)
+
+The server can store a gzipped snapshot of its database in a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…) every day at 03:00 UTC, taken while it keeps serving. At start, it takes one right away if the newest snapshot is more than a day old, so a restart never costs a day. Snapshots are named `db/<date and time>.db.gz`; to keep only the last 30 days, add a lifecycle rule to the bucket.
+
+| Setting                | What it does                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `S3_BUCKET`            | The bucket. Backups are off without it.                                                                                        |
+| `S3_ENDPOINT`          | The storage's S3 API address, like `https://<account id>.r2.cloudflarestorage.com` for R2. The bucket is addressed path-style. |
+| `S3_REGION`            | Defaults to `auto`, which R2 expects. On AWS, the bucket's region.                                                             |
+| `S3_ACCESS_KEY_ID`     | An access key allowed to read and write objects in this bucket only (on R2: an API token with **Object Read & Write** on it).  |
+| `S3_SECRET_ACCESS_KEY` | That key's secret.                                                                                                             |
+
+To restore a snapshot, stop the server, download the snapshot, unzip it (`gunzip`) into `/data/revivest.db`, delete `revivest.db-wal` and `revivest.db-shm`, and start the server.
 
 ## Point the app at your server
 

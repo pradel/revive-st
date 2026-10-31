@@ -1,5 +1,15 @@
--- Presets stored before accounts have no account to belong to: they are dropped.
-DROP TABLE `presets`;--> statement-breakpoint
+CREATE TABLE `device_contacts` (
+	`device_id` text PRIMARY KEY,
+	`last_contact_at` integer NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE `devices` (
+	`account_id` text NOT NULL,
+	`device_id` text NOT NULL,
+	`paired_on` integer NOT NULL,
+	CONSTRAINT `devices_pk` PRIMARY KEY(`account_id`, `device_id`)
+);
+--> statement-breakpoint
 CREATE TABLE `presets` (
 	`account_id` text NOT NULL,
 	`device_id` text NOT NULL,
