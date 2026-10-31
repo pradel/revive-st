@@ -50,6 +50,10 @@ const FAQS = [
     question: "Is it a subscription?",
     answer:
       "No. You pay once on the App Store or Google Play and get every update. The source code is free on GitHub if you'd rather build the app yourself.",
+    link: {
+      text: "Build the app yourself \u2192",
+      href: "/docs/build-the-app",
+    },
   },
   {
     question: "How hard is the setup?",
@@ -493,6 +497,12 @@ export default function HomePage() {
                     <GitHubIcon className="size-4" />
                     View on GitHub
                   </a>
+                  <Link
+                    href="/docs/build-the-app"
+                    className="inline-flex items-center gap-2 rounded-lg bg-surface-2 px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-3"
+                  >
+                    Build guide
+                  </Link>
                   <Link
                     href="/docs/self-hosting"
                     className="inline-flex items-center gap-2 rounded-lg bg-surface-2 px-4 py-2.5 text-sm font-semibold text-fg transition-colors hover:bg-surface-3"

@@ -1,0 +1,142 @@
+---
+title: Build the App
+description: Build Revive ST for your own Android phone or iPhone from its source code.
+---
+
+Revive ST is open source, so you can build the app yourself, for free, instead of getting it from a store. This page takes you from the source code to the app on your phone.
+
+A build you make yourself works like the store app: it uses the Revive ST server unless you [run your own](/docs/self-hosting).
+
+## What you need
+
+- **Node.js 26 or newer.**
+- **[Vite+](https://viteplus.dev/guide/)** (`vp`), which installs the project's dependencies.
+- **Git.**
+- For Android: a computer running macOS, Windows or Linux, and a phone running Android 11 or newer.
+- For iOS: a Mac with [Xcode](https://apps.apple.com/app/xcode/id497799835), and an iPhone.
+
+Get the code and install its dependencies:
+
+```bash
+git clone https://github.com/pradel/revive-st.git
+cd revive-st
+vp install
+```
+
+The app lives in `apps/app`. Every command below runs from there:
+
+```bash
+cd apps/app
+```
+
+## Android
+
+### Set up Android tools
+
+1. Install [Android Studio](https://developer.android.com/studio). Its setup wizard installs the Android SDK and a Java runtime (JDK 17 or newer).
+2. Tell the build where the SDK is with the `ANDROID_HOME` environment variable. The SDK's default location is:
+   - macOS: `~/Library/Android/sdk`
+   - Linux: `~/Android/Sdk`
+   - Windows: `%LOCALAPPDATA%\Android\Sdk`
+
+   On macOS and Linux, add a line like this one to your shell profile (`~/.zshrc` or `~/.bashrc`), then open a new terminal:
+
+   ```bash
+   export ANDROID_HOME="$HOME/Library/Android/sdk"
+   ```
+
+### Build the APK
+
+Generate the Android project, then build the app in release mode:
+
+```bash
+npx expo prebuild --platform android
+cd android
+./gradlew assembleRelease
+```
+
+On Windows, run `gradlew.bat assembleRelease` instead. The first build downloads its tools and takes several minutes; later builds are faster.
+
+The app is written to `apps/app/android/app/build/outputs/apk/release/app-release.apk`.
+
+### Install it on your phone
+
+With a USB cable:
+
+1. On the phone, turn on **Developer options** (tap **Build number** seven times in **Settings** → **About phone**), then **USB debugging** in **Developer options**.
+2. Connect the phone and accept the prompt on its screen.
+3. Install the APK:
+
+   ```bash
+   ~/Library/Android/sdk/platform-tools/adb install app/build/outputs/apk/release/app-release.apk
+   ```
+
+   Use your own SDK location if it differs (see above).
+
+Without a cable, copy the APK to the phone (by email, a cloud drive, …), open it, and allow your browser or file app to install unknown apps when asked.
+
+**Already have Revive ST from Google Play?** Uninstall it first: Android refuses to replace an app signed by someone else. Your speakers keep their settings and presets.
+
+Your APK is signed with a development key. That's fine for your own phones, but it can't be published on Google Play.
+
+## iOS
+
+### Set up Xcode
+
+1. Install [Xcode](https://apps.apple.com/app/xcode/id497799835) from the Mac App Store, open it once to finish installing its components, and install the iOS platform when it offers to.
+2. Install [CocoaPods](https://cocoapods.org): `brew install cocoapods`, or `sudo gem install cocoapods`.
+3. In Xcode, open **Settings** → **Accounts** and sign in with your Apple Account.
+
+### Use your own app identifier
+
+Apple ties each app identifier to one developer team, and `app.revivest.app` belongs to the Revive ST team. In `apps/app/app.json`, change `ios.bundleIdentifier` to one of your own, for example:
+
+```json
+"bundleIdentifier": "com.yourname.revivest"
+```
+
+### Build and install
+
+1. Generate the iOS project:
+
+   ```bash
+   npx expo prebuild --platform ios
+   ```
+
+2. Open `apps/app/ios/ReviveST.xcworkspace` in Xcode. Select the **ReviveST** target, open **Signing & Capabilities**, and pick your team under **Team**.
+3. Connect your iPhone, unlock it, and trust the computer. Turn on **Developer Mode** if the iPhone asks (**Settings** → **Privacy & Security** → **Developer Mode**).
+4. Build the app and install it:
+
+   ```bash
+   npx expo run:ios --device --configuration Release
+   ```
+
+   Pick your iPhone in the list. The first build takes several minutes.
+
+5. The first time, iOS doesn't trust your app yet: open **Settings** → **General** → **VPN & Device Management**, select your Apple Account, and tap **Trust**.
+
+### Free Apple accounts
+
+You don't need a paid Apple Developer Program membership to build the app, with two limits:
+
+- **The app stops opening after 7 days.** Apps signed with a free account expire; build and install again to renew it.
+- **The Hotspot capability.** Revive ST uses it to join a speaker's setup Wi-Fi when you set up a new speaker. If Xcode reports that your team doesn't support it, remove the `entitlements` block from `ios` in `app.json` and run `npx expo prebuild --platform ios` again. The app still controls speakers already on your Wi-Fi, but can't set up new ones.
+
+## Update your build
+
+To get the latest version, pull the code and install its dependencies:
+
+```bash
+git pull
+vp install
+```
+
+Then follow the build steps for your platform again. `npx expo prebuild` recreates the Android or iOS project each time, so on iOS you pick your team again in Xcode.
+
+## Troubleshooting
+
+- **`SDK location not found`**: `ANDROID_HOME` isn't set in this terminal. Set it as shown above and open a new terminal.
+- **`INSTALL_FAILED_UPDATE_INCOMPATIBLE`**: another copy of Revive ST, signed with a different key, is installed. Uninstall it, then install again.
+- **iOS: `No profiles for 'app.revivest.app' were found`**: change the bundle identifier as described above, then run `npx expo prebuild --platform ios` again.
+
+If you're stuck, ask in [GitHub Discussions](https://github.com/pradel/revive-st/discussions). To work on the app's code, see [Contributing](/docs/developers/contributing).
