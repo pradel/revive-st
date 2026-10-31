@@ -12,6 +12,7 @@ import {
   type DeviceComponent,
   type KeyValue,
   type AudioMode,
+  contentItemXml,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
 import Zeroconf, { type Service } from "react-native-zeroconf";
@@ -20,7 +21,11 @@ import { useServerUrl } from "@/features/server/server";
 import { logger } from "@/lib/logger";
 
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
-import { buildRadioBrowserPayload, type CastStation } from "../lib/radio";
+import {
+  confirmStationPlaying,
+  stationContentItem,
+  type CastStation,
+} from "../lib/radio";
 import { checkMargeAPIStatus } from "../lib/telnet";
 
 export interface BoseSpeaker {
@@ -94,6 +99,9 @@ function flattenSpeakerState(
  * it only takes longer while its Marge server fails.
  */
 const RENAME_TIMEOUT_MS = 15_000;
+
+/** How long one readback of what a speaker plays may take while starting a station. */
+const READBACK_TIMEOUT_MS = 2000;
 
 export function useSpeakerManager(scanDurationMs = 5000) {
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
@@ -486,6 +494,32 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     },
   });
 
+  const storeStationPresetMutation = useMutation({
+    mutationFn: async ({
+      deviceID,
+      presetId,
+      station,
+    }: {
+      deviceID: string;
+      presetId: 1 | 2 | 3 | 4 | 5 | 6;
+      station: CastStation;
+    }) => {
+      const speaker = speakersMapRef.current.get(deviceID);
+      if (!speaker) {
+        throw new Error("Speaker not connected");
+      }
+      const res = await speaker.storePreset(
+        presetId,
+        stationContentItem(station),
+      );
+      if (!res.isOk()) {
+        throw res.error;
+      }
+      // Reloads the presets, which also stores them on our server.
+      await speaker.initialize();
+    },
+  });
+
   const playStationMutation = useMutation({
     mutationFn: async ({
       deviceID,
@@ -502,7 +536,8 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       try {
         const speakerIp = speaker.options.ip;
         const speakerPort = speaker.options.port ?? 8090;
-        const payload = buildRadioBrowserPayload(station);
+        const contentItem = stationContentItem(station);
+        const payload = contentItemXml(contentItem);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => {
           controller.abort();
@@ -531,9 +566,29 @@ export function useSpeakerManager(scanDurationMs = 5000) {
             `Failed to play URI: ${response.status} ${response.statusText} - ${errorText}`,
           );
         }
-        setTimeout(async () => speaker.initialize(), 1500);
+        const http = new BoseHttpAdapter({
+          ip: speakerIp,
+          port: speakerPort,
+        });
+        await confirmStationPlaying(async () => {
+          // A readback the speaker never answers counts as unanswered, so the
+          // confirmation keeps to its schedule.
+          const readController = new AbortController();
+          const readTimeoutId = setTimeout(() => {
+            readController.abort();
+          }, READBACK_TIMEOUT_MS);
+          try {
+            const nowPlaying = await http.getNowPlaying({
+              signal: readController.signal,
+            });
+            return nowPlaying.isOk() ? nowPlaying.value : null;
+          } finally {
+            clearTimeout(readTimeoutId);
+          }
+        }, contentItem.location);
       } finally {
         setUpdating(deviceID, false);
+        void speaker.initialize();
       }
     },
   });
@@ -662,6 +717,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     keyMutation,
     selectSourceMutation,
     savePresetMutation,
+    storeStationPresetMutation,
     setBassMutation,
     playStationMutation,
     setNameMutation,

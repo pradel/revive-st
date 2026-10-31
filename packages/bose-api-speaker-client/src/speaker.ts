@@ -9,6 +9,7 @@ import type {
   AudioProductToneControlsResponse,
   BassCapabilitiesResponse,
   CapabilitiesResponse,
+  ContentItem,
   DeviceComponent,
   Preset,
   AudioMode,
@@ -406,6 +407,14 @@ export class Speaker {
     }
     await new Promise((resolve) => setTimeout(resolve, 2000));
     return this.http.pressKey({ key, state: "release", sender: "Gabbo" });
+  }
+
+  /** Stores `contentItem` in preset slot `id` without playing it. */
+  async storePreset(
+    id: 1 | 2 | 3 | 4 | 5 | 6,
+    contentItem: ContentItem,
+  ): Promise<Result<void, BoseApiError>> {
+    return this.http.storePreset(id, contentItem);
   }
 
   private handleWSUpdate(update: BoseWSUpdate) {

@@ -3,8 +3,16 @@ import { HttpServerRequest } from "effect/http";
 import { HttpApiBuilder, HttpApiError } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
-import { RADIO_BROWSER_BASE_PATH, TUNEIN_BASE_PATH } from "../api/bmx.ts";
-import { RADIO_BROWSER, TUNEIN } from "../marge/sources.ts";
+import {
+  CUSTOM_STATIONS_BASE_PATH,
+  RADIO_BROWSER_BASE_PATH,
+  TUNEIN_BASE_PATH,
+} from "../api/bmx.ts";
+import {
+  LOCAL_INTERNET_RADIO,
+  RADIO_BROWSER,
+  TUNEIN,
+} from "../marge/sources.ts";
 import { RadioBrowser } from "../radio-browser/radio-browser.ts";
 import { TuneIn } from "../tunein/tunein.ts";
 
@@ -96,6 +104,23 @@ export const BmxHandlers = HttpApiBuilder.group(
                 id: { name: "RADIO_BROWSER", value: RADIO_BROWSER.providerId },
                 streamTypes: ["liveRadio"],
               },
+              {
+                _links: { bmx_token: { href: "/token" }, self: { href: "/" } },
+                askAdapter: false,
+                assets: {
+                  color: "#000000",
+                  description: "Streams added by URL.",
+                  icons,
+                  name: "Custom Stations",
+                },
+                authenticationModel: anonymousAccount,
+                baseUrl: `${baseUrl}${CUSTOM_STATIONS_BASE_PATH}`,
+                id: {
+                  name: "LOCAL_INTERNET_RADIO",
+                  value: LOCAL_INTERNET_RADIO.providerId,
+                },
+                streamTypes: ["liveRadio"],
+              },
             ],
           };
         }),
@@ -138,6 +163,18 @@ export const BmxHandlers = HttpApiBuilder.group(
       )
       .handle("radioBrowserToken", () =>
         Effect.succeed(anonymousToken(RADIO_BROWSER.credential)),
+      )
+      .handle("customStation", ({ query }) =>
+        Effect.succeed(
+          playback({
+            streamUrls: [query.data.streamUrl],
+            name: query.data.name ?? "",
+            imageUrl: query.data.imageUrl ?? "",
+          }),
+        ),
+      )
+      .handle("customStationsToken", () =>
+        Effect.succeed(anonymousToken(LOCAL_INTERNET_RADIO.credential)),
       );
   }),
 );

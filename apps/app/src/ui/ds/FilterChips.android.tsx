@@ -5,7 +5,7 @@ import type { ViewStyle } from "react-native";
 
 import { color, space } from "@/ui/tokens";
 
-import type { FilterChipsProps } from "./FilterChips.types";
+import { isSelected, type FilterChipsProps } from "./FilterChips.types";
 
 /** Material 3 filter chips in the app's colors, scrolling horizontally. */
 export function FilterChips<Value extends string>({
@@ -27,7 +27,7 @@ export function FilterChips<Value extends string>({
         ]}
       >
         {options.map((option) => {
-          const selected = option.value === value;
+          const selected = isSelected(value, option.value);
           return (
             <FilterChip
               key={option.value}

@@ -6,11 +6,11 @@ import { MargeApi } from "./marge.ts";
 import { SERVER_NAME, SERVER_VERSION, ServerApi } from "./server.ts";
 
 /**
- * Each path parameter's OpenAPI description. Set on the parameter rather than
- * its schema: Effect documents an integer path parameter as a numeric string
- * without its checks, so `presetId` also gets its schema here.
+ * Each path and query parameter's OpenAPI description. Set on the parameter
+ * rather than its schema: Effect documents an integer path parameter as a
+ * numeric string without its checks, so `presetId` also gets its schema here.
  */
-const PATH_PARAMETERS: Record<
+const PARAMETERS: Record<
   string,
   { readonly description: string; readonly schema?: object }
 > = {
@@ -31,22 +31,27 @@ const PATH_PARAMETERS: Record<
     description:
       "A Radio Browser station's `stationuuid`, e.g. `9610c454-0601-11e8-ae97-52543be04c81`.",
   },
+  data: {
+    description:
+      'A custom station: base64 of `{"streamUrl","name","imageUrl"}`, where `streamUrl` is an `http` or `https` URL.',
+  },
 };
 
 const METHODS = ["get", "put", "post", "delete"] as const;
 
-const describePathParameters = (
+const describeParameters = (
   parameters: OpenApi.OpenAPISpecParameter[],
 ): OpenApi.OpenAPISpecParameter[] =>
   parameters.map((parameter) => {
-    const documented = PATH_PARAMETERS[parameter.name];
-    return parameter.in === "path" && documented !== undefined
+    const documented = PARAMETERS[parameter.name];
+    return (parameter.in === "path" || parameter.in === "query") &&
+      documented !== undefined
       ? { ...parameter, ...documented }
       : parameter;
   });
 
 /**
- * Applies `describePathParameters` to every operation. `transform` receives
+ * Applies `describeParameters` to every operation. `transform` receives
  * the document `OpenApi.fromApi` generated, typed as a plain record.
  */
 const describeOperations = (openApiSpec: Record<string, unknown>) => {
@@ -54,7 +59,7 @@ const describeOperations = (openApiSpec: Record<string, unknown>) => {
   for (const pathItem of Object.values(spec.paths)) {
     for (const operation of METHODS.map((method) => pathItem[method])) {
       if (operation !== undefined) {
-        operation.parameters = describePathParameters(operation.parameters);
+        operation.parameters = describeParameters(operation.parameters);
       }
     }
   }
