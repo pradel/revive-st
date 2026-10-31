@@ -10,7 +10,7 @@ import {
   type PickerItemValue,
 } from "@expo/ui";
 import { Slider as ComposeSlider } from "@expo/ui/jetpack-compose";
-import { weight } from "@expo/ui/jetpack-compose/modifiers";
+import { height, weight } from "@expo/ui/jetpack-compose/modifiers";
 import { Slider as SwiftUISlider } from "@expo/ui/swift-ui";
 import { buttonStyle, textSelection } from "@expo/ui/swift-ui/modifiers";
 import { use } from "react";
@@ -18,6 +18,8 @@ import { Platform, ToastAndroid } from "react-native";
 
 import { copyText } from "@/lib/clipboard";
 import { useSliderDraft } from "@/lib/useSliderDraft";
+import { ComposeSliderSlots } from "@/ui/ds/ComposeSliderSlots";
+import { sliderDimensions } from "@/ui/ds/Slider.types";
 import { color } from "@/ui/tokens";
 
 import type { FormIcon } from "./icons";
@@ -69,7 +71,8 @@ function RowIcon({ icon }: { icon: FormIcon | undefined }) {
 
 /**
  * Read-only row: label (and description) with a trailing value. `copyable`
- * values are selectable on iOS and copied on tap on Android.
+ * values are selectable on iOS and copied on tap on Android. `stacked` puts the
+ * value under the label, wrapping, for values too long to share the row.
  */
 export function FormValueRow({
   label,
@@ -78,6 +81,7 @@ export function FormValueRow({
   valueColor = color.textSecondary,
   icon,
   copyable,
+  stacked,
 }: {
   label: string;
   description?: string;
@@ -85,7 +89,21 @@ export function FormValueRow({
   valueColor?: string;
   icon?: FormIcon;
   copyable?: boolean;
+  stacked?: boolean;
 }) {
+  const valueText =
+    value !== undefined ? (
+      <Text
+        textStyle={
+          stacked ? { ...caption, color: valueColor } : { color: valueColor }
+        }
+        numberOfLines={stacked ? undefined : 1}
+        modifiers={copyable && ios ? [textSelection(true)] : undefined}
+      >
+        {value}
+      </Text>
+    ) : null;
+
   return (
     <Row
       alignment="center"
@@ -101,17 +119,18 @@ export function FormValueRow({
       }
     >
       <RowIcon icon={icon} />
-      <Label label={label} description={description} />
-      {iosSpacer}
-      {value !== undefined ? (
-        <Text
-          textStyle={{ color: valueColor }}
-          numberOfLines={1}
-          modifiers={copyable && ios ? [textSelection(true)] : undefined}
-        >
-          {value}
-        </Text>
-      ) : null}
+      {stacked ? (
+        <Column spacing={2} modifiers={labelModifiers}>
+          <Text>{label}</Text>
+          {valueText}
+        </Column>
+      ) : (
+        <>
+          <Label label={label} description={description} />
+          {iosSpacer}
+          {valueText}
+        </>
+      )}
     </Row>
   );
 }
@@ -226,7 +245,8 @@ export function FormPickerRow<Value extends PickerItemValue>({
 
 /**
  * Inline slider with its label and current value. Dragging updates the value
- * shown immediately; `onCommit` fires when the drag ends.
+ * shown immediately; `onCommit` fires when the drag ends. On Android it uses
+ * the app's thin track and round thumb, as on the speaker card.
  */
 export function FormSliderRow({
   label,
@@ -283,7 +303,18 @@ export function FormSliderRow({
           onValueChangeFinished={() => {
             draft.onSlidingComplete();
           }}
-        />
+          // Material pads the slider to a 48dp touch target, which leaves a gap
+          // under the thumb; fit it to the thumb so the row looks balanced.
+          modifiers={[height(sliderDimensions.regular.thumb + 8)]}
+        >
+          <ComposeSliderSlots
+            value={draft.value}
+            min={min}
+            max={max}
+            tint="accent"
+            size="regular"
+          />
+        </ComposeSlider>
       )}
     </Column>
   );
