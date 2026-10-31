@@ -300,7 +300,8 @@ export default function Index() {
                     return (
                       <Tile
                         key={slot}
-                        title={`Preset ${slot} · empty`}
+                        title="Empty"
+                        subtitle={`Preset ${slot}`}
                         muted
                         menu={presetMenu(presetSpeaker, slot, true)}
                       />
@@ -311,6 +312,7 @@ export default function Index() {
                       key={slot}
                       title={preset.contentItem.itemName}
                       subtitle={`Preset ${slot}`}
+                      artworkUri={preset.contentItem.containerArt || null}
                       fallbackIcon={
                         isRadioSource(preset.contentItem.source)
                           ? icons.radio
