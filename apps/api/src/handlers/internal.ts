@@ -4,6 +4,7 @@ import { Effect } from "effect";
 import { HttpApiBuilder } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
+import { DeviceContactsRepo } from "../devices/device-contacts-repo.ts";
 import { DevicesRepo } from "../devices/devices-repo.ts";
 import { AccountId } from "../marge/account.ts";
 import { sourceNamed } from "../marge/sources.ts";
@@ -15,6 +16,7 @@ export const InternalHandlers = HttpApiBuilder.group(
   Effect.fn(function* (handlers) {
     const presetsRepo = yield* PresetsRepo;
     const devicesRepo = yield* DevicesRepo;
+    const contactsRepo = yield* DeviceContactsRepo;
 
     return handlers
       .handle("createAccount", () =>
@@ -36,6 +38,15 @@ export const InternalHandlers = HttpApiBuilder.group(
             ),
           );
           return { success: true } as const;
+        }),
+      )
+      .handle(
+        "deviceContact",
+        Effect.fn(function* ({ params }) {
+          const lastContactAt = yield* contactsRepo.lastContactAt(
+            params.deviceId,
+          );
+          return { lastContactAt: lastContactAt ?? null };
         }),
       );
   }),

@@ -4,6 +4,7 @@ import { BmxApi } from "./bmx.ts";
 import { InternalApi } from "./internal.ts";
 import { MargeApi } from "./marge.ts";
 import { SERVER_NAME, SERVER_VERSION, ServerApi } from "./server.ts";
+import { StatsApi, UpdatesApi } from "./speaker-services.ts";
 
 /**
  * Each path and query parameter's OpenAPI description. Set on the parameter
@@ -71,12 +72,14 @@ export class ReviveApi extends HttpApi.make("revive-st")
   .add(MargeApi)
   .add(BmxApi)
   .add(InternalApi)
+  .add(UpdatesApi)
+  .add(StatsApi)
   .annotateMerge(
     OpenApi.annotations({
       title: SERVER_NAME,
       version: SERVER_VERSION,
       description: [
-        "The Revive ST server: it emulates the Bose SoundTouch Marge streaming server and BMX services for SoundTouch speakers, and backs the Revive ST app.",
+        "The Revive ST server: it emulates the Bose SoundTouch Marge streaming server, BMX services, software update index and stats endpoints for SoundTouch speakers, and backs the Revive ST app.",
         "Each household has its own Marge account, and presets are stored per account and device. Knowing a household's account id is what grants access to its presets: no endpoint takes credentials.",
         "Besides these endpoints, the server serves the icons the BMX registry links to under `/media/`.",
       ].join("\n\n"),

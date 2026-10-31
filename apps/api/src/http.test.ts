@@ -1,6 +1,6 @@
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
-import { Effect, Layer, Logger, References, Schema } from "effect";
+import { DateTime, Effect, Layer, Logger, References, Schema } from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -11,6 +11,7 @@ import {
 import packageJson from "../package.json" with { type: "json" };
 import { BmxPlayback, BmxRegistry, BmxToken } from "./api/bmx.ts";
 import { BOSE_XML_CONTENT_TYPE } from "./api/marge.ts";
+import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
@@ -74,6 +75,7 @@ const TestLayer = HttpAppLayer.pipe(
   Layer.provide([
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
+    DeviceContactsRepo.layerTest,
     TuneInTest,
     RadioBrowserTest,
     Logger.layer([
@@ -208,6 +210,44 @@ const postRecent = (body: string) =>
       HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
     ),
   );
+
+const postPowerOn = (body: string) =>
+  HttpClient.execute(
+    HttpClientRequest.post("/streaming/support/power_on").pipe(
+      HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
+    ),
+  );
+
+/** The speaker's last contact, as the app reads it. */
+const getLastContactAt = (deviceId: string) =>
+  HttpClient.get(`/api/internal/device/${deviceId}/contact`).pipe(
+    Effect.flatMap(
+      HttpIncomingMessage.schemaBodyJson(
+        Schema.Struct({ lastContactAt: Schema.NullOr(Schema.Number) }),
+      ),
+    ),
+    Effect.map(({ lastContactAt }) => lastContactAt),
+  );
+
+/**
+ * Runs `request` and asserts it recorded `deviceId`'s contact: never
+ * contacted before, contacted while it ran after.
+ */
+const assertRecordsContact = <Success, Failure, Requirements>(
+  deviceId: string,
+  request: Effect.Effect<Success, Failure, Requirements>,
+) =>
+  Effect.gen(function* () {
+    assert.isNull(yield* getLastContactAt(deviceId));
+    const before = DateTime.toEpochMillis(yield* DateTime.now);
+    const result = yield* request;
+    const after = DateTime.toEpochMillis(yield* DateTime.now);
+    const lastContactAt = yield* getLastContactAt(deviceId);
+    assert.isNotNull(lastContactAt);
+    assert.isAtLeast(lastContactAt, before);
+    assert.isAtMost(lastContactAt, after);
+    return result;
+  });
 
 // The server runs on live services: it stamps presets with the real clock.
 layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
@@ -741,17 +781,81 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("acknowledges power on", () =>
+  it.effect("acknowledges power on and records the speaker's contact", () =>
     Effect.gen(function* () {
-      const response = yield* HttpClient.execute(
-        HttpClientRequest.post("/streaming/support/power_on").pipe(
-          HttpClientRequest.bodyText(
-            `<?xml version="1.0" encoding="UTF-8" ?><device-data><device id="EC1127C25A50"><serialnumber>55307133203739342000010</serialnumber></device></device-data>`,
-            BOSE_XML_CONTENT_TYPE,
-          ),
+      // Device ids are MAC addresses: lower-case names the same speaker.
+      const response = yield* assertRecordsContact(
+        "A0B1C2D3E401",
+        postPowerOn(
+          `<?xml version="1.0" encoding="UTF-8" ?><device-data><device id="a0b1c2d3e401"><serialnumber>55307133203739342000010</serialnumber></device></device-data>`,
         ),
       );
       assert.include(yield* assertBoseXml(response), "<status>OK</status>");
+    }),
+  );
+
+  it.effect.each(["", "not xml <", "<device-data><device/></device-data>"])(
+    "acknowledges power on with the body %j",
+    (body) =>
+      Effect.gen(function* () {
+        const response = yield* postPowerOn(body);
+        assert.include(yield* assertBoseXml(response), "<status>OK</status>");
+      }),
+  );
+
+  it.effect("records the contact of a speaker calling Marge", () =>
+    Effect.gen(function* () {
+      const response = yield* assertRecordsContact(
+        "A0B1C2D3E402",
+        HttpClient.get(`${devicePath("A0B1C2D3E402")}/recents`),
+      );
+      assert.strictEqual(response.status, 200);
+    }),
+  );
+
+  it.effect.each([
+    ["stapp", "A0B1C2D3E403"],
+    ["scmudc", "A0B1C2D3E404"],
+  ] as const)("acknowledges %s stats and records the contact", ([path, id]) =>
+    Effect.gen(function* () {
+      const response = yield* assertRecordsContact(
+        id,
+        HttpClient.execute(
+          HttpClientRequest.post(`/v1/${path}/${id}`).pipe(
+            HttpClientRequest.bodyText(
+              `{"envelope":{"uniqueId":"${id}"},"payload":{"events":[]}}`,
+              "text/json; charset=utf-8",
+            ),
+          ),
+        ),
+      );
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(yield* response.text, "");
+    }),
+  );
+
+  it.effect.each(["EC1127C25A5", "EC1127C25A50F", "EC1127C25A5G", "dev-1"])(
+    "rejects the contact of malformed device id %s",
+    (deviceId) =>
+      Effect.gen(function* () {
+        const response = yield* HttpClient.get(
+          `/api/internal/device/${deviceId}/contact`,
+        );
+        assert.strictEqual(response.status, 400);
+      }),
+  );
+
+  it.effect("serves a firmware index naming the last firmware", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.get("/updates/soundtouch");
+      assert.strictEqual(response.status, 200);
+      assert.strictEqual(response.headers["content-type"], "application/xml");
+      const body = yield* response.text;
+      assert.match(body, /^<\?xml version="1\.0" encoding="UTF-8"\?>\n<INDEX /);
+      assert.match(
+        body,
+        /<DEVICE ID="0x0939" PRODUCTNAME="SoundTouch 10">\s*<HARDWARE REVISION="00\.01\.00">\s*<RELEASE REVISION="27\.0\.6\.46330\.5043500"/,
+      );
     }),
   );
 

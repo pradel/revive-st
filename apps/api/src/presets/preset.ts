@@ -3,6 +3,14 @@ import { Schema } from "effect";
 export const DeviceId = Schema.String.pipe(Schema.brand("DeviceId"));
 export type DeviceId = typeof DeviceId.Type;
 
+/**
+ * A device id as speakers send it: a MAC address, 12 hex digits in either
+ * case.
+ */
+export const SpeakerDeviceId = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{12}$/i),
+).pipe(Schema.brand("DeviceId"));
+
 /** SoundTouch speakers expose exactly six preset buttons. */
 export const PresetId = Schema.Int.check(
   Schema.isBetween({ minimum: 1, maximum: 6 }),

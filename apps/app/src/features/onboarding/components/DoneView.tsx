@@ -110,7 +110,7 @@ export function DoneView({
             </Text>
             <Text variant="body" color="textSecondary">
               The speaker should appear on the dashboard within a minute. Open
-              it there to finish its configuration.
+              it there to set it up for internet radio.
             </Text>
           </Card>
           <View style={$setupButtons}>

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import { parseXml } from "bose-api-speaker-client";
 import { DateTime, Effect, Schema } from "effect";
 import { HttpApiBuilder, HttpApiError, HttpApiSchema } from "effect/http-api";
 
@@ -9,9 +10,10 @@ import {
   SpeakerPresetXml,
   SpeakerRecentXml,
 } from "../api/marge.ts";
+import { DeviceContactsRepo } from "../devices/device-contacts-repo.ts";
 import { DevicesRepo } from "../devices/devices-repo.ts";
 import { sourceWithId } from "../marge/sources.ts";
-import { ContentItem, Preset } from "../presets/preset.ts";
+import { ContentItem, Preset, SpeakerDeviceId } from "../presets/preset.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
 import {
   createAccountFullXml,
@@ -44,12 +46,29 @@ const withEtag = (body: string) =>
     },
   });
 
+const isSpeakerDeviceId = Schema.is(SpeakerDeviceId);
+
+/**
+ * The device id in the `<device-data><device id="…">` report a speaker posts
+ * when it boots, if the body is one.
+ */
+const powerOnDeviceId = (xml: string) => {
+  try {
+    const id = parseXml(xml).children.find((child) => child.name === "device")
+      ?.attributes.id;
+    return isSpeakerDeviceId(id) ? id : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const MargeHandlers = HttpApiBuilder.group(
   ReviveApi,
   "marge",
   Effect.fn(function* (handlers) {
     const presetsRepo = yield* PresetsRepo;
     const devicesRepo = yield* DevicesRepo;
+    const contactsRepo = yield* DeviceContactsRepo;
 
     return (
       handlers
@@ -73,6 +92,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handle(
           "presets",
           Effect.fn(function* ({ params }) {
+            yield* contactsRepo.record(params.deviceId);
             const presets = yield* presetsRepo.findByDevice(
               params.accountId,
               params.deviceId,
@@ -85,6 +105,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "savePreset",
           Effect.fn(function* ({ params, request }) {
+            yield* contactsRepo.record(params.deviceId);
             const preset = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerPreset),
               Effect.tapError((error) =>
@@ -134,6 +155,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handle(
           "removePreset",
           Effect.fn(function* ({ params }) {
+            yield* contactsRepo.record(params.deviceId);
             yield* devicesRepo.pair(params.accountId, params.deviceId);
             yield* presetsRepo.remove(
               params.accountId,
@@ -151,6 +173,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "addRecent",
           Effect.fn(function* ({ params, request }) {
+            yield* contactsRepo.record(params.deviceId);
             const recent = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerRecent),
               Effect.tapError((error) =>
@@ -182,8 +205,27 @@ export const MargeHandlers = HttpApiBuilder.group(
             });
           }),
         )
-        .handle("recents", () => Effect.succeed(createRecentsXml()))
-        .handle("powerOn", () => Effect.succeed(createStatusOkXml()))
+        .handle("recents", ({ params }) =>
+          contactsRepo
+            .record(params.deviceId)
+            .pipe(Effect.as(createRecentsXml())),
+        )
+        // Raw: the body only names the speaker, so one that can't be read
+        // still gets the reply that completes its boot.
+        .handleRaw(
+          "powerOn",
+          Effect.fn(function* ({ request }) {
+            const deviceId = powerOnDeviceId(
+              yield* request.text.pipe(Effect.orElseSucceed(() => "")),
+            );
+            if (deviceId === undefined) {
+              yield* Effect.logWarning("Power on report without a device id");
+            } else {
+              yield* contactsRepo.record(deviceId);
+            }
+            return createStatusOkXml();
+          }),
+        )
         // Raw for the same reason as `savePreset`.
         .handleRaw(
           "registerDevice",
@@ -195,6 +237,7 @@ export const MargeHandlers = HttpApiBuilder.group(
               ),
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
+            yield* contactsRepo.record(device.deviceId);
             yield* devicesRepo.pair(params.accountId, device.deviceId);
             const now = DateTime.toEpochMillis(yield* DateTime.now);
             return createDeviceXml(device.deviceId, device.name, now);
@@ -205,6 +248,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handleRaw(
           "updateDevice",
           Effect.fn(function* ({ params, request }) {
+            yield* contactsRepo.record(params.deviceId);
             const device = yield* request.text.pipe(
               Effect.flatMap(decodeSpeakerDevice),
               Effect.tapError((error) =>
@@ -230,6 +274,7 @@ export const MargeHandlers = HttpApiBuilder.group(
         .handle(
           "deviceGroup",
           Effect.fn(function* ({ params }) {
+            yield* contactsRepo.record(params.deviceId);
             yield* devicesRepo.pair(params.accountId, params.deviceId);
             return `${XML_HEADER}<group/>`;
           }),

@@ -11,7 +11,7 @@ import { appLog, realClock } from "./runtime";
 const SIMULATED_PANEL_MS = 1500;
 
 /** The fakes' virtual time, run on real timers so scenarios play out on screen. */
-const wallClock: SchedulingClock = {
+export const wallClock: SchedulingClock = {
   now: () => realClock.now(),
   sleep: async (ms, signal) => realClock.sleep(ms, signal),
   schedule(ms, fire) {

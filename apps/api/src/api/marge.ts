@@ -298,7 +298,7 @@ export class MargeApi extends HttpApiGroup.make("marge")
       OpenApi.annotations({
         summary: "Report power on",
         description:
-          "Called by the speaker when it boots. The body (`<device-data>`) is ignored; the reply completes the handshake.",
+          "Called by the speaker when it boots. Records the contact of the speaker named by the body's `<device-data><device id>`; the reply completes the handshake, whatever the body.",
       }),
     ),
     HttpApiEndpoint.post("registerDevice", "/account/:accountId/device", {
@@ -368,6 +368,6 @@ export class MargeApi extends HttpApiGroup.make("marge")
     OpenApi.annotations({
       title: "Marge",
       description:
-        "The subset of Bose's Marge streaming server that SoundTouch speakers call once their `margeServerUrl` points at this server. Bodies are Bose XML (`application/vnd.bose.streaming-v1.2+xml`).",
+        "The subset of Bose's Marge streaming server that SoundTouch speakers call once their `margeServerUrl` points at this server. Bodies are Bose XML (`application/vnd.bose.streaming-v1.2+xml`). Every call naming a speaker's device id records the speaker's contact, which the app reads back.",
     }),
   ) {}

@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { countStationClick } from "@/features/radio/lib/radio-browser";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import {
-  useMargeAPIStatusQuery,
+  useRadioSetupQuery,
   type BoseSpeaker,
 } from "@/features/speakers/hooks/useSpeakerManager";
 import {
@@ -80,11 +80,11 @@ export default function CastSheet() {
   }, []);
 
   // With a single speaker, saving goes straight to its presets, once it's
-  // configured for the Marge API: until then the speaker list shows its status
-  // and offers to configure it, as when choosing among several.
+  // set up for internet radio: until then the speaker list shows its status
+  // and offers to set it up, as when choosing among several.
   const onlySpeaker =
     mode === "preset" && speakers.length === 1 ? speakers[0] : undefined;
-  const onlySpeakerStatus = useMargeAPIStatusQuery(onlySpeaker?.host ?? "");
+  const onlySpeakerStatus = useRadioSetupQuery(onlySpeaker?.host ?? "");
   const presetSpeakerId =
     chosenSpeakerId ??
     (onlySpeaker && onlySpeakerStatus.data === true
@@ -176,17 +176,17 @@ export default function CastSheet() {
 
   const askToConfigure = (
     speaker: BoseSpeaker,
-    title = "Configuration required",
-    message = `${speaker.name} must be configured for the Marge API before it can play internet radio.`,
+    title = "Set up internet radio?",
+    message = `${speaker.name} needs to be set up for Revive ST before it can play internet radio.`,
   ) => {
     Alert.alert(title, message, [
       { text: "Cancel", style: "cancel" },
       {
-        text: "Configure",
+        text: "Set up",
         onPress: () => {
           router.back();
           router.push(
-            `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+            `/speakers/${encodeURIComponent(speaker.deviceID)}/configure`,
           );
         },
       },
@@ -197,13 +197,13 @@ export default function CastSheet() {
     logger.error(err);
     haptics.error();
     setCastError(sheetErrorMessage(err, speaker.name, mode, station.kind));
-    // Speakers configured before custom stations existed lack the source
-    // until they fetch it again, which configuring does.
+    // Speakers set up before custom stations existed lack the source until
+    // they fetch it again, which setting them up again does.
     if (station.kind === "custom" && isMissingSourceError(err)) {
       askToConfigure(
         speaker,
         `Add custom stations to ${speaker.name}?`,
-        `${speaker.name} gets custom stations when it's configured again. Configuring restarts it.`,
+        `${speaker.name} gets custom stations when it's set up again. Setting it up restarts it.`,
       );
     }
   };
@@ -332,8 +332,8 @@ function sheetErrorMessage(
   }
   if (isMissingSourceError(err)) {
     return kind === "custom"
-      ? `${speakerName} doesn't have custom stations yet. Configure it again from its settings to add them.`
-      : `${speakerName} is missing its internet radio source, which often happens after a factory reset. Configure it again from its settings.`;
+      ? `${speakerName} doesn't have custom stations yet. Set it up again from its settings to add them.`
+      : `${speakerName} is missing its internet radio source, which often happens after a factory reset. Set it up again from its settings.`;
   }
   return mode === "play"
     ? `Couldn't play this station on ${speakerName}. Check that the speaker is on and try again.`
@@ -353,26 +353,26 @@ function SpeakerCastItem({
   disabled: boolean;
   onCast: (isConfigured: boolean) => void;
 }) {
-  const margeAPIStatus = useMargeAPIStatusQuery(speaker.host);
+  const radioSetup = useRadioSetupQuery(speaker.host);
   const isPowerOff =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 
-  const isError = margeAPIStatus.isError;
-  const isConfigured = margeAPIStatus.data === true;
-  const isLoading = margeAPIStatus.isLoading;
+  const isError = radioSetup.isError;
+  const isConfigured = radioSetup.data === true;
+  const isLoading = radioSetup.isLoading;
 
   const getStatusText = () => {
     if (isCasting) {
       return "Starting station…";
     }
     if (isLoading) {
-      return "Checking configuration…";
+      return "Checking setup…";
     }
     if (isError) {
       return "Connection failed";
     }
     if (!isConfigured) {
-      return "Not configured for Marge API";
+      return "Needs setup for internet radio";
     }
     if (isPowerOff) {
       return "Standby";

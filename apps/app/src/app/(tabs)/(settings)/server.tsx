@@ -90,7 +90,7 @@ export default function ServerSettings() {
           <FieldGroup.SectionFooter>
             <FormFooterText color={error === null ? undefined : color.danger}>
               {error ??
-                "The Revive ST server the app and the speakers you configure use, like http://192.168.1.10:3000 for one on your network. Speakers configured for another server show as not configured until you configure them again."}
+                "The Revive ST server the app and the speakers you set up use, like http://192.168.1.10:3000 for one on your network. Speakers set up for another server show as needing setup until you set them up again."}
             </FormFooterText>
           </FieldGroup.SectionFooter>
         </FormSection>

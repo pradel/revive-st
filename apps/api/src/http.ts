@@ -17,11 +17,19 @@ import { BmxHandlers } from "./handlers/bmx.ts";
 import { InternalHandlers } from "./handlers/internal.ts";
 import { MargeHandlers } from "./handlers/marge.ts";
 import { ServerHandlers } from "./handlers/server.ts";
+import { StatsHandlers, UpdatesHandlers } from "./handlers/speaker-services.ts";
 
 const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
   openapiPath: OPENAPI_PATH,
 }).pipe(
-  Layer.provide([ServerHandlers, MargeHandlers, BmxHandlers, InternalHandlers]),
+  Layer.provide([
+    ServerHandlers,
+    MargeHandlers,
+    BmxHandlers,
+    InternalHandlers,
+    UpdatesHandlers,
+    StatsHandlers,
+  ]),
 );
 
 /**
@@ -208,8 +216,8 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
 
 /**
  * The HTTP application, served on whichever `HttpServer` is provided.
- * Requires `PresetsRepo`, `DevicesRepo`, `TuneIn`, `RadioBrowser` and the
- * platform services of the server layer.
+ * Requires `PresetsRepo`, `DevicesRepo`, `DeviceContactsRepo`, `TuneIn`,
+ * `RadioBrowser` and the platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
   Layer.mergeAll(ApiLayer, DocsLayer, MediaLayer, NotModifiedLayer),
