@@ -15,11 +15,17 @@ import {
   contentItemXml,
 } from "bose-api-speaker-client";
 import { useEffect, useState, useRef, useCallback } from "react";
+import { AppState } from "react-native";
 import Zeroconf, { type Service } from "react-native-zeroconf";
 
 import { useServerUrl } from "@/features/server/server";
 import { logger } from "@/lib/logger";
 
+import type { KnownSpeaker } from "../lib/known-speakers";
+import {
+  loadKnownSpeakers,
+  saveKnownSpeakers,
+} from "../lib/known-speakers-store";
 import { syncPresetsToMarge, usesOurServer } from "../lib/marge-api";
 import {
   confirmStationPlaying,
@@ -28,8 +34,16 @@ import {
 } from "../lib/radio";
 import { isSetUpForRadio } from "../lib/radio-setup";
 
+/**
+ * `connecting`: a remembered speaker shown from storage while the app tries
+ * to reach it; `online`: reached, its state is live; `offline`: it didn't
+ * answer at its last address and the network scan hasn't found it.
+ */
+export type SpeakerStatus = "connecting" | "online" | "offline";
+
 export interface BoseSpeaker {
   deviceID: string;
+  status: SpeakerStatus;
   host: string;
   port: number;
   name: string;
@@ -67,6 +81,7 @@ function flattenSpeakerState(
 ): BoseSpeaker {
   return {
     deviceID,
+    status: "online",
     host,
     port,
     name: state.name ?? "Bose Speaker",
@@ -103,11 +118,41 @@ const RENAME_TIMEOUT_MS = 15_000;
 /** How long one readback of what a speaker plays may take while starting a station. */
 const READBACK_TIMEOUT_MS = 2000;
 
-export function useSpeakerManager(scanDurationMs = 5000) {
+/** How long a speaker may take to answer `/info` before it counts as offline. */
+const PROBE_TIMEOUT_MS = 4000;
+
+/** A remembered speaker's card until the app reaches it. */
+function rememberedSpeaker(
+  known: KnownSpeaker,
+  status: SpeakerStatus,
+): BoseSpeaker {
+  return {
+    deviceID: known.deviceID,
+    status,
+    host: known.host,
+    port: known.port,
+    name: known.name,
+    type: known.type,
+  };
+}
+
+/** Who started a scan: the app (launch, return to foreground) or the user. */
+type ScanKind = "auto" | "user";
+
+export function useSpeakerManager({
+  enabled = true,
+  scanDurationMs = 5000,
+}: {
+  /** Looks for and connects to speakers only once true (see `local-network`). */
+  enabled?: boolean;
+  scanDurationMs?: number;
+} = {}) {
   const [speakersData, setSpeakersData] = useState<Record<string, BoseSpeaker>>(
     {},
   );
-  const [isScanning, setIsScanning] = useState(false);
+  const [scan, setScan] = useState<ScanKind | null>(null);
+  /** The remembered speakers are loaded and listed. */
+  const [restored, setRestored] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const zeroconfRef = useRef<Zeroconf | null>(null);
@@ -132,7 +177,7 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       zeroconfRef.current = null;
     }
     if (isMounted.current) {
-      setIsScanning(false);
+      setScan(null);
     }
   }, []);
 
@@ -143,20 +188,136 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     }
   }, []);
 
-  const startScan = useCallback(() => {
-    stopScan();
-    if (!isMounted.current) {
-      return;
-    }
+  /**
+   * Reaches the speaker answering at `address` and keeps it connected: its
+   * card shows once its state is loaded, not before. With `expectedDeviceID`
+   * (a remembered speaker), another device at that address is ignored.
+   * Resolves to whether the speaker answered.
+   */
+  const connectAt = useCallback(
+    async (address: string, port: number, expectedDeviceID?: string) => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort();
+      }, PROBE_TIMEOUT_MS);
+      const infoResult = await new BoseHttpAdapter({ ip: address, port })
+        .getInfo({ signal: controller.signal })
+        .finally(() => {
+          clearTimeout(timer);
+        });
+      if (!isMounted.current || !infoResult.isOk()) {
+        return false;
+      }
+      const deviceID = infoResult.value.deviceID;
+      if (
+        !deviceID ||
+        (expectedDeviceID !== undefined && deviceID !== expectedDeviceID)
+      ) {
+        return false;
+      }
 
-    setIsScanning(true);
-    setError(null);
+      const existing = speakersMapRef.current.get(deviceID);
+      if (
+        existing?.options.ip === address &&
+        existing.options.port === port &&
+        existing.getState().connectionState !== "disconnected"
+      ) {
+        return true;
+      }
+      existing?.disconnect();
 
-    const zeroconf = new Zeroconf();
-    zeroconfRef.current = zeroconf;
+      // The speaker emits state while connecting, before `initialize` has
+      // read anything; its card waits for the first full state instead of
+      // showing an empty one.
+      let ready = false;
+      const publish = (state: SpeakerState) => {
+        const accountId = state.margeAccountUUID;
+        if (state.presets && accountId && usesOurServer(state.margeURL)) {
+          syncPresetsToMarge(accountId, deviceID, state.presets).catch(
+            (err: unknown) => {
+              logger.warn("[useBoseScanner] Error syncing presets:", err);
+            },
+          );
+        }
+        setSpeakersData((prev) => ({
+          ...prev,
+          [deviceID]: flattenSpeakerState(
+            deviceID,
+            address,
+            port,
+            isUpdatingRef.current[deviceID] ?? false,
+            state,
+          ),
+        }));
+      };
+      const speaker = new Speaker({
+        ip: address,
+        port,
+        deviceID,
+        onStateUpdate: (state) => {
+          if (isMounted.current && ready) {
+            publish(state);
+          }
+        },
+      });
+      speakersMapRef.current.set(deviceID, speaker);
 
-    zeroconf.on("resolved", (service: Service) => {
-      void (async () => {
+      // Connect to WebSocket and fetch initial state
+      speaker.connect();
+      await speaker.initialize();
+      if (
+        !isMounted.current ||
+        speakersMapRef.current.get(deviceID) !== speaker
+      ) {
+        return true;
+      }
+      ready = true;
+      publish(speaker.getState());
+      return true;
+    },
+    [],
+  );
+
+  /** Tries a remembered speaker at its last address; offline if it doesn't answer. */
+  const reachRemembered = useCallback(
+    async (deviceID: string, host: string, port: number) => {
+      const answered = await connectAt(host, port, deviceID).catch(
+        (err: unknown) => {
+          logger.log(
+            `[BoseScanner] ${deviceID} didn't answer at ${host}:`,
+            err,
+          );
+          return false;
+        },
+      );
+      if (answered || !isMounted.current) {
+        return;
+      }
+      setSpeakersData((prev) => {
+        const entry = prev[deviceID];
+        if (!entry || entry.status === "online") {
+          return prev;
+        }
+        return { ...prev, [deviceID]: { ...entry, status: "offline" } };
+      });
+    },
+    [connectAt],
+  );
+
+  const startScan = useCallback(
+    (kind: ScanKind) => {
+      stopScan();
+      if (!isMounted.current) {
+        return;
+      }
+
+      setScan(kind);
+      setError(null);
+
+      const zeroconf = new Zeroconf();
+      zeroconfRef.current = zeroconf;
+
+      zeroconf.on("resolved", (service: Service) => {
         if (!isMounted.current) {
           return;
         }
@@ -166,121 +327,96 @@ export function useSpeakerManager(scanDurationMs = 5000) {
         if (!address) {
           return;
         }
-
-        try {
-          const httpAdapter = new BoseHttpAdapter({
-            ip: address,
-            port: service.port || 8090,
-          });
-          const infoResult = await httpAdapter.getInfo();
-          if (!isMounted.current) {
-            return;
-          }
-          if (!infoResult.isOk()) {
-            return;
-          }
-          const info = infoResult.value;
-          if (!info.deviceID) {
-            return;
-          }
-
-          const deviceID = info.deviceID;
-
-          let speaker = speakersMapRef.current.get(deviceID);
-          if (speaker) {
-            const currentIp = speaker.options.ip;
-            const currentPort = speaker.options.port;
-            if (
-              currentIp !== address ||
-              currentPort !== (service.port || 8090) ||
-              speaker.getState().connectionState === "disconnected"
-            ) {
-              speaker.disconnect();
-              speaker = undefined;
-            }
-          }
-
-          if (!speaker) {
-            speaker = new Speaker({
-              ip: address,
-              port: service.port || 8090,
-              deviceID,
-              onStateUpdate: (state) => {
-                if (!isMounted.current) {
-                  return;
-                }
-
-                const accountId = state.margeAccountUUID;
-                if (
-                  state.presets &&
-                  accountId &&
-                  usesOurServer(state.margeURL)
-                ) {
-                  syncPresetsToMarge(accountId, deviceID, state.presets).catch(
-                    (err: unknown) => {
-                      logger.warn(
-                        "[useBoseScanner] Error syncing presets:",
-                        err,
-                      );
-                    },
-                  );
-                }
-
-                setSpeakersData((prev) => ({
-                  ...prev,
-                  [deviceID]: flattenSpeakerState(
-                    deviceID,
-                    address,
-                    service.port || 8090,
-                    isUpdatingRef.current[deviceID] ?? false,
-                    state,
-                  ),
-                }));
-              },
-            });
-            speakersMapRef.current.set(deviceID, speaker);
-
-            // Connect to WebSocket and fetch initial state
-            speaker.connect();
-            await speaker.initialize();
-          }
-        } catch (err) {
+        connectAt(address, service.port || 8090).catch((err: unknown) => {
           logger.log(
             `[BoseScanner] Device found at ${address} but failed info verification:`,
             err,
           );
-        }
-      })();
-    });
+        });
+      });
 
-    zeroconf.on("error", (err) => {
-      // Per-service failures (e.g. resolve TIMEOUT) are non-fatal; the scan keeps running.
-      if (err.serviceName) {
-        logger.warn(
-          `[BoseScanner] Ignoring non-fatal zeroconf error for "${err.serviceName}":`,
-          err,
-        );
+      zeroconf.on("error", (err) => {
+        // Per-service failures (e.g. resolve TIMEOUT) are non-fatal; the scan keeps running.
+        if (err.serviceName) {
+          logger.warn(
+            `[BoseScanner] Ignoring non-fatal zeroconf error for "${err.serviceName}":`,
+            err,
+          );
+          return;
+        }
+        logger.error("[BoseScanner] Zeroconf error:", err);
+        if (isMounted.current) {
+          setError(err.message);
+          setScan(null);
+        }
+      });
+
+      try {
+        zeroconf.scan({
+          type: "soundtouch",
+          protocol: "tcp",
+          domain: "local.",
+        });
+      } catch (err) {
+        logger.error("[BoseScanner] Scan exception:", err);
+        setError(err instanceof Error ? err.message : String(err));
+        setScan(null);
+      }
+
+      scanTimeoutRef.current = setTimeout(() => {
+        stopScan();
+      }, scanDurationMs);
+    },
+    [connectAt, scanDurationMs, stopScan],
+  );
+
+  /**
+   * Reconnects every listed speaker (remembered ones at their last address)
+   * and scans for the rest: on launch and when the app returns to the
+   * foreground, where sockets may have been dropped while it was away.
+   */
+  const reconnectAll = useCallback(
+    (entries: readonly BoseSpeaker[]) => {
+      for (const entry of entries) {
+        const speaker = speakersMapRef.current.get(entry.deviceID);
+        if (speaker && entry.status === "online") {
+          speaker.connect();
+          void speaker.initialize();
+        } else {
+          void reachRemembered(entry.deviceID, entry.host, entry.port);
+        }
+      }
+      startScan("auto");
+    },
+    [reachRemembered, startScan],
+  );
+
+  /** An offline speaker, tried again: at its last address and by scanning. */
+  const retrySpeaker = useCallback(
+    (entry: BoseSpeaker) => {
+      if (entry.status === "online") {
         return;
       }
-      logger.error("[BoseScanner] Zeroconf error:", err);
-      if (isMounted.current) {
-        setError(err.message);
-        setIsScanning(false);
-      }
-    });
+      setSpeakersData((prev) => ({
+        ...prev,
+        [entry.deviceID]: { ...entry, status: "connecting" },
+      }));
+      void reachRemembered(entry.deviceID, entry.host, entry.port);
+      startScan("auto");
+    },
+    [reachRemembered, startScan],
+  );
 
-    try {
-      zeroconf.scan({ type: "soundtouch", protocol: "tcp", domain: "local." });
-    } catch (err) {
-      logger.error("[BoseScanner] Scan exception:", err);
-      setError(err instanceof Error ? err.message : String(err));
-      setIsScanning(false);
-    }
-
-    scanTimeoutRef.current = setTimeout(() => {
-      stopScan();
-    }, scanDurationMs);
-  }, [scanDurationMs, stopScan]);
+  /** Stops listing a speaker and remembering it, until the scan finds it again. */
+  const forgetSpeaker = useCallback((deviceID: string) => {
+    speakersMapRef.current.get(deviceID)?.disconnect();
+    speakersMapRef.current.delete(deviceID);
+    setSpeakersData((prev) =>
+      Object.fromEntries(
+        Object.entries(prev).filter(([id]) => id !== deviceID),
+      ),
+    );
+  }, []);
 
   const setUpdating = (deviceID: string, isUpdating: boolean) => {
     isUpdatingRef.current[deviceID] = isUpdating;
@@ -687,12 +823,26 @@ export function useSpeakerManager(scanDurationMs = 5000) {
     },
   });
 
+  // Lists the remembered speakers before anything is reached.
   useEffect(() => {
     isMounted.current = true;
-    startScan();
+    void loadKnownSpeakers().then((known) => {
+      if (!isMounted.current) {
+        return;
+      }
+      setSpeakersData((prev) => ({
+        ...Object.fromEntries(
+          known.map((entry) => [
+            entry.deviceID,
+            rememberedSpeaker(entry, "connecting"),
+          ]),
+        ),
+        ...prev,
+      }));
+      setRestored(true);
+    });
 
     const wsClients = speakersMapRef.current;
-
     return () => {
       isMounted.current = false;
       stopScan();
@@ -701,13 +851,94 @@ export function useSpeakerManager(scanDurationMs = 5000) {
       });
       wsClients.clear();
     };
-  }, [startScan, stopScan]);
+  }, [stopScan]);
+
+  const speakersDataRef = useRef(speakersData);
+  useEffect(() => {
+    speakersDataRef.current = speakersData;
+  }, [speakersData]);
+
+  // Reaches the remembered speakers and scans once allowed, then again each
+  // time the app comes back from the background.
+  useEffect(() => {
+    if (!enabled || !restored) {
+      return;
+    }
+    reconnectAll(Object.values(speakersDataRef.current));
+
+    let previous = AppState.currentState;
+    const subscription = AppState.addEventListener("change", (next) => {
+      const wasInBackground = previous === "background";
+      previous = next;
+      if (next === "active" && wasInBackground) {
+        reconnectAll(Object.values(speakersDataRef.current));
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [enabled, restored, reconnectAll]);
+
+  // Remembers the listed speakers: reached ones with their current name and
+  // address, the others as they were stored.
+  const savedKnownRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!restored) {
+      return;
+    }
+    const known: KnownSpeaker[] = Object.values(speakersData).map(
+      ({ deviceID, name, type, host, port }) => ({
+        deviceID,
+        name,
+        type,
+        host,
+        port,
+      }),
+    );
+    const serialized = JSON.stringify(known);
+    if (savedKnownRef.current === null) {
+      // The first list is what was just loaded.
+      savedKnownRef.current = serialized;
+      return;
+    }
+    if (serialized !== savedKnownRef.current) {
+      savedKnownRef.current = serialized;
+      void saveKnownSpeakers(known);
+    }
+  }, [restored, speakersData]);
+
+  // An automatic scan ends once every listed speaker has answered; a scan the
+  // user asked for runs its full length to find new speakers.
+  useEffect(() => {
+    const entries = Object.values(speakersData);
+    if (
+      scan === "auto" &&
+      entries.length > 0 &&
+      entries.every((entry) => entry.status === "online")
+    ) {
+      stopScan();
+    }
+  }, [scan, speakersData, stopScan]);
+
+  const listedSpeakers = Object.values(speakersData);
+  const rescan = useCallback(() => {
+    startScan("user");
+  }, [startScan]);
 
   return {
-    speakers: Object.values(speakersData),
-    isScanning,
+    /** Reached speakers, the ones commands go to. */
+    speakers: listedSpeakers.filter((speaker) => speaker.status === "online"),
+    /** Reached speakers and remembered ones still connecting or offline. */
+    listedSpeakers,
+    /** The remembered speakers are listed (the first screen can show). */
+    restored,
+    isScanning: scan !== null,
+    /** A scan the user asked for (pull to refresh, "Scan again") is running. */
+    isRefreshing: scan === "user",
     error,
-    rescan: startScan,
+    rescan,
+    retrySpeaker,
+    forgetSpeaker,
     refreshStatus: refreshSpeakerStatus,
     loadPresets,
     loadBass,
