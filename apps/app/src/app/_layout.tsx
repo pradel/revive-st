@@ -33,6 +33,11 @@ export default function RootLayout() {
                 />
                 <Stack.Screen name="logs" options={{ title: "Logs" }} />
                 <Stack.Screen
+                  name="speakers/[id]/settings"
+                  // The header card under it shows the speaker's name large.
+                  options={{ headerLargeTitleEnabled: false }}
+                />
+                <Stack.Screen
                   name="speakers/[id]/now-playing"
                   options={{
                     presentation: "formSheet",

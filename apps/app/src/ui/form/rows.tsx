@@ -17,6 +17,7 @@ import { use } from "react";
 import { Platform, ToastAndroid } from "react-native";
 
 import { copyText } from "@/lib/clipboard";
+import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { ComposeSliderSlots } from "@/ui/ds/ComposeSliderSlots";
 import { sliderDimensions } from "@/ui/ds/Slider.types";
@@ -71,8 +72,10 @@ function RowIcon({ icon }: { icon: FormIcon | undefined }) {
 
 /**
  * Read-only row: label (and description) with a trailing value. `copyable`
- * values are selectable on iOS and copied on tap on Android. `stacked` puts the
- * value under the label, wrapping, for values too long to share the row.
+ * values are selectable on iOS and copied on tap on Android. `copyValue` is
+ * copied on tap on both, for a row that shows a shortened value (e.g. a
+ * version behind its full build string). `stacked` puts the value under the
+ * label, wrapping, for values too long to share the row.
  */
 export function FormValueRow({
   label,
@@ -81,6 +84,7 @@ export function FormValueRow({
   valueColor = color.textSecondary,
   icon,
   copyable,
+  copyValue,
   stacked,
 }: {
   label: string;
@@ -89,6 +93,7 @@ export function FormValueRow({
   valueColor?: string;
   icon?: FormIcon;
   copyable?: boolean;
+  copyValue?: string;
   stacked?: boolean;
 }) {
   const valueText =
@@ -104,16 +109,29 @@ export function FormValueRow({
       </Text>
     ) : null;
 
+  const tapToCopy =
+    copyValue ?? (copyable && !ios && value !== undefined ? value : undefined);
+
   return (
     <Row
       alignment="center"
       spacing={12}
       onPress={
-        copyable && !ios && value !== undefined
+        tapToCopy !== undefined
           ? () => {
-              void copyText(value, `Copied ${label}`).catch(() => {
-                ToastAndroid.show("Could not copy", ToastAndroid.SHORT);
-              });
+              void copyText(tapToCopy, `Copied ${label}`)
+                .then((needsConfirmation) => {
+                  if (needsConfirmation) {
+                    haptics.success();
+                  }
+                })
+                .catch(() => {
+                  if (ios) {
+                    haptics.error();
+                  } else {
+                    ToastAndroid.show("Could not copy", ToastAndroid.SHORT);
+                  }
+                });
             }
           : undefined
       }
@@ -246,7 +264,9 @@ export function FormPickerRow<Value extends PickerItemValue>({
 /**
  * Inline slider with its label and current value. Dragging updates the value
  * shown immediately; `onCommit` fires when the drag ends. On Android it uses
- * the app's thin track and round thumb, as on the speaker card.
+ * the app's thin track and round thumb, as on the speaker card. `formatValue`
+ * words the value (e.g. "Max"); `showRange` labels the track's ends with
+ * `min` and `max`, for scales that don't start at zero.
  */
 export function FormSliderRow({
   label,
@@ -255,6 +275,8 @@ export function FormSliderRow({
   max,
   step,
   saving,
+  formatValue = String,
+  showRange,
   onCommit,
 }: {
   label: string;
@@ -263,6 +285,8 @@ export function FormSliderRow({
   max: number;
   step: number;
   saving?: boolean;
+  formatValue?: (value: number) => string;
+  showRange?: boolean;
   onCommit: (value: number) => void;
 }) {
   const draft = useSliderDraft(value, onCommit);
@@ -274,7 +298,7 @@ export function FormSliderRow({
         <Label label={label} />
         {iosSpacer}
         <Text textStyle={secondary}>
-          {saving ? "Saving…" : String(draft.value)}
+          {saving ? "Saving…" : formatValue(draft.value)}
         </Text>
       </Row>
       {ios ? (
@@ -316,6 +340,15 @@ export function FormSliderRow({
           />
         </ComposeSlider>
       )}
+      {showRange ? (
+        <Row alignment="center">
+          <Text textStyle={caption} modifiers={labelModifiers}>
+            {String(min)}
+          </Text>
+          {iosSpacer}
+          <Text textStyle={caption}>{String(max)}</Text>
+        </Row>
+      ) : null}
     </Column>
   );
 }

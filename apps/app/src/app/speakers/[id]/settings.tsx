@@ -1,22 +1,28 @@
-import { FieldGroup, TextInput } from "@expo/ui";
-import type { AudioMode } from "bose-api-speaker-client";
+import { FieldGroup, RNHostView } from "@expo/ui";
+import type { AudioMode, KeyValue } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { useConfigureRun } from "@/features/configure/store";
-import { validateSpeakerName } from "@/features/onboarding/session/naming";
+import { PresetStrip } from "@/features/speakers/components/PresetStrip";
+import {
+  SpeakerSettingsHeader,
+  type SpeakerStatus,
+} from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
-import { sourceLabel } from "@/features/speakers/lib/playback";
+import { speakerDrawing } from "@/features/speakers/lib/drawing";
+import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
 import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
-import { formIcons, type FormIcon } from "@/ui/form/icons";
+import { formIcons } from "@/ui/form/icons";
 import {
   FormButtonRow,
   FormFooterText,
+  FormLinkRow,
   FormPickerRow,
   FormSliderRow,
   FormValueRow,
@@ -51,29 +57,27 @@ const AUDIO_MODES: readonly {
   },
 ];
 
-/** Row icon for what a preset plays. */
-function sourceIcon(source: string): FormIcon {
-  switch (sourceLabel(source)) {
-    case "Radio":
-      return formIcons.radio;
-    case "Bluetooth":
-      return formIcons.bluetooth;
-    case "AUX":
-      return formIcons.aux;
-    case "AirPlay":
-      return formIcons.airplay;
-    default:
-      return formIcons.music;
+/**
+ * Words a level at the ends of its range: bass on a SoundTouch 10 runs from
+ * −9 to 0, where a bare "0" at the right end reads like a broken slider.
+ */
+const levelLabel = (min: number, max: number) => (value: number) => {
+  if (value === max) {
+    return "Max";
   }
-}
+  if (value === min) {
+    return "Min";
+  }
+  return String(value);
+};
 
 export default function SpeakerSettings() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
     speakers,
+    keyMutation,
     setBassMutation,
-    setNameMutation,
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
@@ -81,9 +85,6 @@ export default function SpeakerSettings() {
   } = useBose();
 
   const speaker = speakers.find((item) => item.deviceID === id);
-
-  const [nameDraft, setNameDraft] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
 
   useEffect(() => {
     if (speaker?.deviceID) {
@@ -93,6 +94,7 @@ export default function SpeakerSettings() {
 
   const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
   const configureRun = useConfigureRun(id);
+  const [presetsWidth, setPresetsWidth] = useState<number>();
 
   if (!speaker) {
     return (
@@ -124,29 +126,12 @@ export default function SpeakerSettings() {
     ]);
   };
 
-  const saveName = (draft: string) => {
-    const problem = validateSpeakerName(draft);
-    if (problem !== undefined) {
-      setNameError(problem);
-      return;
-    }
-    const trimmed = draft.trim();
-    if (trimmed === speaker.name) {
-      setNameDraft(null);
-      return;
-    }
-    setNameMutation.mutate(
-      { deviceID: speaker.deviceID, name: trimmed },
-      {
-        onSuccess: () => {
-          setNameDraft(null);
-          setNameError(null);
-        },
-        onError: () => {
-          setNameError("Couldn't rename the speaker. Try again.");
-        },
-      },
-    );
+  const playPreset = (slot: number) => {
+    haptics.tap();
+    keyMutation.mutate({
+      deviceID: speaker.deviceID,
+      key: `PRESET_${slot}` as KeyValue,
+    });
   };
 
   const bassCaps = speaker.bassCapabilities;
@@ -158,62 +143,66 @@ export default function SpeakerSettings() {
     Boolean(toneControls) ||
     Boolean(levelControls);
 
-  const nameChanged = nameDraft !== null && nameDraft.trim() !== speaker.name;
-
   const settingUp = configureRun.view?.kind === "working";
-  const radioStatus = (() => {
+  const radio = ((): { value: string; status: SpeakerStatus } => {
     if (settingUp) {
-      return { label: "Setting up…", color: color.textSecondary };
+      return {
+        value: "Setting up…",
+        status: { label: "Setting up internet radio…", tone: "neutral" },
+      };
     }
     if (radioSetup.isLoading) {
-      return { label: "Checking…", color: color.textSecondary };
+      return {
+        value: "Checking…",
+        status: { label: "Checking…", tone: "neutral" },
+      };
     }
     if (radioSetup.isError) {
-      return { label: "Can't reach speaker", color: color.danger };
+      return {
+        value: "Unavailable",
+        status: { label: "Can't reach speaker", tone: "danger" },
+      };
     }
     if (radioSetup.data) {
-      return { label: "Ready", color: color.textPrimary };
+      return {
+        value: "Ready",
+        status: { label: "Online · Internet radio ready", tone: "ok" },
+      };
     }
-    return { label: "Needs setup", color: color.textSecondary };
+    return {
+      value: "Needs setup",
+      status: { label: "Online · Internet radio needs setup", tone: "warning" },
+    };
   })();
 
   return (
     <Screen>
       <Stack.Title>{speaker.name}</Stack.Title>
       <Form onRefresh={refresh}>
-        <FormSection title="Name">
-          <TextInput
-            key={speaker.name}
-            defaultValue={speaker.name}
-            placeholder="Speaker name"
-            autoCapitalize="words"
-            autoCorrect={false}
-            returnKeyType="done"
-            editable={!setNameMutation.isPending}
-            onChangeText={(text) => {
-              setNameDraft(text);
-              setNameError(null);
-            }}
-            onSubmitEditing={saveName}
-          />
-          {nameChanged ? (
-            <FormButtonRow
-              label={setNameMutation.isPending ? "Saving…" : "Save name"}
-              disabled={setNameMutation.isPending}
-              onPress={() => {
-                saveName(nameDraft);
-              }}
+        <FormSection>
+          <RNHostView matchContents={{ vertical: true }}>
+            <SpeakerSettingsHeader
+              name={speaker.name}
+              model={speaker.type}
+              host={speaker.host}
+              drawing={speakerDrawing(speaker.type)}
+              status={radio.status}
             />
-          ) : null}
-          {nameError !== null ? (
-            <FieldGroup.SectionFooter>
-              <FormFooterText color={color.danger}>{nameError}</FormFooterText>
-            </FieldGroup.SectionFooter>
-          ) : null}
+          </RNHostView>
+        </FormSection>
+
+        <FormSection title="General">
+          <FormLinkRow
+            label="Name"
+            value={speaker.name}
+            onPress={() => {
+              router.push("./rename");
+            }}
+          />
         </FormSection>
 
         {hasAudioSliders ? (
-          <FormSection title="Audio">
+          <FormSection title="Sound">
             {bassCaps?.bassAvailable ? (
               <FormSliderRow
                 label="Bass"
@@ -222,6 +211,8 @@ export default function SpeakerSettings() {
                 max={bassCaps.bassMax}
                 step={1}
                 saving={setBassMutation.isPending}
+                formatValue={levelLabel(bassCaps.bassMin, bassCaps.bassMax)}
+                showRange
                 onCommit={(value) => {
                   setBassMutation.mutate({
                     deviceID: speaker.deviceID,
@@ -239,6 +230,11 @@ export default function SpeakerSettings() {
                   max={toneControls.bass.maxValue}
                   step={toneControls.bass.step}
                   saving={setAudioProductToneControlsMutation.isPending}
+                  formatValue={levelLabel(
+                    toneControls.bass.minValue,
+                    toneControls.bass.maxValue,
+                  )}
+                  showRange
                   onCommit={(value) => {
                     setAudioProductToneControlsMutation.mutate({
                       deviceID: speaker.deviceID,
@@ -253,6 +249,11 @@ export default function SpeakerSettings() {
                   max={toneControls.treble.maxValue}
                   step={toneControls.treble.step}
                   saving={setAudioProductToneControlsMutation.isPending}
+                  formatValue={levelLabel(
+                    toneControls.treble.minValue,
+                    toneControls.treble.maxValue,
+                  )}
+                  showRange
                   onCommit={(value) => {
                     setAudioProductToneControlsMutation.mutate({
                       deviceID: speaker.deviceID,
@@ -271,6 +272,11 @@ export default function SpeakerSettings() {
                   max={levelControls.frontCenterSpeakerLevel.maxValue}
                   step={levelControls.frontCenterSpeakerLevel.step}
                   saving={setAudioProductLevelControlsMutation.isPending}
+                  formatValue={levelLabel(
+                    levelControls.frontCenterSpeakerLevel.minValue,
+                    levelControls.frontCenterSpeakerLevel.maxValue,
+                  )}
+                  showRange
                   onCommit={(value) => {
                     setAudioProductLevelControlsMutation.mutate({
                       deviceID: speaker.deviceID,
@@ -285,6 +291,11 @@ export default function SpeakerSettings() {
                   max={levelControls.rearSurroundSpeakersLevel.maxValue}
                   step={levelControls.rearSurroundSpeakersLevel.step}
                   saving={setAudioProductLevelControlsMutation.isPending}
+                  formatValue={levelLabel(
+                    levelControls.rearSurroundSpeakersLevel.minValue,
+                    levelControls.rearSurroundSpeakersLevel.maxValue,
+                  )}
+                  showRange
                   onCommit={(value) => {
                     setAudioProductLevelControlsMutation.mutate({
                       deviceID: speaker.deviceID,
@@ -321,57 +332,22 @@ export default function SpeakerSettings() {
           </FormSection>
         ) : null}
 
-        <FormSection title="Internet radio">
-          <FormValueRow
-            label="Status"
-            value={radioStatus.label}
-            valueColor={radioStatus.color}
-          />
-          {settingUp ? (
-            <FormButtonRow
-              label="Show progress"
-              onPress={() => {
-                router.push("./configure");
-              }}
-            />
-          ) : null}
-          {!settingUp && radioSetup.isError ? (
-            <FormButtonRow
-              label="Check again"
-              onPress={() => {
-                void radioSetup.refetch();
-              }}
-            />
-          ) : null}
-          {!settingUp && !radioSetup.isLoading && !radioSetup.isError ? (
-            <FormButtonRow
-              label={radioSetup.data ? "Set up again" : "Set up internet radio"}
-              onPress={() => {
-                router.push("./configure");
-              }}
-            />
-          ) : null}
-          <FieldGroup.SectionFooter>
-            <FormFooterText>
-              {radioSetup.isError && !settingUp
-                ? "Couldn't reach the speaker. Make sure your phone is on the same Wi-Fi network."
-                : "Connects the speaker to Revive ST for internet radio and presets. Setting it up restarts the speaker."}
-            </FormFooterText>
-          </FieldGroup.SectionFooter>
-        </FormSection>
-
         <FormSection title="Presets">
-          {speaker.presets && speaker.presets.length > 0 ? (
-            speaker.presets.map((preset) => (
-              <FormValueRow
-                key={preset.id}
-                icon={sourceIcon(preset.contentItem.source)}
-                label={preset.contentItem.itemName || `Preset ${preset.id}`}
-                description={`Preset ${preset.id} · ${sourceLabel(preset.contentItem.source)}`}
+          {speaker.presets ? (
+            <RNHostView
+              matchContents={{ vertical: true }}
+              onLayout={(event) => {
+                setPresetsWidth(event.nativeEvent.layout.width);
+              }}
+            >
+              <PresetStrip
+                presets={speaker.presets}
+                width={presetsWidth}
+                onPlay={playPreset}
               />
-            ))
+            </RNHostView>
           ) : (
-            <FormValueRow label="No presets configured" />
+            <FormValueRow label="Loading presets…" />
           )}
           <FieldGroup.SectionFooter>
             <FormFooterText>
@@ -381,33 +357,39 @@ export default function SpeakerSettings() {
           </FieldGroup.SectionFooter>
         </FormSection>
 
-        <FormSection title="Device info">
-          <FormValueRow label="Type" value={speaker.type} copyable />
-          <FormValueRow label="Device ID" value={speaker.deviceID} copyable />
-          <FormValueRow label="IP address" value={speaker.host} copyable />
-          <FormValueRow label="Port" value={String(speaker.port)} copyable />
-          {speaker.macAddress ? (
-            <FormValueRow
-              label="MAC address"
-              value={speaker.macAddress}
-              copyable
+        <FormSection title="Advanced">
+          <FormLinkRow
+            icon={formIcons.radio}
+            label="Internet radio setup"
+            value={radio.value}
+            onPress={() => {
+              router.push("./configure");
+            }}
+          />
+          {!settingUp && radioSetup.isError ? (
+            <FormButtonRow
+              label="Check again"
+              onPress={() => {
+                void radioSetup.refetch();
+              }}
             />
           ) : null}
+          <FormLinkRow
+            icon={formIcons.info}
+            label="About this speaker"
+            onPress={() => {
+              router.push("./about");
+            }}
+          />
+          {!settingUp && radioSetup.isError ? (
+            <FieldGroup.SectionFooter>
+              <FormFooterText color={color.danger}>
+                Couldn't reach the speaker. Make sure your phone is on the same
+                Wi-Fi network.
+              </FormFooterText>
+            </FieldGroup.SectionFooter>
+          ) : null}
         </FormSection>
-
-        {speaker.components && speaker.components.length > 0 ? (
-          <FormSection title="Software">
-            {speaker.components.map((component, index) => (
-              <FormValueRow
-                key={component.serialNumber || index}
-                label={component.componentCategory || "Component"}
-                value={component.softwareVersion}
-                copyable
-                stacked
-              />
-            ))}
-          </FormSection>
-        ) : null}
       </Form>
     </Screen>
   );

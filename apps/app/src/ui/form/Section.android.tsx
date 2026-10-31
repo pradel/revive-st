@@ -14,6 +14,8 @@ import {
 } from "@expo/ui/jetpack-compose/modifiers";
 import { Children, Fragment, isValidElement, type ReactNode } from "react";
 
+import { type } from "@/ui/tokens";
+
 import { ContainerHandlesPress } from "./rowPress";
 import { FormLinkRow } from "./rows";
 
@@ -112,9 +114,13 @@ export function FormSection({
         <Column modifiers={[padding(16, 0, 16, 8)]}>
           <Text
             color={colors.onSurfaceVariant}
-            style={{ typography: "titleMedium" }}
+            style={{
+              typography: "labelSmall",
+              fontWeight: type.overline.fontWeight,
+              letterSpacing: type.overline.letterSpacing,
+            }}
           >
-            {title}
+            {title.toUpperCase()}
           </Text>
         </Column>
       ) : null}
