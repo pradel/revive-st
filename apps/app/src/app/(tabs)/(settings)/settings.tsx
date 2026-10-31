@@ -51,6 +51,13 @@ export default function AppSettings() {
               void Linking.openURL(APP_CONFIG.GITHUB_URL);
             }}
           />
+          <FormLinkRow
+            icon={formIcons.feedback}
+            label="Send feedback"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.FEEDBACK_URL);
+            }}
+          />
         </FormSection>
 
         <FormSection title="Network">

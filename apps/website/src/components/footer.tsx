@@ -14,7 +14,7 @@ export function Footer({ className }: { className?: string }) {
         &copy; {currentYear} Revive ST. Not affiliated with Bose Corporation.
         Bose and SoundTouch are trademarks of Bose Corporation.
       </p>
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-4">
         <Link href="/privacy" className="hover:text-fg transition-colors">
           Privacy Policy
         </Link>
@@ -28,6 +28,22 @@ export function Footer({ className }: { className?: string }) {
           className="hover:text-fg transition-colors"
         >
           GitHub Repository
+        </a>
+        <a
+          href={WEBSITE_CONFIG.FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-fg transition-colors"
+        >
+          Feedback
+        </a>
+        <a
+          href={WEBSITE_CONFIG.SPONSOR_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="hover:text-fg transition-colors"
+        >
+          Sponsor
         </a>
       </div>
     </footer>

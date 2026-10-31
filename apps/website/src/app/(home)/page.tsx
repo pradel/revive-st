@@ -9,6 +9,7 @@ import {
   Plus,
   Minus,
   MessageCircle,
+  Heart,
 } from "lucide-react";
 import type { Metadata } from "next";
 import Image from "next/image";
@@ -51,7 +52,7 @@ const FAQS = [
   {
     question: "How can I help?",
     answer:
-      "Revive ST is a community project. You can report bugs, request features, or contribute code on GitHub. If you just want to support the work, downloading the app from the store is the easiest way.",
+      "Revive ST is a community project. Share feedback and ideas in GitHub Discussions, and report bugs or contribute code on GitHub. If you want to support the work, buy the app from the store or sponsor the project on GitHub Sponsors.",
   },
 ];
 
@@ -317,7 +318,7 @@ export default function HomePage() {
               <p>
                 If you want to support the project and get automatic updates,
                 you can grab it with a one-time purchase on the App Store or
-                Google Play.
+                Google Play, or sponsor its development on GitHub.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -328,6 +329,15 @@ export default function HomePage() {
                 className="inline-flex items-center justify-center rounded-md border border-separator px-6 py-3 text-base font-semibold hover:bg-surface-2 transition-colors text-fg shadow-sm"
               >
                 View source on GitHub
+              </a>
+              <a
+                href={WEBSITE_CONFIG.SPONSOR_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center rounded-md border border-separator px-6 py-3 text-base font-semibold hover:bg-surface-2 transition-colors text-fg shadow-sm"
+              >
+                <Heart className="w-5 h-5 mr-2" />
+                Sponsor
               </a>
               <Link
                 href="#download"
@@ -350,10 +360,12 @@ export default function HomePage() {
                 Can't find the answer you're looking for? We're here to help.
               </p>
               <a
-                href={`mailto:${WEBSITE_CONFIG.CONTACT_EMAIL}`}
+                href={WEBSITE_CONFIG.FEEDBACK_URL}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex items-center justify-center rounded-md bg-accent text-on-accent px-6 py-3 text-base font-semibold hover:bg-accent/85 transition-colors self-start shadow-sm"
               >
-                Get in touch
+                Ask the community
                 <MessageCircle className="w-5 h-5 ml-2" />
               </a>
             </div>

@@ -16,6 +16,11 @@ export function baseOptions(): BaseLayoutProps {
         url: "/docs",
         active: "nested-url",
       },
+      {
+        text: "Feedback",
+        url: WEBSITE_CONFIG.FEEDBACK_URL,
+        external: true,
+      },
     ],
     githubUrl: WEBSITE_CONFIG.GITHUB_URL,
   };
