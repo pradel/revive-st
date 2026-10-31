@@ -19,6 +19,7 @@ import {
   createPresetsXml,
   createPresetXml,
   createProviderSettingsXml,
+  createRecentsXml,
   createRecentXml,
   createSoftwareUpdateXml,
   createSourceProvidersXml,
@@ -181,6 +182,7 @@ export const MargeHandlers = HttpApiBuilder.group(
             });
           }),
         )
+        .handle("recents", () => Effect.succeed(createRecentsXml()))
         .handle("powerOn", () => Effect.succeed(createStatusOkXml()))
         // Raw for the same reason as `savePreset`.
         .handleRaw(

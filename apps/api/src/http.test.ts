@@ -683,6 +683,15 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
+  it.effect("serves a speaker's recents as an empty list", () =>
+    Effect.gen(function* () {
+      const response = yield* HttpClient.get(
+        `${devicePath("EC1127C25A50")}/recents`,
+      );
+      assert.match(yield* assertBoseXml(response), /<recents\/>$/);
+    }),
+  );
+
   it.effect("acknowledges power on", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.execute(

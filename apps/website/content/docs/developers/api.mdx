@@ -57,6 +57,10 @@ Mandatory endpoint called by the speaker to check for firmware updates. Returns 
 
 Endpoint called by the speaker when it starts playing something. Returns `201 Created` with the recent and the source it played from; a recent from a source the account does not offer is rejected with `400`. Recents are not stored.
 
+### `GET /streaming/account/:accountId/device/:deviceId/recents`
+
+Called by the speaker to read its recents back. Recents are not stored, so this always returns an empty `<recents/>`.
+
 ### `POST /streaming/support/power_on`
 
 Endpoint called by the speaker upon boot to signal it has turned on. We return a standard `<status>OK</status>` response with a `200 OK` status to complete the handshake and allow the device to boot.

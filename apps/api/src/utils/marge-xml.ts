@@ -167,6 +167,11 @@ export function createRecentXml(recent: Recent): string {
   ].join("");
 }
 
+/** A speaker's recents: always none, as recents aren't stored. */
+export function createRecentsXml(): string {
+  return `${XML_HEADER}<recents/>`;
+}
+
 export function createStatusOkXml(): string {
   return `${XML_HEADER}\n<status>OK</status>`;
 }

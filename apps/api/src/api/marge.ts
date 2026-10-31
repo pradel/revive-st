@@ -281,6 +281,17 @@ export class MargeApi extends HttpApiGroup.make("marge")
           "Called by the speaker when it starts playing something. Pairs the speaker with the account; recents are acknowledged, not stored. A recent from a source the account doesn't offer, or a body that isn't a `<recent>` document, gets `400`.",
       }),
     ),
+    HttpApiEndpoint.get(
+      "recents",
+      "/account/:accountId/device/:deviceId/recents",
+      { params: DeviceParams, success: boseXml("An empty `<recents/>`.") },
+    ).annotateMerge(
+      OpenApi.annotations({
+        summary: "Get a speaker's recents",
+        description:
+          "Called by the speaker to read its recents back. Recents aren't stored, so the list is always empty.",
+      }),
+    ),
     HttpApiEndpoint.post("powerOn", "/support/power_on", {
       success: boseXml("`<status>OK</status>`."),
     }).annotateMerge(
