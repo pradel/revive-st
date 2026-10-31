@@ -305,7 +305,7 @@ export default function HomePage() {
               >
                 <ScreenshotPeek
                   src="/app-3.webp"
-                  alt="Radio browser with trending stations"
+                  alt="Radio browser with popular stations near you and worldwide"
                 />
               </FeatureCard>
               <FeatureCard

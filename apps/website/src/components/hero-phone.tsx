@@ -17,7 +17,7 @@ const IMAGES = [
   },
   {
     src: "/app-3.webp",
-    alt: "Revive ST internet radio browser with trending stations",
+    alt: "Revive ST internet radio browser with popular stations",
   },
   {
     src: "/app-4.webp",
