@@ -12,7 +12,10 @@ import packageJson from "../package.json" with { type: "json" };
 import { BmxPlayback, BmxRegistry, BmxToken } from "./api/bmx.ts";
 import { BOSE_XML_CONTENT_TYPE } from "./api/marge.ts";
 import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
-import { DevicesRepo } from "./devices/devices-repo.ts";
+import {
+  DevicesRepo,
+  MAX_DEVICES_PER_ACCOUNT,
+} from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import {
@@ -717,6 +720,103 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.strictEqual(response.status, 400);
       assert.include(yield* getPresetsXml("app-sync-invalid"), "<presets/>");
     }),
+  );
+
+  it.effect("rejects more than one synced preset per button", () =>
+    Effect.gen(function* () {
+      const preset = (id: number) => ({
+        id,
+        contentItem: {
+          source: "RADIO_BROWSER",
+          type: "stationurl",
+          location: STATION_LOCATION,
+          sourceAccount: "",
+          isPresetable: true,
+          itemName: `Preset ${id}`,
+          containerArt: "",
+        },
+      });
+      const duplicated = yield* syncPresets("app-sync-duplicate", [
+        preset(1),
+        preset(1),
+      ]);
+      assert.strictEqual(duplicated.status, 400);
+      const seven = yield* syncPresets(
+        "app-sync-seven",
+        [1, 2, 3, 4, 5, 6, 6].map(preset),
+      );
+      assert.strictEqual(seven.status, 400);
+    }),
+  );
+
+  it.effect("stores nothing from a body over 64 KiB", () =>
+    Effect.gen(function* () {
+      const longName = "x".repeat(65 * 1024);
+      const synced = yield* syncPresets("too-large", [
+        {
+          id: 1,
+          contentItem: {
+            source: "RADIO_BROWSER",
+            type: "stationurl",
+            location: STATION_LOCATION,
+            sourceAccount: "",
+            isPresetable: true,
+            itemName: longName,
+            containerArt: "",
+          },
+        },
+      ]);
+      assert.strictEqual(synced.status, 413);
+      // Speaker routes read their body themselves: any unreadable body is a 400.
+      const put = yield* putPreset(
+        "too-large",
+        2,
+        speakerPresetXml({ name: longName }),
+      );
+      assert.strictEqual(put.status, 400);
+      assert.include(yield* getPresetsXml("too-large"), "<presets/>");
+    }),
+  );
+
+  it.effect(
+    `pairs at most ${MAX_DEVICES_PER_ACCOUNT} speakers with an account`,
+    () =>
+      Effect.gen(function* () {
+        const accountId = yield* mintAccountId;
+        const deviceIds = Array.from(
+          { length: MAX_DEVICES_PER_ACCOUNT },
+          (_unused, index) => `full-${index}`,
+        );
+        for (const deviceId of deviceIds) {
+          assert.strictEqual(
+            (yield* syncPresets(deviceId, [], accountId)).status,
+            200,
+          );
+        }
+
+        const synced = yield* syncPresets("full-extra", [], accountId);
+        assert.strictEqual(synced.status, 409);
+        const saved = yield* putPreset(
+          "full-extra",
+          1,
+          speakerPresetXml({ name: "Extra" }),
+          { accountId },
+        );
+        assert.strictEqual(saved.status, 400);
+        assert.include(
+          yield* getPresetsXml("full-extra", accountId),
+          "<presets/>",
+        );
+        assert.sameMembers(
+          listedDeviceIds(yield* getFullXml(accountId)),
+          deviceIds,
+        );
+        // A speaker already in the account keeps syncing.
+        assert.strictEqual(
+          (yield* syncPresets(deviceIds[0], [], accountId)).status,
+          200,
+        );
+      }),
   );
 
   it.effect("serves the account's provider settings, escaping its id", () =>

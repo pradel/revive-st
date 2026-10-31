@@ -1,7 +1,8 @@
 import { fileURLToPath } from "node:url";
 
-import { Cause, Effect, Exit, Layer, Option } from "effect";
+import { ByteSize, Cause, Effect, Exit, Layer, Option } from "effect";
 import {
+  HttpIncomingMessage,
   HttpMiddleware,
   HttpRouter,
   HttpServerError,
@@ -215,6 +216,13 @@ const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
 });
 
 /**
+ * The largest request body read. The biggest legitimate ones (six presets
+ * from the app, a speaker's boot report) are a few kilobytes; a larger body
+ * gets `413` before it is buffered.
+ */
+const MAX_BODY_SIZE = ByteSize.kibibytes(64);
+
+/**
  * The HTTP application, served on whichever `HttpServer` is provided.
  * Requires `PresetsRepo`, `DevicesRepo`, `DeviceContactsRepo`, `TuneIn`,
  * `RadioBrowser` and the platform services of the server layer.
@@ -225,6 +233,9 @@ export const HttpAppLayer = HttpRouter.serve(
     // Speakers register devices both with and without a trailing slash.
     routerConfig: { ignoreTrailingSlash: true },
     disableLogger: true,
-    middleware: (httpApp) => trustForwardedHeaders(logResponses(httpApp)),
+    middleware: (httpApp) =>
+      trustForwardedHeaders(logResponses(httpApp)).pipe(
+        Effect.provideService(HttpIncomingMessage.MaxBodySize, MAX_BODY_SIZE),
+      ),
   },
 );

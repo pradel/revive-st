@@ -1,4 +1,13 @@
-import { Context, Effect, Layer, Schema } from "effect";
+import {
+  Cache,
+  Context,
+  type Duration,
+  Effect,
+  Exit,
+  Layer,
+  Option,
+  Schema,
+} from "effect";
 import {
   FetchHttpClient,
   HttpClient,
@@ -52,6 +61,28 @@ const decodeStations = HttpIncomingMessage.schemaBodyJson(
   Schema.Array(ApiStation),
 );
 
+/** How many stations the cache holds; the least recently used goes first. */
+const CACHE_CAPACITY = 1000;
+
+/**
+ * How long a lookup is kept, as for TuneIn: a station for a few minutes, one
+ * Radio Browser doesn't know (or that a speaker can't play) for one, and an
+ * outage not at all.
+ */
+const cacheTimeToLive = (
+  exit: Exit.Exit<
+    RadioBrowserStation,
+    RadioBrowserStationNotFound | RadioBrowserUnavailable
+  >,
+): Duration.Input =>
+  Exit.isSuccess(exit)
+    ? "5 minutes"
+    : Option.match(Exit.findErrorOption(exit), {
+        onNone: () => 0,
+        onSome: (error) =>
+          error instanceof RadioBrowserStationNotFound ? "1 minute" : 0,
+      });
+
 /**
  * Resolves Radio Browser stations to their current stream, so a preset keeps
  * playing when a station moves its stream.
@@ -77,7 +108,7 @@ export class RadioBrowser extends Context.Service<
         ),
       );
 
-      const station = Effect.fn("RadioBrowser.station")(function* (
+      const resolve = Effect.fn("RadioBrowser.resolve")(function* (
         stationUuid: string,
       ): Effect.fn.Return<
         RadioBrowserStation,
@@ -105,7 +136,14 @@ export class RadioBrowser extends Context.Service<
         } as const;
       });
 
-      return RadioBrowser.of({ station });
+      const cache = yield* Cache.makeWith(resolve, {
+        capacity: CACHE_CAPACITY,
+        timeToLive: cacheTimeToLive,
+      });
+
+      return RadioBrowser.of({
+        station: (stationUuid) => Cache.get(cache, stationUuid),
+      });
     }),
   );
 

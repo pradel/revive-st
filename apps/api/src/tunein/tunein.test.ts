@@ -147,4 +147,42 @@ describe("TuneIn", () => {
       assert.strictEqual(error._tag, "TuneInUnavailable");
     }).pipe(Effect.provide(tuneInWith({}))),
   );
+
+  it.effect("asks TuneIn once per station for five minutes", () => {
+    const seen: URL[] = [];
+    const tuneRequests = () =>
+      seen.filter((url) => url.pathname === "/Tune.ashx").length;
+    return Effect.gen(function* () {
+      const tuneIn = yield* TuneIn;
+      yield* tuneIn.station("s1");
+      yield* TestClock.adjust("4 minutes");
+      yield* tuneIn.station("s1");
+      assert.strictEqual(tuneRequests(), 1);
+
+      yield* TestClock.adjust("1 minute");
+      yield* tuneIn.station("s1");
+      assert.strictEqual(tuneRequests(), 2);
+    }).pipe(
+      Effect.provide(
+        tuneInWith(
+          {
+            "/Tune.ashx": "http://a.example/1.mp3",
+            "/describe.ashx": DESCRIBE_XML,
+          },
+          seen,
+        ),
+      ),
+    );
+  });
+
+  it.effect("asks TuneIn again right after it failed", () => {
+    const routes: Record<string, string> = {};
+    return Effect.gen(function* () {
+      const tuneIn = yield* TuneIn;
+      yield* Effect.flip(tuneIn.station("s1"));
+      routes["/Tune.ashx"] = "http://a.example/1.mp3";
+      const station = yield* tuneIn.station("s1");
+      assert.deepStrictEqual(station.streamUrls, ["http://a.example/1.mp3"]);
+    }).pipe(Effect.provide(tuneInWith(routes)));
+  });
 });
