@@ -1,8 +1,8 @@
 import { Heart } from "lucide-react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { GitHubIcon } from "@/components/github-icon";
+import { LogoMark } from "@/components/logo-mark";
 import { WEBSITE_CONFIG } from "@/config";
 
 const currentYear = new Date().getFullYear();
@@ -55,13 +55,7 @@ export function Footer({ className }: { className?: string }) {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-[1.6fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <Link href="/" className="inline-flex items-center gap-3">
-              <Image
-                src="/logo-mark.svg"
-                width={538}
-                height={312}
-                alt=""
-                className="h-7 w-auto"
-              />
+              <LogoMark className="h-7" />
               <span className="text-base font-bold text-fg">Revive ST</span>
             </Link>
             <p className="mt-4 max-w-xs text-fg-secondary text-pretty">

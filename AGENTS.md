@@ -51,7 +51,7 @@ Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md
 - `apps/website/`: The Next.js website and documentation.
 - `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Speaker API.
 - `packages/bose-wifi/`: Expo native module for Wi-Fi speaker setup.
-- `packages/design/`: Shared colour palette (app and website), the vector logo and the SoundTouch speaker drawings (`speakers/*.svg`); `vp run design#icons` regenerates the app and website icons from `brand/*.svg` and copies the mark and speaker drawings into the website.
+- `packages/design/`: Shared colour palette (app and website), the logo mark (`brand/logo-mark.svg`) and the SoundTouch speaker drawings (`speakers/*.svg`); `vp run design#icons` builds the app icon, adaptive icon, splash and favicons from the mark and the palette, and copies the mark and speaker drawings into the website.
 - `docs/` — Project documentation including Bose API reference, agent skills guides.
 - `.github/workflows/` — CI/CD pipeline definitions.
 - `repos/` — Vendored reference repositories, gitignored; see below.

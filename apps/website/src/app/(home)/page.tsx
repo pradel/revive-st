@@ -17,6 +17,7 @@ import { Equalizer } from "@/components/equalizer";
 import { Footer } from "@/components/footer";
 import { GitHubIcon } from "@/components/github-icon";
 import { HeroPhone } from "@/components/hero-phone";
+import { LogoMark } from "@/components/logo-mark";
 import { PresetDemo } from "@/components/preset-demo";
 import { StickyCta } from "@/components/sticky-cta";
 import { StoreBadges } from "@/components/store-badges";
@@ -591,13 +592,7 @@ export default function HomePage() {
               barClassName="bg-accent rounded-b-none"
             />
             <div className="relative">
-              <Image
-                src="/logo-mark.svg"
-                width={538}
-                height={312}
-                alt=""
-                className="mx-auto mb-10 h-20 w-auto drop-shadow-[0_0_24px_var(--accent)]"
-              />
+              <LogoMark className="mx-auto mb-10 h-20 dark:drop-shadow-[0_0_24px_var(--accent)]" />
               <h2 className="text-4xl md:text-6xl font-bold tracking-tighter text-balance max-w-3xl mx-auto mb-6">
                 Your speakers are still good. Get them working again.
               </h2>
