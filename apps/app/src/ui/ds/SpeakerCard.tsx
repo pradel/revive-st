@@ -23,6 +23,8 @@ export interface SpeakerCardProps {
   /** Secondary line under the track, e.g. artist or play status. */
   detail?: string;
   artworkUri?: string | null;
+  /** The speaker model's drawing, shown while nothing is playing. */
+  modelDrawing?: number;
   isPlaying: boolean;
   /** Disables play/pause when the speaker has nothing to resume. */
   canPlayPause: boolean;
@@ -42,6 +44,7 @@ export function SpeakerCard({
   nowPlaying,
   detail,
   artworkUri,
+  modelDrawing,
   isPlaying,
   canPlayPause,
   volume,
@@ -78,6 +81,7 @@ export function SpeakerCard({
             size={artwork.card}
             radius={radius.sm}
             fallbackIcon={nowPlaying ? icons.music : icons.speaker}
+            fallbackDrawing={nowPlaying ? undefined : modelDrawing}
           />
         </Link.AppleZoom>
         <View style={$text}>

@@ -15,6 +15,7 @@ import {
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
 import { useBose } from "@/features/speakers/contexts/BoseContext";
 import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
+import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
   canSavePreset,
   findActiveSpeaker,
@@ -259,6 +260,7 @@ export default function Index() {
                       .filter(Boolean)
                       .join(" · ")}
                     artworkUri={speaker.artUrl}
+                    modelDrawing={speakerDrawing(speaker.type)}
                     isPlaying={isSpeakerPlaying(speaker)}
                     canPlayPause={hasMedia}
                     volume={speaker.volume ?? 0}

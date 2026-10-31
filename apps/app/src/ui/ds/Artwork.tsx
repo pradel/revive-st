@@ -2,7 +2,7 @@ import { Image, type ImageStyle } from "expo-image";
 import { useState } from "react";
 import { View, type ViewStyle } from "react-native";
 
-import { artworkPalette, radius as radii } from "@/ui/tokens";
+import { artworkPalette, color, radius as radii } from "@/ui/tokens";
 
 import { Icon, icons, type IconName } from "./Icon";
 
@@ -15,6 +15,11 @@ export interface ArtworkProps {
   size: number | "fill";
   radius?: number;
   fallbackIcon?: IconName;
+  /**
+   * Asset drawn instead of the icon when there's no image (e.g. the speaker's
+   * model).
+   */
+  fallbackDrawing?: number;
 }
 
 export function Artwork({
@@ -23,6 +28,7 @@ export function Artwork({
   size,
   radius = radii.xs,
   fallbackIcon = icons.music,
+  fallbackDrawing,
 }: ArtworkProps) {
   const [failedUri, setFailedUri] = useState<string | null>(null);
   const showImage = Boolean(uri) && uri !== failedUri;
@@ -35,7 +41,16 @@ export function Artwork({
 
   return (
     <View
-      style={[$frame, frame, { backgroundColor: placeholderColor(title) }]}
+      style={[
+        $frame,
+        frame,
+        {
+          backgroundColor:
+            !showImage && fallbackDrawing !== undefined
+              ? color.surface2
+              : placeholderColor(title),
+        },
+      ]}
       accessibilityIgnoresInvertColors
     >
       {showImage ? (
@@ -49,8 +64,10 @@ export function Artwork({
             setFailedUri(uri ?? null);
           }}
         />
-      ) : (
+      ) : fallbackDrawing === undefined ? (
         <Icon name={fallbackIcon} size={iconSize} color="textSecondary" />
+      ) : (
+        <Image source={fallbackDrawing} style={$drawing} contentFit="contain" />
       )}
     </View>
   );
@@ -74,4 +91,9 @@ const $frame: ViewStyle = {
 const $image: ImageStyle = {
   width: "100%",
   height: "100%",
+};
+
+const $drawing: ImageStyle = {
+  width: "78%",
+  height: "78%",
 };
