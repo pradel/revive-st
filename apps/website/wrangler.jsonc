@@ -5,6 +5,10 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "revive-st-website",
   "compatibility_date": "2026-10-30",
+  // Keep the `revive-st-website.<subdomain>.workers.dev` address, and a Preview
+  // URL for each build of a branch other than main.
+  "workers_dev": true,
+  "preview_urls": true,
   "assets": {
     "directory": "./out",
     // `/docs` serves `docs.html`, `/docs/self-hosting` `docs/self-hosting.html`.
