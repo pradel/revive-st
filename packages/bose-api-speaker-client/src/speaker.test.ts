@@ -191,6 +191,30 @@ describe("Speaker", () => {
     );
   });
 
+  it("setName() puts the new name in the state once the speaker accepts it", async () => {
+    mockFetch(200, "<status>OK</status>");
+    const onStateUpdate = vi.fn();
+    speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+
+    await speaker.setName("Living Room");
+
+    expect(speaker.getState().name).toBe("Living Room");
+    expect(onStateUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "Living Room" }),
+    );
+  });
+
+  it("setName() keeps the state when the speaker refuses the name", async () => {
+    mockFetch(500, "<error>Internal Server Error</error>");
+    const onStateUpdate = vi.fn();
+    speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+
+    await speaker.setName("Living Room");
+
+    expect(speaker.getState().name).toBeUndefined();
+    expect(onStateUpdate).not.toHaveBeenCalled();
+  });
+
   it("initialize() fetches full speaker state", async () => {
     const fetchMock = vi
       .spyOn(globalThis, "fetch")

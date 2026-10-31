@@ -366,11 +366,20 @@ export class Speaker {
     return this.http.setBass(value);
   }
 
+  /**
+   * Renames the speaker. On success the new name is in the state right away,
+   * without waiting for the speaker's `nameUpdated` event.
+   */
   async setName(
     name: string,
     options?: RequestOptions,
   ): Promise<Result<void, BoseApiError>> {
-    return this.http.setName(name, options);
+    const result = await this.http.setName(name, options);
+    if (result.isOk() && this.state.name !== name) {
+      this.state.name = name;
+      this.emitState();
+    }
+    return result;
   }
 
   async setAudioDspControls(

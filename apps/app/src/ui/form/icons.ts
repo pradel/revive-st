@@ -4,6 +4,7 @@ import Cast from "@expo/material-symbols/cast.xml";
 import Code from "@expo/material-symbols/code.xml";
 import Dns from "@expo/material-symbols/dns.xml";
 import Forum from "@expo/material-symbols/forum.xml";
+import Info from "@expo/material-symbols/info.xml";
 import Language from "@expo/material-symbols/language.xml";
 import MusicNote from "@expo/material-symbols/music_note.xml";
 import Radio from "@expo/material-symbols/radio.xml";
@@ -21,6 +22,7 @@ export const formIcons = {
   bluetooth: { ios: "wave.3.right", android: Bluetooth },
   code: { ios: "chevron.left.forwardslash.chevron.right", android: Code },
   feedback: { ios: "bubble.left.and.bubble.right", android: Forum },
+  info: { ios: "info.circle", android: Info },
   music: { ios: "music.note", android: MusicNote },
   radio: { ios: "radio", android: Radio },
   refresh: { ios: "arrow.clockwise", android: Refresh },

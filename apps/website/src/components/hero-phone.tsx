@@ -21,7 +21,7 @@ const IMAGES = [
   },
   {
     src: "/app-4.webp",
-    alt: "Revive ST speaker settings with sound and preset options",
+    alt: "Revive ST speaker settings with the speaker's status, bass and presets",
   },
 ];
 

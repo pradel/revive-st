@@ -13,7 +13,8 @@ import {
 
 /**
  * iOS 26 hosts the mini player in the tab bar's bottom accessory, which
- * follows the tab bar as it minimizes; elsewhere it floats above the tabs.
+ * follows the tab bar as it minimizes; on Android it's docked on top of the
+ * tab bar; on older iOS it floats above the tabs.
  */
 export const usesTabBarAccessory =
   Platform.OS === "ios" && Number.parseInt(Platform.Version, 10) >= 26;
@@ -39,13 +40,18 @@ export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
   };
 }
 
-/** Floating mini player for screen footers; renders nothing otherwise. */
+/** Mini player for tab screen footers; renders nothing on iOS 26+. */
 export function NowPlayingBar() {
   const nowPlaying = useNowPlaying();
   if (!nowPlaying || usesTabBarAccessory) {
     return null;
   }
-  return <MiniPlayer {...nowPlaying} />;
+  return (
+    <MiniPlayer
+      {...nowPlaying}
+      variant={Platform.OS === "android" ? "docked" : "floating"}
+    />
+  );
 }
 
 /**
