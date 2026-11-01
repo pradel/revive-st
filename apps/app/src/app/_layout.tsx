@@ -11,6 +11,7 @@ import {
   useLocalNetworkIntro,
 } from "@/features/speakers/lib/local-network";
 import {
+  speakerRegistry,
   useSpeakerDiscovery,
   useSpeakers,
 } from "@/features/speakers/registry/store";
@@ -48,7 +49,9 @@ export default function RootLayout() {
 
   useEffect(() => {
     void initLogger();
-    void loadServerUrl();
+    // The remembered speakers' radio says whether they use our server, so
+    // they're listed once it's known.
+    void loadServerUrl().then(async () => speakerRegistry.restore());
     void loadLocalNetworkIntro();
   }, []);
 

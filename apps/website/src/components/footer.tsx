@@ -27,6 +27,7 @@ const COLUMNS: {
       { text: "Supported speakers", href: "/docs/supported-speakers" },
       { text: "Build the app", href: "/docs/build-the-app" },
       { text: "Self-hosting", href: "/docs/self-hosting" },
+      { text: "Other servers", href: "/docs/other-servers" },
       { text: "Contributing", href: "/docs/developers/contributing" },
     ],
   },

@@ -25,16 +25,12 @@ export function useSpeaker(deviceID: string): BoseSpeaker | undefined {
 }
 
 /**
- * Lists the remembered speakers, then reaches them and scans once `enabled`
- * (see `local-network`), again each time the app comes back from the
- * background, and checks their servers again when our server changes.
+ * Reaches the listed speakers and scans once `enabled` (see
+ * `local-network`), again each time the app comes back from the background,
+ * and checks their radio again when our server changes.
  */
 export function useSpeakerDiscovery(enabled: boolean): void {
   const { restored } = useSpeakers();
-
-  useEffect(() => {
-    void speakerRegistry.restore();
-  }, []);
 
   useEffect(() => {
     if (!enabled || !restored) {
@@ -62,7 +58,7 @@ export function useSpeakerDiscovery(enabled: boolean): void {
   useEffect(() => {
     if (checkedFor.current !== serverUrl) {
       checkedFor.current = serverUrl;
-      speakerRegistry.refreshAllServers();
+      speakerRegistry.refreshAllRadio();
     }
   }, [serverUrl]);
 }

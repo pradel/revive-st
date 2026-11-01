@@ -8,7 +8,7 @@ import type {
   Preset,
 } from "bose-api-speaker-client";
 
-import type { SpeakerServer } from "../lib/server-profiles";
+import type { RadioStatus } from "../lib/speaker-radio";
 
 /**
  * `connecting`: a remembered speaker shown from storage while the app tries
@@ -28,9 +28,12 @@ export interface BoseSpeaker {
   port: number;
   name: string;
   type: string;
-  /** The server it uses, as last checked; kept across launches. */
-  server?: SpeakerServer;
-  // What it plays and its settings, as it last showed them; absent until reached.
+  /**
+   * How it gets internet radio, judged against our server; the last result
+   * is kept across launches and while it's checked again.
+   */
+  radio: RadioStatus;
+  // What it plays and its settings: only while reached.
   playStatus?: string;
   source?: string;
   track?: string;

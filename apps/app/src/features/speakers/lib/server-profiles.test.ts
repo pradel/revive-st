@@ -47,20 +47,22 @@ describe("identifyServer", () => {
     expect(await identify("http://192.168.1.50:3000")).toEqual({
       kind: "revive",
       name: "Revive ST",
+      setup: "setUp",
     });
   });
 
-  it("knows soundcork by its /marge path", async () => {
+  it("knows soundcork by its /marge path, as one to warn about", async () => {
     const fetched = network({});
     expect(await identify("http://192.168.1.10:8000/marge/")).toEqual({
       kind: "soundcork",
       name: "soundcork",
+      setup: "warn",
     });
     expect(fetched).toEqual([]);
   });
 
   it.each([8888, 17_008])(
-    "finds STR behind Bose's address by its agent on port %i",
+    "finds STR behind Bose's address by its agent on port %i, and blocks setup",
     async (port) => {
       network({
         [`http://${HOST}:${port}/api/agent/version`]: { version: "v1.0.20" },
@@ -68,6 +70,7 @@ describe("identifyServer", () => {
       expect(await identify(BOSE)).toEqual({
         kind: "streborn",
         name: "STR",
+        setup: "blocked",
       });
     },
   );
@@ -78,6 +81,7 @@ describe("identifyServer", () => {
     expect(await identify(BOSE)).toEqual({
       kind: "bose",
       name: "Bose",
+      setup: "setUp",
     });
   });
 
@@ -94,6 +98,30 @@ describe("identifyServer", () => {
     );
   });
 
+  it("fails rather than ruling a server out when the check is given up", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      async (_url: string, { signal }: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const identifying = identifyServer(
+      {
+        host: HOST,
+        margeURL: "http://192.168.1.50:3000",
+        ourServer: OUR_SERVER,
+      },
+      controller.signal,
+    );
+    controller.abort();
+
+    await expect(identifying).rejects.toThrow("given up");
+  });
+
   it("names a server no profile knows by its address", async () => {
     network({
       "https://radio.example:8443/": { name: "Radio Example" },
@@ -102,6 +130,7 @@ describe("identifyServer", () => {
     expect(await identify("https://radio.example:8443")).toEqual({
       kind: "unknown",
       name: "radio.example:8443",
+      setup: "warn",
     });
   });
 

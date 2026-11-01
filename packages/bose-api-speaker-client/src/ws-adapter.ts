@@ -97,6 +97,11 @@ export type BoseWSUpdate =
       deviceID: string;
     }
   | {
+      /** The speaker's sources changed (`sourcesUpdated`). */
+      type: "sources";
+      deviceID: string;
+    }
+  | {
       type: "nameUpdated";
       deviceID: string;
       name: string;
@@ -304,6 +309,10 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
 
   if (xml.includes("<infoUpdated") || xml.includes("<info>")) {
     return { type: "info", deviceID };
+  }
+
+  if (xml.includes("<sourcesUpdated")) {
+    return { type: "sources", deviceID };
   }
 
   if (xml.includes("<recentsUpdated") || xml.includes("<recents>")) {

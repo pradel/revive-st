@@ -4,16 +4,13 @@ import {
   type AudioMode,
   type BoseApiError,
   BoseHttpAdapter,
+  type ContentItem,
   contentItemXml,
   type KeyValue,
   type Speaker,
 } from "bose-api-speaker-client";
 
-import {
-  type CastStation,
-  confirmStationPlaying,
-  stationContentItem,
-} from "../lib/radio";
+import { confirmStationPlaying } from "../lib/radio";
 import { speakerRegistry } from "../registry/store";
 
 /**
@@ -69,9 +66,8 @@ async function run(
 /** Starts a station and resolves once the speaker plays it. */
 async function playStation(
   deviceID: string,
-  station: CastStation,
+  contentItem: ContentItem,
 ): Promise<void> {
-  const contentItem = stationContentItem(station);
   const speaker = client(deviceID);
   const ip = speaker.options.ip;
   const port = speaker.options.port ?? 8090;
@@ -211,14 +207,15 @@ export function useSpeakerCommands() {
       mutationFn: async ({
         deviceID,
         presetId,
-        station,
+        contentItem,
       }: {
         deviceID: string;
         presetId: PresetSlot;
-        station: CastStation;
+        /** The station, as `stationFit` makes it for this speaker. */
+        contentItem: ContentItem;
       }) => {
         await run(deviceID, async (speaker) =>
-          speaker.storePreset(presetId, stationContentItem(station)),
+          speaker.storePreset(presetId, contentItem),
         );
         // Reloads the presets, which also stores them on our server.
         await speakerRegistry.refresh(deviceID);
@@ -227,11 +224,12 @@ export function useSpeakerCommands() {
     playStationMutation: useMutation({
       mutationFn: async ({
         deviceID,
-        station,
+        contentItem,
       }: {
         deviceID: string;
-        station: CastStation;
-      }) => playStation(deviceID, station),
+        /** The station, as `stationFit` makes it for this speaker. */
+        contentItem: ContentItem;
+      }) => playStation(deviceID, contentItem),
     }),
     setNameMutation: useMutation({
       mutationFn: async ({

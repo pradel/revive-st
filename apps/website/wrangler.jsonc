@@ -8,7 +8,7 @@
   // Keep the `revive-st-website.<subdomain>.workers.dev` address, and a Preview
   // URL for each build of a branch other than main.
   "workers_dev": true,
-  "preview_urls": false,
+  "preview_urls": true,
   "previews": {},
   "assets": {
     "directory": "./out",

@@ -21,8 +21,10 @@ import {
 } from "@/features/configure/store";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
-import { useSpeakers } from "@/features/speakers/registry/store";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -62,7 +64,11 @@ export default function ConfigureSpeaker() {
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const host = serverHost(useServerUrl());
-  const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
+  const radio = speaker?.radio;
+  const setup =
+    radio?.kind === "ready" || radio?.kind === "needsSetup"
+      ? radio.setup
+      : undefined;
   useOutcomeEffects(view);
 
   const close = () => {
@@ -91,11 +97,46 @@ export default function ConfigureSpeaker() {
           />
         );
       }
+      // Setting it up may leave the server it uses, which isn't known yet.
+      if (radio?.kind === "unreachable") {
+        return (
+          <EmptyState
+            icon={icons.warning}
+            title={`Couldn't check ${speakerName}`}
+            description="Setting it up needs to know which server it uses now. Make sure your phone is on the same Wi-Fi network as the speaker."
+            actions={
+              <>
+                <Button
+                  label="Check again"
+                  onPress={() => {
+                    void speakerRegistry.refreshRadio(id);
+                  }}
+                />
+                <Button label="Go back" variant="secondary" onPress={close} />
+              </>
+            }
+          />
+        );
+      }
+      if (setup?.kind === "blocked") {
+        return (
+          <EmptyState
+            icon={icons.radio}
+            title={`Managed by ${setup.server}`}
+            description={`${speakerName} runs ${setup.server}, which puts its own settings back every time the speaker starts, so it can't be set up for Revive ST. Internet radio and presets go through ${setup.server}.`}
+            actions={
+              <Button label="Go back" variant="secondary" onPress={close} />
+            }
+          />
+        );
+      }
       return (
         <IntroView
           speakerName={speakerName}
           serverHost={host}
-          alreadySetUp={radioSetup.data === true}
+          alreadySetUp={setup?.kind === "again"}
+          leavingServer={setup?.kind === "leaving" ? setup.server : undefined}
+          checking={radio?.kind === "checking"}
           onStart={() => {
             startConfigure(
               {
