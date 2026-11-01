@@ -35,12 +35,7 @@ describe("identifyServer", () => {
     expect(fetched).toEqual([]);
   });
 
-  it("sets a speaker on our server up again without a warning", async () => {
-    network({});
-    expect((await identify(OUR_SERVER)).setup).toBe("setUp");
-  });
-
-  it("finds another Revive ST server by the name it answers at /, and warns before leaving it", async () => {
+  it("finds another Revive ST server by the name it answers at /", async () => {
     network({
       "http://192.168.1.50:3000/": {
         name: "Revive ST API",
@@ -52,7 +47,7 @@ describe("identifyServer", () => {
     expect(await identify("http://192.168.1.50:3000")).toEqual({
       kind: "revive",
       name: "Revive ST",
-      setup: "warn",
+      setup: "setUp",
     });
   });
 

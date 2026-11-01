@@ -1,6 +1,6 @@
 import type { ContentItem, NowPlayingResponse } from "bose-api-speaker-client";
 
-import type { StationSources } from "./speaker-radio";
+import type { RadioStatus, StationSources } from "./speaker-radio";
 
 /** A station a speaker can play or keep on a preset. */
 export type CastStation =
@@ -61,7 +61,7 @@ export const customStationLocation = (station: {
  * Neither location holds a server address, so they play through whichever
  * server the speaker uses.
  */
-export function stationContentItem(
+function stationContentItem(
   station: CastStation,
   sources: StationSources,
 ): ContentItem | undefined {
@@ -81,6 +81,50 @@ export function stationContentItem(
     return item("LOCAL_INTERNET_RADIO", customStationLocation(station));
   }
   return undefined;
+}
+
+/**
+ * A station a speaker plays: the ContentItem that plays it, now or from a
+ * preset (see `stationContentItem`), and the server it plays through
+ * (`RadioStatus`'s `through`, `null` for ours), for what to say if it fails.
+ */
+export interface StationPlay {
+  readonly contentItem: ContentItem;
+  readonly through: string | null;
+}
+
+/**
+ * What a speaker can do with a station: nothing until its radio is ready
+ * (`notReady`); play it (`plays`); or not, its server (`server`, named as
+ * screens name it) offering no source that plays it (`noSource`). Setting it
+ * up again adds the custom stations source (`setupAdds`) only on our server,
+ * and only for a station with a stream; another server can't be asked to.
+ */
+export type StationFit =
+  | { readonly kind: "notReady" }
+  | ({ readonly kind: "plays" } & StationPlay)
+  | {
+      readonly kind: "noSource";
+      readonly server: string;
+      readonly setupAdds: boolean;
+    };
+
+export function stationFit(
+  radio: RadioStatus,
+  station: CastStation,
+): StationFit {
+  if (radio.kind !== "ready") {
+    return { kind: "notReady" };
+  }
+  const contentItem = stationContentItem(station, radio.sources);
+  if (contentItem) {
+    return { kind: "plays", contentItem, through: radio.through };
+  }
+  return {
+    kind: "noSource",
+    server: radio.through ?? radio.serverName,
+    setupAdds: radio.through === null && station.streamUrl !== "",
+  };
 }
 
 /** The speaker took the station but never started it. */

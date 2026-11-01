@@ -211,7 +211,7 @@ export function useSpeakerCommands() {
       }: {
         deviceID: string;
         presetId: PresetSlot;
-        /** The station, as `stationContentItem` makes it for this speaker. */
+        /** The station, as `stationFit` makes it for this speaker. */
         contentItem: ContentItem;
       }) => {
         await run(deviceID, async (speaker) =>
@@ -227,7 +227,7 @@ export function useSpeakerCommands() {
         contentItem,
       }: {
         deviceID: string;
-        /** The station, as `stationContentItem` makes it for this speaker. */
+        /** The station, as `stationFit` makes it for this speaker. */
         contentItem: ContentItem;
       }) => playStation(deviceID, contentItem),
     }),

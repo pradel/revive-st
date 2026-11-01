@@ -12,7 +12,6 @@ import {
 } from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
-import { radioServerName } from "@/features/speakers/lib/speaker-radio";
 import {
   speakerRegistry,
   useSpeaker,
@@ -147,7 +146,7 @@ export default function SpeakerSettings() {
     Boolean(levelControls);
 
   const settingUp = configureRun.view?.kind === "working";
-  const radioCheckFailed = !speaker.radio && speaker.radioCheck === "failed";
+  const radioCheckFailed = speaker.radio.kind === "unreachable";
   const radio = ((): { value: string; status: SpeakerStatus } => {
     if (settingUp) {
       return {
@@ -156,36 +155,39 @@ export default function SpeakerSettings() {
       };
     }
     const radioState = speaker.radio;
-    if (!radioState) {
-      return speaker.radioCheck === "failed"
-        ? {
-            value: "Unavailable",
-            status: { label: "Couldn't check internet radio", tone: "danger" },
-          }
-        : {
-            value: "Checking…",
-            status: { label: "Checking…", tone: "neutral" },
-          };
+    if (radioState.kind === "unreachable") {
+      return {
+        value: "Unavailable",
+        status: { label: "Couldn't check internet radio", tone: "danger" },
+      };
     }
-    if (radioState.ready && radioState.onOurServer) {
+    if (radioState.kind === "checking") {
+      return {
+        value: "Checking…",
+        status: { label: "Checking…", tone: "neutral" },
+      };
+    }
+    if (radioState.kind === "needsSetup") {
+      return {
+        value: "Needs setup",
+        status: {
+          label: "Online · Internet radio needs setup",
+          tone: "warning",
+        },
+      };
+    }
+    if (radioState.through === null) {
       return {
         value: "Ready",
         status: { label: "Online · Internet radio ready", tone: "ok" },
       };
     }
-    if (radioState.ready) {
-      const name = radioServerName(radioState);
-      return {
-        value: name,
-        status: {
-          label: `Online · Internet radio through ${name}`,
-          tone: "ok",
-        },
-      };
-    }
     return {
-      value: "Needs setup",
-      status: { label: "Online · Internet radio needs setup", tone: "warning" },
+      value: radioState.through,
+      status: {
+        label: `Online · Internet radio through ${radioState.through}`,
+        tone: "ok",
+      },
     };
   })();
 
@@ -380,12 +382,13 @@ export default function SpeakerSettings() {
               router.push("./configure");
             }}
           />
-          {speaker.radio ? (
+          {speaker.radio.kind === "ready" ||
+          speaker.radio.kind === "needsSetup" ? (
             <FormValueRow
               icon={formIcons.server}
               label="Server"
               description={serverHost(speaker.radio.margeURL)}
-              value={speaker.radio.server.name}
+              value={speaker.radio.serverName}
             />
           ) : null}
           {!settingUp && radioCheckFailed ? (

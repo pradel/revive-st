@@ -20,9 +20,13 @@ export type ServerKind = (typeof SERVER_KINDS)[number];
 
 /**
  * What setting up a speaker that uses this server does:
- * - `setUp`: switches it to our server; it uses Bose's, or ours already.
+ * - `setUp`: switches it to our server; it uses Bose's, or a Revive ST server.
  * - `warn`: switches it to our server after the user agrees to leave the one it uses.
  * - `blocked`: never offered; the server puts its own settings back at every start.
+ *
+ * Leaving a Revive ST server that isn't ours is warned about too, but which
+ * one is ours can change: that's judged when the speaker is shown
+ * (`radioStatus`), not stored with its server.
  */
 export const SETUP_POLICIES = ["setUp", "warn", "blocked"] as const;
 
@@ -105,7 +109,6 @@ const PROFILES: readonly ServerProfile[] = [
   {
     // Ours and the one run for everyone are known by their address; another
     // one (a self-hosted server the app isn't set to) names itself at `/`.
-    // Leaving one that isn't ours is warned about (`identifyServer`).
     kind: "revive",
     name: "Revive ST",
     setup: "setUp",
@@ -194,15 +197,7 @@ export async function identifyServer(
   };
   for (const profile of PROFILES) {
     if (await profile.identify(clues, signal)) {
-      // Another Revive ST server than ours is one the speaker would leave.
-      const leavesRevive =
-        profile.kind === "revive" &&
-        !isSameOrigin(marge.href, speaker.ourServer);
-      return {
-        kind: profile.kind,
-        name: profile.name,
-        setup: leavesRevive ? "warn" : profile.setup,
-      };
+      return { kind: profile.kind, name: profile.name, setup: profile.setup };
     }
   }
   return { kind: "unknown", name: marge.host, setup: "warn" };

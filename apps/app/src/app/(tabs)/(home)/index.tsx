@@ -24,7 +24,7 @@ import {
   playStatusLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
-import { radioSummary } from "@/features/speakers/lib/speaker-radio";
+import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
 import {
   speakerRegistry,
   useSpeakers,
@@ -59,6 +59,20 @@ const LOCAL_NETWORK_HINT =
 
 const openAppSettings = () => {
   void Linking.openSettings();
+};
+
+/**
+ * The speaker's radio in a few words, for a line under its name: whether it
+ * needs setting up, or the other server it plays through. Nothing for a
+ * speaker ready on our server, or not checked yet.
+ */
+const radioSummary = (radio: RadioStatus): string | undefined => {
+  if (radio.kind === "needsSetup") {
+    return "Radio needs setup";
+  }
+  return radio.kind === "ready" && radio.through !== null
+    ? `Radio via ${radio.through}`
+    : undefined;
 };
 
 export default function Index() {

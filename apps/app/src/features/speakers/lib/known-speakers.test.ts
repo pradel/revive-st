@@ -30,10 +30,10 @@ describe("parseKnownSpeakers", () => {
     const radio = {
       server: { kind: "soundcork", name: "soundcork", setup: "warn" },
       margeURL: "http://192.168.1.10:8000/marge",
-      onOurServer: false,
+      paired: true,
       sources: { radioBrowser: true, customStations: false },
-      ready: true,
     };
+    const { paired: _paired, ...beforePaired } = radio;
     expect(
       parseKnownSpeakers(
         JSON.stringify([
@@ -43,11 +43,18 @@ describe("parseKnownSpeakers", () => {
             deviceID: "B",
             radio: { ...radio, server: { kind: "gone" } },
           },
+          // Stored before `paired`, with what it meant judged then.
+          {
+            ...OFFICE,
+            deviceID: "C",
+            radio: { ...beforePaired, onOurServer: false, ready: true },
+          },
         ]),
       ),
     ).toEqual([
       { ...OFFICE, radio },
       { ...OFFICE, deviceID: "B" },
+      { ...OFFICE, deviceID: "C" },
     ]);
   });
 

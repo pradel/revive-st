@@ -2,11 +2,10 @@ import type { Speaker, SpeakerState } from "bose-api-speaker-client";
 
 import { isSameOrigin } from "../lib/account-id";
 import type { KnownSpeaker } from "../lib/known-speakers";
-import type { SpeakerRadio } from "../lib/speaker-radio";
+import { radioStatus, type SpeakerRadio } from "../lib/speaker-radio";
 import type { SpeakerInfo, SpeakerLink, SpeakerRegistryDeps } from "./ports";
 import type {
   BoseSpeaker,
-  RadioCheck,
   ScanKind,
   SpeakersSnapshot,
   SpeakerStatus,
@@ -20,13 +19,15 @@ interface SpeakerRecord {
   readonly host: string;
   readonly port: number;
   readonly status: SpeakerStatus;
+  /** As last read; kept while a later check runs or fails. */
   readonly radio?: SpeakerRadio;
-  readonly radioCheck: RadioCheck;
+  /** The latest radio check wasn't answered; cleared when another starts. */
+  readonly radioFailed: boolean;
   /** Only while reached. */
   readonly live?: SpeakerState;
 }
 
-function toView(record: SpeakerRecord): BoseSpeaker {
+function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
   const { live } = record;
   return {
     deviceID: record.deviceID,
@@ -35,8 +36,7 @@ function toView(record: SpeakerRecord): BoseSpeaker {
     port: record.port,
     name: record.name,
     type: record.type,
-    radio: record.radio,
-    radioCheck: record.radioCheck,
+    radio: radioStatus(record.radio, record.radioFailed, ourServer),
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
@@ -85,9 +85,10 @@ export type SpeakerRegistry = ReturnType<typeof createSpeakerRegistry>;
  * The speakers the app lists, by device id: the remembered ones, listed at
  * once with how they got radio last time, and the ones found on the network.
  * Reaching a speaker opens its live connection and checks its radio
- * (`SpeakerRadio`) at the same time; the radio is checked again when the app
- * comes back, when the speaker says its settings changed, and when asked.
- * What's listed is remembered for the next launch.
+ * (`SpeakerRadio`) at the same time, shown judged against our server
+ * (`RadioStatus`); the radio is checked again when the app comes back, when
+ * the speaker says its settings changed, and when asked. What's listed is
+ * remembered for the next launch.
  */
 export function createSpeakerRegistry(
   deps: SpeakerRegistryDeps,
@@ -119,7 +120,10 @@ export function createSpeakerRegistry(
   let snapshot = takeSnapshot();
 
   function takeSnapshot(): SpeakersSnapshot {
-    const listed = [...records.values()].map(toView);
+    const ourServer = deps.ourServer.url();
+    const listed = [...records.values()].map((record) =>
+      toView(record, ourServer),
+    );
     return {
       listed,
       online: listed.filter((speaker) => speaker.status === "online"),
@@ -215,7 +219,7 @@ export function createSpeakerRegistry(
     }
     const check = (radioChecks.get(deviceID) ?? 0) + 1;
     radioChecks.set(deviceID, check);
-    update(deviceID, { radioCheck: "checking" });
+    update(deviceID, { radioFailed: false });
     const { host, port } = record;
     let radio: SpeakerRadio | undefined;
     try {
@@ -242,7 +246,7 @@ export function createSpeakerRegistry(
     }
     update(
       deviceID,
-      radio ? { radio, radioCheck: "checked" } : { radioCheck: "failed" },
+      radio ? { radio, radioFailed: false } : { radioFailed: true },
     );
   }
 
@@ -288,7 +292,7 @@ export function createSpeakerRegistry(
       port,
       status: record?.status ?? "connecting",
       radio: record?.radio,
-      radioCheck: record?.radioCheck ?? "unchecked",
+      radioFailed: record?.radioFailed ?? false,
       live: record?.live,
     });
     changed();
@@ -414,7 +418,7 @@ export function createSpeakerRegistry(
             records.set(entry.deviceID, {
               ...entry,
               status: "connecting",
-              radioCheck: "unchecked",
+              radioFailed: false,
             });
           }
         }
@@ -497,14 +501,14 @@ export function createSpeakerRegistry(
         return;
       }
       const address = host ?? record.host;
-      update(deviceID, { radioCheck: "checking" });
+      update(deviceID, { radioFailed: false });
       const info = await deps.speaker.info(address, record.port);
       const current = records.get(deviceID);
       if (!current) {
         return;
       }
       if (!info) {
-        update(deviceID, { radioCheck: "failed" });
+        update(deviceID, { radioFailed: true });
         return;
       }
       if (info.deviceID !== deviceID) {
@@ -519,8 +523,12 @@ export function createSpeakerRegistry(
       await checkRadio(deviceID, info);
     },
 
-    /** Checks again how every reached speaker gets radio: our server changed. */
+    /**
+     * Our server changed: shows every listed speaker's radio judged against
+     * it, and checks again how the reached ones get radio.
+     */
     refreshAllRadio: (): void => {
+      changed();
       for (const record of records.values()) {
         if (record.status === "online") {
           void checkRadio(record.deviceID);
