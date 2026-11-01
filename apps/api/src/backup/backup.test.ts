@@ -1,4 +1,4 @@
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -30,14 +30,21 @@ const memoryBucket = Effect.gen(function* () {
   const layer = Layer.succeed(
     BackupBucket,
     BackupBucket.of({
-      put: (key, body) =>
+      upload: (key, path) =>
         Effect.gen(function* () {
           if (state.failPuts > 0) {
             state.failPuts--;
             yield* Queue.offer(attempts, "failed");
-            return yield* new BucketError({ operation: "put", reason: "down" });
+            return yield* new BucketError({
+              operation: "upload",
+              reason: "down",
+            });
           }
-          objects.push({ key, body, storedAt: yield* Clock.currentTimeMillis });
+          objects.push({
+            key,
+            body: readFileSync(path),
+            storedAt: yield* Clock.currentTimeMillis,
+          });
           yield* Queue.offer(attempts, "stored");
         }),
       lastStoredAt: (prefix) =>

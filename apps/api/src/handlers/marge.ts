@@ -113,9 +113,16 @@ export const MargeHandlers = HttpApiBuilder.group(
               ),
               Effect.mapError(() => new HttpApiError.BadRequest()),
             );
-            if (!(yield* devicesRepo.pair(params.accountId, params.deviceId))) {
-              // The account is full: the preset could never be served back.
+            const pairing = yield* devicesRepo.pair(
+              params.accountId,
+              params.deviceId,
+            );
+            if (pairing === "accountFull") {
+              // The preset could never be served back.
               return yield* new HttpApiError.BadRequest();
+            }
+            if (pairing === "storageFull") {
+              return yield* new HttpApiError.ServiceUnavailable();
             }
             const location = preset.location ?? "";
             const source = sourceWithId(preset.sourceid ?? "");

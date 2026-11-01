@@ -42,6 +42,30 @@ export const BackupConfig = Config.option(Config.String("S3_BUCKET")).pipe(
 
 export const ServerPort = Config.Port("PORT").pipe(Config.withDefault(3000));
 
+/**
+ * `RATE_LIMIT`: whether writes are rate limited per client, by the
+ * `X-Real-IP` header Railway's edge sets, else the connection's address. On
+ * unless `false`. Turn it off behind a proxy that doesn't set `X-Real-IP`,
+ * where every client would share the proxy's limit.
+ */
+export const RateLimitEnabled = Config.Boolean("RATE_LIMIT").pipe(
+  Config.withDefault(true),
+);
+
+export const DEFAULT_DATABASE_BUDGET_MB = 2500;
+
+/**
+ * `DATABASE_BUDGET_MB`, in bytes: past this size the database takes no new
+ * speaker, while those it has keep working. 2500 MB by default: with SQLite's
+ * limit at 1.5 times it (3750 MB), the database and its write-ahead log fit
+ * the 5 GB Railway volume. Backups copy it to the temporary directory, not
+ * the volume.
+ */
+export const DatabaseBudgetBytes = Config.Int("DATABASE_BUDGET_MB").pipe(
+  Config.withDefault(DEFAULT_DATABASE_BUDGET_MB),
+  Config.map((megabytes) => megabytes * 1024 * 1024),
+);
+
 const LOG_LEVELS = {
   debug: "Debug",
   info: "Info",
