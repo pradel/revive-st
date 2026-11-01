@@ -9,6 +9,7 @@ import {
   saveKnownSpeakers,
 } from "../lib/known-speakers-store";
 import { syncPresetsToMarge } from "../lib/marge-api";
+import { identifyServer } from "../lib/server-profiles";
 import type { SpeakerInfo, SpeakerRegistryDeps } from "./ports";
 
 /** How long a speaker may take to answer `/info` before it counts as offline. */
@@ -29,8 +30,8 @@ async function readInfo(
     if (result.isErr()) {
       return undefined;
     }
-    const { deviceID, name, type } = result.value;
-    return { deviceID, name, type };
+    const { deviceID, name, type, margeURL } = result.value;
+    return { deviceID, name, type, margeURL };
   } catch {
     return undefined;
   } finally {
@@ -85,6 +86,8 @@ export function createSpeakerRegistryDeps(): SpeakerRegistryDeps {
   return {
     speaker: {
       info: readInfo,
+      server: async ({ host, margeURL }, ourServer) =>
+        identifyServer({ host, margeURL, ourServer }),
       link: (host, port, deviceID, onState) => {
         // The speaker emits state while connecting, before `open` has read
         // anything, and when it's closed: neither is passed on.

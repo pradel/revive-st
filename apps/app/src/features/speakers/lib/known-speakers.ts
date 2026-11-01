@@ -1,7 +1,9 @@
+import { parseSpeakerServer, type SpeakerServer } from "./server-profiles";
+
 /**
  * A speaker the phone has reached before: shown on the next launch right
- * away, and tried at its last address while the network scan runs. Stored by
- * `known-speakers-store.ts`.
+ * away, with the server it used last time, and tried at its last address
+ * while the network scan runs. Stored by `known-speakers-store.ts`.
  */
 export interface KnownSpeaker {
   deviceID: string;
@@ -9,9 +11,13 @@ export interface KnownSpeaker {
   type: string;
   host: string;
   port: number;
+  /** As last checked; absent until it has been. */
+  server?: SpeakerServer;
 }
 
-const isKnownSpeaker = (value: unknown): value is KnownSpeaker => {
+const isKnownSpeaker = (
+  value: unknown,
+): value is Omit<KnownSpeaker, "server"> & { server?: unknown } => {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -27,15 +33,30 @@ const isKnownSpeaker = (value: unknown): value is KnownSpeaker => {
   );
 };
 
-/** Reads the stored list, keeping only well-formed entries. */
+/**
+ * Reads the stored list, keeping only well-formed entries. A server that
+ * can't be read is dropped and the speaker kept: it's checked again once the
+ * speaker answers.
+ */
 export function parseKnownSpeakers(stored: string | null): KnownSpeaker[] {
   if (stored === null) {
     return [];
   }
+  let parsed: unknown;
   try {
-    const parsed: unknown = JSON.parse(stored);
-    return Array.isArray(parsed) ? parsed.filter(isKnownSpeaker) : [];
+    parsed = JSON.parse(stored);
   } catch {
     return [];
   }
+  if (!Array.isArray(parsed)) {
+    return [];
+  }
+  return parsed
+    .filter(isKnownSpeaker)
+    .map(({ deviceID, name, type, host, port, server }) => {
+      const known = parseSpeakerServer(server);
+      return known === undefined
+        ? { deviceID, name, type, host, port }
+        : { deviceID, name, type, host, port, server: known };
+    });
 }

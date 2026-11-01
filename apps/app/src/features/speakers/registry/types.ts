@@ -8,6 +8,8 @@ import type {
   Preset,
 } from "bose-api-speaker-client";
 
+import type { SpeakerServer } from "../lib/server-profiles";
+
 /**
  * `connecting`: a remembered speaker shown from storage while the app tries
  * to reach it; `online`: reached, its state is live; `offline`: it didn't
@@ -26,6 +28,8 @@ export interface BoseSpeaker {
   port: number;
   name: string;
   type: string;
+  /** The server it uses, as last checked; kept across launches. */
+  server?: SpeakerServer;
   // What it plays and its settings, as it last showed them; absent until reached.
   playStatus?: string;
   source?: string;

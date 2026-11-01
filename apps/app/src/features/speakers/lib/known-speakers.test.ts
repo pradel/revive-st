@@ -26,6 +26,21 @@ describe("parseKnownSpeakers", () => {
     expect(parseKnownSpeakers(stored)).toEqual([OFFICE]);
   });
 
+  it("keeps the speaker's last server, and drops one it can't read", () => {
+    const server = { kind: "soundcork", name: "soundcork" };
+    expect(
+      parseKnownSpeakers(
+        JSON.stringify([
+          { ...OFFICE, server },
+          { ...OFFICE, deviceID: "B", server: { kind: "gone", name: "x" } },
+        ]),
+      ),
+    ).toEqual([
+      { ...OFFICE, server },
+      { ...OFFICE, deviceID: "B" },
+    ]);
+  });
+
   it("starts empty when nothing or something unreadable is stored", () => {
     expect(parseKnownSpeakers(null)).toEqual([]);
     expect(parseKnownSpeakers("{not json")).toEqual([]);

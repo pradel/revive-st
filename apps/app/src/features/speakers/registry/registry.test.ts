@@ -2,6 +2,7 @@ import type { Preset, Speaker, SpeakerState } from "bose-api-speaker-client";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { KnownSpeaker } from "../lib/known-speakers";
+import type { SpeakerServer } from "../lib/server-profiles";
 import type { SpeakerRegistryDeps } from "./ports";
 import { createSpeakerRegistry } from "./registry";
 
@@ -52,6 +53,14 @@ const onNetwork = (overrides: Partial<FakeSpeaker> = {}): FakeSpeaker => ({
   ...overrides,
 });
 
+const SOUNDCORK: SpeakerServer = { kind: "soundcork", name: "soundcork" };
+
+/** The fake `identifyServer`: soundcork by its `/marge` path, else named by host. */
+const serverFor = (margeURL: string): SpeakerServer =>
+  margeURL.endsWith("/marge")
+    ? SOUNDCORK
+    : { kind: "unknown", name: new URL(margeURL).host };
+
 const stateOf = (speaker: FakeSpeaker): SpeakerState => ({
   volume: 20,
   isMuted: false,
@@ -68,6 +77,8 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
   const network = new Map<string, FakeSpeaker>();
   const saved: KnownSpeaker[][] = [];
   const synced: { accountId: string; deviceID: string }[] = [];
+  /** The `margeURL` of each server check, in order. */
+  const serverChecks: string[] = [];
   let found: ((host: string, port: number) => void) | undefined;
 
   const deps: SpeakerRegistryDeps = {
@@ -80,9 +91,14 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
                 deviceID: speaker.deviceID,
                 name: speaker.name,
                 type: "SoundTouch 10",
+                margeURL: speaker.margeURL,
               }
             : undefined,
         );
+      },
+      server: async ({ margeURL }) => {
+        serverChecks.push(margeURL);
+        return Promise.resolve(serverFor(margeURL));
       },
       link: (host, port, deviceID, onState) => {
         const speaker = network.get(host);
@@ -133,6 +149,7 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
     network,
     saved,
     synced,
+    serverChecks,
     /** The speakers as the screens see them. */
     listed: () => registry.getSnapshot().listed,
     scanning: () => registry.getSnapshot().scan,
@@ -173,7 +190,13 @@ describe("speaker registry", () => {
     expect(listed()).toMatchObject([
       { status: "online", name: "Kitchen 2", volume: 20 },
     ]);
-    expect(saved.at(-1)).toEqual([{ ...KITCHEN, name: "Kitchen 2" }]);
+    expect(saved.at(-1)).toEqual([
+      {
+        ...KITCHEN,
+        name: "Kitchen 2",
+        server: { kind: "unknown", name: "other.example" },
+      },
+    ]);
   });
 
   it("shows a remembered speaker that doesn't answer offline", async () => {
@@ -213,7 +236,13 @@ describe("speaker registry", () => {
     expect(listed()).toMatchObject([
       { deviceID: KITCHEN.deviceID, host: "192.168.1.31", status: "online" },
     ]);
-    expect(saved.at(-1)).toEqual([{ ...KITCHEN, host: "192.168.1.31" }]);
+    expect(saved.at(-1)).toEqual([
+      {
+        ...KITCHEN,
+        host: "192.168.1.31",
+        server: { kind: "unknown", name: "other.example" },
+      },
+    ]);
   });
 
   it("keeps a speaker forgotten while it was being reached", async () => {
@@ -276,7 +305,7 @@ describe("speaker registry", () => {
     speaker.push?.({ ...stateOf(speaker), name: undefined });
 
     expect(listed()).toMatchObject([{ name: "Kitchen", status: "online" }]);
-    expect(saved).toEqual([]);
+    expect(saved.at(-1)?.[0]?.name).toBe("Kitchen");
   });
 
   it("shows the state a reached speaker pushes", async () => {
@@ -290,6 +319,57 @@ describe("speaker registry", () => {
     speaker.push?.({ ...stateOf(speaker), volume: 45 });
 
     expect(listed()).toMatchObject([{ volume: 45 }]);
+  });
+
+  it("lists a remembered speaker with the server it used last time", async () => {
+    const { registry, listed } = world({
+      stored: [{ ...KITCHEN, server: SOUNDCORK }],
+    });
+    await registry.restore();
+
+    expect(listed()).toMatchObject([
+      { status: "connecting", server: SOUNDCORK },
+    ]);
+  });
+
+  it("checks a reached speaker's server once, and again when it reports another address", async () => {
+    const speaker = onNetwork();
+    const { registry, network, listed, serverChecks, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    speaker.push?.({ ...stateOf(speaker), volume: 45 });
+    await settle();
+    expect(serverChecks).toEqual(["https://other.example"]);
+
+    speaker.margeURL = "http://192.168.1.10:8000/marge";
+    speaker.push?.(stateOf(speaker));
+    await settle();
+    expect(serverChecks).toEqual([
+      "https://other.example",
+      "http://192.168.1.10:8000/marge",
+    ]);
+    expect(listed()).toMatchObject([{ server: SOUNDCORK }]);
+  });
+
+  it("checks a reached speaker's server again when the app comes back", async () => {
+    // STR can be installed or removed without the speaker's address changing.
+    const { registry, network, serverChecks, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, onNetwork());
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(serverChecks).toHaveLength(2);
   });
 
   it("ends an automatic scan once every listed speaker answered, not one the user asked for", async () => {

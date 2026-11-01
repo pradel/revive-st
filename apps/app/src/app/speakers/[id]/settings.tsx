@@ -12,7 +12,6 @@ import {
 } from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
-import { useSpeakerServerQuery } from "@/features/speakers/hooks/useSpeakerServerQuery";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
   speakerRegistry,
@@ -98,7 +97,6 @@ export default function SpeakerSettings() {
   }, [deviceID]);
 
   const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
-  const server = useSpeakerServerQuery(speaker).data;
   const configureRun = useConfigureRun(id);
   const [presetsWidth, setPresetsWidth] = useState<number>();
 
@@ -377,7 +375,7 @@ export default function SpeakerSettings() {
               icon={formIcons.server}
               label="Server"
               description={serverHost(speaker.margeURL)}
-              value={server?.name ?? "Checking…"}
+              value={speaker.server?.name ?? "Checking…"}
             />
           ) : null}
           {!settingUp && radioSetup.isError ? (

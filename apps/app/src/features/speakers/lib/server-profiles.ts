@@ -5,19 +5,33 @@ import { isSameOrigin } from "./account-id";
  * The servers a speaker can use instead of Bose's. Adding one is adding a
  * profile to `PROFILES`: how to tell the speaker uses it, and its name.
  */
-export type ServerKind =
-  | "revive"
-  | "soundcork"
-  | "aftertouch"
-  | "streborn"
-  | "bose"
-  | "unknown";
+export const SERVER_KINDS = [
+  "revive",
+  "soundcork",
+  "aftertouch",
+  "streborn",
+  "bose",
+  "unknown",
+] as const;
+
+export type ServerKind = (typeof SERVER_KINDS)[number];
 
 /** The server a speaker uses. */
 export interface SpeakerServer {
   readonly kind: ServerKind;
   /** The server's name as its users know it. */
   readonly name: string;
+}
+
+/** A stored `SpeakerServer`, or `undefined` when it isn't one (an older or damaged entry). */
+export function parseSpeakerServer(value: unknown): SpeakerServer | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  const { kind, name } = value as { kind?: unknown; name?: unknown };
+  return SERVER_KINDS.includes(kind as ServerKind) && typeof name === "string"
+    ? { kind: kind as ServerKind, name }
+    : undefined;
 }
 
 /** What a profile can go on to tell whether a speaker uses its server. */
