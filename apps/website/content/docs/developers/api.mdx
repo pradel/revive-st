@@ -31,7 +31,7 @@ Writes are rate limited per client address (`X-Real-IP`, set by Railway's edge),
 
 Speaker reads are never limited: a household's speakers share one address and boot together.
 
-The database has a storage budget, 100 MB by default. Past it, the server pairs no new speaker (`503` on a preset save or sync for one) and records no new speaker's contact, while speakers already paired keep working. At one and a half times the budget, SQLite refuses to grow.
+The database has a storage budget, 2500 MB by default. Past it, the server pairs no new speaker (`503` on a preset save or sync for one) and records no new speaker's contact, while speakers already paired keep working. At one and a half times the budget, SQLite refuses to grow.
 
 ## Marge Emulation Endpoints (Bose SoundTouch)
 

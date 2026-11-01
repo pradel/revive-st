@@ -1,9 +1,9 @@
-import { randomUUID } from "node:crypto";
-import { readFile, rm } from "node:fs/promises";
+import { createReadStream, createWriteStream, rmSync } from "node:fs";
+import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { promisify } from "node:util";
-import { gzip } from "node:zlib";
+import { pipeline } from "node:stream/promises";
+import { createGzip } from "node:zlib";
 
 import {
   Clock,
@@ -20,8 +20,6 @@ import {
 import { BackupConfig } from "../config.ts";
 import { Database } from "../db/database.ts";
 import { BackupBucket, type BucketError } from "./bucket.ts";
-
-const gzipAsync = promisify(gzip);
 
 /** Snapshots are stored under this prefix, one object per snapshot. */
 export const SNAPSHOT_PREFIX = "db/";
@@ -66,32 +64,50 @@ export class DatabaseBackup extends Context.Service<
       const db = yield* Database;
       const bucket = yield* BackupBucket;
 
+      /**
+       * Copies the database, gzips the copy and uploads it, all through
+       * files in the temporary directory: memory stays flat whatever the
+       * database's size, and the disk holds about twice it meanwhile.
+       */
       const snapshot = Effect.gen(function* () {
         const startedAt = yield* Clock.currentTimeMillis;
         const key = snapshotKey(yield* DateTime.now);
-        const path = join(tmpdir(), `revivest-${randomUUID()}.db`);
-        const body = yield* Effect.gen(function* () {
-          // An online backup: a consistent copy while requests keep writing.
-          yield* db.$client
-            .backup(path)
-            .pipe(Effect.mapError((reason) => new BackupError({ reason })));
-          return yield* Effect.tryPromise({
-            try: async () => gzipAsync(await readFile(path)),
+        const directory = yield* Effect.acquireRelease(
+          Effect.tryPromise({
+            try: async () => mkdtemp(join(tmpdir(), "revivest-")),
             catch: (reason) => new BackupError({ reason }),
-          });
-        }).pipe(
-          Effect.ensuring(
-            Effect.promise(async () => rm(path, { force: true })),
-          ),
+          }),
+          (path) =>
+            Effect.sync(() => {
+              rmSync(path, { recursive: true, force: true });
+            }),
         );
-        yield* bucket.put(key, body);
+        const copy = join(directory, "snapshot.db");
+        const gzipped = `${copy}.gz`;
+        // An online backup: a consistent copy while requests keep writing.
+        yield* db.$client
+          .backup(copy)
+          .pipe(Effect.mapError((reason) => new BackupError({ reason })));
+        const bytes = yield* Effect.tryPromise({
+          try: async () => {
+            await pipeline(
+              createReadStream(copy),
+              createGzip(),
+              createWriteStream(gzipped),
+            );
+            await rm(copy);
+            return (await stat(gzipped)).size;
+          },
+          catch: (reason) => new BackupError({ reason }),
+        });
+        yield* bucket.upload(key, gzipped);
         yield* Effect.logInfo("Database snapshot stored", {
           key,
-          bytes: body.byteLength,
+          bytes,
           ms: (yield* Clock.currentTimeMillis) - startedAt,
         });
-        return { key, bytes: body.byteLength } as const;
-      }).pipe(Effect.withSpan("DatabaseBackup.snapshot"));
+        return { key, bytes } as const;
+      }).pipe(Effect.scoped, Effect.withSpan("DatabaseBackup.snapshot"));
 
       const snapshotIfDue = Effect.gen(function* () {
         const last = yield* bucket.lastStoredAt(SNAPSHOT_PREFIX);
