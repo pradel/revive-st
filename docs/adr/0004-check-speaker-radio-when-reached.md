@@ -11,4 +11,4 @@ Presets are synced to our server only when they change, instead of on every stat
 ## Considered options
 
 - **Keep the query and run it for every speaker at launch**: rejected. It would still read `/info` twice, keep a second copy of each speaker keyed by address, and miss the speaker's own change events.
-- **Skip the probe when the saved server matches the speaker's `margeURL`**: not done. Only STR (on Bose's address) and AfterTouch need a probe, and STR can be installed or removed without the address changing.
+- **Skip the probe when the saved server matches the speaker's `margeURL`**: not done. Only STR (on Bose's address), AfterTouch and another Revive ST server at its own address (asked at `/`) need a probe, and STR can be installed or removed without the address changing.
