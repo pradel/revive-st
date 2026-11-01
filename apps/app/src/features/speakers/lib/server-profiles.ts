@@ -72,16 +72,31 @@ const field = (body: unknown, name: string): unknown =>
 const isBoseHost = (marge: URL) =>
   marge.hostname === "bose.com" || marge.hostname.endsWith(".bose.com");
 
+/**
+ * A server at its own origin, with no path: ours or AfterTouch, which both
+ * serve Marge at their root, or one no profile knows.
+ */
+const isBareOrigin = (marge: URL) =>
+  !isBoseHost(marge) && marge.pathname.replace(/\/+$/, "") === "";
+
 /** STR's agent answers on 8888, or 17008 on the models that keep 8888 closed. */
 const STR_PORTS = [8888, 17_008];
 
+/** What a Revive ST server's `GET /` names itself (`SERVER_NAME` in `apps/api`). */
+const REVIVE_API_NAME = "Revive ST API";
+
 const PROFILES: readonly ServerProfile[] = [
   {
+    // Ours and the one run for everyone are known by their address; another
+    // one (a self-hosted server the app isn't set to) names itself at `/`.
     kind: "revive",
     name: "Revive ST",
-    identify: ({ marge, ourServer }) =>
+    identify: async ({ marge, ourServer }, signal) =>
       isSameOrigin(marge.href, ourServer) ||
-      isSameOrigin(marge.href, DEFAULT_SERVER_URL),
+      isSameOrigin(marge.href, DEFAULT_SERVER_URL) ||
+      (isBareOrigin(marge) &&
+        field(await probeJson(`${marge.origin}/`, signal), "name") ===
+          REVIVE_API_NAME),
   },
   {
     // Serves Marge under `/marge`, which no other server does.
@@ -118,7 +133,7 @@ const PROFILES: readonly ServerProfile[] = [
     kind: "aftertouch",
     name: "AfterTouch",
     identify: async ({ marge }, signal) => {
-      if (isBoseHost(marge) || marge.pathname.replace(/\/+$/, "") !== "") {
+      if (!isBareOrigin(marge)) {
         return false;
       }
       const health = await probeJson(`${marge.origin}/health`, signal);

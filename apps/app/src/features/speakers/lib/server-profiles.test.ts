@@ -35,6 +35,21 @@ describe("identifyServer", () => {
     expect(fetched).toEqual([]);
   });
 
+  it("finds another Revive ST server by the name it answers at /", async () => {
+    network({
+      "http://192.168.1.50:3000/": {
+        name: "Revive ST API",
+        version: "0.3.0",
+        docs: "/docs",
+        openapi: "/openapi.json",
+      },
+    });
+    expect(await identify("http://192.168.1.50:3000")).toEqual({
+      kind: "revive",
+      name: "Revive ST",
+    });
+  });
+
   it("knows soundcork by its /marge path", async () => {
     const fetched = network({});
     expect(await identify("http://192.168.1.10:8000/marge/")).toEqual({
@@ -80,7 +95,10 @@ describe("identifyServer", () => {
   });
 
   it("names a server no profile knows by its address", async () => {
-    network({ "https://radio.example:8443/health": { ok: true } });
+    network({
+      "https://radio.example:8443/": { name: "Radio Example" },
+      "https://radio.example:8443/health": { ok: true },
+    });
     expect(await identify("https://radio.example:8443")).toEqual({
       kind: "unknown",
       name: "radio.example:8443",
