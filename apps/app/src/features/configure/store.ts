@@ -70,10 +70,11 @@ export function startConfigure(
   // The speaker's radio status changes once the run is done, whether or not
   // a screen is showing it.
   const unsubscribe = session.subscribe(() => {
-    if (session.getView().kind === "done") {
+    const view = session.getView();
+    if (view.kind === "done") {
       unsubscribe();
       void queryClient.invalidateQueries({ queryKey: [RADIO_SETUP_QUERY_KEY] });
-      void speakerRegistry.refreshServer(target.deviceID);
+      void speakerRegistry.refreshServer(target.deviceID, view.host);
     }
   });
   session.start();

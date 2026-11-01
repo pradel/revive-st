@@ -433,7 +433,8 @@ export function createSpeakerRegistry(
       links.delete(deviceID);
       link?.close();
       checkedFor.delete(deviceID);
-      serverChecks.delete(deviceID);
+      // Bumped, not reset, so a check still running can't pass for a later one.
+      serverChecks.set(deviceID, (serverChecks.get(deviceID) ?? 0) + 1);
       if (records.delete(deviceID)) {
         changed();
       }
@@ -450,22 +451,43 @@ export function createSpeakerRegistry(
       await links.get(deviceID)?.refresh();
     },
 
-    /** Checks again which server a listed speaker uses, from its `/info`. */
-    refreshServer: async (deviceID: string): Promise<void> => {
+    /**
+     * Checks again which server a listed speaker uses, from the `/info` it
+     * answers at `host` (its last address by default, else where it was
+     * found, e.g. after a setup restarted it). Another device answering
+     * there is ignored.
+     */
+    refreshServer: async (deviceID: string, host?: string): Promise<void> => {
       const record = records.get(deviceID);
-      const info =
-        record && (await deps.speaker.info(record.host, record.port));
-      if (info) {
-        await checkServer(deviceID, info.margeURL);
+      if (!record) {
+        return;
       }
+      const address = host ?? record.host;
+      const info = await deps.speaker.info(address, record.port);
+      const current = records.get(deviceID);
+      if (info?.deviceID !== deviceID || !current) {
+        return;
+      }
+      records.set(deviceID, {
+        ...current,
+        host: address,
+        live: current.live && { ...current.live, margeURL: info.margeURL },
+      });
+      changed();
+      await checkServer(deviceID, info.margeURL);
     },
 
-    /** Checks again which server every reached speaker uses: our server changed. */
+    /**
+     * Checks again which server every reached speaker uses: our server
+     * changed. The others are checked when they're next reached.
+     */
     refreshAllServers: (): void => {
       for (const record of records.values()) {
         const margeURL = record.live?.margeURL;
         if (record.status === "online" && margeURL) {
           void checkServer(record.deviceID, margeURL);
+        } else {
+          checkedFor.delete(record.deviceID);
         }
       }
     },

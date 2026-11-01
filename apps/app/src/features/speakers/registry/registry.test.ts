@@ -79,6 +79,8 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
   const synced: { accountId: string; deviceID: string }[] = [];
   /** The `margeURL` of each server check, in order. */
   const serverChecks: string[] = [];
+  /** While set, server checks wait here until a test lets them answer. */
+  let heldChecks: (() => void)[] | undefined;
   let found: ((host: string, port: number) => void) | undefined;
 
   const deps: SpeakerRegistryDeps = {
@@ -98,7 +100,13 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
       },
       server: async ({ margeURL }) => {
         serverChecks.push(margeURL);
-        return Promise.resolve(serverFor(margeURL));
+        const held = heldChecks;
+        if (held) {
+          await new Promise<void>((resolve) => {
+            held.push(resolve);
+          });
+        }
+        return serverFor(margeURL);
       },
       link: (host, port, deviceID, onState) => {
         const speaker = network.get(host);
@@ -150,6 +158,21 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
     saved,
     synced,
     serverChecks,
+    /** Server checks from now on wait until `answerHeldChecks`. */
+    holdChecks: () => {
+      heldChecks = [];
+    },
+    /**
+     * Lets the held server checks answer, newest first so a stale one lands
+     * last, and stops holding new ones.
+     */
+    answerHeldChecks: () => {
+      const held = heldChecks ?? [];
+      heldChecks = undefined;
+      for (const resolve of held.toReversed()) {
+        resolve();
+      }
+    },
     /** The speakers as the screens see them. */
     listed: () => registry.getSnapshot().listed,
     scanning: () => registry.getSnapshot().scan,
@@ -386,5 +409,90 @@ describe("speaker registry", () => {
     registry.rescan();
     await settle();
     expect(scanning()).toBe("user");
+  });
+
+  it("checks the server after a setup at the speaker's new address, ignoring another device", async () => {
+    const { registry, network, listed, serverChecks, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, onNetwork());
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    // Another device took the old address; the speaker came back elsewhere.
+    network.set(KITCHEN.host, onNetwork({ deviceID: "B0F6FD000002" }));
+    network.set(
+      "192.168.1.31",
+      onNetwork({ margeURL: "http://192.168.1.10:8000/marge" }),
+    );
+    await registry.refreshServer(KITCHEN.deviceID);
+    await registry.refreshServer(KITCHEN.deviceID, "192.168.1.31");
+
+    expect(serverChecks).toEqual([
+      "https://other.example",
+      "http://192.168.1.10:8000/marge",
+    ]);
+    expect(listed()).toMatchObject([
+      {
+        host: "192.168.1.31",
+        margeURL: "http://192.168.1.10:8000/marge",
+        server: SOUNDCORK,
+      },
+    ]);
+  });
+
+  it("doesn't let a check started before a speaker was forgotten update it once found again", async () => {
+    const {
+      registry,
+      network,
+      listed,
+      find,
+      holdChecks,
+      answerHeldChecks,
+      settle,
+    } = world();
+    const speaker = onNetwork({ margeURL: "http://192.168.1.10:8000/marge" });
+    network.set("192.168.1.31", speaker);
+    await registry.restore();
+    holdChecks();
+    registry.rescan();
+    find("192.168.1.31");
+    await settle();
+
+    registry.forget(KITCHEN.deviceID);
+    speaker.margeURL = "https://other.example";
+    find("192.168.1.31");
+    await settle();
+    answerHeldChecks();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { server: { kind: "unknown", name: "other.example" } },
+    ]);
+  });
+
+  it("checks an offline speaker's server again when it's next reached, once our server changed", async () => {
+    const speaker = onNetwork();
+    const { registry, network, serverChecks, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+    speaker.answers = false;
+    registry.reconnectAll();
+    await settle();
+
+    registry.refreshAllServers();
+    speaker.answers = true;
+    registry.reconnectAll();
+    await settle();
+
+    expect(serverChecks).toEqual([
+      "https://other.example",
+      "https://other.example",
+    ]);
   });
 });
