@@ -64,8 +64,15 @@ export interface ServerProfile extends SpeakerServer {
 
 const PROBE_TIMEOUT_MS = 3000;
 
-/** `url`'s JSON body; `undefined` when it doesn't answer with JSON in time. */
+/**
+ * `url`'s JSON body; `undefined` when it doesn't answer with JSON in time.
+ * Throws once `signal` aborts: the check was given up, so a missing answer
+ * says nothing about the server.
+ */
 async function probeJson(url: string, signal?: AbortSignal): Promise<unknown> {
+  if (signal?.aborted) {
+    throw new Error("The server check was given up");
+  }
   const controller = new AbortController();
   const abort = () => {
     controller.abort();
@@ -75,7 +82,10 @@ async function probeJson(url: string, signal?: AbortSignal): Promise<unknown> {
   try {
     const response = await fetch(url, { signal: controller.signal });
     return response.ok ? ((await response.json()) as unknown) : undefined;
-  } catch {
+  } catch (err) {
+    if (signal?.aborted) {
+      throw new Error("The server check was given up", { cause: err });
+    }
     return undefined;
   } finally {
     clearTimeout(timeoutId);

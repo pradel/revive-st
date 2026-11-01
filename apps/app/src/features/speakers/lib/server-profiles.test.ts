@@ -98,6 +98,30 @@ describe("identifyServer", () => {
     );
   });
 
+  it("fails rather than ruling a server out when the check is given up", async () => {
+    const controller = new AbortController();
+    vi.stubGlobal(
+      "fetch",
+      async (_url: string, { signal }: { signal: AbortSignal }) =>
+        new Promise((_resolve, reject) => {
+          signal.addEventListener("abort", () => {
+            reject(new DOMException("Aborted", "AbortError"));
+          });
+        }),
+    );
+    const identifying = identifyServer(
+      {
+        host: HOST,
+        margeURL: "http://192.168.1.50:3000",
+        ourServer: OUR_SERVER,
+      },
+      controller.signal,
+    );
+    controller.abort();
+
+    await expect(identifying).rejects.toThrow("given up");
+  });
+
   it("names a server no profile knows by its address", async () => {
     network({
       "https://radio.example:8443/": { name: "Radio Example" },

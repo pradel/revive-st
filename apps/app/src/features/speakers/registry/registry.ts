@@ -98,6 +98,8 @@ export function createSpeakerRegistry(
   const links = new Map<string, SpeakerLink>();
   /** Bumped by each radio check: only the latest one for a speaker applies. */
   const radioChecks = new Map<string, number>();
+  /** The `margeURL` each speaker's radio was last checked for. */
+  const radioCheckedFor = new Map<string, string>();
   /** What was last sent to our server per speaker, so unchanged presets aren't sent again. */
   const syncedPresets = new Map<string, string>();
   /**
@@ -206,6 +208,24 @@ export function createSpeakerRegistry(
         type: filled(state.type, record.type),
       });
     }
+    // A speaker set up for another server reports its new address; the
+    // radio checked for the old one no longer holds.
+    const checkedFor = radioCheckedFor.get(deviceID);
+    if (
+      checkedFor !== undefined &&
+      state.margeURL &&
+      state.margeURL !== checkedFor
+    ) {
+      void checkRadio(deviceID);
+    }
+  }
+
+  /** Starts a radio check: any earlier one for the speaker no longer applies. */
+  function startRadioCheck(deviceID: string): number {
+    const check = (radioChecks.get(deviceID) ?? 0) + 1;
+    radioChecks.set(deviceID, check);
+    update(deviceID, { radioFailed: false });
+    return check;
   }
 
   /** Checks how the speaker gets radio; `info` saves reading its `/info` again. */
@@ -217,13 +237,14 @@ export function createSpeakerRegistry(
     if (!record) {
       return;
     }
-    const check = (radioChecks.get(deviceID) ?? 0) + 1;
-    radioChecks.set(deviceID, check);
-    update(deviceID, { radioFailed: false });
+    const check = startRadioCheck(deviceID);
     const { host, port } = record;
     let radio: SpeakerRadio | undefined;
     try {
       const read = info ?? (await deps.speaker.info(host, port));
+      if (read) {
+        radioCheckedFor.set(deviceID, read.margeURL);
+      }
       radio =
         read &&
         (await deps.speaker.radio(
@@ -359,6 +380,15 @@ export function createSpeakerRegistry(
     update(deviceID, { status: "offline", live: undefined });
   }
 
+  /** Checks again how every reached speaker gets radio. */
+  function checkReachedRadio(): void {
+    for (const record of records.values()) {
+      if (record.status === "online") {
+        void checkRadio(record.deviceID);
+      }
+    }
+  }
+
   function endScan(): void {
     cancelScanEnd?.();
     cancelScanEnd = undefined;
@@ -447,9 +477,13 @@ export function createSpeakerRegistry(
       startScan("auto");
     },
 
-    /** A scan the user asked for: runs its full length to find new speakers. */
+    /**
+     * A scan the user asked for: runs its full length to find new speakers,
+     * and checks the reached ones' radio again.
+     */
     rescan: (): void => {
       startScan("user");
+      checkReachedRadio();
     },
 
     /** An offline speaker, tried again: at its last address and by scanning. */
@@ -472,6 +506,7 @@ export function createSpeakerRegistry(
       link?.close();
       // Bumped, not reset, so a check still running can't pass for a later one.
       radioChecks.set(deviceID, (radioChecks.get(deviceID) ?? 0) + 1);
+      radioCheckedFor.delete(deviceID);
       syncedPresets.delete(deviceID);
       if (records.delete(deviceID)) {
         changed();
@@ -493,7 +528,7 @@ export function createSpeakerRegistry(
      * Checks again how a listed speaker gets radio, from the `/info` it
      * answers at `host` (its last address by default, else where it was
      * found, e.g. after a setup restarted it). Another device answering
-     * there is ignored.
+     * there counts as no answer.
      */
     refreshRadio: async (deviceID: string, host?: string): Promise<void> => {
       const record = records.get(deviceID);
@@ -501,17 +536,14 @@ export function createSpeakerRegistry(
         return;
       }
       const address = host ?? record.host;
-      update(deviceID, { radioFailed: false });
+      const check = startRadioCheck(deviceID);
       const info = await deps.speaker.info(address, record.port);
       const current = records.get(deviceID);
-      if (!current) {
+      if (!current || radioChecks.get(deviceID) !== check) {
         return;
       }
-      if (!info) {
+      if (info?.deviceID !== deviceID) {
         update(deviceID, { radioFailed: true });
-        return;
-      }
-      if (info.deviceID !== deviceID) {
         return;
       }
       records.set(deviceID, {
@@ -529,11 +561,7 @@ export function createSpeakerRegistry(
      */
     refreshAllRadio: (): void => {
       changed();
-      for (const record of records.values()) {
-        if (record.status === "online") {
-          void checkRadio(record.deviceID);
-        }
-      }
+      checkReachedRadio();
     },
 
     /** Shows a volume the user just set, before the speaker confirms it. */

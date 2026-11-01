@@ -18,7 +18,10 @@ import {
   type CastStation,
   type StationPlay,
 } from "@/features/speakers/lib/radio";
-import { useSpeakers } from "@/features/speakers/registry/store";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
@@ -84,6 +87,21 @@ export default function CastSheet() {
       mountedRef.current = false;
     };
   }, []);
+
+  // A speaker whose radio check wasn't answered is checked again once per
+  // sheet, rather than staying unusable until the app comes back.
+  const retriedRef = useRef(new Set<string>());
+  useEffect(() => {
+    for (const speaker of speakers) {
+      if (
+        speaker.radio.kind === "unreachable" &&
+        !retriedRef.current.has(speaker.deviceID)
+      ) {
+        retriedRef.current.add(speaker.deviceID);
+        void speakerRegistry.refreshRadio(speaker.deviceID);
+      }
+    }
+  }, [speakers]);
 
   // With a single speaker, saving goes straight to its presets, once it can
   // play the station: until then the speaker list shows its status and
@@ -423,6 +441,11 @@ function SpeakerCastItem({
   const fit = stationFit(radio, station);
   const isUnplayable = fit.kind === "noSource";
   const canAddSource = fit.kind === "noSource" && fit.setupAdds;
+  // Its server puts its own settings back at every start: it can't be set up.
+  const managedBy =
+    radio.kind === "needsSetup" && radio.setup.kind === "blocked"
+      ? radio.setup.server
+      : undefined;
 
   const getStatusText = () => {
     if (isCasting) {
@@ -435,7 +458,9 @@ function SpeakerCastItem({
       return "Connection failed";
     }
     if (fit.kind === "notReady") {
-      return "Needs setup for internet radio";
+      return managedBy === undefined
+        ? "Needs setup for internet radio"
+        : `Internet radio not ready on ${managedBy}`;
     }
     if (fit.kind === "noSource") {
       return unplayableText(station, fit.server, fit.setupAdds);
@@ -462,7 +487,7 @@ function SpeakerCastItem({
         />
       );
     }
-    if (isUnplayable && !canAddSource) {
+    if ((isUnplayable && !canAddSource) || managedBy !== undefined) {
       return undefined;
     }
     return <Icon name={icons.lock} size={16} color="textTertiary" />;
@@ -473,7 +498,11 @@ function SpeakerCastItem({
       title={speaker.name}
       subtitle={getStatusText()}
       disabled={
-        disabled || isLoading || isError || (isUnplayable && !canAddSource)
+        disabled ||
+        isLoading ||
+        isError ||
+        (isUnplayable && !canAddSource) ||
+        managedBy !== undefined
       }
       leading={
         <View style={$speakerIcon}>

@@ -167,6 +167,19 @@ export default function SpeakerSettings() {
         status: { label: "Checking…", tone: "neutral" },
       };
     }
+    // Its server puts its own settings back at every start: it can't be set up.
+    if (
+      radioState.kind === "needsSetup" &&
+      radioState.setup.kind === "blocked"
+    ) {
+      return {
+        value: "Not ready",
+        status: {
+          label: `Online · Internet radio not ready on ${radioState.setup.server}`,
+          tone: "warning",
+        },
+      };
+    }
     if (radioState.kind === "needsSetup") {
       return {
         value: "Needs setup",

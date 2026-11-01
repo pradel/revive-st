@@ -4,7 +4,7 @@ The speaker registry (ADR 0002) already kept each speaker's server, checked when
 
 The registry's record now holds the speaker's radio (`SpeakerRadio`: its server, station sources and readiness) in place of the server alone. Reaching a speaker checks its radio at the same time as it opens the live connection, from the `/info` it already read, so the home screen shows it ("Radio via soundcork", "Radio needs setup") without opening anything. The radio is remembered with the speaker and listed at the next launch before any speaker answers; a check that runs or fails keeps the last result. `useRadioSetupQuery` is gone.
 
-The radio is checked again when the app comes back to the foreground, when the speaker reports `infoUpdated` or `sourcesUpdated` on its WebSocket, when our server changes, after a setup, and on pull to refresh. The client parses `sourcesUpdated` and calls `onSettingsChange` for both events.
+The radio is checked again when the app comes back to the foreground, when the speaker reports `infoUpdated` or `sourcesUpdated` on its WebSocket or another `margeURL` in its state, when our server changes, after a setup, when the user scans again (pull to refresh), and when "Play on…" opens with a speaker whose check wasn't answered. The client parses `sourcesUpdated` and calls `onSettingsChange` for both events.
 
 Presets are synced to our server only when they change, instead of on every state update the speaker sends.
 

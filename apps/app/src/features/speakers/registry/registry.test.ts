@@ -183,6 +183,11 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
         resolve();
       }
     },
+    /** The speaker at `host` sends its state, as it does after any change. */
+    report: (host: string) => {
+      const speaker = network.get(host);
+      speaker?.events?.onState(state(speaker));
+    },
     /** The speakers as the screens see them. */
     listed: () => registry.getSnapshot().listed,
     scanning: () => registry.getSnapshot().scan,
@@ -492,6 +497,55 @@ describe("speaker registry", () => {
     find("192.168.1.31");
     await settle();
     answerHeldChecks();
+    await settle();
+
+    expect(listed()[0]?.radio).toMatchObject(shownVia("AfterTouch"));
+  });
+
+  it("shows the radio unreachable when another device answers a refresh at the speaker's address", async () => {
+    const { radio: _radio, ...unchecked } = KITCHEN;
+    const { registry, network, listed } = world({ stored: [unchecked] });
+    network.set(KITCHEN.host, onNetwork({ deviceID: "B0F6FD000002" }));
+    await registry.restore();
+
+    await registry.refreshRadio(KITCHEN.deviceID);
+
+    expect(listed()).toMatchObject([{ radio: { kind: "unreachable" } }]);
+  });
+
+  it("checks reached speakers' radio again on a scan the user asks for", async () => {
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
+    const speaker = onNetwork();
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    speaker.radio = radioVia("AfterTouch");
+    registry.rescan();
+    await settle();
+
+    expect(listed()[0]?.radio).toMatchObject(shownVia("AfterTouch"));
+  });
+
+  it("checks the radio again when the speaker reports another server address", async () => {
+    const { registry, network, listed, report, settle } = world({
+      stored: [KITCHEN],
+    });
+    const speaker = onNetwork();
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    speaker.radio = radioVia("AfterTouch");
+    report(KITCHEN.host);
+    await settle();
+    // Same address: the radio checked for it still holds.
+    expect(listed()[0]?.radio).toMatchObject(shownVia("soundcork"));
+
+    speaker.margeURL = "http://192.168.1.12:8000";
+    report(KITCHEN.host);
     await settle();
 
     expect(listed()[0]?.radio).toMatchObject(shownVia("AfterTouch"));

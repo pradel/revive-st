@@ -21,7 +21,10 @@ import {
 } from "@/features/configure/store";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
-import { useSpeakers } from "@/features/speakers/registry/store";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -90,6 +93,27 @@ export default function ConfigureSpeaker() {
             title="Speaker not found"
             actions={
               <Button label="Go back" variant="secondary" onPress={close} />
+            }
+          />
+        );
+      }
+      // Setting it up may leave the server it uses, which isn't known yet.
+      if (radio?.kind === "unreachable") {
+        return (
+          <EmptyState
+            icon={icons.warning}
+            title={`Couldn't check ${speakerName}`}
+            description="Setting it up needs to know which server it uses now. Make sure your phone is on the same Wi-Fi network as the speaker."
+            actions={
+              <>
+                <Button
+                  label="Check again"
+                  onPress={() => {
+                    void speakerRegistry.refreshRadio(id);
+                  }}
+                />
+                <Button label="Go back" variant="secondary" onPress={close} />
+              </>
             }
           />
         );
