@@ -2,6 +2,7 @@ import type { Speaker, SpeakerState } from "bose-api-speaker-client";
 
 import { isSameOrigin } from "../lib/account-id";
 import type { KnownSpeaker } from "../lib/known-speakers";
+import type { SpeakerServer } from "../lib/server-profiles";
 import type { SpeakerLink, SpeakerRegistryDeps } from "./ports";
 import type {
   BoseSpeaker,
@@ -10,7 +11,7 @@ import type {
   SpeakerStatus,
 } from "./types";
 
-/** One listed speaker: who and where it is, and its state once reached. */
+/** One listed speaker: who and where it is, its server, and its state once reached. */
 interface SpeakerRecord {
   readonly deviceID: string;
   readonly name: string;
@@ -18,6 +19,8 @@ interface SpeakerRecord {
   readonly host: string;
   readonly port: number;
   readonly status: SpeakerStatus;
+  /** The server it uses, as last checked; absent until it has been. */
+  readonly server?: SpeakerServer;
   /** What it last showed; absent until it's reached. */
   readonly live?: SpeakerState;
 }
@@ -31,6 +34,7 @@ function toView(record: SpeakerRecord): BoseSpeaker {
     port: record.port,
     name: record.name,
     type: record.type,
+    server: record.server,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
@@ -59,20 +63,25 @@ const known = ({
   type,
   host,
   port,
+  server,
 }: SpeakerRecord | KnownSpeaker): KnownSpeaker => ({
   deviceID,
   name,
   type,
   host,
   port,
+  server,
 });
 
 export type SpeakerRegistry = ReturnType<typeof createSpeakerRegistry>;
 
 /**
  * The speakers the app lists, by device id: the remembered ones, listed at
- * once, and the ones found on the network. Reaching a speaker opens its live
- * connection; what's listed is remembered for the next launch.
+ * once with the server they used last time, and the ones found on the
+ * network. Reaching a speaker opens its live connection and checks its
+ * server (`identifyServer`); the server is checked again when the speaker
+ * reports another `margeURL`, when the app comes back, when our server
+ * changes, and when asked. What's listed is remembered for the next launch.
  */
 export function createSpeakerRegistry(
   deps: SpeakerRegistryDeps,
@@ -86,6 +95,10 @@ export function createSpeakerRegistry(
    */
   let forgetCount = 0;
   const forgottenAt = new Map<string, number>();
+  /** The `margeURL` each speaker's server was last checked for. */
+  const checkedFor = new Map<string, string>();
+  /** Bumped by each server check: only the latest one for a speaker applies. */
+  const serverChecks = new Map<string, number>();
 
   let restoring: Promise<void> | undefined;
   let restored = false;
@@ -164,6 +177,38 @@ export function createSpeakerRegistry(
     }
   }
 
+  /** Checks which server the speaker uses, for the `margeURL` it reports. */
+  async function checkServer(
+    deviceID: string,
+    margeURL: string,
+  ): Promise<void> {
+    const host = records.get(deviceID)?.host;
+    if (host === undefined) {
+      return;
+    }
+    const check = (serverChecks.get(deviceID) ?? 0) + 1;
+    serverChecks.set(deviceID, check);
+    checkedFor.set(deviceID, margeURL);
+    let server: SpeakerServer;
+    try {
+      server = await deps.speaker.server(
+        { host, margeURL },
+        deps.ourServer.url(),
+      );
+    } catch (err) {
+      deps.log.warn(
+        `[speakers] Could not check the server of ${deviceID}:`,
+        err,
+      );
+      return;
+    }
+    const record = records.get(deviceID);
+    if (serverChecks.get(deviceID) === check && record) {
+      records.set(deviceID, { ...record, server });
+      changed();
+    }
+  }
+
   /** The speaker's state, read through `link`: listed online with it. */
   function publish(
     deviceID: string,
@@ -179,9 +224,13 @@ export function createSpeakerRegistry(
       host: link.host,
       port: link.port,
       status: "online",
+      server: record?.server,
       live: state,
     });
     changed();
+    if (state.margeURL && checkedFor.get(deviceID) !== state.margeURL) {
+      void checkServer(deviceID, state.margeURL);
+    }
   }
 
   /**
@@ -268,6 +317,7 @@ export function createSpeakerRegistry(
     }
     if (info) {
       link.reconnect();
+      void checkServer(deviceID, info.margeURL);
       return;
     }
     links.delete(deviceID);
@@ -382,6 +432,9 @@ export function createSpeakerRegistry(
       const link = links.get(deviceID);
       links.delete(deviceID);
       link?.close();
+      checkedFor.delete(deviceID);
+      // Bumped, not reset, so a check still running can't pass for a later one.
+      serverChecks.set(deviceID, (serverChecks.get(deviceID) ?? 0) + 1);
       if (records.delete(deviceID)) {
         changed();
       }
@@ -396,6 +449,47 @@ export function createSpeakerRegistry(
     /** Re-reads everything a reached speaker shows. */
     refresh: async (deviceID: string): Promise<void> => {
       await links.get(deviceID)?.refresh();
+    },
+
+    /**
+     * Checks again which server a listed speaker uses, from the `/info` it
+     * answers at `host` (its last address by default, else where it was
+     * found, e.g. after a setup restarted it). Another device answering
+     * there is ignored.
+     */
+    refreshServer: async (deviceID: string, host?: string): Promise<void> => {
+      const record = records.get(deviceID);
+      if (!record) {
+        return;
+      }
+      const address = host ?? record.host;
+      const info = await deps.speaker.info(address, record.port);
+      const current = records.get(deviceID);
+      if (info?.deviceID !== deviceID || !current) {
+        return;
+      }
+      records.set(deviceID, {
+        ...current,
+        host: address,
+        live: current.live && { ...current.live, margeURL: info.margeURL },
+      });
+      changed();
+      await checkServer(deviceID, info.margeURL);
+    },
+
+    /**
+     * Checks again which server every reached speaker uses: our server
+     * changed. The others are checked when they're next reached.
+     */
+    refreshAllServers: (): void => {
+      for (const record of records.values()) {
+        const margeURL = record.live?.margeURL;
+        if (record.status === "online" && margeURL) {
+          void checkServer(record.deviceID, margeURL);
+        } else {
+          checkedFor.delete(record.deviceID);
+        }
+      }
     },
 
     /** Shows a volume the user just set, before the speaker confirms it. */

@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { useConfigureRun } from "@/features/configure/store";
+import { serverHost } from "@/features/server/server-url";
 import { PresetStrip } from "@/features/speakers/components/PresetStrip";
 import {
   SpeakerSettingsHeader,
@@ -369,6 +370,14 @@ export default function SpeakerSettings() {
               router.push("./configure");
             }}
           />
+          {speaker.margeURL ? (
+            <FormValueRow
+              icon={formIcons.server}
+              label="Server"
+              description={serverHost(speaker.margeURL)}
+              value={speaker.server?.name ?? "Checking…"}
+            />
+          ) : null}
           {!settingUp && radioSetup.isError ? (
             <FormButtonRow
               label="Check again"

@@ -1,5 +1,7 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
 import { AppState } from "react-native";
+
+import { useServerUrl } from "@/features/server/server";
 
 import { createSpeakerRegistryDeps } from "./adapters";
 import { createSpeakerRegistry } from "./registry";
@@ -24,8 +26,8 @@ export function useSpeaker(deviceID: string): BoseSpeaker | undefined {
 
 /**
  * Lists the remembered speakers, then reaches them and scans once `enabled`
- * (see `local-network`), and again each time the app comes back from the
- * background.
+ * (see `local-network`), again each time the app comes back from the
+ * background, and checks their servers again when our server changes.
  */
 export function useSpeakerDiscovery(enabled: boolean): void {
   const { restored } = useSpeakers();
@@ -54,4 +56,13 @@ export function useSpeakerDiscovery(enabled: boolean): void {
       subscription.remove();
     };
   }, [enabled, restored]);
+
+  const serverUrl = useServerUrl();
+  const checkedFor = useRef(serverUrl);
+  useEffect(() => {
+    if (checkedFor.current !== serverUrl) {
+      checkedFor.current = serverUrl;
+      speakerRegistry.refreshAllServers();
+    }
+  }, [serverUrl]);
 }

@@ -1,12 +1,15 @@
 import type { Preset, Speaker, SpeakerState } from "bose-api-speaker-client";
 
 import type { KnownSpeaker } from "../lib/known-speakers";
+import type { SpeakerServer } from "../lib/server-profiles";
 
 /** What a speaker's `/info` says, as far as the list needs it. */
 export interface SpeakerInfo {
   deviceID: string;
   name: string;
   type: string;
+  /** The speaker's Marge server. */
+  margeURL: string;
 }
 
 /** The live connection to one speaker. */
@@ -31,6 +34,11 @@ export interface SpeakerRegistryDeps {
   speaker: {
     /** The speaker's `/info`; `undefined` when it doesn't answer in time. */
     info: (host: string, port: number) => Promise<SpeakerInfo | undefined>;
+    /** Which server the speaker at `host` uses (`identifyServer`). */
+    server: (
+      speaker: { host: string; margeURL: string },
+      ourServer: string,
+    ) => Promise<SpeakerServer>;
     /** Connects to a speaker; `onState` gets its state once `open` has resolved. */
     link: (
       host: string,
