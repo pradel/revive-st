@@ -10,9 +10,9 @@ import {
   SpeakerSettingsHeader,
   type SpeakerStatus,
 } from "@/features/speakers/components/SpeakerSettingsHeader";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
+import { radioServerName } from "@/features/speakers/lib/speaker-radio";
 import {
   speakerRegistry,
   useSpeaker,
@@ -96,7 +96,6 @@ export default function SpeakerSettings() {
     }
   }, [deviceID]);
 
-  const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
   const configureRun = useConfigureRun(id);
   const [presetsWidth, setPresetsWidth] = useState<number>();
 
@@ -126,7 +125,7 @@ export default function SpeakerSettings() {
   const refresh = async () => {
     await Promise.allSettled([
       speakerRegistry.refresh(speaker.deviceID),
-      radioSetup.refetch(),
+      speakerRegistry.refreshRadio(speaker.deviceID),
     ]);
   };
 
@@ -148,6 +147,7 @@ export default function SpeakerSettings() {
     Boolean(levelControls);
 
   const settingUp = configureRun.view?.kind === "working";
+  const radioCheckFailed = !speaker.radio && speaker.radioCheck === "failed";
   const radio = ((): { value: string; status: SpeakerStatus } => {
     if (settingUp) {
       return {
@@ -155,22 +155,32 @@ export default function SpeakerSettings() {
         status: { label: "Setting up internet radio…", tone: "neutral" },
       };
     }
-    if (radioSetup.isLoading) {
-      return {
-        value: "Checking…",
-        status: { label: "Checking…", tone: "neutral" },
-      };
+    const radioState = speaker.radio;
+    if (!radioState) {
+      return speaker.radioCheck === "failed"
+        ? {
+            value: "Unavailable",
+            status: { label: "Couldn't check internet radio", tone: "danger" },
+          }
+        : {
+            value: "Checking…",
+            status: { label: "Checking…", tone: "neutral" },
+          };
     }
-    if (radioSetup.isError) {
-      return {
-        value: "Unavailable",
-        status: { label: "Can't reach speaker", tone: "danger" },
-      };
-    }
-    if (radioSetup.data) {
+    if (radioState.ready && radioState.onOurServer) {
       return {
         value: "Ready",
         status: { label: "Online · Internet radio ready", tone: "ok" },
+      };
+    }
+    if (radioState.ready) {
+      const name = radioServerName(radioState);
+      return {
+        value: name,
+        status: {
+          label: `Online · Internet radio through ${name}`,
+          tone: "ok",
+        },
       };
     }
     return {
@@ -370,19 +380,19 @@ export default function SpeakerSettings() {
               router.push("./configure");
             }}
           />
-          {speaker.margeURL ? (
+          {speaker.radio ? (
             <FormValueRow
               icon={formIcons.server}
               label="Server"
-              description={serverHost(speaker.margeURL)}
-              value={speaker.server?.name ?? "Checking…"}
+              description={serverHost(speaker.radio.margeURL)}
+              value={speaker.radio.server.name}
             />
           ) : null}
-          {!settingUp && radioSetup.isError ? (
+          {!settingUp && radioCheckFailed ? (
             <FormButtonRow
               label="Check again"
               onPress={() => {
-                void radioSetup.refetch();
+                void speakerRegistry.refreshRadio(speaker.deviceID);
               }}
             />
           ) : null}
@@ -393,11 +403,11 @@ export default function SpeakerSettings() {
               router.push("./about");
             }}
           />
-          {!settingUp && radioSetup.isError ? (
+          {!settingUp && radioCheckFailed ? (
             <FieldGroup.SectionFooter>
               <FormFooterText color={color.danger}>
-                Couldn't reach the speaker. Make sure your phone is on the same
-                Wi-Fi network.
+                Couldn't check internet radio. Make sure your phone is on the
+                same Wi-Fi network as the speaker.
               </FormFooterText>
             </FieldGroup.SectionFooter>
           ) : null}

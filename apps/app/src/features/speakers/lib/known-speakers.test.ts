@@ -26,17 +26,27 @@ describe("parseKnownSpeakers", () => {
     expect(parseKnownSpeakers(stored)).toEqual([OFFICE]);
   });
 
-  it("keeps the speaker's last server, and drops one it can't read", () => {
-    const server = { kind: "soundcork", name: "soundcork" };
+  it("keeps the speaker's last radio, and drops one it can't read", () => {
+    const radio = {
+      server: { kind: "soundcork", name: "soundcork", setup: "warn" },
+      margeURL: "http://192.168.1.10:8000/marge",
+      onOurServer: false,
+      sources: { radioBrowser: true, customStations: false },
+      ready: true,
+    };
     expect(
       parseKnownSpeakers(
         JSON.stringify([
-          { ...OFFICE, server },
-          { ...OFFICE, deviceID: "B", server: { kind: "gone", name: "x" } },
+          { ...OFFICE, radio },
+          {
+            ...OFFICE,
+            deviceID: "B",
+            radio: { ...radio, server: { kind: "gone" } },
+          },
         ]),
       ),
     ).toEqual([
-      { ...OFFICE, server },
+      { ...OFFICE, radio },
       { ...OFFICE, deviceID: "B" },
     ]);
   });

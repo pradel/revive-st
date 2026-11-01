@@ -1,15 +1,22 @@
 import type { Preset, Speaker, SpeakerState } from "bose-api-speaker-client";
 
 import type { KnownSpeaker } from "../lib/known-speakers";
-import type { SpeakerServer } from "../lib/server-profiles";
+import type { SpeakerRadio } from "../lib/speaker-radio";
 
 /** What a speaker's `/info` says, as far as the list needs it. */
 export interface SpeakerInfo {
   deviceID: string;
   name: string;
   type: string;
-  /** The speaker's Marge server. */
   margeURL: string;
+  margeAccountUUID: string;
+}
+
+export interface SpeakerLinkEvents {
+  /** The speaker's state changed, once `open` has resolved. */
+  onState: (state: SpeakerState) => void;
+  /** The speaker says its info (account, server) or its sources changed. */
+  onSettingsChange: () => void;
 }
 
 /** The live connection to one speaker. */
@@ -26,7 +33,7 @@ export interface SpeakerLink {
   refresh: () => Promise<void>;
   /** Opens the live connection again (after the app was away) and re-reads. */
   reconnect: () => void;
-  /** Closes it; no state follows. */
+  /** Closes it; no event follows. */
   close: () => void;
 }
 
@@ -34,17 +41,21 @@ export interface SpeakerRegistryDeps {
   speaker: {
     /** The speaker's `/info`; `undefined` when it doesn't answer in time. */
     info: (host: string, port: number) => Promise<SpeakerInfo | undefined>;
-    /** Which server the speaker at `host` uses (`identifyServer`). */
-    server: (
-      speaker: { host: string; margeURL: string },
+    /** How the speaker gets internet radio. Throws when it doesn't answer. */
+    radio: (
+      speaker: {
+        host: string;
+        port: number;
+        margeURL: string;
+        accountId: string;
+      },
       ourServer: string,
-    ) => Promise<SpeakerServer>;
-    /** Connects to a speaker; `onState` gets its state once `open` has resolved. */
+    ) => Promise<SpeakerRadio>;
     link: (
       host: string,
       port: number,
       deviceID: string,
-      onState: (state: SpeakerState) => void,
+      events: SpeakerLinkEvents,
     ) => SpeakerLink;
   };
   /** Looks for speakers on the network until the returned function is called. */

@@ -1,11 +1,17 @@
 import type { ContentItem, NowPlayingResponse } from "bose-api-speaker-client";
 
+import type { StationSources } from "./speaker-radio";
+
 /** A station a speaker can play or keep on a preset. */
 export type CastStation =
-  /** A Radio Browser station. */
+  /**
+   * A Radio Browser station; `streamUrl` is its stream as Radio Browser last
+   * resolved it, played as a custom station where Radio Browser isn't offered.
+   */
   | {
       readonly kind: "radioBrowser";
       readonly stationuuid: string;
+      readonly streamUrl: string;
       readonly name: string;
       readonly favicon: string;
     }
@@ -46,28 +52,36 @@ export const customStationLocation = (station: {
   )}`;
 
 /**
- * The ContentItem that plays a station, now or from a preset. A Radio Browser
- * station's location names the station, not its stream: the server's Radio
- * Browser adapter looks the stream up every time it plays, so a preset follows
- * the station when it moves its stream. Neither location holds a server
- * address, so they play through whichever Revive ST server the speaker uses.
+ * The ContentItem that plays a station, now or from a preset, on a speaker
+ * offering `sources`; `undefined` when it offers none that plays it. A Radio
+ * Browser station's location names the station, not its stream: the server's
+ * Radio Browser adapter looks the stream up every time it plays, so a preset
+ * follows the station when it moves its stream. Where Radio Browser isn't
+ * offered, the station plays as a custom station, from the stream it has now.
+ * Neither location holds a server address, so they play through whichever
+ * server the speaker uses.
  */
-export const stationContentItem = (station: CastStation): ContentItem => ({
-  ...(station.kind === "radioBrowser"
-    ? {
-        source: "RADIO_BROWSER",
-        location: radioBrowserLocation(station.stationuuid),
-      }
-    : {
-        source: "LOCAL_INTERNET_RADIO",
-        location: customStationLocation(station),
-      }),
-  type: "stationurl",
-  sourceAccount: "",
-  isPresetable: true,
-  itemName: station.name,
-  containerArt: station.favicon,
-});
+export function stationContentItem(
+  station: CastStation,
+  sources: StationSources,
+): ContentItem | undefined {
+  const item = (source: string, location: string): ContentItem => ({
+    source,
+    location,
+    type: "stationurl",
+    sourceAccount: "",
+    isPresetable: true,
+    itemName: station.name,
+    containerArt: station.favicon,
+  });
+  if (station.kind === "radioBrowser" && sources.radioBrowser) {
+    return item("RADIO_BROWSER", radioBrowserLocation(station.stationuuid));
+  }
+  if (sources.customStations && station.streamUrl !== "") {
+    return item("LOCAL_INTERNET_RADIO", customStationLocation(station));
+  }
+  return undefined;
+}
 
 /** The speaker took the station but never started it. */
 export class StationNotStartedError extends Error {

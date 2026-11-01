@@ -9,33 +9,45 @@ import {
   saveKnownSpeakers,
 } from "../lib/known-speakers-store";
 import { syncPresetsToMarge } from "../lib/marge-api";
-import { identifyServer } from "../lib/server-profiles";
+import { readSpeakerRadio } from "../lib/speaker-radio";
 import type { SpeakerInfo, SpeakerRegistryDeps } from "./ports";
 
 /** How long a speaker may take to answer `/info` before it counts as offline. */
 const INFO_TIMEOUT_MS = 4000;
 
+/** How long the radio check may take: `/sources`, then at most one probe. */
+const RADIO_TIMEOUT_MS = 10_000;
+
+async function withTimeout<Value>(
+  ms: number,
+  run: (signal: AbortSignal) => Promise<Value>,
+): Promise<Value> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, ms);
+  try {
+    return await run(controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function readInfo(
   host: string,
   port: number,
 ): Promise<SpeakerInfo | undefined> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => {
-    controller.abort();
-  }, INFO_TIMEOUT_MS);
   try {
-    const result = await new BoseHttpAdapter({ ip: host, port }).getInfo({
-      signal: controller.signal,
-    });
+    const result = await withTimeout(INFO_TIMEOUT_MS, async (signal) =>
+      new BoseHttpAdapter({ ip: host, port }).getInfo({ signal }),
+    );
     if (result.isErr()) {
       return undefined;
     }
-    const { deviceID, name, type, margeURL } = result.value;
-    return { deviceID, name, type, margeURL };
+    const { deviceID, name, type, margeURL, margeAccountUUID } = result.value;
+    return { deviceID, name, type, margeURL, margeAccountUUID };
   } catch {
     return undefined;
-  } finally {
-    clearTimeout(timer);
   }
 }
 
@@ -86,9 +98,11 @@ export function createSpeakerRegistryDeps(): SpeakerRegistryDeps {
   return {
     speaker: {
       info: readInfo,
-      server: async ({ host, margeURL }, ourServer) =>
-        identifyServer({ host, margeURL, ourServer }),
-      link: (host, port, deviceID, onState) => {
+      radio: async (speaker, ourServer) =>
+        withTimeout(RADIO_TIMEOUT_MS, async (signal) =>
+          readSpeakerRadio(speaker, ourServer, signal),
+        ),
+      link: (host, port, deviceID, events) => {
         // The speaker emits state while connecting, before `open` has read
         // anything, and when it's closed: neither is passed on.
         let open = false;
@@ -98,7 +112,12 @@ export function createSpeakerRegistryDeps(): SpeakerRegistryDeps {
           deviceID,
           onStateUpdate: (state) => {
             if (open) {
-              onState(state);
+              events.onState(state);
+            }
+          },
+          onSettingsChange: () => {
+            if (open) {
+              events.onSettingsChange();
             }
           },
         });

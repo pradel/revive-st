@@ -3,7 +3,9 @@ import { isSameOrigin } from "./account-id";
 
 /**
  * The servers a speaker can use instead of Bose's. Adding one is adding a
- * profile to `PROFILES`: how to tell the speaker uses it, and its name.
+ * profile to `PROFILES`: how to tell the speaker uses it, its name, and what
+ * setting the speaker up for our server does to it. Whether radio plays
+ * through it is the speaker's to say (`speaker-radio.ts`), not the profile's.
  */
 export const SERVER_KINDS = [
   "revive",
@@ -16,22 +18,22 @@ export const SERVER_KINDS = [
 
 export type ServerKind = (typeof SERVER_KINDS)[number];
 
+/**
+ * What setting up a speaker that uses this server does:
+ * - `setUp`: switches it to our server; it uses Bose's, or ours already.
+ * - `warn`: switches it to our server after the user agrees to leave the one it uses.
+ * - `blocked`: never offered; the server puts its own settings back at every start.
+ */
+export const SETUP_POLICIES = ["setUp", "warn", "blocked"] as const;
+
+export type SetupPolicy = (typeof SETUP_POLICIES)[number];
+
 /** The server a speaker uses. */
 export interface SpeakerServer {
   readonly kind: ServerKind;
   /** The server's name as its users know it. */
   readonly name: string;
-}
-
-/** A stored `SpeakerServer`, or `undefined` when it isn't one (an older or damaged entry). */
-export function parseSpeakerServer(value: unknown): SpeakerServer | undefined {
-  if (typeof value !== "object" || value === null) {
-    return undefined;
-  }
-  const { kind, name } = value as { kind?: unknown; name?: unknown };
-  return SERVER_KINDS.includes(kind as ServerKind) && typeof name === "string"
-    ? { kind: kind as ServerKind, name }
-    : undefined;
+  readonly setup: SetupPolicy;
 }
 
 /** What a profile can go on to tell whether a speaker uses its server. */
@@ -103,8 +105,10 @@ const PROFILES: readonly ServerProfile[] = [
   {
     // Ours and the one run for everyone are known by their address; another
     // one (a self-hosted server the app isn't set to) names itself at `/`.
+    // Leaving one that isn't ours is warned about (`identifyServer`).
     kind: "revive",
     name: "Revive ST",
+    setup: "setUp",
     identify: async ({ marge, ourServer }, signal) =>
       isSameOrigin(marge.href, ourServer) ||
       isSameOrigin(marge.href, DEFAULT_SERVER_URL) ||
@@ -116,6 +120,7 @@ const PROFILES: readonly ServerProfile[] = [
     // Serves Marge under `/marge`, which no other server does.
     kind: "soundcork",
     name: "soundcork",
+    setup: "warn",
     identify: ({ marge }) =>
       marge.pathname.replace(/\/+$/, "").endsWith("/marge"),
   },
@@ -124,6 +129,7 @@ const PROFILES: readonly ServerProfile[] = [
     // start, then answers for Bose's servers itself; its agent says so.
     kind: "streborn",
     name: "STR",
+    setup: "blocked",
     identify: async ({ host, marge }, signal) => {
       if (!isBoseHost(marge)) {
         return false;
@@ -146,6 +152,7 @@ const PROFILES: readonly ServerProfile[] = [
     // a speaker keeps Bose's address and reads as Bose's.
     kind: "aftertouch",
     name: "AfterTouch",
+    setup: "warn",
     identify: async ({ marge }, signal) => {
       if (!isBareOrigin(marge)) {
         return false;
@@ -160,6 +167,7 @@ const PROFILES: readonly ServerProfile[] = [
   {
     kind: "bose",
     name: "Bose",
+    setup: "setUp",
     identify: ({ marge }) => isBoseHost(marge),
   },
 ];
@@ -177,7 +185,7 @@ export async function identifyServer(
   try {
     marge = new URL(speaker.margeURL);
   } catch {
-    return { kind: "unknown", name: "another server" };
+    return { kind: "unknown", name: "another server", setup: "warn" };
   }
   const clues: ServerClues = {
     host: speaker.host,
@@ -186,8 +194,16 @@ export async function identifyServer(
   };
   for (const profile of PROFILES) {
     if (await profile.identify(clues, signal)) {
-      return { kind: profile.kind, name: profile.name };
+      // Another Revive ST server than ours is one the speaker would leave.
+      const leavesRevive =
+        profile.kind === "revive" &&
+        !isSameOrigin(marge.href, speaker.ourServer);
+      return {
+        kind: profile.kind,
+        name: profile.name,
+        setup: leavesRevive ? "warn" : profile.setup,
+      };
     }
   }
-  return { kind: "unknown", name: marge.host };
+  return { kind: "unknown", name: marge.host, setup: "warn" };
 }

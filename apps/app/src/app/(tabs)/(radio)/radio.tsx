@@ -183,6 +183,8 @@ export default function RadioBrowser() {
       pathname: "/cast",
       params: {
         stationuuid: station.stationuuid,
+        // Played as a custom station where Radio Browser isn't offered.
+        streamUrl: station.url_resolved,
         name: station.name,
         favicon: station.favicon,
         mode,

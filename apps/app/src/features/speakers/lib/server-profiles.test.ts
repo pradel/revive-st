@@ -35,7 +35,12 @@ describe("identifyServer", () => {
     expect(fetched).toEqual([]);
   });
 
-  it("finds another Revive ST server by the name it answers at /", async () => {
+  it("sets a speaker on our server up again without a warning", async () => {
+    network({});
+    expect((await identify(OUR_SERVER)).setup).toBe("setUp");
+  });
+
+  it("finds another Revive ST server by the name it answers at /, and warns before leaving it", async () => {
     network({
       "http://192.168.1.50:3000/": {
         name: "Revive ST API",
@@ -47,20 +52,22 @@ describe("identifyServer", () => {
     expect(await identify("http://192.168.1.50:3000")).toEqual({
       kind: "revive",
       name: "Revive ST",
+      setup: "warn",
     });
   });
 
-  it("knows soundcork by its /marge path", async () => {
+  it("knows soundcork by its /marge path, as one to warn about", async () => {
     const fetched = network({});
     expect(await identify("http://192.168.1.10:8000/marge/")).toEqual({
       kind: "soundcork",
       name: "soundcork",
+      setup: "warn",
     });
     expect(fetched).toEqual([]);
   });
 
   it.each([8888, 17_008])(
-    "finds STR behind Bose's address by its agent on port %i",
+    "finds STR behind Bose's address by its agent on port %i, and blocks setup",
     async (port) => {
       network({
         [`http://${HOST}:${port}/api/agent/version`]: { version: "v1.0.20" },
@@ -68,6 +75,7 @@ describe("identifyServer", () => {
       expect(await identify(BOSE)).toEqual({
         kind: "streborn",
         name: "STR",
+        setup: "blocked",
       });
     },
   );
@@ -78,6 +86,7 @@ describe("identifyServer", () => {
     expect(await identify(BOSE)).toEqual({
       kind: "bose",
       name: "Bose",
+      setup: "setUp",
     });
   });
 
@@ -102,6 +111,7 @@ describe("identifyServer", () => {
     expect(await identify("https://radio.example:8443")).toEqual({
       kind: "unknown",
       name: "radio.example:8443",
+      setup: "warn",
     });
   });
 

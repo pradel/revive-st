@@ -1,4 +1,4 @@
-import { ApiError } from "bose-api-speaker-client";
+import { ApiError, type ContentItem } from "bose-api-speaker-client";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -11,13 +11,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countStationClick } from "@/features/radio/lib/radio-browser";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   StationNotStartedError,
   stationContentItem,
   type CastStation,
 } from "@/features/speakers/lib/radio";
+import type { SpeakerRadio } from "@/features/speakers/lib/speaker-radio";
 import { useSpeakers } from "@/features/speakers/registry/store";
 import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
@@ -37,8 +37,9 @@ type PresetSlot = (typeof PRESET_SLOTS)[number];
 /**
  * "Play on…" and "Save to preset" sheet for a station: picks a speaker, then
  * plays the station on it or stores it on one of its six presets. A Radio
- * Browser station comes as `stationuuid`, a stream added by URL as
- * `streamUrl`.
+ * Browser station comes as `stationuuid`, with its stream as `streamUrl` for
+ * speakers whose server has no Radio Browser; a stream added by URL as
+ * `streamUrl` alone.
  */
 export default function CastSheet() {
   const router = useRouter();
@@ -55,10 +56,15 @@ export default function CastSheet() {
     favicon?: string;
     mode?: Mode;
   }>();
-  const station: CastStation = streamUrl
-    ? { kind: "custom", streamUrl, name, favicon }
-    : { kind: "radioBrowser", stationuuid, name, favicon };
-  const location = stationContentItem(station).location;
+  const station: CastStation = stationuuid
+    ? {
+        kind: "radioBrowser",
+        stationuuid,
+        streamUrl: streamUrl ?? "",
+        name,
+        favicon,
+      }
+    : { kind: "custom", streamUrl: streamUrl ?? "", name, favicon };
   const { online: speakers } = useSpeakers();
   const { playStationMutation, storeStationPresetMutation } =
     useSpeakerCommands();
@@ -79,30 +85,37 @@ export default function CastSheet() {
     };
   }, []);
 
-  // With a single speaker, saving goes straight to its presets, once it's
-  // set up for internet radio: until then the speaker list shows its status
-  // and offers to set it up, as when choosing among several.
+  // With a single speaker, saving goes straight to its presets, once it can
+  // play the station: until then the speaker list shows its status and
+  // offers to set it up, as when choosing among several.
   const onlySpeaker =
     mode === "preset" && speakers.length === 1 ? speakers[0] : undefined;
-  const onlySpeakerStatus = useRadioSetupQuery(onlySpeaker?.host ?? "");
   const presetSpeakerId =
     chosenSpeakerId ??
-    (onlySpeaker && onlySpeakerStatus.data === true
+    (onlySpeaker?.radio?.ready === true &&
+    stationContentItem(station, onlySpeaker.radio.sources)
       ? onlySpeaker.deviceID
       : null);
   const presetSpeaker =
     mode === "preset"
       ? speakers.find((speaker) => speaker.deviceID === presetSpeakerId)
       : undefined;
+  const presetItem = presetSpeaker?.radio
+    ? stationContentItem(station, presetSpeaker.radio.sources)
+    : undefined;
 
-  const castToSpeaker = async (speaker: BoseSpeaker) => {
+  const castToSpeaker = async (
+    speaker: BoseSpeaker,
+    radio: SpeakerRadio,
+    contentItem: ContentItem,
+  ) => {
     setCastError(null);
     setCastingToSpeakerId(speaker.deviceID);
     logger.info(`[cast] Casting ${name} to ${speaker.host}`);
     try {
       await playStationMutation.mutateAsync({
         deviceID: speaker.deviceID,
-        station,
+        contentItem,
       });
       // Success shows up in the mini player; no need to interrupt.
       haptics.success();
@@ -115,13 +128,18 @@ export default function CastSheet() {
         router.back();
       }
     } catch (err) {
-      showFailure(err, speaker);
+      showFailure(err, speaker, radio, contentItem);
     } finally {
       setCastingToSpeakerId(null);
     }
   };
 
-  const storeInSlot = async (speaker: BoseSpeaker, slot: PresetSlot) => {
+  const storeInSlot = async (
+    speaker: BoseSpeaker,
+    radio: SpeakerRadio,
+    contentItem: ContentItem,
+    slot: PresetSlot,
+  ) => {
     setCastError(null);
     setSavingSlot(slot);
     logger.info(`[cast] Saving ${name} to preset ${slot} on ${speaker.host}`);
@@ -129,25 +147,30 @@ export default function CastSheet() {
       await storeStationPresetMutation.mutateAsync({
         deviceID: speaker.deviceID,
         presetId: slot,
-        station,
+        contentItem,
       });
       haptics.success();
       if (mountedRef.current) {
         router.back();
       }
     } catch (err) {
-      showFailure(err, speaker);
+      showFailure(err, speaker, radio, contentItem);
     } finally {
       setSavingSlot(null);
     }
   };
 
-  const chooseSlot = (speaker: BoseSpeaker, slot: PresetSlot) => {
+  const chooseSlot = (
+    speaker: BoseSpeaker,
+    radio: SpeakerRadio,
+    contentItem: ContentItem,
+    slot: PresetSlot,
+  ) => {
     const current = speaker.presets?.find((preset) => preset.id === slot);
     // A speaker keeps a station on one preset only: storing it on another
     // moves it there and empties the one it was on.
     const savedOn = speaker.presets?.find(
-      (preset) => preset.contentItem.location === location,
+      (preset) => preset.contentItem.location === contentItem.location,
     )?.id;
     const consequences = [
       current && `"${current.contentItem.itemName}" will be replaced.`,
@@ -155,7 +178,7 @@ export default function CastSheet() {
         `"${name}" moves from preset ${savedOn}, which becomes empty.`,
     ].filter(Boolean);
     if (consequences.length === 0) {
-      void storeInSlot(speaker, slot);
+      void storeInSlot(speaker, radio, contentItem, slot);
       return;
     }
     Alert.alert(
@@ -167,7 +190,7 @@ export default function CastSheet() {
           text: current ? "Replace" : "Move",
           style: current ? "destructive" : "default",
           onPress: () => {
-            void storeInSlot(speaker, slot);
+            void storeInSlot(speaker, radio, contentItem, slot);
           },
         },
       ],
@@ -193,30 +216,54 @@ export default function CastSheet() {
     ]);
   };
 
-  const showFailure = (err: unknown, speaker: BoseSpeaker) => {
+  const showFailure = (
+    err: unknown,
+    speaker: BoseSpeaker,
+    radio: SpeakerRadio,
+    contentItem: ContentItem,
+  ) => {
     logger.error(err);
     haptics.error();
-    setCastError(sheetErrorMessage(err, speaker.name, mode, station.kind));
+    setCastError(
+      sheetErrorMessage(
+        err,
+        speaker.name,
+        mode,
+        station.kind,
+        contentItem,
+        radio,
+      ),
+    );
     // Speakers set up before custom stations existed lack the source until
     // they fetch it again, which setting them up again does.
-    if (station.kind === "custom" && isMissingSourceError(err)) {
-      askToConfigure(
-        speaker,
-        `Add custom stations to ${speaker.name}?`,
-        `${speaker.name} gets custom stations when it's set up again. Setting it up restarts it.`,
-      );
+    if (
+      contentItem.source === "LOCAL_INTERNET_RADIO" &&
+      radio.server.kind === "revive" &&
+      isMissingSourceError(err)
+    ) {
+      askCustomStationsSetup(speaker);
     }
   };
 
+  const askCustomStationsSetup = (speaker: BoseSpeaker) => {
+    askToConfigure(
+      speaker,
+      `Add custom stations to ${speaker.name}?`,
+      `${speaker.name} gets custom stations when it's set up again. Setting it up restarts it.`,
+    );
+  };
+
   const renderBody = () => {
-    if (presetSpeaker) {
+    if (presetSpeaker?.radio && presetItem) {
+      const { radio } = presetSpeaker;
       return (
         <View>
           {PRESET_SLOTS.map((slot) => {
             const preset = presetSpeaker.presets?.find(
               (entry) => entry.id === slot,
             );
-            const holdsStation = preset?.contentItem.location === location;
+            const holdsStation =
+              preset?.contentItem.location === presetItem.location;
             return (
               <ListRow
                 key={slot}
@@ -238,7 +285,7 @@ export default function CastSheet() {
                   ) : undefined
                 }
                 onPress={() => {
-                  chooseSlot(presetSpeaker, slot);
+                  chooseSlot(presetSpeaker, radio, presetItem, slot);
                 }}
               />
             );
@@ -261,14 +308,19 @@ export default function CastSheet() {
           <SpeakerCastItem
             key={speaker.deviceID}
             speaker={speaker}
+            station={station}
             mode={mode}
             isCasting={castingToSpeakerId === speaker.deviceID}
             disabled={castingToSpeakerId !== null}
-            onCast={(isConfigured) => {
-              if (!isConfigured) {
-                askToConfigure(speaker);
-              } else if (mode === "play") {
-                void castToSpeaker(speaker);
+            onSetUp={() => {
+              askToConfigure(speaker);
+            }}
+            onSetUpCustomStations={() => {
+              askCustomStationsSetup(speaker);
+            }}
+            onCast={(radio, contentItem) => {
+              if (mode === "play") {
+                void castToSpeaker(speaker, radio, contentItem);
               } else {
                 setCastError(null);
                 setChosenSpeakerId(speaker.deviceID);
@@ -324,6 +376,8 @@ function sheetErrorMessage(
   speakerName: string,
   mode: Mode,
   kind: CastStation["kind"],
+  contentItem: ContentItem,
+  radio: SpeakerRadio,
 ) {
   if (err instanceof StationNotStartedError) {
     return kind === "custom"
@@ -331,7 +385,10 @@ function sheetErrorMessage(
       : `${speakerName} couldn't start this station. It may be offline right now; try another one.`;
   }
   if (isMissingSourceError(err)) {
-    return kind === "custom"
+    if (radio.server.kind !== "revive") {
+      return `${speakerName} can't play this station through ${radio.server.name}, which doesn't offer its source.`;
+    }
+    return contentItem.source === "LOCAL_INTERNET_RADIO"
       ? `${speakerName} doesn't have custom stations yet. Set it up again from its settings to add them.`
       : `${speakerName} is missing its internet radio source, which often happens after a factory reset. Set it up again from its settings.`;
   }
@@ -340,26 +397,55 @@ function sheetErrorMessage(
     : `Couldn't save this station on ${speakerName}. Check that the speaker is on and try again.`;
 }
 
+/** Why a speaker whose radio is ready can't take the station. */
+const unplayableText = (
+  station: CastStation,
+  radio: SpeakerRadio,
+  canAddSource: boolean,
+) => {
+  if (canAddSource) {
+    return "Needs setup for custom stations";
+  }
+  return station.kind === "custom"
+    ? `No custom stations on ${radio.server.name}`
+    : `Can't play this station through ${radio.server.name}`;
+};
+
 function SpeakerCastItem({
   speaker,
+  station,
   mode,
   isCasting,
   disabled,
+  onSetUp,
+  onSetUpCustomStations,
   onCast,
 }: {
   speaker: BoseSpeaker;
+  station: CastStation;
   mode: Mode;
   isCasting: boolean;
   disabled: boolean;
-  onCast: (isConfigured: boolean) => void;
+  /** The speaker needs setting up for internet radio. */
+  onSetUp: () => void;
+  /** The speaker uses our server but was set up before custom stations. */
+  onSetUpCustomStations: () => void;
+  onCast: (radio: SpeakerRadio, contentItem: ContentItem) => void;
 }) {
-  const radioSetup = useRadioSetupQuery(speaker.host);
+  const { radio } = speaker;
   const isPowerOff =
     speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 
-  const isError = radioSetup.isError;
-  const isConfigured = radioSetup.data === true;
-  const isLoading = radioSetup.isLoading;
+  // A speaker checked before keeps its last result while it's checked again.
+  const isError = !radio && speaker.radioCheck === "failed";
+  const isLoading = !radio && !isError;
+  const isReady = radio?.ready === true;
+  const contentItem =
+    radio && isReady ? stationContentItem(station, radio.sources) : undefined;
+  // Our server can add the missing source; another one can't be asked to.
+  const canAddSource =
+    radio?.server.kind === "revive" && station.streamUrl !== "";
+  const isUnplayable = isReady && !contentItem;
 
   const getStatusText = () => {
     if (isCasting) {
@@ -371,8 +457,11 @@ function SpeakerCastItem({
     if (isError) {
       return "Connection failed";
     }
-    if (!isConfigured) {
+    if (!radio || !isReady) {
       return "Needs setup for internet radio";
+    }
+    if (!contentItem) {
+      return unplayableText(station, radio, canAddSource);
     }
     if (isPowerOff) {
       return "Standby";
@@ -387,7 +476,7 @@ function SpeakerCastItem({
     if (isError) {
       return <Icon name={icons.warning} size={16} color="danger" />;
     }
-    if (isConfigured) {
+    if (contentItem) {
       return (
         <Icon
           name={mode === "play" ? icons.play : icons.chevronRight}
@@ -396,6 +485,9 @@ function SpeakerCastItem({
         />
       );
     }
+    if (isUnplayable && !canAddSource) {
+      return undefined;
+    }
     return <Icon name={icons.lock} size={16} color="textTertiary" />;
   };
 
@@ -403,7 +495,9 @@ function SpeakerCastItem({
     <ListRow
       title={speaker.name}
       subtitle={getStatusText()}
-      disabled={disabled || isLoading || isError}
+      disabled={
+        disabled || isLoading || isError || (isUnplayable && !canAddSource)
+      }
       leading={
         <View style={$speakerIcon}>
           <Icon name={icons.speaker} size={20} />
@@ -411,7 +505,13 @@ function SpeakerCastItem({
       }
       trailing={renderTrailing()}
       onPress={() => {
-        onCast(isConfigured);
+        if (radio && contentItem) {
+          onCast(radio, contentItem);
+        } else if (isUnplayable) {
+          onSetUpCustomStations();
+        } else {
+          onSetUp();
+        }
       }}
     />
   );

@@ -206,6 +206,8 @@ export function IntroView({
   speakerName,
   serverHost,
   alreadySetUp,
+  leavingServer,
+  checking,
   onStart,
   onCancel,
 }: {
@@ -213,6 +215,10 @@ export function IntroView({
   serverHost: string;
   /** The speaker already uses this server: setting it up refreshes its settings. */
   alreadySetUp: boolean;
+  /** The other server the speaker uses, which setting it up leaves. */
+  leavingServer: string | undefined;
+  /** The speaker's current server is still being checked. */
+  checking: boolean;
   onStart: () => void;
   onCancel: () => void;
 }) {
@@ -230,11 +236,18 @@ export function IntroView({
               rewrites its settings, which fixes a speaker that lost them and
               adds radio sources added since.
             </>
-          ) : (
+          ) : leavingServer === undefined ? (
             <>
               Internet radio and presets on SoundTouch speakers rely on an
               online service. This switches {speakerName} to{" "}
               <Emphasis>Revive ST ({serverHost})</Emphasis>.
+            </>
+          ) : (
+            <>
+              {speakerName} uses <Emphasis>{leavingServer}</Emphasis> for
+              internet radio and presets. This switches it to{" "}
+              <Emphasis>Revive ST ({serverHost})</Emphasis> instead, and{" "}
+              {leavingServer} stops serving it.
             </>
           )
         }
@@ -262,6 +275,7 @@ export function IntroView({
         <Button
           label={`Set up ${speakerName}`}
           icon={icons.radio}
+          loading={checking}
           onPress={onStart}
         />
         <Button label="Not now" variant="secondary" onPress={onCancel} />

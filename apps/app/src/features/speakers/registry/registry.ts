@@ -2,16 +2,17 @@ import type { Speaker, SpeakerState } from "bose-api-speaker-client";
 
 import { isSameOrigin } from "../lib/account-id";
 import type { KnownSpeaker } from "../lib/known-speakers";
-import type { SpeakerServer } from "../lib/server-profiles";
-import type { SpeakerLink, SpeakerRegistryDeps } from "./ports";
+import type { SpeakerRadio } from "../lib/speaker-radio";
+import type { SpeakerInfo, SpeakerLink, SpeakerRegistryDeps } from "./ports";
 import type {
   BoseSpeaker,
+  RadioCheck,
   ScanKind,
   SpeakersSnapshot,
   SpeakerStatus,
 } from "./types";
 
-/** One listed speaker: who and where it is, its server, and its state once reached. */
+/** One listed speaker: who and where it is, its radio, and its live state. */
 interface SpeakerRecord {
   readonly deviceID: string;
   readonly name: string;
@@ -19,9 +20,9 @@ interface SpeakerRecord {
   readonly host: string;
   readonly port: number;
   readonly status: SpeakerStatus;
-  /** The server it uses, as last checked; absent until it has been. */
-  readonly server?: SpeakerServer;
-  /** What it last showed; absent until it's reached. */
+  readonly radio?: SpeakerRadio;
+  readonly radioCheck: RadioCheck;
+  /** Only while reached. */
   readonly live?: SpeakerState;
 }
 
@@ -34,7 +35,8 @@ function toView(record: SpeakerRecord): BoseSpeaker {
     port: record.port,
     name: record.name,
     type: record.type,
-    server: record.server,
+    radio: record.radio,
+    radioCheck: record.radioCheck,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
@@ -57,31 +59,35 @@ function toView(record: SpeakerRecord): BoseSpeaker {
   };
 }
 
+/** `value` unless the speaker left it out or empty. */
+const filled = (value: string | undefined, fallback: string): string =>
+  value === undefined || value === "" ? fallback : value;
+
 const known = ({
   deviceID,
   name,
   type,
   host,
   port,
-  server,
+  radio,
 }: SpeakerRecord | KnownSpeaker): KnownSpeaker => ({
   deviceID,
   name,
   type,
   host,
   port,
-  server,
+  radio,
 });
 
 export type SpeakerRegistry = ReturnType<typeof createSpeakerRegistry>;
 
 /**
  * The speakers the app lists, by device id: the remembered ones, listed at
- * once with the server they used last time, and the ones found on the
- * network. Reaching a speaker opens its live connection and checks its
- * server (`identifyServer`); the server is checked again when the speaker
- * reports another `margeURL`, when the app comes back, when our server
- * changes, and when asked. What's listed is remembered for the next launch.
+ * once with how they got radio last time, and the ones found on the network.
+ * Reaching a speaker opens its live connection and checks its radio
+ * (`SpeakerRadio`) at the same time; the radio is checked again when the app
+ * comes back, when the speaker says its settings changed, and when asked.
+ * What's listed is remembered for the next launch.
  */
 export function createSpeakerRegistry(
   deps: SpeakerRegistryDeps,
@@ -89,16 +95,16 @@ export function createSpeakerRegistry(
 ) {
   const records = new Map<string, SpeakerRecord>();
   const links = new Map<string, SpeakerLink>();
+  /** Bumped by each radio check: only the latest one for a speaker applies. */
+  const radioChecks = new Map<string, number>();
+  /** What was last sent to our server per speaker, so unchanged presets aren't sent again. */
+  const syncedPresets = new Map<string, string>();
   /**
    * Bumped by each `forget`, which records the new value for the speaker: a
    * connection started before that can't bring it back.
    */
   let forgetCount = 0;
   const forgottenAt = new Map<string, number>();
-  /** The `margeURL` each speaker's server was last checked for. */
-  const checkedFor = new Map<string, string>();
-  /** Bumped by each server check: only the latest one for a speaker applies. */
-  const serverChecks = new Map<string, number>();
 
   let restoring: Promise<void> | undefined;
   let restored = false;
@@ -153,91 +159,97 @@ export function createSpeakerRegistry(
     }
   }
 
-  function setStatus(deviceID: string, status: SpeakerStatus): void {
+  function update(deviceID: string, patch: Partial<SpeakerRecord>): void {
     const record = records.get(deviceID);
     if (record) {
-      records.set(deviceID, { ...record, status });
+      records.set(deviceID, { ...record, ...patch });
       changed();
     }
   }
 
-  /** Stores the speaker's presets on our server when it uses ours. */
+  /** Stores the speaker's presets on our server when it uses ours and they changed. */
   function syncPresets(deviceID: string, state: SpeakerState): void {
     const accountId = state.margeAccountUUID;
+    const ourServer = deps.ourServer.url();
     if (
-      state.presets &&
-      accountId &&
-      isSameOrigin(state.margeURL, deps.ourServer.url())
+      !state.presets ||
+      !accountId ||
+      !isSameOrigin(state.margeURL, ourServer)
     ) {
-      deps.ourServer
-        .syncPresets(accountId, deviceID, state.presets)
-        .catch((err: unknown) => {
-          deps.log.warn("[speakers] Could not sync presets:", err);
-        });
-    }
-  }
-
-  /** Checks which server the speaker uses, for the `margeURL` it reports. */
-  async function checkServer(
-    deviceID: string,
-    margeURL: string,
-  ): Promise<void> {
-    const host = records.get(deviceID)?.host;
-    if (host === undefined) {
       return;
     }
-    const check = (serverChecks.get(deviceID) ?? 0) + 1;
-    serverChecks.set(deviceID, check);
-    checkedFor.set(deviceID, margeURL);
-    let server: SpeakerServer;
-    try {
-      server = await deps.speaker.server(
-        { host, margeURL },
-        deps.ourServer.url(),
-      );
-    } catch (err) {
-      deps.log.warn(
-        `[speakers] Could not check the server of ${deviceID}:`,
-        err,
-      );
+    const sent = `${ourServer} ${accountId} ${JSON.stringify(state.presets)}`;
+    if (syncedPresets.get(deviceID) === sent) {
       return;
     }
-    const record = records.get(deviceID);
-    if (serverChecks.get(deviceID) === check && record) {
-      records.set(deviceID, { ...record, server });
-      changed();
-    }
+    syncedPresets.set(deviceID, sent);
+    deps.ourServer
+      .syncPresets(accountId, deviceID, state.presets)
+      .catch((err: unknown) => {
+        syncedPresets.delete(deviceID);
+        deps.log.warn("[speakers] Could not sync presets:", err);
+      });
   }
 
-  /** The speaker's state, read through `link`: listed online with it. */
-  function publish(
-    deviceID: string,
-    link: SpeakerLink,
-    state: SpeakerState,
-  ): void {
+  function publish(deviceID: string, state: SpeakerState): void {
     syncPresets(deviceID, state);
     const record = records.get(deviceID);
-    records.set(deviceID, {
-      deviceID,
-      name: state.name ?? record?.name ?? "Bose Speaker",
-      type: state.type ?? "SoundTouch",
-      host: link.host,
-      port: link.port,
-      status: "online",
-      server: record?.server,
-      live: state,
-    });
-    changed();
-    if (state.margeURL && checkedFor.get(deviceID) !== state.margeURL) {
-      void checkServer(deviceID, state.margeURL);
+    if (record) {
+      update(deviceID, {
+        status: "online",
+        live: state,
+        name: filled(state.name, record.name),
+        type: filled(state.type, record.type),
+      });
     }
+  }
+
+  /** Checks how the speaker gets radio; `info` saves reading its `/info` again. */
+  async function checkRadio(
+    deviceID: string,
+    info?: SpeakerInfo,
+  ): Promise<void> {
+    const record = records.get(deviceID);
+    if (!record) {
+      return;
+    }
+    const check = (radioChecks.get(deviceID) ?? 0) + 1;
+    radioChecks.set(deviceID, check);
+    update(deviceID, { radioCheck: "checking" });
+    const { host, port } = record;
+    let radio: SpeakerRadio | undefined;
+    try {
+      const read = info ?? (await deps.speaker.info(host, port));
+      radio =
+        read &&
+        (await deps.speaker.radio(
+          {
+            host,
+            port,
+            margeURL: read.margeURL,
+            accountId: read.margeAccountUUID,
+          },
+          deps.ourServer.url(),
+        ));
+    } catch (err) {
+      deps.log.warn(
+        `[speakers] Could not check the radio of ${deviceID}:`,
+        err,
+      );
+    }
+    if (radioChecks.get(deviceID) !== check) {
+      return;
+    }
+    update(
+      deviceID,
+      radio ? { radio, radioCheck: "checked" } : { radioCheck: "failed" },
+    );
   }
 
   /**
-   * Reaches the speaker answering at `address` and keeps it connected: it's
-   * listed once its state is read, not before. With `expectedDeviceID` (a
-   * remembered speaker), another device at that address is ignored.
-   * Resolves to whether the speaker answered.
+   * Reaches the speaker answering at `address` and keeps it connected. With
+   * `expectedDeviceID` (a remembered speaker), another device at that address
+   * is ignored. Resolves to whether the speaker answered.
    */
   async function connectAt(
     address: string,
@@ -267,20 +279,37 @@ export function createSpeakerRegistry(
     }
     existing?.close();
 
-    const link: SpeakerLink = deps.speaker.link(
-      address,
-      port,
+    const record = records.get(deviceID);
+    records.set(deviceID, {
       deviceID,
-      (state) => {
+      name: filled(info.name, record?.name ?? "Bose Speaker"),
+      type: filled(info.type, record?.type ?? "SoundTouch"),
+      host: address,
+      port,
+      status: record?.status ?? "connecting",
+      radio: record?.radio,
+      radioCheck: record?.radioCheck ?? "unchecked",
+      live: record?.live,
+    });
+    changed();
+
+    const link: SpeakerLink = deps.speaker.link(address, port, deviceID, {
+      onState: (state) => {
         if (links.get(deviceID) === link) {
-          publish(deviceID, link, state);
+          publish(deviceID, state);
         }
       },
-    );
+      onSettingsChange: () => {
+        if (links.get(deviceID) === link) {
+          void checkRadio(deviceID);
+        }
+      },
+    });
     links.set(deviceID, link);
+    void checkRadio(deviceID, info);
     const state = await link.open();
     if (links.get(deviceID) === link) {
-      publish(deviceID, link, state);
+      publish(deviceID, state);
     }
     return true;
   }
@@ -299,13 +328,14 @@ export function createSpeakerRegistry(
     );
     // Meanwhile the scan may have reached it at another address.
     if (!answered && records.get(deviceID)?.status !== "online") {
-      setStatus(deviceID, "offline");
+      update(deviceID, { status: "offline", live: undefined });
     }
   }
 
   /**
-   * Reconnects a reached speaker and re-reads its state, or shows it offline
-   * if it no longer answers; it's then reached again like a remembered one.
+   * Reconnects a reached speaker and checks its radio again, or shows it
+   * offline if it no longer answers; it's then reached again like a
+   * remembered one.
    */
   async function refreshReached(
     deviceID: string,
@@ -317,12 +347,12 @@ export function createSpeakerRegistry(
     }
     if (info) {
       link.reconnect();
-      void checkServer(deviceID, info.margeURL);
+      void checkRadio(deviceID, info);
       return;
     }
     links.delete(deviceID);
     link.close();
-    setStatus(deviceID, "offline");
+    update(deviceID, { status: "offline", live: undefined });
   }
 
   function endScan(): void {
@@ -381,7 +411,11 @@ export function createSpeakerRegistry(
         const stored = await deps.storage.load();
         for (const entry of stored) {
           if (!records.has(entry.deviceID)) {
-            records.set(entry.deviceID, { ...entry, status: "connecting" });
+            records.set(entry.deviceID, {
+              ...entry,
+              status: "connecting",
+              radioCheck: "unchecked",
+            });
           }
         }
         restored = true;
@@ -420,7 +454,7 @@ export function createSpeakerRegistry(
       if (!record || record.status === "online") {
         return;
       }
-      setStatus(deviceID, "connecting");
+      update(deviceID, { status: "connecting" });
       void reachRemembered(deviceID);
       startScan("auto");
     },
@@ -432,9 +466,9 @@ export function createSpeakerRegistry(
       const link = links.get(deviceID);
       links.delete(deviceID);
       link?.close();
-      checkedFor.delete(deviceID);
       // Bumped, not reset, so a check still running can't pass for a later one.
-      serverChecks.set(deviceID, (serverChecks.get(deviceID) ?? 0) + 1);
+      radioChecks.set(deviceID, (radioChecks.get(deviceID) ?? 0) + 1);
+      syncedPresets.delete(deviceID);
       if (records.delete(deviceID)) {
         changed();
       }
@@ -452,20 +486,28 @@ export function createSpeakerRegistry(
     },
 
     /**
-     * Checks again which server a listed speaker uses, from the `/info` it
+     * Checks again how a listed speaker gets radio, from the `/info` it
      * answers at `host` (its last address by default, else where it was
      * found, e.g. after a setup restarted it). Another device answering
      * there is ignored.
      */
-    refreshServer: async (deviceID: string, host?: string): Promise<void> => {
+    refreshRadio: async (deviceID: string, host?: string): Promise<void> => {
       const record = records.get(deviceID);
       if (!record) {
         return;
       }
       const address = host ?? record.host;
+      update(deviceID, { radioCheck: "checking" });
       const info = await deps.speaker.info(address, record.port);
       const current = records.get(deviceID);
-      if (info?.deviceID !== deviceID || !current) {
+      if (!current) {
+        return;
+      }
+      if (!info) {
+        update(deviceID, { radioCheck: "failed" });
+        return;
+      }
+      if (info.deviceID !== deviceID) {
         return;
       }
       records.set(deviceID, {
@@ -474,33 +516,23 @@ export function createSpeakerRegistry(
         live: current.live && { ...current.live, margeURL: info.margeURL },
       });
       changed();
-      await checkServer(deviceID, info.margeURL);
+      await checkRadio(deviceID, info);
     },
 
-    /**
-     * Checks again which server every reached speaker uses: our server
-     * changed. The others are checked when they're next reached.
-     */
-    refreshAllServers: (): void => {
+    /** Checks again how every reached speaker gets radio: our server changed. */
+    refreshAllRadio: (): void => {
       for (const record of records.values()) {
-        const margeURL = record.live?.margeURL;
-        if (record.status === "online" && margeURL) {
-          void checkServer(record.deviceID, margeURL);
-        } else {
-          checkedFor.delete(record.deviceID);
+        if (record.status === "online") {
+          void checkRadio(record.deviceID);
         }
       }
     },
 
     /** Shows a volume the user just set, before the speaker confirms it. */
     showVolume: (deviceID: string, volume: number): void => {
-      const record = records.get(deviceID);
-      if (record?.live) {
-        records.set(deviceID, {
-          ...record,
-          live: { ...record.live, volume },
-        });
-        changed();
+      const live = records.get(deviceID)?.live;
+      if (live) {
+        update(deviceID, { live: { ...live, volume } });
       }
     },
   };

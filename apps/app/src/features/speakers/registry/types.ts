@@ -8,7 +8,7 @@ import type {
   Preset,
 } from "bose-api-speaker-client";
 
-import type { SpeakerServer } from "../lib/server-profiles";
+import type { SpeakerRadio } from "../lib/speaker-radio";
 
 /**
  * `connecting`: a remembered speaker shown from storage while the app tries
@@ -16,6 +16,13 @@ import type { SpeakerServer } from "../lib/server-profiles";
  * answer at its last address and the network scan hasn't found it.
  */
 export type SpeakerStatus = "connecting" | "online" | "offline";
+
+/**
+ * Where the check of a speaker's radio (`SpeakerRadio`) is: not run yet this
+ * launch, running, done, or failed (the speaker didn't answer it). `radio`
+ * keeps the last result through all of them.
+ */
+export type RadioCheck = "unchecked" | "checking" | "checked" | "failed";
 
 /** Who started a scan: the app (launch, return to foreground) or the user. */
 export type ScanKind = "auto" | "user";
@@ -28,9 +35,10 @@ export interface BoseSpeaker {
   port: number;
   name: string;
   type: string;
-  /** The server it uses, as last checked; kept across launches. */
-  server?: SpeakerServer;
-  // What it plays and its settings, as it last showed them; absent until reached.
+  /** How it gets internet radio, as last checked; kept across launches. */
+  radio?: SpeakerRadio;
+  radioCheck: RadioCheck;
+  // What it plays and its settings: only while reached.
   playStatus?: string;
   source?: string;
   track?: string;

@@ -24,6 +24,7 @@ import {
   playStatusLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
+import { radioSummary } from "@/features/speakers/lib/speaker-radio";
 import {
   speakerRegistry,
   useSpeakers,
@@ -320,7 +321,11 @@ export default function Index() {
                       speakerRegistry.retry(speaker.deviceID);
                     }}
                     nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
-                    detail={[speaker.artist, playStatusLabel(speaker)]
+                    detail={[
+                      speaker.artist,
+                      playStatusLabel(speaker),
+                      radioSummary(speaker.radio),
+                    ]
                       .filter(Boolean)
                       .join(" · ")}
                     artworkUri={speaker.artUrl}

@@ -21,7 +21,7 @@ import {
 } from "@/features/configure/store";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
+import { radioServerName } from "@/features/speakers/lib/speaker-radio";
 import { useSpeakers } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
@@ -62,7 +62,7 @@ export default function ConfigureSpeaker() {
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const host = serverHost(useServerUrl());
-  const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
+  const server = speaker?.radio?.server;
   useOutcomeEffects(view);
 
   const close = () => {
@@ -91,11 +91,33 @@ export default function ConfigureSpeaker() {
           />
         );
       }
+      if (server?.setup === "blocked") {
+        return (
+          <EmptyState
+            icon={icons.radio}
+            title={`Managed by ${server.name}`}
+            description={`${speakerName} runs ${server.name}, which puts its own settings back every time the speaker starts, so it can't be set up for Revive ST. Internet radio and presets go through ${server.name}.`}
+            actions={
+              <Button label="Go back" variant="secondary" onPress={close} />
+            }
+          />
+        );
+      }
       return (
         <IntroView
           speakerName={speakerName}
           serverHost={host}
-          alreadySetUp={radioSetup.data === true}
+          alreadySetUp={speaker?.radio?.onOurServer === true}
+          leavingServer={
+            speaker?.radio?.server.setup === "warn"
+              ? radioServerName(speaker.radio)
+              : undefined
+          }
+          checking={
+            speaker !== undefined &&
+            !speaker.radio &&
+            speaker.radioCheck !== "failed"
+          }
           onStart={() => {
             startConfigure(
               {

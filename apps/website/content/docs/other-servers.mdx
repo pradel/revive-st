@@ -1,0 +1,31 @@
+---
+title: Other SoundTouch servers
+description: Use the app with speakers that already run soundcork, AfterTouch or STR.
+---
+
+Revive ST isn't the only project that keeps SoundTouch speakers working without Bose's servers. If your speakers already use one of these, the app plays radio through it as it is: there's nothing to set up and your speakers stay where they are.
+
+| Server                                                    | Where it runs              | How the app finds it                                    |
+| :-------------------------------------------------------- | :------------------------- | :------------------------------------------------------ |
+| [soundcork](https://github.com/deborahgu/soundcork)       | A computer on your network | The speaker's server address ends in `/marge`           |
+| [AfterTouch](https://github.com/gesellix/Bose-SoundTouch) | A computer on your network | Its health report at `/health`                          |
+| [STR](https://github.com/JRpersonal/streborn)             | The speaker itself         | Its agent answers on the speaker, on port 8888 or 17008 |
+
+The app checks which server each speaker uses as soon as it reaches it. The home screen shows it under the speaker, for example **Radio via soundcork**, and so do the speaker's settings (**Online · Internet radio through soundcork**). A server the app doesn't know is shown by its address, and works the same way.
+
+## What plays
+
+The app asks each speaker which kinds of station its server offers:
+
+- **Radio Browser stations** play as they do on Revive ST when the server offers Radio Browser (soundcork, AfterTouch). Where it doesn't (STR), the app plays the station's stream as a custom station instead: it plays the same, but a preset keeps that stream if the station later moves to another one.
+- **Custom stations** (streams added by URL) play on every server that offers custom stations.
+
+A station the speaker's server can't play is shown as such in the speaker list.
+
+## Switching a speaker to Revive ST
+
+You can still set a speaker on soundcork or AfterTouch up for Revive ST from its settings: the app warns you first, since the speaker then stops using that server. A speaker running STR can't be: STR puts its own settings back every time the speaker starts. To move it to Revive ST, uninstall STR first.
+
+## Known limits
+
+- A speaker pointed at AfterTouch through DNS, rather than by changing its server address, still shows Bose's address, so the app can't tell it from a speaker on Bose's servers and shows it as needing setup.

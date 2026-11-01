@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  type CastStation,
   confirmStationPlaying,
   customStationLocation,
   radioBrowserLocation,
+  stationContentItem,
   StationNotStartedError,
 } from "./radio";
 
@@ -28,6 +30,58 @@ describe("customStationLocation", () => {
       imageUrl: "https://cdn.example/logo.png",
       streamUrl: "http://stream.example:8000/live?x=1&y=2",
     });
+  });
+});
+
+describe("stationContentItem", () => {
+  const radioBrowser: CastStation = {
+    kind: "radioBrowser",
+    stationuuid: "9610c454-0601-11e8-ae97-52543be04c81",
+    streamUrl: "http://stream.example/live.mp3",
+    name: "Dance Wave!",
+    favicon: "",
+  };
+  const custom: CastStation = {
+    kind: "custom",
+    streamUrl: "http://stream.example/live.mp3",
+    name: "My stream",
+    favicon: "",
+  };
+
+  it("plays a Radio Browser station by its id where Radio Browser is offered", () => {
+    expect(
+      stationContentItem(radioBrowser, {
+        radioBrowser: true,
+        customStations: true,
+      }),
+    ).toMatchObject({ source: "RADIO_BROWSER", location: LOCATION });
+  });
+
+  it("plays a Radio Browser station from its stream where only custom stations are offered", () => {
+    expect(
+      stationContentItem(radioBrowser, {
+        radioBrowser: false,
+        customStations: true,
+      }),
+    ).toMatchObject({
+      source: "LOCAL_INTERNET_RADIO",
+      location: customStationLocation(radioBrowser),
+    });
+  });
+
+  it.each([
+    [
+      "a custom station without custom stations",
+      custom,
+      { radioBrowser: true, customStations: false },
+    ],
+    [
+      "a Radio Browser station whose stream isn't known",
+      { ...radioBrowser, streamUrl: "" },
+      { radioBrowser: false, customStations: true },
+    ],
+  ] as const)("can't play %s", (_label, station, sources) => {
+    expect(stationContentItem(station, sources)).toBeUndefined();
   });
 });
 

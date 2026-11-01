@@ -1,9 +1,9 @@
-import { parseSpeakerServer, type SpeakerServer } from "./server-profiles";
+import { parseSpeakerRadio, type SpeakerRadio } from "./speaker-radio";
 
 /**
  * A speaker the phone has reached before: shown on the next launch right
- * away, with the server it used last time, and tried at its last address
- * while the network scan runs. Stored by `known-speakers-store.ts`.
+ * away, with how it got internet radio last time, and tried at its last
+ * address while the network scan runs. Stored by `known-speakers-store.ts`.
  */
 export interface KnownSpeaker {
   deviceID: string;
@@ -12,12 +12,12 @@ export interface KnownSpeaker {
   host: string;
   port: number;
   /** As last checked; absent until it has been. */
-  server?: SpeakerServer;
+  radio?: SpeakerRadio;
 }
 
 const isKnownSpeaker = (
   value: unknown,
-): value is Omit<KnownSpeaker, "server"> & { server?: unknown } => {
+): value is Omit<KnownSpeaker, "radio"> & { radio?: unknown } => {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -34,9 +34,9 @@ const isKnownSpeaker = (
 };
 
 /**
- * Reads the stored list, keeping only well-formed entries. A server that
- * can't be read is dropped and the speaker kept: it's checked again once the
- * speaker answers.
+ * Reads the stored list, keeping only well-formed entries. A radio status
+ * that can't be read is dropped and the speaker kept: it's read again once
+ * the speaker answers.
  */
 export function parseKnownSpeakers(stored: string | null): KnownSpeaker[] {
   if (stored === null) {
@@ -53,10 +53,10 @@ export function parseKnownSpeakers(stored: string | null): KnownSpeaker[] {
   }
   return parsed
     .filter(isKnownSpeaker)
-    .map(({ deviceID, name, type, host, port, server }) => {
-      const known = parseSpeakerServer(server);
+    .map(({ deviceID, name, type, host, port, radio }) => {
+      const known = parseSpeakerRadio(radio);
       return known === undefined
         ? { deviceID, name, type, host, port }
-        : { deviceID, name, type, host, port, server: known };
+        : { deviceID, name, type, host, port, radio: known };
     });
 }

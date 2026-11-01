@@ -2,12 +2,24 @@ import type { Preset, Speaker, SpeakerState } from "bose-api-speaker-client";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { KnownSpeaker } from "../lib/known-speakers";
-import type { SpeakerServer } from "../lib/server-profiles";
-import type { SpeakerRegistryDeps } from "./ports";
+import type { SpeakerRadio } from "../lib/speaker-radio";
+import type { SpeakerLinkEvents, SpeakerRegistryDeps } from "./ports";
 import { createSpeakerRegistry } from "./registry";
 
 const OUR_SERVER = "https://api.revivest.app";
 const ACCOUNT = "6f1c2a3b-4d5e-4f60-8a1b-2c3d4e5f6a7b";
+
+const radioVia = (
+  name: string,
+  overrides: Partial<SpeakerRadio> = {},
+): SpeakerRadio => ({
+  server: { kind: "soundcork", name, setup: "warn" },
+  margeURL: "http://192.168.1.10:8000/marge",
+  onOurServer: false,
+  sources: { radioBrowser: true, customStations: true },
+  ready: true,
+  ...overrides,
+});
 
 const PRESETS: Preset[] = [
   {
@@ -24,16 +36,17 @@ const PRESETS: Preset[] = [
   },
 ];
 
-/** A speaker on the fake network, answering at its address. */
+/** A speaker on the fake network, answering at `host`. */
 interface FakeSpeaker {
   deviceID: string;
   name: string;
   answers: boolean;
   margeURL: string;
   account: string;
+  /** What the radio check returns; it fails without one. */
+  radio?: SpeakerRadio;
   presets?: Preset[];
-  /** Pushes a state, as the speaker's live connection does. */
-  push?: (state: SpeakerState) => void;
+  events?: SpeakerLinkEvents;
 }
 
 const KITCHEN: KnownSpeaker = {
@@ -42,46 +55,29 @@ const KITCHEN: KnownSpeaker = {
   type: "SoundTouch 10",
   host: "192.168.1.30",
   port: 8090,
+  radio: radioVia("soundcork"),
 };
-
-const onNetwork = (overrides: Partial<FakeSpeaker> = {}): FakeSpeaker => ({
-  deviceID: KITCHEN.deviceID,
-  name: "Kitchen",
-  answers: true,
-  margeURL: "https://other.example",
-  account: "1234567",
-  ...overrides,
-});
-
-const SOUNDCORK: SpeakerServer = { kind: "soundcork", name: "soundcork" };
-
-/** The fake `identifyServer`: soundcork by its `/marge` path, else named by host. */
-const serverFor = (margeURL: string): SpeakerServer =>
-  margeURL.endsWith("/marge")
-    ? SOUNDCORK
-    : { kind: "unknown", name: new URL(margeURL).host };
-
-const stateOf = (speaker: FakeSpeaker): SpeakerState => ({
-  volume: 20,
-  isMuted: false,
-  connectionState: "connected",
-  powerState: "on",
-  name: speaker.name,
-  type: "SoundTouch 10",
-  presets: speaker.presets,
-  margeURL: speaker.margeURL,
-  margeAccountUUID: speaker.account,
-});
 
 function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
   const network = new Map<string, FakeSpeaker>();
   const saved: KnownSpeaker[][] = [];
   const synced: { accountId: string; deviceID: string }[] = [];
-  /** The `margeURL` of each server check, in order. */
-  const serverChecks: string[] = [];
-  /** While set, server checks wait here until a test lets them answer. */
-  let heldChecks: (() => void)[] | undefined;
   let found: ((host: string, port: number) => void) | undefined;
+
+  const state = (speaker: FakeSpeaker): SpeakerState => ({
+    volume: 20,
+    isMuted: false,
+    connectionState: "connected",
+    powerState: "on",
+    name: speaker.name,
+    type: "SoundTouch 10",
+    presets: speaker.presets,
+    margeURL: speaker.margeURL,
+    margeAccountUUID: speaker.account,
+  });
+
+  /** While set, radio checks wait here until a test lets them answer. */
+  let heldChecks: (() => void)[] | undefined;
 
   const deps: SpeakerRegistryDeps = {
     speaker: {
@@ -94,30 +90,34 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
                 name: speaker.name,
                 type: "SoundTouch 10",
                 margeURL: speaker.margeURL,
+                margeAccountUUID: speaker.account,
               }
             : undefined,
         );
       },
-      server: async ({ margeURL }) => {
-        serverChecks.push(margeURL);
+      radio: async ({ host }) => {
+        const radio = network.get(host)?.radio;
         const held = heldChecks;
         if (held) {
           await new Promise<void>((resolve) => {
             held.push(resolve);
           });
         }
-        return serverFor(margeURL);
+        if (!radio) {
+          throw new Error("no answer");
+        }
+        return radio;
       },
-      link: (host, port, deviceID, onState) => {
+      link: (host, port, deviceID, events) => {
         const speaker = network.get(host);
         if (speaker) {
-          speaker.push = onState;
+          speaker.events = events;
         }
         return {
           host,
           port,
           client: {} as Speaker,
-          open: async () => Promise.resolve(stateOf(speaker!)),
+          open: async () => Promise.resolve(state(speaker!)),
           isConnected: () => true,
           refresh: async () => Promise.resolve(),
           reconnect: () => undefined,
@@ -157,13 +157,12 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
     network,
     saved,
     synced,
-    serverChecks,
-    /** Server checks from now on wait until `answerHeldChecks`. */
+    /** Radio checks from now on wait until `answerHeldChecks`. */
     holdChecks: () => {
       heldChecks = [];
     },
     /**
-     * Lets the held server checks answer, newest first so a stale one lands
+     * Lets the held radio checks answer, newest first so a stale one lands
      * last, and stops holding new ones.
      */
     answerHeldChecks: () => {
@@ -189,47 +188,59 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
   };
 }
 
+const onNetwork = (overrides: Partial<FakeSpeaker> = {}): FakeSpeaker => ({
+  deviceID: KITCHEN.deviceID,
+  name: "Kitchen",
+  answers: true,
+  margeURL: "http://192.168.1.10:8000/marge",
+  account: "1234567",
+  radio: radioVia("soundcork"),
+  ...overrides,
+});
+
 describe("speaker registry", () => {
-  it("lists remembered speakers at once, before reaching any", async () => {
+  it("lists remembered speakers at once, with their last radio, before reaching any", async () => {
     const { registry, listed } = world({ stored: [KITCHEN] });
     await registry.restore();
 
     expect(registry.getSnapshot().restored).toBe(true);
     expect(listed()).toMatchObject([
-      { deviceID: KITCHEN.deviceID, name: "Kitchen", status: "connecting" },
+      {
+        deviceID: KITCHEN.deviceID,
+        status: "connecting",
+        radio: KITCHEN.radio,
+        radioCheck: "unchecked",
+      },
     ]);
   });
 
-  it("shows a reached speaker online with its live state, and remembers its new name", async () => {
+  it("shows a reached speaker online with its radio checked again, and remembers it", async () => {
     const { registry, network, listed, saved, settle } = world({
       stored: [KITCHEN],
     });
-    network.set(KITCHEN.host, onNetwork({ name: "Kitchen 2" }));
+    const fresh = radioVia("AfterTouch");
+    network.set(KITCHEN.host, onNetwork({ radio: fresh }));
     await registry.restore();
 
     registry.reconnectAll();
     await settle();
 
     expect(listed()).toMatchObject([
-      { status: "online", name: "Kitchen 2", volume: 20 },
+      { status: "online", volume: 20, radio: fresh, radioCheck: "checked" },
     ]);
-    expect(saved.at(-1)).toEqual([
-      {
-        ...KITCHEN,
-        name: "Kitchen 2",
-        server: { kind: "unknown", name: "other.example" },
-      },
-    ]);
+    expect(saved.at(-1)).toEqual([{ ...KITCHEN, radio: fresh }]);
   });
 
-  it("shows a remembered speaker that doesn't answer offline", async () => {
+  it("shows a remembered speaker that doesn't answer offline, keeping its last radio", async () => {
     const { registry, listed, settle } = world({ stored: [KITCHEN] });
     await registry.restore();
 
     registry.reconnectAll();
     await settle();
 
-    expect(listed()).toMatchObject([{ status: "offline" }]);
+    expect(listed()).toMatchObject([
+      { status: "offline", radio: KITCHEN.radio },
+    ]);
   });
 
   it("doesn't take another device at a remembered speaker's address for it", async () => {
@@ -245,10 +256,8 @@ describe("speaker registry", () => {
     ]);
   });
 
-  it("lists a speaker the scan finds at its new address", async () => {
-    const { registry, network, listed, saved, find, settle } = world({
-      stored: [KITCHEN],
-    });
+  it("lists a speaker the scan finds, with its radio", async () => {
+    const { registry, network, listed, find, settle } = world();
     network.set("192.168.1.31", onNetwork());
     await registry.restore();
 
@@ -257,62 +266,44 @@ describe("speaker registry", () => {
     await settle();
 
     expect(listed()).toMatchObject([
-      { deviceID: KITCHEN.deviceID, host: "192.168.1.31", status: "online" },
-    ]);
-    expect(saved.at(-1)).toEqual([
       {
-        ...KITCHEN,
+        deviceID: KITCHEN.deviceID,
         host: "192.168.1.31",
-        server: { kind: "unknown", name: "other.example" },
+        status: "online",
+        radio: radioVia("soundcork"),
       },
     ]);
   });
 
-  it("keeps a speaker forgotten while it was being reached", async () => {
-    const { registry, network, listed, saved, settle } = world({
-      stored: [KITCHEN],
-    });
-    network.set(KITCHEN.host, onNetwork());
+  it("keeps the last radio, marked failed, when a check isn't answered", async () => {
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
+    network.set(KITCHEN.host, onNetwork({ radio: undefined }));
     await registry.restore();
 
     registry.reconnectAll();
-    registry.forget(KITCHEN.deviceID);
     await settle();
 
-    expect(listed()).toEqual([]);
-    expect(saved.at(-1)).toEqual([]);
+    expect(listed()).toMatchObject([
+      { status: "online", radio: KITCHEN.radio, radioCheck: "failed" },
+    ]);
   });
 
-  it("syncs presets to our server only for speakers paired on it", async () => {
-    const { registry, network, synced, find, settle } = world();
-    network.set(
-      "192.168.1.31",
-      onNetwork({ margeURL: OUR_SERVER, account: ACCOUNT, presets: PRESETS }),
-    );
-    network.set(
-      "192.168.1.32",
-      onNetwork({ deviceID: "B0F6FD000002", presets: PRESETS }),
-    );
-    network.set(
-      "192.168.1.33",
-      onNetwork({
-        deviceID: "C0F6FD000003",
-        margeURL: OUR_SERVER,
-        account: "",
-        presets: PRESETS,
-      }),
-    );
+  it("checks the radio again when the speaker says its settings changed", async () => {
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
+    const speaker = onNetwork();
+    network.set(KITCHEN.host, speaker);
     await registry.restore();
-
-    registry.rescan();
-    find("192.168.1.31");
-    find("192.168.1.32");
-    find("192.168.1.33");
+    registry.reconnectAll();
     await settle();
 
-    expect(synced).toEqual([
-      { accountId: ACCOUNT, deviceID: KITCHEN.deviceID },
-    ]);
+    const moved = radioVia("STR", {
+      server: { kind: "streborn", name: "STR", setup: "blocked" },
+    });
+    speaker.radio = moved;
+    speaker.events?.onSettingsChange();
+    await settle();
+
+    expect(listed()[0]?.radio).toEqual(moved);
   });
 
   it("keeps a remembered speaker's name when its state comes without one", async () => {
@@ -325,74 +316,62 @@ describe("speaker registry", () => {
     registry.reconnectAll();
     await settle();
 
-    speaker.push?.({ ...stateOf(speaker), name: undefined });
+    speaker.events?.onState({
+      volume: 20,
+      isMuted: false,
+      connectionState: "connected",
+      powerState: "on",
+    });
 
     expect(listed()).toMatchObject([{ name: "Kitchen", status: "online" }]);
-    expect(saved.at(-1)?.[0]?.name).toBe("Kitchen");
+    expect(saved).toEqual([]);
   });
 
-  it("shows the state a reached speaker pushes", async () => {
-    const speaker = onNetwork();
+  it("keeps a speaker forgotten while it was being reached", async () => {
     const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
-    network.set(KITCHEN.host, speaker);
-    await registry.restore();
-    registry.reconnectAll();
-    await settle();
-
-    speaker.push?.({ ...stateOf(speaker), volume: 45 });
-
-    expect(listed()).toMatchObject([{ volume: 45 }]);
-  });
-
-  it("lists a remembered speaker with the server it used last time", async () => {
-    const { registry, listed } = world({
-      stored: [{ ...KITCHEN, server: SOUNDCORK }],
-    });
-    await registry.restore();
-
-    expect(listed()).toMatchObject([
-      { status: "connecting", server: SOUNDCORK },
-    ]);
-  });
-
-  it("checks a reached speaker's server once, and again when it reports another address", async () => {
-    const speaker = onNetwork();
-    const { registry, network, listed, serverChecks, settle } = world({
-      stored: [KITCHEN],
-    });
-    network.set(KITCHEN.host, speaker);
-    await registry.restore();
-    registry.reconnectAll();
-    await settle();
-
-    speaker.push?.({ ...stateOf(speaker), volume: 45 });
-    await settle();
-    expect(serverChecks).toEqual(["https://other.example"]);
-
-    speaker.margeURL = "http://192.168.1.10:8000/marge";
-    speaker.push?.(stateOf(speaker));
-    await settle();
-    expect(serverChecks).toEqual([
-      "https://other.example",
-      "http://192.168.1.10:8000/marge",
-    ]);
-    expect(listed()).toMatchObject([{ server: SOUNDCORK }]);
-  });
-
-  it("checks a reached speaker's server again when the app comes back", async () => {
-    // STR can be installed or removed without the speaker's address changing.
-    const { registry, network, serverChecks, settle } = world({
-      stored: [KITCHEN],
-    });
     network.set(KITCHEN.host, onNetwork());
     await registry.restore();
-    registry.reconnectAll();
-    await settle();
 
     registry.reconnectAll();
+    registry.forget(KITCHEN.deviceID);
     await settle();
 
-    expect(serverChecks).toHaveLength(2);
+    expect(listed()).toEqual([]);
+  });
+
+  it("syncs presets to our server only for speakers on it, and only when they change", async () => {
+    const ours = onNetwork({
+      margeURL: OUR_SERVER,
+      account: ACCOUNT,
+      presets: PRESETS,
+    });
+    const other = onNetwork({
+      deviceID: "B0F6FD000002",
+      presets: PRESETS,
+    });
+    const { registry, network, synced, find, settle } = world();
+    network.set("192.168.1.31", ours);
+    network.set("192.168.1.32", other);
+    await registry.restore();
+    registry.rescan();
+    find("192.168.1.31");
+    find("192.168.1.32");
+    await settle();
+
+    ours.events?.onState({
+      volume: 30,
+      isMuted: false,
+      connectionState: "connected",
+      powerState: "on",
+      presets: PRESETS,
+      margeURL: OUR_SERVER,
+      margeAccountUUID: ACCOUNT,
+    });
+    await settle();
+
+    expect(synced).toEqual([
+      { accountId: ACCOUNT, deviceID: KITCHEN.deviceID },
+    ]);
   });
 
   it("ends an automatic scan once every listed speaker answered, not one the user asked for", async () => {
@@ -411,38 +390,43 @@ describe("speaker registry", () => {
     expect(scanning()).toBe("user");
   });
 
-  it("checks the server after a setup at the speaker's new address, ignoring another device", async () => {
-    const { registry, network, listed, serverChecks, settle } = world({
-      stored: [KITCHEN],
-    });
+  it("checks the radio after a setup at the speaker's new address, ignoring another device", async () => {
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
     network.set(KITCHEN.host, onNetwork());
     await registry.restore();
     registry.reconnectAll();
     await settle();
 
     // Another device took the old address; the speaker came back elsewhere.
-    network.set(KITCHEN.host, onNetwork({ deviceID: "B0F6FD000002" }));
+    const fresh = radioVia("AfterTouch");
     network.set(
-      "192.168.1.31",
-      onNetwork({ margeURL: "http://192.168.1.10:8000/marge" }),
+      KITCHEN.host,
+      onNetwork({ deviceID: "B0F6FD000002", radio: radioVia("other") }),
     );
-    await registry.refreshServer(KITCHEN.deviceID);
-    await registry.refreshServer(KITCHEN.deviceID, "192.168.1.31");
+    network.set("192.168.1.31", onNetwork({ radio: fresh }));
+    await registry.refreshRadio(KITCHEN.deviceID);
+    expect(listed()[0]?.radio).toEqual(radioVia("soundcork"));
 
-    expect(serverChecks).toEqual([
-      "https://other.example",
-      "http://192.168.1.10:8000/marge",
-    ]);
-    expect(listed()).toMatchObject([
-      {
-        host: "192.168.1.31",
-        margeURL: "http://192.168.1.10:8000/marge",
-        server: SOUNDCORK,
-      },
-    ]);
+    await registry.refreshRadio(KITCHEN.deviceID, "192.168.1.31");
+    expect(listed()).toMatchObject([{ host: "192.168.1.31", radio: fresh }]);
   });
 
-  it("doesn't let a check started before a speaker was forgotten update it once found again", async () => {
+  it("marks the radio check failed when the speaker doesn't answer a refresh", async () => {
+    const speaker = onNetwork();
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    speaker.answers = false;
+    await registry.refreshRadio(KITCHEN.deviceID);
+
+    expect(listed()).toMatchObject([{ radioCheck: "failed" }]);
+  });
+
+  it("doesn't let a radio check started before a speaker was forgotten update it once found again", async () => {
+    const speaker = onNetwork();
     const {
       registry,
       network,
@@ -452,7 +436,6 @@ describe("speaker registry", () => {
       answerHeldChecks,
       settle,
     } = world();
-    const speaker = onNetwork({ margeURL: "http://192.168.1.10:8000/marge" });
     network.set("192.168.1.31", speaker);
     await registry.restore();
     holdChecks();
@@ -461,38 +444,13 @@ describe("speaker registry", () => {
     await settle();
 
     registry.forget(KITCHEN.deviceID);
-    speaker.margeURL = "https://other.example";
+    const fresh = radioVia("AfterTouch");
+    speaker.radio = fresh;
     find("192.168.1.31");
     await settle();
     answerHeldChecks();
     await settle();
 
-    expect(listed()).toMatchObject([
-      { server: { kind: "unknown", name: "other.example" } },
-    ]);
-  });
-
-  it("checks an offline speaker's server again when it's next reached, once our server changed", async () => {
-    const speaker = onNetwork();
-    const { registry, network, serverChecks, settle } = world({
-      stored: [KITCHEN],
-    });
-    network.set(KITCHEN.host, speaker);
-    await registry.restore();
-    registry.reconnectAll();
-    await settle();
-    speaker.answers = false;
-    registry.reconnectAll();
-    await settle();
-
-    registry.refreshAllServers();
-    speaker.answers = true;
-    registry.reconnectAll();
-    await settle();
-
-    expect(serverChecks).toEqual([
-      "https://other.example",
-      "https://other.example",
-    ]);
+    expect(listed()[0]?.radio).toEqual(fresh);
   });
 });
