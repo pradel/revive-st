@@ -58,7 +58,17 @@ const FAQS = [
   {
     question: "How hard is the setup?",
     answer:
-      "The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works.",
+      "The app walks you through it step by step. Open Revive ST, and it automatically finds every SoundTouch speaker on your network. A one-time configuration wizard connects each speaker to your network — after that, everything just works. Speakers already running soundcork, AfterTouch or STR need no setup at all.",
+  },
+  {
+    question:
+      "I already use soundcork, AfterTouch or STR. Does Revive ST work?",
+    answer:
+      "Yes. The app recognises the server each speaker uses and plays internet radio through it, so your speakers stay where they are and there's nothing to migrate. You can still move a speaker to Revive ST later if you want to.",
+    link: {
+      text: "Using other SoundTouch servers \u2192",
+      href: "/docs/other-servers",
+    },
   },
   {
     question: "What features are supported?",
@@ -68,7 +78,7 @@ const FAQS = [
   {
     question: "What if Revive ST shuts down one day?",
     answer:
-      "Your speakers keep working. The app and its server are open source under the MIT licence, so you can run the server at home with Docker and point your speakers at it, whatever happens to this project.",
+      "Your speakers keep working. The app and its server are open source under the MIT licence, so you can run the server at home with Docker and point your speakers at it, whatever happens to this project. The app also works with other community servers such as soundcork, AfterTouch and STR.",
     link: {
       text: "Read the self-hosting guide \u2192",
       href: "/docs/self-hosting",
@@ -363,7 +373,7 @@ export default function HomePage() {
               </FeatureCard>
               <FeatureCard
                 title="Set up in minutes"
-                description="Revive ST finds every SoundTouch on your Wi‑Fi, and a guided setup connects new or reset speakers."
+                description="Revive ST finds every SoundTouch on your Wi‑Fi, and a guided setup connects new or reset speakers. Speakers on soundcork, AfterTouch or STR work as they are."
               >
                 <ul aria-hidden className="mt-auto space-y-2 pt-8">
                   {[
@@ -395,6 +405,7 @@ export default function HomePage() {
                     "Real-time sync across phones",
                     "Bluetooth & AUX switching",
                     "No account to create",
+                    "Works with soundcork, AfterTouch & STR",
                   ].map((item) => (
                     <li key={item} className="flex items-center gap-1.5">
                       <Check className="size-4 text-accent" strokeWidth={3} />

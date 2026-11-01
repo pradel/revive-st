@@ -52,6 +52,17 @@ vp test
 5. **Add a changeset** for user-visible changes to the app or the server (`pnpm changeset`): one sentence written for users. The app and the server always share a version; the website and internal packages aren't versioned.
 6. **Open a Pull Request** against the `main` branch.
 
+## Adding a SoundTouch server
+
+The app recognises the server each speaker uses (Revive ST, soundcork, AfterTouch, STR, Bose's) with server profiles, in `apps/app/src/features/speakers/lib/server-profiles.ts`. To teach it another one:
+
+1. Add its kind to `SERVER_KINDS`.
+2. Add a profile to `PROFILES`: its name as its users know it, its setup policy (`setUp`, `warn` before the speaker leaves it, or `blocked` if it puts its own settings back at every start), and `identify`, which tells from the speaker's `margeURL` and address whether it uses this server. Profiles are asked in order and the first match wins; prefer telling from the address, and keep network probes to one request where you can.
+3. Add a test to `server-profiles.test.ts` with what the server really answers.
+4. Add it to the [Other SoundTouch servers](/docs/other-servers) page.
+
+Whether radio plays through a server isn't part of its profile: the speaker reports which kinds of station its server gives it.
+
 ## Issues
 
 ### Bug Reports

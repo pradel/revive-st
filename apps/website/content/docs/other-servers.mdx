@@ -5,13 +5,15 @@ description: Use the app with speakers that already run soundcork, AfterTouch or
 
 Revive ST isn't the only project that keeps SoundTouch speakers working without Bose's servers. If your speakers already use one of these, the app plays radio through it as it is: there's nothing to set up and your speakers stay where they are.
 
-| Server                                                    | Where it runs              | How the app finds it                                    |
-| :-------------------------------------------------------- | :------------------------- | :------------------------------------------------------ |
-| [soundcork](https://github.com/deborahgu/soundcork)       | A computer on your network | The speaker's server address ends in `/marge`           |
-| [AfterTouch](https://github.com/gesellix/Bose-SoundTouch) | A computer on your network | Its health report at `/health`                          |
-| [STR](https://github.com/JRpersonal/streborn)             | The speaker itself         | Its agent answers on the speaker, on port 8888 or 17008 |
+| Server                                                                         | Where it runs              | How the app finds it                                    |
+| :----------------------------------------------------------------------------- | :------------------------- | :------------------------------------------------------ |
+| [soundcork](https://github.com/deborahgu/soundcork)                            | A computer on your network | The speaker's server address ends in `/marge`           |
+| [AfterTouch](https://github.com/gesellix/Bose-SoundTouch)                      | A computer on your network | Its health report at `/health`                          |
+| [STR](https://st-reborn.de) ([source](https://github.com/JRpersonal/streborn)) | The speaker itself         | Its agent answers on the speaker, on port 8888 or 17008 |
 
 The app checks which server each speaker uses as soon as it reaches it. The home screen shows it under the speaker, for example **Radio via soundcork**, and so do the speaker's settings (**Online · Internet radio through soundcork**). A server the app doesn't know is shown by its address, and works the same way.
+
+A speaker plays radio through its server once it has an account there and reports at least one kind of station as ready. That's up to the server: if a speaker shows as needing setup while you expect it to work, check it in that server first.
 
 ## What plays
 
@@ -20,7 +22,16 @@ The app asks each speaker which kinds of station its server offers:
 - **Radio Browser stations** play as they do on Revive ST when the server offers Radio Browser (soundcork, AfterTouch). Where it doesn't (STR), the app plays the station's stream as a custom station instead: it plays the same, but a preset keeps that stream if the station later moves to another one.
 - **Custom stations** (streams added by URL) play on every server that offers custom stations.
 
-A station the speaker's server can't play is shown as such in the speaker list.
+A station the speaker's server can't play is shown as such in the speaker list, for example **No custom stations on soundcork**.
+
+## What the app shows
+
+| Status                              | What it means                                                                                                                                                       |
+| :---------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Radio via soundcork**             | The speaker plays radio through soundcork.                                                                                                                          |
+| **Radio needs setup**               | The speaker's server isn't giving it radio: it's still on Bose's servers, or has no account or ready station on its server.                                         |
+| **Internet radio not ready on STR** | STR runs on the speaker but isn't giving it radio yet. Fix it in STR: the app can't set an STR speaker up.                                                          |
+| **Couldn't check internet radio**   | The speaker didn't answer when the app asked how it gets radio. Make sure your phone is on the same Wi‑Fi as the speaker, then tap **Check again** in its settings. |
 
 ## Switching a speaker to Revive ST
 
@@ -29,3 +40,8 @@ You can still set a speaker on soundcork or AfterTouch up for Revive ST from its
 ## Known limits
 
 - A speaker pointed at AfterTouch through DNS, rather than by changing its server address, still shows Bose's address, so the app can't tell it from a speaker on Bose's servers and shows it as needing setup.
+- Presets saved from the app on a speaker running STR are stored through the speaker, which hands them to STR. If they don't stick, save them from STR instead.
+
+If something doesn't work with your server, [tell us on GitHub](https://github.com/pradel/revive-st/discussions).
+
+_Revive ST isn't affiliated with soundcork, AfterTouch or STR; their names refer to those projects._

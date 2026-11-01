@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose max-w-none">
           <h1 className="mb-2">🔒 Privacy Policy</h1>
-          <p className="text-fg-tertiary mb-8">Effective as of: 2026-10-31</p>
+          <p className="text-fg-tertiary mb-8">Effective as of: 2026-11-01</p>
 
           <p>
             This policy explains what data Revive ST handles and why. It covers
@@ -61,14 +61,21 @@ export default function PrivacyPage() {
               unless you choose to share the logs, for example with us when
               reporting a problem. Uninstalling the App deletes them.
             </li>
+            <li>
+              <strong>Your speakers&apos; servers.</strong> To tell which server
+              a speaker uses, the App may send a short request to that server or
+              to the speaker itself (for example the STR agent installed on it),
+              asking only for its name, version or status. These requests carry
+              nothing about you.
+            </li>
           </ul>
 
           <h2>On the Revive ST server</h2>
           <p>
             Since Bose shut down its cloud, your speakers need a server to fetch
             their account, presets and radio stations from when they start up.
-            By default, the App configures your speakers to use ours. The Server
-            stores:
+            When you set a speaker up for internet radio, the App configures it
+            to use ours by default. The Server stores:
           </p>
           <ul>
             <li>
@@ -95,8 +102,10 @@ export default function PrivacyPage() {
           <p>
             You don&apos;t have to use our Server. You can{" "}
             <a href="/docs/self-hosting">run your own</a> and point the App and
-            your speakers to it, in which case none of the data in this section
-            reaches us.
+            your speakers to it, or keep a speaker on{" "}
+            <a href="/docs/other-servers">another community server</a> such as
+            soundcork, AfterTouch or STR. In either case none of the data in
+            this section reaches us.
           </p>
 
           <h2>Logs and diagnostics</h2>
@@ -137,6 +146,12 @@ export default function PrivacyPage() {
               <strong>Radio stations</strong> stream directly to your speakers,
               so the broadcaster sees your home IP address, as with any internet
               radio.
+            </li>
+            <li>
+              <strong>Other SoundTouch servers</strong> (soundcork, AfterTouch,
+              STR or one you run) give a speaker that uses them its account,
+              presets and stations. They are run by you or by those projects,
+              not by us, under their own terms.
             </li>
             <li>
               <strong>Expo</strong>, the platform the App is built with,

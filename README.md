@@ -21,6 +21,7 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 - **Real-time sync** — WebSocket-based, instant state updates across devices
 - **Setup wizard** — easy onboarding with automatic speaker discovery
 - **No account required** — works entirely on your local network
+- **Works with other community servers** — speakers on soundcork, AfterTouch or STR play radio through them, with no migration
 
 ---
 
@@ -67,12 +68,22 @@ For large features or architecture changes, please open an issue first to discus
 
 ---
 
+## Compatible servers
+
+Revive ST isn't the only project keeping SoundTouch speakers alive. If your speakers already use one of these servers, the app recognises it and plays internet radio through it, with nothing to set up. See [Other SoundTouch servers](https://www.revivest.app/docs/other-servers).
+
+- [soundcork](https://github.com/deborahgu/soundcork)
+- [AfterTouch](https://github.com/gesellix/Bose-SoundTouch)
+- [STR (SoundTouch Reborn)](https://github.com/JRpersonal/streborn)
+
+---
+
 ## Acknowledgements
 
 A huge thanks to the maintainers and contributors of the following projects, whose code and reverse-engineering efforts were instrumental in building Revive ST:
 
 - [soundcork](https://github.com/deborahgu/soundcork)
-- [Bose-SoundTouch](https://github.com/gesellix/Bose-SoundTouch)
+- [Bose-SoundTouch (AfterTouch)](https://github.com/gesellix/Bose-SoundTouch)
 - [soundploy](https://github.com/gmuth/soundploy)
 
 ---
@@ -81,4 +92,4 @@ A huge thanks to the maintainers and contributors of the following projects, who
 
 Revive ST is released under the [MIT License](LICENSE).
 
-_Revive ST is not affiliated with or endorsed by Bose Corporation. Bose and SoundTouch are trademarks of Bose Corporation._
+_Revive ST is not affiliated with or endorsed by Bose Corporation. Bose and SoundTouch are trademarks of Bose Corporation. Revive ST is not affiliated with soundcork, AfterTouch or STR; their names refer to those projects._
