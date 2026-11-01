@@ -26,8 +26,15 @@ export const InternalHandlers = HttpApiBuilder.group(
         "syncPresets",
         Effect.fn(function* ({ params, payload }) {
           // The app reads the account from the speaker itself.
-          if (!(yield* devicesRepo.pair(params.accountId, params.deviceId))) {
+          const pairing = yield* devicesRepo.pair(
+            params.accountId,
+            params.deviceId,
+          );
+          if (pairing === "accountFull") {
             return yield* new HttpApiError.Conflict();
+          }
+          if (pairing === "storageFull") {
+            return yield* new HttpApiError.ServiceUnavailable();
           }
           // The app syncs every slot the speaker has, and the speaker mirrors
           // the stored presets at boot, so they replace what was stored. Only

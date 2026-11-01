@@ -19,6 +19,7 @@ import { InternalHandlers } from "./handlers/internal.ts";
 import { MargeHandlers } from "./handlers/marge.ts";
 import { ServerHandlers } from "./handlers/server.ts";
 import { StatsHandlers, UpdatesHandlers } from "./handlers/speaker-services.ts";
+import { RateLimitLayer } from "./rate-limit.ts";
 
 const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
   openapiPath: OPENAPI_PATH,
@@ -31,6 +32,7 @@ const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
     UpdatesHandlers,
     StatsHandlers,
   ]),
+  Layer.provide(RateLimitLayer),
 );
 
 /**
@@ -117,8 +119,9 @@ const appAttributes = (
  * Logs responses with a 4xx or 5xx status, with the XML or JSON body of the
  * request: a 404 is how a speaker call this server lacks shows up, a 400 what
  * a speaker sent that it rejected. Other responses log at Debug; Railway's
- * HTTP logs and the request's trace already record them. Replaces Effect's
- * request logger, which would log the account id.
+ * HTTP logs and the request's trace already record them. So do `429`s: a
+ * client over its rate limit would otherwise flood the logs. Replaces
+ * Effect's request logger, which would log the account id.
  */
 const logResponses = <Failure, Requirements>(
   httpApp: Effect.Effect<
@@ -149,7 +152,7 @@ const logResponses = <Failure, Requirements>(
       const logAtStatus = (status: number, message: string) =>
         (status >= 500
           ? Effect.logError(message)
-          : status >= 400
+          : status >= 400 && status !== 429
             ? Effect.logWarning(message)
             : Effect.logDebug(message)
         ).pipe(annotate(status));

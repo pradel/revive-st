@@ -1,7 +1,7 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
-import { Database } from "../db/database.ts";
+import { Database, hasRoom, StorageBudget } from "../db/database.ts";
 import { deviceContactsTable } from "../db/schema.ts";
 import { type DeviceId, SpeakerDeviceId } from "../presets/preset.ts";
 
@@ -18,8 +18,9 @@ export class DeviceContactsRepo extends Context.Service<
   {
     /**
      * Records that `deviceId` contacted the server now; an id that isn't a
-     * MAC address is not stored. Never fails: a speaker request must not fail
-     * for want of recording it, so errors are logged.
+     * MAC address is not stored, nor a new speaker once the database is past
+     * its `StorageBudget`. Never fails: a speaker request must not fail for
+     * want of recording it, so errors are logged.
      */
     readonly record: (deviceId: DeviceId) => Effect.Effect<void>;
     /** When `deviceId` last contacted the server, in epoch milliseconds. */
@@ -32,20 +33,23 @@ export class DeviceContactsRepo extends Context.Service<
     DeviceContactsRepo,
     Effect.gen(function* () {
       const db = yield* Database;
+      const { softBytes } = yield* StorageBudget;
 
       const record = Effect.fn("DeviceContactsRepo.record")(
         function* (deviceId: DeviceId) {
           if (!isSpeakerDeviceId(deviceId)) {
             return;
           }
+          const id = deviceId.toUpperCase();
           const now = DateTime.toEpochMillis(yield* DateTime.now);
-          yield* db
-            .insert(deviceContactsTable)
-            .values({ deviceId: deviceId.toUpperCase(), lastContactAt: now })
-            .onConflictDoUpdate({
-              target: deviceContactsTable.deviceId,
-              set: { lastContactAt: now },
-            });
+          yield* db.run(sql`
+            INSERT INTO device_contacts (device_id, last_contact_at)
+            SELECT ${id}, ${now}
+            WHERE ${hasRoom(softBytes)}
+              OR EXISTS (SELECT 1 FROM device_contacts WHERE device_id = ${id})
+            ON CONFLICT (device_id) DO UPDATE
+              SET last_contact_at = excluded.last_contact_at
+          `);
         },
         Effect.ignoreCause({
           log: "Warn",

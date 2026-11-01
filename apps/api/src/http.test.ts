@@ -2,7 +2,15 @@ import { createHash } from "node:crypto";
 
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
-import { DateTime, Effect, Layer, Logger, References, Schema } from "effect";
+import {
+  ConfigProvider,
+  DateTime,
+  Effect,
+  Layer,
+  Logger,
+  References,
+  Schema,
+} from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -89,6 +97,8 @@ const TestLayer = HttpAppLayer.pipe(
       }),
     ]),
     Layer.succeed(References.MinimumLogLevel, "All"),
+    // Rate limits have their own tests; these make far more writes.
+    ConfigProvider.layer(ConfigProvider.fromEnvRecord({ RATE_LIMIT: "false" })),
   ]),
   Layer.provideMerge(NodeHttpServer.layerTest),
 );

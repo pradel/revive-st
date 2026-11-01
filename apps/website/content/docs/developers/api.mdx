@@ -19,7 +19,19 @@ When the app configures a speaker that is not paired with an account yet, it pai
 
 ## Limits
 
-Anyone can make up an account id, so the server bounds what one can store. A request naming an account id over 64 characters, or a device id that isn't 12 hex digits (a MAC address), gets `400`. Request bodies over 32 KiB are refused. Each preset field has a maximum length: name 512 characters, location 4096, artwork 2048, source account 256, source and content type 64; a preset over any of them gets `400` and nothing is stored. An account pairs at most 50 speakers.
+Anyone can make up an account id, so the server bounds what one can store. A request naming an account id over 64 characters, or a device id that isn't 12 hex digits (a MAC address), gets `400`. Request bodies over 32 KiB are refused. Each preset field has a maximum length: name 512 characters, location 4096, artwork 2048, source account 256, source and content type 64; a preset over any of them gets `400` and nothing is stored. An account pairs at most 20 speakers.
+
+Writes are rate limited per client address (`X-Real-IP`, set by Railway's edge), and a client past its limit gets `429` with nothing done:
+
+| Requests                                                         | Limit per client |
+| ---------------------------------------------------------------- | ---------------- |
+| A speaker saving or removing a preset, pairing, or being renamed | 60 a minute      |
+| The app syncing a speaker's presets                              | 300 a minute     |
+| The app minting an account                                       | 10 an hour       |
+
+Speaker reads are never limited: a household's speakers share one address and boot together.
+
+The database has a storage budget, 100 MB by default. Past it, the server pairs no new speaker (`503` on a preset save or sync for one) and records no new speaker's contact, while speakers already paired keep working. At one and a half times the budget, SQLite refuses to grow.
 
 ## Marge Emulation Endpoints (Bose SoundTouch)
 

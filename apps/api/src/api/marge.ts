@@ -10,6 +10,7 @@ import {
 
 import { AccountId } from "../marge/account.ts";
 import { PresetId, PresetText, SpeakerDeviceId } from "../presets/preset.ts";
+import { SpeakerWriteRateLimit } from "../rate-limit.ts";
 
 export const BOSE_XML_CONTENT_TYPE = "application/vnd.bose.streaming-v1.2+xml";
 
@@ -222,15 +223,17 @@ export class MargeApi extends HttpApiGroup.make("marge")
           HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
         ),
         success: boseXml("`<preset>`: the stored preset."),
-        error: HttpApiError.BadRequest,
+        error: [HttpApiError.BadRequest, HttpApiError.ServiceUnavailable],
       },
-    ).annotateMerge(
-      OpenApi.annotations({
-        summary: "Save a preset",
-        description:
-          "Called by the speaker when a preset button is held. Pairs the speaker with the account. A preset from a source the account doesn't offer, a body that isn't a `<preset>` document, or a field over its maximum length (`name` 512 characters, `location` 4096, `containerArt` 2048) gets `400`. The body is read as XML whatever its content type.",
-      }),
-    ),
+    )
+      .middleware(SpeakerWriteRateLimit)
+      .annotateMerge(
+        OpenApi.annotations({
+          summary: "Save a preset",
+          description:
+            "Called by the speaker when a preset button is held. Pairs the speaker with the account. A preset from a source the account doesn't offer, a body that isn't a `<preset>` document, or a field over its maximum length (`name` 512 characters, `location` 4096, `containerArt` 2048) gets `400`; a new speaker once the server's storage budget is reached, `503`. Rate limited per client, `429` beyond. The body is read as XML whatever its content type.",
+        }),
+      ),
     HttpApiEndpoint.delete(
       "removePreset",
       "/account/:accountId/device/:deviceId/preset/:presetId",
@@ -238,13 +241,15 @@ export class MargeApi extends HttpApiGroup.make("marge")
         params: { ...DeviceParams, presetId: PresetId },
         success: boseXml("`<status>OK</status>`."),
       },
-    ).annotateMerge(
-      OpenApi.annotations({
-        summary: "Remove a preset",
-        description:
-          "Called by the speaker when a preset is removed from it. Deletes the stored preset, so the speaker doesn't restore it at its next boot, and pairs the speaker with the account.",
-      }),
-    ),
+    )
+      .middleware(SpeakerWriteRateLimit)
+      .annotateMerge(
+        OpenApi.annotations({
+          summary: "Remove a preset",
+          description:
+            "Called by the speaker when a preset is removed from it. Deletes the stored preset, so the speaker doesn't restore it at its next boot, and pairs the speaker with the account. Rate limited per client, `429` beyond.",
+        }),
+      ),
     HttpApiEndpoint.get(
       "softwareUpdate",
       "/software/update/account/:accountId",
@@ -310,13 +315,15 @@ export class MargeApi extends HttpApiGroup.make("marge")
         HttpApiSchema.status(201),
       ),
       error: HttpApiError.BadRequest,
-    }).annotateMerge(
-      OpenApi.annotations({
-        summary: "Pair a speaker",
-        description:
-          "Called by the speaker when it is paired with an account (`setMargeAccount`). The path also matches with a trailing slash, which is how speakers call it. A bare `200` would make the speaker refuse the pairing with `SET_MARGE_ACCOUNT_ERROR`. A body without a `deviceid`, or with one that isn't 12 hex digits, gets `400`.",
-      }),
-    ),
+    })
+      .middleware(SpeakerWriteRateLimit)
+      .annotateMerge(
+        OpenApi.annotations({
+          summary: "Pair a speaker",
+          description:
+            "Called by the speaker when it is paired with an account (`setMargeAccount`). The path also matches with a trailing slash, which is how speakers call it. A bare `200` would make the speaker refuse the pairing with `SET_MARGE_ACCOUNT_ERROR`. A body without a `deviceid`, or with one that isn't 12 hex digits, gets `400`. Rate limited per client, `429` beyond.",
+        }),
+      ),
     HttpApiEndpoint.put(
       "updateDevice",
       "/account/:accountId/device/:deviceId",
@@ -328,13 +335,15 @@ export class MargeApi extends HttpApiGroup.make("marge")
         success: boseXml("`<device>`: the speaker with its new name."),
         error: HttpApiError.BadRequest,
       },
-    ).annotateMerge(
-      OpenApi.annotations({
-        summary: "Rename a speaker",
-        description:
-          "Called by the speaker when it is renamed (`POST /name` on the speaker), with the same `<device>` document as pairing. Without a `2xx` reply the speaker keeps its old name. Names aren't stored: the reply echoes the new one. Pairs the speaker with the account. A body without a `deviceid`, or with another speaker's, gets `400`.",
-      }),
-    ),
+    )
+      .middleware(SpeakerWriteRateLimit)
+      .annotateMerge(
+        OpenApi.annotations({
+          summary: "Rename a speaker",
+          description:
+            "Called by the speaker when it is renamed (`POST /name` on the speaker), with the same `<device>` document as pairing. Without a `2xx` reply the speaker keeps its old name. Names aren't stored: the reply echoes the new one. Pairs the speaker with the account. A body without a `deviceid`, or with another speaker's, gets `400`. Rate limited per client, `429` beyond.",
+        }),
+      ),
     HttpApiEndpoint.get(
       "deviceGroup",
       "/account/:accountId/device/:deviceId/group",
