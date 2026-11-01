@@ -7,13 +7,13 @@ import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { loadServerUrl } from "@/features/server/server";
 import {
-  BoseProvider,
-  useBose,
-} from "@/features/speakers/contexts/BoseContext";
-import {
   loadLocalNetworkIntro,
   useLocalNetworkIntro,
 } from "@/features/speakers/lib/local-network";
+import {
+  useSpeakerDiscovery,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { navigationTheme, stackScreenOptions } from "@/ui/navigation";
@@ -30,7 +30,7 @@ SplashScreen.setOptions({ duration: 250, fade: true });
  */
 function SplashGate() {
   const intro = useLocalNetworkIntro();
-  const { restored } = useBose();
+  const { restored } = useSpeakers();
   const ready = intro === "needed" || (intro === "done" && restored);
   useEffect(() => {
     if (ready) {
@@ -42,6 +42,9 @@ function SplashGate() {
 
 export default function RootLayout() {
   const intro = useLocalNetworkIntro();
+  // On iOS the first scan triggers the Local Network prompt, so it waits for
+  // the screen explaining it.
+  useSpeakerDiscovery(intro === "done");
 
   useEffect(() => {
     void initLogger();
@@ -53,55 +56,50 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <KeyboardProvider>
         <QueryProvider>
-          <BoseProvider>
-            <SplashGate />
-            <ThemeProvider value={navigationTheme}>
-              {/* oxlint-disable-next-line react/style-prop-object -- expo-status-bar's `style` is a bar style name */}
-              <StatusBar style="light" />
-              <Stack screenOptions={stackScreenOptions}>
-                <Stack.Protected guard={intro !== "needed"}>
-                  <Stack.Screen
-                    name="(tabs)"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="onboarding"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen name="logs" options={{ title: "Logs" }} />
-                  <Stack.Screen
-                    name="speakers/[id]/settings"
-                    // The header card under it shows the speaker's name large.
-                    options={{ headerLargeTitleEnabled: false }}
-                  />
-                  <Stack.Screen
-                    name="speakers/[id]/now-playing"
-                    options={{
-                      presentation: "formSheet",
-                      sheetGrabberVisible: true,
-                      headerShown: false,
-                    }}
-                  />
-                  <Stack.Screen
-                    name="cast"
-                    options={{
-                      presentation: "formSheet",
-                      sheetAllowedDetents: "fitToContents",
-                      sheetGrabberVisible: true,
-                      headerShown: false,
-                      contentStyle: { backgroundColor: color.surface1 },
-                    }}
-                  />
-                </Stack.Protected>
-                <Stack.Protected guard={intro === "needed"}>
-                  <Stack.Screen
-                    name="welcome"
-                    options={{ headerShown: false, animation: "fade" }}
-                  />
-                </Stack.Protected>
-              </Stack>
-            </ThemeProvider>
-          </BoseProvider>
+          <SplashGate />
+          <ThemeProvider value={navigationTheme}>
+            {/* oxlint-disable-next-line react/style-prop-object -- expo-status-bar's `style` is a bar style name */}
+            <StatusBar style="light" />
+            <Stack screenOptions={stackScreenOptions}>
+              <Stack.Protected guard={intro !== "needed"}>
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen name="logs" options={{ title: "Logs" }} />
+                <Stack.Screen
+                  name="speakers/[id]/settings"
+                  // The header card under it shows the speaker's name large.
+                  options={{ headerLargeTitleEnabled: false }}
+                />
+                <Stack.Screen
+                  name="speakers/[id]/now-playing"
+                  options={{
+                    presentation: "formSheet",
+                    sheetGrabberVisible: true,
+                    headerShown: false,
+                  }}
+                />
+                <Stack.Screen
+                  name="cast"
+                  options={{
+                    presentation: "formSheet",
+                    sheetAllowedDetents: "fitToContents",
+                    sheetGrabberVisible: true,
+                    headerShown: false,
+                    contentStyle: { backgroundColor: color.surface1 },
+                  }}
+                />
+              </Stack.Protected>
+              <Stack.Protected guard={intro === "needed"}>
+                <Stack.Screen
+                  name="welcome"
+                  options={{ headerShown: false, animation: "fade" }}
+                />
+              </Stack.Protected>
+            </Stack>
+          </ThemeProvider>
         </QueryProvider>
       </KeyboardProvider>
     </GestureHandlerRootView>

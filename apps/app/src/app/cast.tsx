@@ -11,16 +11,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countStationClick } from "@/features/radio/lib/radio-browser";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import {
-  useRadioSetupQuery,
-  type BoseSpeaker,
-} from "@/features/speakers/hooks/useSpeakerManager";
+import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   StationNotStartedError,
   stationContentItem,
   type CastStation,
 } from "@/features/speakers/lib/radio";
+import { useSpeakers } from "@/features/speakers/registry/store";
+import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -60,8 +59,9 @@ export default function CastSheet() {
     ? { kind: "custom", streamUrl, name, favicon }
     : { kind: "radioBrowser", stationuuid, name, favicon };
   const location = stationContentItem(station).location;
-  const { speakers, playStationMutation, storeStationPresetMutation } =
-    useBose();
+  const { online: speakers } = useSpeakers();
+  const { playStationMutation, storeStationPresetMutation } =
+    useSpeakerCommands();
   const [castingToSpeakerId, setCastingToSpeakerId] = useState<string | null>(
     null,
   );

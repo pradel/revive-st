@@ -21,8 +21,8 @@ import {
 } from "@/features/configure/store";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
+import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
+import { useSpeakers } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -58,7 +58,7 @@ export default function ConfigureSpeaker() {
     __DEV__ && simulate !== undefined && isConfigureScenarioName(simulate)
       ? simulate
       : undefined;
-  const { speakers } = useBose();
+  const { online: speakers } = useSpeakers();
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const host = serverHost(useServerUrl());

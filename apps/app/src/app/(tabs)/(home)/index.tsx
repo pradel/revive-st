@@ -12,8 +12,7 @@ import {
 
 import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
   canSavePreset,
@@ -25,6 +24,11 @@ import {
   playStatusLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
+import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { Button } from "@/ui/ds/Button";
@@ -41,6 +45,7 @@ import { PulseRing } from "@/ui/PulseRing";
 import { color, space } from "@/ui/tokens";
 
 const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
+type PresetSlot = (typeof PRESET_SLOTS)[number];
 
 /**
  * iOS can't tell the app that Local Network access was refused: scans just
@@ -57,21 +62,16 @@ const openAppSettings = () => {
 
 export default function Index() {
   const router = useRouter();
+  const { online: speakers, listed: listedSpeakers, scan } = useSpeakers();
+  const isScanning = scan !== null;
   const {
-    speakers,
-    listedSpeakers,
-    isScanning,
-    isRefreshing,
-    rescan,
-    retrySpeaker,
-    forgetSpeaker,
     volumeMutation,
     playPauseMutation,
     keyMutation,
     powerToggleMutation,
     selectSourceMutation,
     savePresetMutation,
-  } = useBose();
+  } = useSpeakerCommands();
   const openSpeakerSetup = useOpenSpeakerSetup();
 
   const presetSpeaker = findActiveSpeaker(speakers) ?? speakers[0];
@@ -87,7 +87,7 @@ export default function Index() {
     router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
-  const playPreset = (speaker: BoseSpeaker, slot: number) => {
+  const playPreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     haptics.tap();
     keyMutation.mutate({
       deviceID: speaker.deviceID,
@@ -171,9 +171,9 @@ export default function Index() {
     ],
     onAction: (id) => {
       if (id === "retry") {
-        retrySpeaker(speaker);
+        speakerRegistry.retry(speaker.deviceID);
       } else {
-        forgetSpeaker(speaker.deviceID);
+        speakerRegistry.forget(speaker.deviceID);
       }
     },
   });
@@ -183,7 +183,7 @@ export default function Index() {
     listedSpeakers.length > 0 &&
     listedSpeakers.every((speaker) => speaker.status === "offline");
 
-  const savePreset = (speaker: BoseSpeaker, slot: number) => {
+  const savePreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     savePresetMutation.mutate(
       { deviceID: speaker.deviceID, presetId: slot },
       {
@@ -204,7 +204,7 @@ export default function Index() {
 
   const presetMenu = (
     speaker: BoseSpeaker,
-    slot: number,
+    slot: PresetSlot,
     isEmpty: boolean,
   ): ContextMenuConfig => ({
     actions: [
@@ -249,8 +249,10 @@ export default function Index() {
           // Only a scan the user asked for shows the spinner: the automatic
           // one at launch would push the list down while it's already shown.
           <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={rescan}
+            refreshing={scan === "user"}
+            onRefresh={() => {
+              speakerRegistry.rescan();
+            }}
             tintColor={color.textSecondary}
             colors={[color.accent]}
             progressBackgroundColor={color.surface2}
@@ -286,7 +288,9 @@ export default function Index() {
                   label={isScanning ? "Scanning…" : "Scan again"}
                   variant="secondary"
                   loading={isScanning}
-                  onPress={rescan}
+                  onPress={() => {
+                    speakerRegistry.rescan();
+                  }}
                 />
                 {LOCAL_NETWORK_HINT ? (
                   <Button
@@ -313,7 +317,7 @@ export default function Index() {
                     }
                     onRetry={() => {
                       haptics.tap();
-                      retrySpeaker(speaker);
+                      speakerRegistry.retry(speaker.deviceID);
                     }}
                     nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
                     detail={[speaker.artist, playStatusLabel(speaker)]

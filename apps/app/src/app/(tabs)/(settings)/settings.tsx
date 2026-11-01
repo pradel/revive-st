@@ -11,7 +11,10 @@ import {
 } from "@/features/onboarding/session/testing/scenarios";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import { appVersion } from "@/lib/app-version";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
@@ -24,7 +27,7 @@ import { color } from "@/ui/tokens";
 export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
-  const { isScanning, rescan } = useBose();
+  const isScanning = useSpeakers().scan !== null;
   const serverUrl = useServerUrl();
 
   return (
@@ -69,7 +72,9 @@ export default function AppSettings() {
                 : "Search for SoundTouch speakers"
             }
             disabled={isScanning}
-            onPress={rescan}
+            onPress={() => {
+              speakerRegistry.rescan();
+            }}
           />
           <FormLinkRow
             icon={formIcons.server}

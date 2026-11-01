@@ -9,9 +9,13 @@ import {
   SpeakerSettingsHeader,
   type SpeakerStatus,
 } from "@/features/speakers/components/SpeakerSettingsHeader";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
+import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
+import {
+  speakerRegistry,
+  useSpeaker,
+} from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -75,22 +79,21 @@ export default function SpeakerSettings() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
-    speakers,
     keyMutation,
     setBassMutation,
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
-    loadPresets,
-  } = useBose();
+  } = useSpeakerCommands();
 
-  const speaker = speakers.find((item) => item.deviceID === id);
+  const speaker = useSpeaker(id);
+  const deviceID = speaker?.deviceID;
 
   useEffect(() => {
-    if (speaker?.deviceID) {
-      void loadPresets(speaker.deviceID);
+    if (deviceID) {
+      void speakerRegistry.refresh(deviceID);
     }
-  }, [speaker?.deviceID, loadPresets]);
+  }, [deviceID]);
 
   const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
   const configureRun = useConfigureRun(id);
@@ -121,7 +124,7 @@ export default function SpeakerSettings() {
   // its internet radio setup.
   const refresh = async () => {
     await Promise.allSettled([
-      loadPresets(speaker.deviceID),
+      speakerRegistry.refresh(speaker.deviceID),
       radioSetup.refetch(),
     ]);
   };

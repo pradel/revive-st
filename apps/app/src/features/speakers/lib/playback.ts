@@ -1,4 +1,4 @@
-import type { BoseSpeaker } from "../hooks/useSpeakerManager";
+import type { BoseSpeaker } from "../registry/types";
 
 /** Playing or buffering: the speaker is actively producing audio. */
 export function isSpeakerPlaying(speaker: BoseSpeaker) {
@@ -23,7 +23,7 @@ export function hasLoadedMedia(speaker: BoseSpeaker) {
  * playing, else the first one paused with something loaded (it stays
  * visible while paused, like Sonos).
  */
-export function findActiveSpeaker(speakers: BoseSpeaker[]) {
+export function findActiveSpeaker(speakers: readonly BoseSpeaker[]) {
   return (
     speakers.find((speaker) => isSpeakerPlaying(speaker)) ??
     speakers.find(
