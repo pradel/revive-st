@@ -9,7 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   hasLoadedMedia,
   isSpeakerPlaying,
@@ -18,6 +18,7 @@ import {
   trackDetail,
   trackTitle,
 } from "@/features/speakers/lib/playback";
+import { useSpeaker } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
@@ -36,10 +37,10 @@ const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
 export default function NowPlayingModal() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const { speakers, volumeMutation, playPauseMutation, keyMutation } =
-    useBose();
+  const { volumeMutation, playPauseMutation, keyMutation } =
+    useSpeakerCommands();
 
-  const speaker = speakers.find((s) => s.deviceID === id);
+  const speaker = useSpeaker(id);
   const volumeDraft = useSliderDraft(speaker?.volume ?? 0, (volume) => {
     if (speaker) {
       volumeMutation.mutate({ deviceID: speaker.deviceID, volume });

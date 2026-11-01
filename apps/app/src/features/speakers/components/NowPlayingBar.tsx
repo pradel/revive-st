@@ -1,15 +1,16 @@
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 
-import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { haptics } from "@/lib/haptics";
 import { MiniPlayer, type MiniPlayerProps } from "@/ui/ds/MiniPlayer";
 
+import { useSpeakerCommands } from "../hooks/useSpeakerCommands";
 import {
   findActiveSpeaker,
   isSpeakerPlaying,
   trackTitle,
 } from "../lib/playback";
+import { useSpeakers } from "../registry/store";
 
 /**
  * iOS 26 hosts the mini player in the tab bar's bottom accessory, which
@@ -21,8 +22,9 @@ export const usesTabBarAccessory =
 
 /** Mini player props for the playing (or paused) speaker, if any. */
 export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
-  const { speakers, playPauseMutation } = useBose();
-  const speaker = findActiveSpeaker(speakers);
+  const { online } = useSpeakers();
+  const { playPauseMutation } = useSpeakerCommands();
+  const speaker = findActiveSpeaker(online);
 
   if (!speaker) {
     return null;

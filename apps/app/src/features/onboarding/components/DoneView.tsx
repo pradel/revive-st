@@ -3,7 +3,10 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, View, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
 import { Button } from "@/ui/ds/Button";
 import { Text } from "@/ui/ds/Text";
 import { color, space } from "@/ui/tokens";
@@ -32,21 +35,21 @@ export function DoneView({
   renameFailed?: boolean;
 }) {
   const router = useRouter();
-  const { speakers, rescan } = useBose();
+  const { online } = useSpeakers();
   const [timedOut, setTimedOut] = useState(false);
-  const listed = speakers.some((entry) => entry.deviceID === speaker.deviceID);
+  const listed = online.some((entry) => entry.deviceID === speaker.deviceID);
   // A failed rename is shown until the user moves on, instead of flashing past.
   const [acknowledged, setAcknowledged] = useState(!renameFailed);
 
   useEffect(() => {
-    rescan();
+    speakerRegistry.rescan();
     const timer = setTimeout(() => {
       setTimedOut(true);
     }, HANDOFF_TIMEOUT_MS);
     return () => {
       clearTimeout(timer);
     };
-  }, [rescan]);
+  }, []);
 
   useEffect(() => {
     if (listed && acknowledged) {

@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react";
 
-import { RADIO_SETUP_QUERY_KEY } from "@/features/speakers/hooks/useSpeakerManager";
+import { RADIO_SETUP_QUERY_KEY } from "@/features/speakers/hooks/useRadioSetupQuery";
 import { queryClient } from "@/lib/query-client";
 
 import { createConfigureDeps } from "./adapters";
