@@ -34,7 +34,7 @@ const isKnownSpeaker = (
 };
 
 /**
- * Reads the stored list, keeping only well-formed entries. A radio status
+ * Reads the stored list, keeping only well-formed entries. A speaker radio
  * that can't be read is dropped and the speaker kept: it's read again once
  * the speaker answers.
  */

@@ -47,7 +47,7 @@ export interface SpeakerRegistryDeps {
         host: string;
         port: number;
         margeURL: string;
-        accountId: string;
+        margeAccountUUID: string;
       },
       ourServer: string,
     ) => Promise<SpeakerRadio>;

@@ -77,8 +77,8 @@ interface CheckedRadio {
  * answers; `unreachable` when the speaker didn't answer it. Once known, the
  * last result stands while a later check runs or fails. `ready`: it plays
  * internet radio through its server, one that isn't Bose's (gone), with an
- * account and a station source ready. A server we don't know counts too; a
- * station it then fails to play says so when it's started.
+ * account and a station source ready. A server we don't know counts on the
+ * same terms; a station it then fails to play says so when it's started.
  */
 export type RadioStatus =
   | { readonly kind: "checking" }
@@ -144,20 +144,20 @@ const hostOf = (url: string, fallback: string): string => {
 
 /**
  * Reads how a speaker gets internet radio, from its `/info` (`margeURL`,
- * `accountId`, already read by the caller) and its `/sources`. Throws when
- * it doesn't answer.
+ * `margeAccountUUID`, already read by the caller) and its `/sources`.
+ * Throws when it doesn't answer.
  */
 export async function readSpeakerRadio(
   speaker: {
     host: string;
     port: number;
     margeURL: string;
-    accountId: string;
+    margeAccountUUID: string;
   },
   ourServer: string,
   signal?: AbortSignal,
 ): Promise<SpeakerRadio> {
-  const { host, port, margeURL, accountId } = speaker;
+  const { host, port, margeURL, margeAccountUUID } = speaker;
   const sources = await boseSpeakerClient({ ip: host, port }).getSources({
     signal,
   });
@@ -167,7 +167,7 @@ export async function readSpeakerRadio(
   return {
     server: await identifyServer({ host, margeURL, ourServer }, signal),
     margeURL,
-    paired: accountId !== "",
+    paired: margeAccountUUID !== "",
     sources: stationSources(sources.value.sourceItems),
   };
 }

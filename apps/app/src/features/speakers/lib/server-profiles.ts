@@ -54,7 +54,8 @@ export interface ServerProfile extends SpeakerServer {
   /**
    * Whether the speaker uses this server. Profiles are asked in order and the
    * first yes wins; one that asks the network first rules out the speakers
-   * `clues` alone tell apart, so a speaker costs at most one request.
+   * `clues` alone tell apart, so a speaker costs at most two requests (STR's
+   * two ports, or `/` then AfterTouch's `/health`).
    */
   readonly identify: (
     clues: ServerClues,

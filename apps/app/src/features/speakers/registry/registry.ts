@@ -252,7 +252,7 @@ export function createSpeakerRegistry(
             host,
             port,
             margeURL: read.margeURL,
-            accountId: read.margeAccountUUID,
+            margeAccountUUID: read.margeAccountUUID,
           },
           deps.ourServer.url(),
         ));

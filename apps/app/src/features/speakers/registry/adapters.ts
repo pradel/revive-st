@@ -15,7 +15,7 @@ import type { SpeakerInfo, SpeakerRegistryDeps } from "./ports";
 /** How long a speaker may take to answer `/info` before it counts as offline. */
 const INFO_TIMEOUT_MS = 4000;
 
-/** How long the radio check may take: `/sources`, then at most one probe. */
+/** How long the radio check may take: `/sources`, then at most two probes. */
 const RADIO_TIMEOUT_MS = 10_000;
 
 async function withTimeout<Value>(
