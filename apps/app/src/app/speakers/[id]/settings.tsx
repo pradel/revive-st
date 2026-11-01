@@ -4,6 +4,7 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { useConfigureRun } from "@/features/configure/store";
+import { serverHost } from "@/features/server/server-url";
 import { PresetStrip } from "@/features/speakers/components/PresetStrip";
 import {
   SpeakerSettingsHeader,
@@ -11,6 +12,7 @@ import {
 } from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useRadioSetupQuery } from "@/features/speakers/hooks/useRadioSetupQuery";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
+import { useSpeakerServerQuery } from "@/features/speakers/hooks/useSpeakerServerQuery";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
   speakerRegistry,
@@ -96,6 +98,7 @@ export default function SpeakerSettings() {
   }, [deviceID]);
 
   const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
+  const server = useSpeakerServerQuery(speaker).data;
   const configureRun = useConfigureRun(id);
   const [presetsWidth, setPresetsWidth] = useState<number>();
 
@@ -369,6 +372,14 @@ export default function SpeakerSettings() {
               router.push("./configure");
             }}
           />
+          {speaker.margeURL ? (
+            <FormValueRow
+              icon={formIcons.server}
+              label="Server"
+              description={serverHost(speaker.margeURL)}
+              value={server?.name ?? "Checking…"}
+            />
+          ) : null}
           {!settingUp && radioSetup.isError ? (
             <FormButtonRow
               label="Check again"
