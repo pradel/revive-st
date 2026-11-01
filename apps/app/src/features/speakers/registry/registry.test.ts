@@ -263,6 +263,22 @@ describe("speaker registry", () => {
     ]);
   });
 
+  it("keeps a remembered speaker's name when its state comes without one", async () => {
+    const speaker = onNetwork();
+    const { registry, network, listed, saved, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    speaker.push?.({ ...stateOf(speaker), name: undefined });
+
+    expect(listed()).toMatchObject([{ name: "Kitchen", status: "online" }]);
+    expect(saved).toEqual([]);
+  });
+
   it("shows the state a reached speaker pushes", async () => {
     const speaker = onNetwork();
     const { registry, network, listed, settle } = world({ stored: [KITCHEN] });

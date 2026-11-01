@@ -171,9 +171,10 @@ export function createSpeakerRegistry(
     state: SpeakerState,
   ): void {
     syncPresets(deviceID, state);
+    const record = records.get(deviceID);
     records.set(deviceID, {
       deviceID,
-      name: state.name ?? "Bose Speaker",
+      name: state.name ?? record?.name ?? "Bose Speaker",
       type: state.type ?? "SoundTouch",
       host: link.host,
       port: link.port,
