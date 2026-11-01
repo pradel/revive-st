@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import { DateTime, Effect, Layer, Logger, References, Schema } from "effect";
@@ -93,6 +95,13 @@ const TestLayer = HttpAppLayer.pipe(
 
 /** The account the tests' speakers are paired with. */
 const ACCOUNT = "household-1";
+
+/**
+ * A device id as speakers send it, a MAC address, derived from `label` so
+ * each test names its own speakers.
+ */
+const speaker = (label: string) =>
+  createHash("sha256").update(label).digest("hex").slice(0, 12).toUpperCase();
 
 const devicePath = (deviceId: string, accountId = ACCOUNT) =>
   `/streaming/account/${accountId}/device/${deviceId}`;
@@ -209,7 +218,7 @@ const getIfNoneMatch = (path: string, etag: string) =>
 
 const postRecent = (body: string) =>
   HttpClient.execute(
-    HttpClientRequest.post(`${devicePath("dev-1")}/recent`).pipe(
+    HttpClientRequest.post(`${devicePath(speaker("dev-1"))}/recent`).pipe(
       HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
     ),
   );
@@ -340,7 +349,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     () =>
       Effect.gen(function* () {
         const saved = yield* putPreset(
-          "put-roundtrip",
+          speaker("put-roundtrip"),
           2,
           speakerPresetXml({
             name: "Dance Wave!",
@@ -350,7 +359,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         const echoed = yield* assertBoseXml(saved);
 
         const response = yield* HttpClient.get(
-          `${devicePath("put-roundtrip")}/presets`,
+          `${devicePath(speaker("put-roundtrip"))}/presets`,
         );
         const body = yield* assertBoseXml(response);
         assert.isString(response.headers.etag);
@@ -367,7 +376,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     ["a source id the account never handed out", "9330201", STATION_LOCATION],
   ])("rejects a preset from %s", ([, sourceId, location]) =>
     Effect.gen(function* () {
-      const device = `rejected-${sourceId}`;
+      const device = speaker(`rejected-${sourceId}`);
       const response = yield* putPreset(
         device,
         6,
@@ -382,7 +391,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     "stores a TuneIn preset saved under source id %s",
     (sourceId) =>
       Effect.gen(function* () {
-        const device = `tunein-${sourceId}`;
+        const device = speaker(`tunein-${sourceId}`);
         const saved = yield* putPreset(
           device,
           6,
@@ -403,10 +412,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("changes the presets ETag when a preset changes", () =>
     Effect.gen(function* () {
-      const path = `${devicePath("etag")}/presets`;
+      const path = `${devicePath(speaker("etag"))}/presets`;
       const before = (yield* HttpClient.get(path)).headers.etag;
       assert.isString(before);
-      yield* putPreset("etag", 1, speakerPresetXml({ name: "New" }));
+      yield* putPreset(speaker("etag"), 1, speakerPresetXml({ name: "New" }));
 
       const after = yield* getIfNoneMatch(path, before);
       assert.strictEqual(after.status, 200);
@@ -417,14 +426,14 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("accepts preset XML whatever its declared content type", () =>
     Effect.gen(function* () {
       const response = yield* putPreset(
-        "put-any-type",
+        speaker("put-any-type"),
         1,
         speakerPresetXml({ name: "Radio" }),
         { contentType: "text/plain" },
       );
       assert.strictEqual(response.status, 200);
       assert.include(
-        yield* getPresetsXml("put-any-type"),
+        yield* getPresetsXml(speaker("put-any-type")),
         "<name>Radio</name>",
       );
     }),
@@ -433,27 +442,31 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect.each([0, 7])("rejects preset id %d", (presetId) =>
     Effect.gen(function* () {
       const response = yield* putPreset(
-        "put-out-of-range",
+        speaker("put-out-of-range"),
         presetId,
         speakerPresetXml({ name: "Radio" }),
       );
       assert.strictEqual(response.status, 400);
-      assert.include(yield* getPresetsXml("put-out-of-range"), "<presets/>");
+      assert.include(
+        yield* getPresetsXml(speaker("put-out-of-range")),
+        "<presets/>",
+      );
     }),
   );
 
   it.effect("rejects a preset body that is not XML", () =>
     Effect.gen(function* () {
-      const response = yield* putPreset("put-invalid", 2, "invalid xml");
+      const device = speaker("put-invalid");
+      const response = yield* putPreset(device, 2, "invalid xml");
       assert.strictEqual(response.status, 400);
-      assert.include(yield* getPresetsXml("put-invalid"), "<presets/>");
+      assert.include(yield* getPresetsXml(device), "<presets/>");
     }),
   );
 
   it.effect("serves no presets for an unknown device", () =>
     Effect.gen(function* () {
       const response = yield* HttpClient.get(
-        `${devicePath("unknown")}/presets`,
+        `${devicePath(speaker("unknown"))}/presets`,
       );
       assert.include(yield* assertBoseXml(response), "<presets/>");
     }),
@@ -461,12 +474,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("keeps presets apart between accounts sharing a device id", () =>
     Effect.gen(function* () {
-      yield* putPreset("shared-device", 1, speakerPresetXml({ name: "Ours" }));
+      const device = speaker("shared-device");
+      yield* putPreset(device, 1, speakerPresetXml({ name: "Ours" }));
 
-      assert.include(
-        yield* getPresetsXml("shared-device", "household-2"),
-        "<presets/>",
-      );
+      assert.include(yield* getPresetsXml(device, "household-2"), "<presets/>");
     }),
   );
 
@@ -485,11 +496,16 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("never logs an account id", () =>
     Effect.gen(function* () {
       const accountId = yield* mintAccountId;
-      yield* putPreset("logged", 1, speakerPresetXml({ name: "FIP" }), {
-        accountId,
-      });
-      yield* getPresetsXml("logged", accountId);
-      yield* syncPresets("logged", [], accountId);
+      yield* putPreset(
+        speaker("logged"),
+        1,
+        speakerPresetXml({ name: "FIP" }),
+        {
+          accountId,
+        },
+      );
+      yield* getPresetsXml(speaker("logged"), accountId);
+      yield* syncPresets(speaker("logged"), [], accountId);
       yield* HttpClient.get(`/streaming/account/${accountId}/unknown-route`);
       yield* HttpClient.get(`/streaming/account/${accountId}/full`);
       yield* HttpClient.execute(
@@ -524,7 +540,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
           HttpClientRequest.bodyText(rejected, BOSE_XML_CONTENT_TYPE),
         ),
       );
-      yield* getPresetsXml("served");
+      yield* getPresetsXml(speaker("served"));
 
       const parsed = logLines.map(
         (line) =>
@@ -544,7 +560,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const served = parsed.filter(
         ({ annotations }) =>
           annotations["http.url"] ===
-          "/streaming/account/…/device/served/presets",
+          `/streaming/account/…/device/${speaker("served")}/presets`,
       );
       assert.isNotEmpty(served);
       for (const { level } of served) {
@@ -604,20 +620,20 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         itemName,
         containerArt: "",
       });
-      const response = yield* syncPresets("app-sync", [
+      const response = yield* syncPresets(speaker("app-sync"), [
         { id: 4, contentItem: contentItem("Four") },
         { id: 1, createdOn: 1000, contentItem: contentItem("One") },
       ]);
       assert.strictEqual(response.status, 200);
       assert.deepStrictEqual(yield* response.json, { success: true });
 
-      const body = yield* getPresetsXml("app-sync");
+      const body = yield* getPresetsXml(speaker("app-sync"));
       assert.match(
         body,
         /<preset buttonNumber="1"><containerArt><\/containerArt><contentItemType>stationurl<\/contentItemType><createdOn>1970-01-01T00:00:01\.000\+00:00<\/createdOn>[^]*<preset buttonNumber="4">/,
       );
       assert.include(
-        yield* getPresetsXml("app-sync", "household-2"),
+        yield* getPresetsXml(speaker("app-sync"), "household-2"),
         "<presets/>",
       );
     }),
@@ -625,7 +641,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("drops synced presets from a source the account lacks", () =>
     Effect.gen(function* () {
-      const response = yield* syncPresets("app-sync-mixed", [
+      const response = yield* syncPresets(speaker("app-sync-mixed"), [
         {
           id: 1,
           contentItem: {
@@ -653,7 +669,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       ]);
       assert.strictEqual(response.status, 200);
 
-      const body = yield* getPresetsXml("app-sync-mixed");
+      const body = yield* getPresetsXml(speaker("app-sync-mixed"));
       assert.notInclude(body, 'buttonNumber="1"');
       assert.include(body, `<preset buttonNumber="2">`);
       assert.include(body, RADIO_BROWSER_SOURCE_XML);
@@ -674,41 +690,41 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
           containerArt: "",
         },
       });
-      yield* syncPresets("app-sync-replace", [
+      const device = speaker("app-sync-replace");
+      const other = speaker("app-sync-replace-other");
+      yield* syncPresets(device, [
         preset(1, "One"),
         preset(2, "Two"),
         preset(4, "Four"),
       ]);
-      yield* syncPresets("app-sync-replace-other", [preset(1, "Other")]);
+      yield* syncPresets(other, [preset(1, "Other")]);
 
-      yield* syncPresets("app-sync-replace", [preset(2, "Two again")]);
-      const body = yield* getPresetsXml("app-sync-replace");
+      yield* syncPresets(device, [preset(2, "Two again")]);
+      const body = yield* getPresetsXml(device);
       assert.deepStrictEqual(
         [...body.matchAll(/buttonNumber="(\d)"/g)].map(([, id]) => id),
         ["2"],
       );
       assert.include(body, "<name>Two again</name>");
 
-      yield* syncPresets("app-sync-replace", []);
-      assert.include(yield* getPresetsXml("app-sync-replace"), "<presets/>");
-      assert.include(
-        yield* getPresetsXml("app-sync-replace-other"),
-        "<name>Other</name>",
-      );
+      yield* syncPresets(device, []);
+      assert.include(yield* getPresetsXml(device), "<presets/>");
+      assert.include(yield* getPresetsXml(other), "<name>Other</name>");
     }),
   );
 
   it.effect("deletes a preset the speaker removes", () =>
     Effect.gen(function* () {
-      yield* putPreset("removing", 1, speakerPresetXml({ name: "Kept" }));
-      yield* putPreset("removing", 3, speakerPresetXml({ name: "Removed" }));
+      const device = speaker("removing");
+      yield* putPreset(device, 1, speakerPresetXml({ name: "Kept" }));
+      yield* putPreset(device, 3, speakerPresetXml({ name: "Removed" }));
 
       const response = yield* HttpClient.execute(
-        HttpClientRequest.delete(`${devicePath("removing")}/preset/3`),
+        HttpClientRequest.delete(`${devicePath(device)}/preset/3`),
       );
       assert.include(yield* assertBoseXml(response), "<status>OK</status>");
 
-      const body = yield* getPresetsXml("removing");
+      const body = yield* getPresetsXml(device);
       assert.include(body, "<name>Kept</name>");
       assert.notInclude(body, 'buttonNumber="3"');
     }),
@@ -716,9 +732,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("rejects synced presets that do not match the schema", () =>
     Effect.gen(function* () {
-      const response = yield* syncPresets("app-sync-invalid", [{ id: 1 }]);
+      const device = speaker("app-sync-invalid");
+      const response = yield* syncPresets(device, [{ id: 1 }]);
       assert.strictEqual(response.status, 400);
-      assert.include(yield* getPresetsXml("app-sync-invalid"), "<presets/>");
+      assert.include(yield* getPresetsXml(device), "<presets/>");
     }),
   );
 
@@ -736,23 +753,24 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
           containerArt: "",
         },
       });
-      const duplicated = yield* syncPresets("app-sync-duplicate", [
+      const duplicated = yield* syncPresets(speaker("app-sync-duplicate"), [
         preset(1),
         preset(1),
       ]);
       assert.strictEqual(duplicated.status, 400);
       const seven = yield* syncPresets(
-        "app-sync-seven",
+        speaker("app-sync-seven"),
         [1, 2, 3, 4, 5, 6, 6].map(preset),
       );
       assert.strictEqual(seven.status, 400);
     }),
   );
 
-  it.effect("stores nothing from a body over 64 KiB", () =>
+  it.effect("stores nothing from a body over 32 KiB", () =>
     Effect.gen(function* () {
-      const longName = "x".repeat(65 * 1024);
-      const synced = yield* syncPresets("too-large", [
+      const device = speaker("too-large");
+      const longName = "x".repeat(33 * 1024);
+      const synced = yield* syncPresets(device, [
         {
           id: 1,
           contentItem: {
@@ -769,12 +787,112 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.strictEqual(synced.status, 413);
       // Speaker routes read their body themselves: any unreadable body is a 400.
       const put = yield* putPreset(
-        "too-large",
+        device,
         2,
         speakerPresetXml({ name: longName }),
       );
       assert.strictEqual(put.status, 400);
-      assert.include(yield* getPresetsXml("too-large"), "<presets/>");
+      assert.include(yield* getPresetsXml(device), "<presets/>");
+    }),
+  );
+
+  it.effect.each([
+    ["itemName", "name", 512],
+    ["location", "location", 4096],
+    ["containerArt", "art", 2048],
+  ] as const)(
+    "stores a preset %s up to its maximum length, not beyond",
+    ([field, speakerField, maxLength]) =>
+      Effect.gen(function* () {
+        const contentItem = (value: string) => ({
+          source: "RADIO_BROWSER",
+          type: "stationurl",
+          location: STATION_LOCATION,
+          sourceAccount: "",
+          isPresetable: true,
+          itemName: "Radio",
+          containerArt: "",
+          [field]: value,
+        });
+        const speakerXml = (value: string) =>
+          speakerPresetXml({ name: "Radio", [speakerField]: value });
+        const longest = "x".repeat(maxLength);
+        const tooLong = "x".repeat(maxLength + 1);
+
+        const synced = speaker(`app-sync-${field}`);
+        assert.strictEqual(
+          (yield* syncPresets(synced, [
+            { id: 1, contentItem: contentItem(longest) },
+          ])).status,
+          200,
+        );
+        assert.strictEqual(
+          (yield* syncPresets(synced, [
+            { id: 2, contentItem: contentItem(tooLong) },
+          ])).status,
+          400,
+        );
+        const syncedXml = yield* getPresetsXml(synced);
+        assert.include(syncedXml, longest);
+        assert.notInclude(syncedXml, tooLong);
+        assert.notInclude(syncedXml, 'buttonNumber="2"');
+
+        const saved = speaker(`put-${field}`);
+        assert.strictEqual(
+          (yield* putPreset(saved, 1, speakerXml(longest))).status,
+          200,
+        );
+        assert.strictEqual(
+          (yield* putPreset(saved, 2, speakerXml(tooLong))).status,
+          400,
+        );
+        const savedXml = yield* getPresetsXml(saved);
+        assert.include(savedXml, longest);
+        assert.notInclude(savedXml, 'buttonNumber="2"');
+      }),
+  );
+
+  it.effect("stores nothing for a device id that isn't a MAC address", () =>
+    Effect.gen(function* () {
+      const accountId = yield* mintAccountId;
+      const notMac = "not-a-mac-address";
+      const saved = yield* putPreset(
+        notMac,
+        1,
+        speakerPresetXml({ name: "Radio" }),
+        { accountId },
+      );
+      const synced = yield* syncPresets(notMac, [], accountId);
+      const grouped = yield* HttpClient.get(
+        `${devicePath(notMac, accountId)}/group`,
+      );
+      const registered = yield* registerDevice(notMac, accountId);
+      assert.deepStrictEqual(
+        [saved.status, synced.status, grouped.status, registered.status],
+        [400, 400, 400, 400],
+      );
+      assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), []);
+    }),
+  );
+
+  it.effect("accepts account ids up to 64 characters, not beyond", () =>
+    Effect.gen(function* () {
+      const device = speaker("long-account");
+      const longest = "a".repeat(64);
+      const tooLong = "a".repeat(65);
+      const preset = speakerPresetXml({ name: "Radio" });
+      assert.strictEqual(
+        (yield* putPreset(device, 1, preset, { accountId: longest })).status,
+        200,
+      );
+      assert.strictEqual(
+        (yield* putPreset(device, 1, preset, { accountId: tooLong })).status,
+        400,
+      );
+      assert.strictEqual(
+        (yield* HttpClient.get(`/streaming/account/${tooLong}/full`)).status,
+        400,
+      );
     }),
   );
 
@@ -785,7 +903,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         const accountId = yield* mintAccountId;
         const deviceIds = Array.from(
           { length: MAX_DEVICES_PER_ACCOUNT },
-          (_unused, index) => `full-${index}`,
+          (_unused, index) => speaker(`full-${index}`),
         );
         for (const deviceId of deviceIds) {
           assert.strictEqual(
@@ -794,19 +912,17 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
           );
         }
 
-        const synced = yield* syncPresets("full-extra", [], accountId);
+        const extra = speaker("full-extra");
+        const synced = yield* syncPresets(extra, [], accountId);
         assert.strictEqual(synced.status, 409);
         const saved = yield* putPreset(
-          "full-extra",
+          extra,
           1,
           speakerPresetXml({ name: "Extra" }),
           { accountId },
         );
         assert.strictEqual(saved.status, 400);
-        assert.include(
-          yield* getPresetsXml("full-extra", accountId),
-          "<presets/>",
-        );
+        assert.include(yield* getPresetsXml(extra, accountId), "<presets/>");
         assert.sameMembers(
           listedDeviceIds(yield* getFullXml(accountId)),
           deviceIds,
@@ -1026,7 +1142,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const accountId = yield* mintAccountId;
       const response = yield* putDevice(
         "EC1127C25A50",
-        `<device deviceid="OTHER"><name>Kitchen</name></device>`,
+        `<device deviceid="EC1127C25A51"><name>Kitchen</name></device>`,
         accountId,
       );
       assert.strictEqual(response.status, 400);
@@ -1039,21 +1155,23 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       const accountId = yield* mintAccountId;
       assert.include(yield* getFullXml(accountId), "<devices/>");
 
-      yield* registerDevice("registered", accountId);
-      yield* putPreset("preset-saver", 3, speakerPresetXml({ name: "Saved" }), {
+      const registered = speaker("registered");
+      const presetSaver = speaker("preset-saver");
+      yield* registerDevice(registered, accountId);
+      yield* putPreset(presetSaver, 3, speakerPresetXml({ name: "Saved" }), {
         accountId,
       });
       // Pairing again does not list the device twice.
-      yield* registerDevice("registered", accountId);
+      yield* registerDevice(registered, accountId);
 
       const full = yield* getFullXml(accountId);
-      assert.sameMembers(listedDeviceIds(full), ["registered", "preset-saver"]);
+      assert.sameMembers(listedDeviceIds(full), [registered, presetSaver]);
       // A device without presets has no `<presets>`: an empty one wipes the
       // speaker's own.
-      assert.include(full, '<device deviceid="registered"></device>');
+      assert.include(full, `<device deviceid="${registered}"></device>`);
       assert.include(
         full,
-        '<device deviceid="preset-saver"><presets><preset buttonNumber="3">',
+        `<device deviceid="${presetSaver}"><presets><preset buttonNumber="3">`,
       );
       assert.include(full, "<name>Saved</name>");
     }),
@@ -1062,12 +1180,13 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("pairs a speaker that looks its group up at boot", () =>
     Effect.gen(function* () {
       const accountId = yield* mintAccountId;
+      const booting = speaker("booting");
       const response = yield* HttpClient.get(
-        `${devicePath("booting", accountId)}/group/`,
+        `${devicePath(booting, accountId)}/group/`,
       );
       assert.match(yield* assertBoseXml(response), /<group\/>$/);
       assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
-        "booting",
+        booting,
       ]);
     }),
   );
@@ -1075,9 +1194,10 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("pairs a speaker whose presets the app syncs", () =>
     Effect.gen(function* () {
       const accountId = yield* mintAccountId;
-      yield* syncPresets("app-synced", [], accountId);
+      const synced = speaker("app-synced");
+      yield* syncPresets(synced, [], accountId);
       assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
-        "app-synced",
+        synced,
       ]);
     }),
   );
@@ -1088,30 +1208,29 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       Effect.gen(function* () {
         const household = yield* mintAccountId;
         const stranger = yield* mintAccountId;
-        yield* registerDevice("victim", household);
-        yield* putPreset("victim", 1, speakerPresetXml({ name: "Ours" }), {
+        const victim = speaker("victim");
+        yield* registerDevice(victim, household);
+        yield* putPreset(victim, 1, speakerPresetXml({ name: "Ours" }), {
           accountId: household,
         });
 
         // Every call that pairs, made under another account with the
         // speaker's (public) device id.
-        yield* registerDevice("victim", stranger);
-        yield* HttpClient.get(`${devicePath("victim", stranger)}/group/`);
-        yield* syncPresets("victim", [], stranger);
-        yield* putPreset("victim", 1, speakerPresetXml({ name: "Taken" }), {
+        yield* registerDevice(victim, stranger);
+        yield* HttpClient.get(`${devicePath(victim, stranger)}/group/`);
+        yield* syncPresets(victim, [], stranger);
+        yield* putPreset(victim, 1, speakerPresetXml({ name: "Taken" }), {
           accountId: stranger,
         });
         yield* HttpClient.execute(
-          HttpClientRequest.delete(
-            `${devicePath("victim", stranger)}/preset/1`,
-          ),
+          HttpClientRequest.delete(`${devicePath(victim, stranger)}/preset/1`),
         );
 
         assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(household)), [
-          "victim",
+          victim,
         ]);
         assert.include(
-          yield* getPresetsXml("victim", household),
+          yield* getPresetsXml(victim, household),
           "<name>Ours</name>",
         );
       }),
@@ -1120,10 +1239,11 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
   it.effect("does not pair a speaker whose preset or recent is malformed", () =>
     Effect.gen(function* () {
       const accountId = yield* mintAccountId;
-      const preset = yield* putPreset("malformed", 1, "not xml", { accountId });
+      const malformed = speaker("malformed");
+      const preset = yield* putPreset(malformed, 1, "not xml", { accountId });
       const recent = yield* HttpClient.execute(
         HttpClientRequest.post(
-          `${devicePath("malformed", accountId)}/recent`,
+          `${devicePath(malformed, accountId)}/recent`,
         ).pipe(HttpClientRequest.bodyText("not xml", BOSE_XML_CONTENT_TYPE)),
       );
       assert.deepStrictEqual([preset.status, recent.status], [400, 400]);

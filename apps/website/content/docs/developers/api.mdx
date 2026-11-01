@@ -17,6 +17,10 @@ The id is not secret on the household's own network. SoundTouch speakers only sp
 
 When the app configures a speaker that is not paired with an account yet, it pairs it with the household's account: the one another of the household's speakers on this server uses, else the one the phone used before, else a new one minted by `POST /api/internal/accounts`. Only ids minted by the server are shared this way. A speaker already paired with an account keeps it.
 
+## Limits
+
+Anyone can make up an account id, so the server bounds what one can store. A request naming an account id over 64 characters, or a device id that isn't 12 hex digits (a MAC address), gets `400`. Request bodies over 32 KiB are refused. Each preset field has a maximum length: name 512 characters, location 4096, artwork 2048, source account 256, source and content type 64; a preset over any of them gets `400` and nothing is stored. An account pairs at most 50 speakers.
+
 ## Marge Emulation Endpoints (Bose SoundTouch)
 
 These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services so the speakers play internet radio from TuneIn and Radio Browser.
