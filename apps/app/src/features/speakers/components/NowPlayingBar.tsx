@@ -1,4 +1,3 @@
-import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 
 import { haptics } from "@/lib/haptics";
@@ -18,14 +17,6 @@ import {
 import { selectSpeaker, useSelectedSpeaker } from "../lib/selection";
 import { useSpeakers } from "../registry/store";
 import type { BoseSpeaker } from "../registry/types";
-
-/**
- * iOS 26 hosts the mini player in the tab bar's bottom accessory, which
- * follows the tab bar as it minimizes; on Android it's docked on top of the
- * tab bar; on older iOS it floats above the tabs.
- */
-export const usesTabBarAccessory =
-  Platform.OS === "ios" && Number.parseInt(Platform.Version, 10) >= 26;
 
 const toPage = (speaker: BoseSpeaker): MiniPlayerPage => {
   const reachable = speaker.status === "online";
@@ -52,7 +43,7 @@ const toPage = (speaker: BoseSpeaker): MiniPlayerPage => {
  * selects it. With a single speaker it shows only while that speaker has
  * something loaded.
  */
-export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
+function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
   const { listed } = useSpeakers();
   const { playPauseMutation } = useSpeakerCommands();
   const selected = useSelectedSpeaker();
@@ -88,32 +79,19 @@ export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
   };
 }
 
-/** Mini player for tab screen footers; renders nothing on iOS 26+. */
+/**
+ * Mini player for tab screen footers: docked on top of the tab bar on
+ * Android, a rounded card floating above the tabs on iOS.
+ */
 export function NowPlayingBar() {
   const nowPlaying = useNowPlaying();
-  if (!nowPlaying || usesTabBarAccessory) {
+  if (!nowPlaying) {
     return null;
   }
   return (
     <MiniPlayer
       {...nowPlaying}
       variant={Platform.OS === "android" ? "docked" : "floating"}
-    />
-  );
-}
-
-/**
- * Content of the tab bar accessory. It's rendered twice by the system, once
- * per placement, so it holds no state of its own.
- */
-export function NowPlayingAccessory(
-  nowPlaying: Omit<MiniPlayerProps, "variant">,
-) {
-  const placement = NativeTabs.BottomAccessory.usePlacement();
-  return (
-    <MiniPlayer
-      {...nowPlaying}
-      variant={placement === "inline" ? "inline" : "accessory"}
     />
   );
 }
