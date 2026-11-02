@@ -30,7 +30,7 @@ export interface MiniPlayerPage {
   title: string;
   subtitle: string;
   artworkUri?: string | null;
-  /** Playing: its dot is tinted with the accent. */
+  /** Playing: its dot is a solid grey; idle ones are an outline. */
   isPlaying: boolean;
 }
 
@@ -88,23 +88,24 @@ export function MiniPlayer({
   return (
     <View style={docked ? $dockedWrapper : $wrapper}>
       <View style={docked ? undefined : glass ? $glassBar : $bar}>
+        {(glass || docked) && shown?.artworkUri ? (
+          <Image
+            source={{ uri: shown.artworkUri }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            blurRadius={40}
+            transition={300}
+          />
+        ) : null}
         {glass ? (
-          <>
-            {shown?.artworkUri ? (
-              <Image
-                source={{ uri: shown.artworkUri }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                blurRadius={40}
-                transition={300}
-              />
-            ) : null}
-            <GlassView
-              style={StyleSheet.absoluteFill}
-              glassEffectStyle="regular"
-              colorScheme="dark"
-            />
-          </>
+          <GlassView
+            style={StyleSheet.absoluteFill}
+            glassEffectStyle="regular"
+            colorScheme="dark"
+          />
+        ) : docked && shown?.artworkUri ? (
+          // Android has no glass: a scrim keeps the text readable instead.
+          <View style={$scrim} />
         ) : null}
         <View style={[$row, glass && $rowGlass]}>
           {paged ? (
@@ -138,17 +139,13 @@ export function MiniPlayer({
             {pages.map((page, pageIndex) => (
               <View
                 key={page.key}
-                style={[
-                  $dot,
-                  {
-                    backgroundColor:
-                      pageIndex === index
-                        ? color.textPrimary
-                        : page.isPlaying
-                          ? color.accent
-                          : color.textTertiary,
-                  },
-                ]}
+                style={
+                  pageIndex === index
+                    ? $dotSelected
+                    : page.isPlaying
+                      ? $dotPlaying
+                      : $dotIdle
+                }
               />
             ))}
           </View>
@@ -380,6 +377,15 @@ const $glassBar: ViewStyle = {
   overflow: "hidden",
 };
 
+const $scrim: ViewStyle = {
+  position: "absolute",
+  top: 0,
+  right: 0,
+  bottom: 0,
+  left: 0,
+  backgroundColor: color.scrim,
+};
+
 /** As wide as the play button it stands in for. */
 const $buttonSlot: ViewStyle = {
   width: 40,
@@ -425,6 +431,23 @@ const $dot: ViewStyle = {
   width: 5,
   height: 5,
   borderRadius: radius.pill,
+};
+
+/** Three shades of white: the speaker shown, others playing, idle ones. */
+const $dotSelected: ViewStyle = {
+  ...$dot,
+  backgroundColor: color.textPrimary,
+};
+
+const $dotPlaying: ViewStyle = {
+  ...$dot,
+  backgroundColor: color.textSecondary,
+};
+
+const $dotIdle: ViewStyle = {
+  ...$dot,
+  borderWidth: 1,
+  borderColor: color.textTertiary,
 };
 
 const $open: ViewStyle = {
