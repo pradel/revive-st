@@ -74,16 +74,22 @@ export default function PrivacyPage() {
           <p>
             Since Bose shut down its cloud, your speakers need a server to fetch
             their account, presets and radio stations from when they start up.
-            When you set a speaker up for internet radio, the App asks which
-            server it should use: ours, one you run, or the one it already uses.
-            If you pick ours, the Server stores:
+            When you connect a new speaker to your Wi-Fi from the App, it asks
+            which server the speaker should use for internet radio: ours, one
+            you run, or the one it already uses. Setting a speaker up later from
+            its settings uses the server chosen in the App&apos;s settings, ours
+            by default. For a speaker set up for ours, the Server stores:
           </p>
           <ul>
             <li>
-              <strong>A household account id:</strong> a random identifier the
-              App generates on your phone the first time you set up a speaker
-              for the Server. It isn&apos;t linked to your name, email address
-              or phone.
+              <strong>A household account id:</strong> the account your speakers
+              are paired with. For a speaker that isn&apos;t paired yet,
+              it&apos;s a random identifier the App generates on your phone; a
+              speaker already paired with an account, for example its former
+              Bose account number, keeps that account&apos;s id. The App sends
+              it to the Server with the speaker&apos;s presets when it sets the
+              speaker up, and the speaker uses it in its requests. It isn&apos;t
+              linked to your name, email address or phone.
             </li>
             <li>
               <strong>Your speakers&apos; device ids</strong> (each
