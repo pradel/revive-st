@@ -115,10 +115,6 @@ The BMX service registry (`bmxRegistryUrl`). It points the speaker at three adap
 
 ## App Endpoints
 
-### `POST /api/internal/accounts` (deprecated)
-
-Returns a new household account id, `{ "accountId": "…" }`. The app makes household account ids itself since 0.0.4; this endpoint stays for older apps.
-
 ### `POST /api/internal/account/:accountId/device/:deviceId/presets`
 
 Stores the presets the app read from the speaker, `{ "presets": [...] }`, so the speaker gets them back from the presets endpoint. Pairs the device with the account, and replaces the device's stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account does not offer are dropped.

@@ -23,18 +23,6 @@ const DevicePresets = Schema.Array(Preset).check(
 /** Endpoints the revive-st app calls directly. */
 export class InternalApi extends HttpApiGroup.make("internal")
   .add(
-    HttpApiEndpoint.post("createAccount", "/accounts", {
-      success: Schema.Struct({ accountId: AccountId }).annotate({
-        description: "The new account id, a UUID.",
-      }),
-    }).annotateMerge(
-      OpenApi.annotations({
-        summary: "Create a household account",
-        description:
-          "A new, unguessable household account id. Deprecated: apps since 0.0.4 make the id themselves (a random UUID); kept for the 0.0.3 app and earlier, until the `X-Revive-App-Version` header shows none still calls it.",
-        deprecated: true,
-      }),
-    ),
     HttpApiEndpoint.post(
       "syncPresets",
       "/account/:accountId/device/:deviceId/presets",
