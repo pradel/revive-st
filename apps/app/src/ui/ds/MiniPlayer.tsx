@@ -316,7 +316,7 @@ function PageView({
                     ? dockedArtwork
                     : accessoryArtwork
               }
-              radius={ownsBackground ? radius.xs : accessoryArtwork / 2}
+              radius={radius.xs}
             />
           </Link.AppleZoom>
         )}
@@ -348,12 +348,16 @@ const $accessoryWrapper: ViewStyle = {
   paddingHorizontal: space.xxs,
 };
 
-/** Flush with the tab bar below: same surface, hairlines above and between. */
+/**
+ * Flush with the tab bar below, on the same surface: a hairline above, and a
+ * full line under it so the bar reads as separate from the tabs.
+ */
 const $dockedWrapper: ViewStyle = {
   backgroundColor: color.surface1,
   borderTopWidth: StyleSheet.hairlineWidth,
-  borderBottomWidth: StyleSheet.hairlineWidth,
-  borderColor: color.separator,
+  borderTopColor: color.separator,
+  borderBottomWidth: 1,
+  borderBottomColor: color.surface3,
 };
 
 const $row: ViewStyle = {
