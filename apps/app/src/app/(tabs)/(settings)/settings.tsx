@@ -1,6 +1,6 @@
 import { FieldGroup, Text } from "@expo/ui";
 import { useRouter } from "expo-router";
-import { Linking } from "react-native";
+import { Alert, Linking } from "react-native";
 
 import { APP_CONFIG } from "@/config";
 import { simulatedConfigureScenarios } from "@/features/configure/simulated";
@@ -15,6 +15,7 @@ import {
   speakerRegistry,
   useSpeakers,
 } from "@/features/speakers/registry/store";
+import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { appVersion } from "@/lib/app-version";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
@@ -24,15 +25,69 @@ import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
 import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
 
+const statusLabel: Record<BoseSpeaker["status"], string> = {
+  online: "Online",
+  connecting: "Connecting…",
+  offline: "Offline",
+};
+
+/** An offline speaker's settings can't be read: try it again or forget it. */
+const askAboutOffline = (speaker: BoseSpeaker) => {
+  Alert.alert(
+    `${speaker.name} is offline`,
+    "Make sure it's on and on the same Wi-Fi network as your phone. Forgetting it removes it from the list until a scan finds it again.",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Forget",
+        style: "destructive",
+        onPress: () => {
+          speakerRegistry.forget(speaker.deviceID);
+        },
+      },
+      {
+        text: "Try again",
+        onPress: () => {
+          speakerRegistry.retry(speaker.deviceID);
+        },
+      },
+    ],
+  );
+};
+
 export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
-  const isScanning = useSpeakers().scan !== null;
+  const { scan, listed } = useSpeakers();
+  const isScanning = scan !== null;
   const serverUrl = useServerUrl();
 
   return (
     <Screen>
       <Form>
+        {listed.length > 0 ? (
+          <FormSection title="Speakers">
+            {listed.map((speaker) => (
+              <FormLinkRow
+                key={speaker.deviceID}
+                icon={formIcons.speaker}
+                label={speaker.name}
+                description={`${speaker.type} · ${statusLabel[speaker.status]}`}
+                disabled={speaker.status === "connecting"}
+                onPress={() => {
+                  if (speaker.status === "offline") {
+                    askAboutOffline(speaker);
+                  } else {
+                    router.push(
+                      `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+                    );
+                  }
+                }}
+              />
+            ))}
+          </FormSection>
+        ) : null}
+
         <FormSection title="About">
           <FormValueRow
             icon={formIcons.speaker}

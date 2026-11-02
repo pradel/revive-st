@@ -16,7 +16,12 @@ export interface MiniPlayerProps {
   isPlaying: boolean;
   /** The player; on iOS 18+ it zooms open from the artwork. */
   playerHref: Href;
-  onPlayPause: () => void;
+  /** Omitted when the speaker has nothing to play or pause. */
+  onPlayPause?: () => void;
+  /** Opens the speaker picker; omitted with a single speaker. */
+  onChooseSpeaker?: () => void;
+  /** Other speakers playing, counted on the speaker button. */
+  othersPlaying?: number;
   /**
    * `floating` draws its own card above the tabs; `docked` is a full-width
    * strip on the tab bar's surface, attached to its top (Android);
@@ -37,6 +42,8 @@ export function MiniPlayer({
   isPlaying,
   playerHref,
   onPlayPause,
+  onChooseSpeaker,
+  othersPlaying = 0,
   variant = "floating",
 }: MiniPlayerProps) {
   const floating = variant === "floating";
@@ -45,8 +52,8 @@ export function MiniPlayer({
   // `Link asChild` takes only a flat style object, so the pressed state is
   // tracked here.
   const [isPressed, setIsPressed] = useState(false);
-  // The open-player area and the play/pause button are siblings so screen
-  // readers can focus each one.
+  // The open-player area and the buttons are siblings so screen readers can
+  // focus each one.
   return (
     <View
       style={floating ? $wrapper : docked ? $dockedWrapper : $accessoryWrapper}
@@ -98,13 +105,37 @@ export function MiniPlayer({
             </View>
           </Pressable>
         </Link>
-        <IconButton
-          icon={isPlaying ? icons.pause : icons.play}
-          accessibilityLabel={isPlaying ? "Pause" : "Play"}
-          onPress={onPlayPause}
-          tint="textPrimary"
-          iconSize={ownsBackground ? 22 : 18}
-        />
+        {onChooseSpeaker && variant !== "inline" ? (
+          <View>
+            <IconButton
+              icon={icons.speaker}
+              accessibilityLabel={
+                othersPlaying > 0
+                  ? `Choose speaker, ${othersPlaying} other${othersPlaying === 1 ? "" : "s"} playing`
+                  : "Choose speaker"
+              }
+              onPress={onChooseSpeaker}
+              tint="textPrimary"
+              iconSize={ownsBackground ? 20 : 16}
+            />
+            {othersPlaying > 0 ? (
+              <View style={$badge} pointerEvents="none">
+                <Text variant="caption" color="onAccent">
+                  {String(othersPlaying)}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+        {onPlayPause ? (
+          <IconButton
+            icon={isPlaying ? icons.pause : icons.play}
+            accessibilityLabel={isPlaying ? "Pause" : "Play"}
+            onPress={onPlayPause}
+            tint="textPrimary"
+            iconSize={ownsBackground ? 22 : 18}
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -171,6 +202,20 @@ const $openDocked: ViewStyle = {
 
 const $pressed: ViewStyle = {
   backgroundColor: color.surface3,
+};
+
+/** Count of other speakers playing, on the speaker button's corner. */
+const $badge: ViewStyle = {
+  position: "absolute",
+  top: 2,
+  right: 2,
+  minWidth: 16,
+  height: 16,
+  paddingHorizontal: 4,
+  borderRadius: radius.pill,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: color.accent,
 };
 
 const $text: ViewStyle = {

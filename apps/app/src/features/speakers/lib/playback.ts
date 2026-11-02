@@ -18,21 +18,6 @@ export function hasLoadedMedia(speaker: BoseSpeaker) {
   );
 }
 
-/**
- * Speaker for the mini player and the Home presets shelf: the first one
- * playing, else the first one paused with something loaded (it stays
- * visible while paused, like Sonos).
- */
-export function findActiveSpeaker(speakers: readonly BoseSpeaker[]) {
-  return (
-    speakers.find((speaker) => isSpeakerPlaying(speaker)) ??
-    speakers.find(
-      (speaker) =>
-        speaker.playStatus === "PAUSE_STATE" && hasLoadedMedia(speaker),
-    )
-  );
-}
-
 export function isStandby(speaker: BoseSpeaker) {
   return speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 }

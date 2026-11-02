@@ -12,12 +12,14 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countStationClick } from "@/features/radio/lib/radio-browser";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
+import { playStatusLabel } from "@/features/speakers/lib/playback";
 import {
   StationNotStartedError,
   stationFit,
   type CastStation,
   type StationPlay,
 } from "@/features/speakers/lib/radio";
+import { selectSpeaker } from "@/features/speakers/lib/selection";
 import {
   speakerRegistry,
   useSpeakers,
@@ -129,7 +131,8 @@ export default function CastSheet() {
         deviceID: speaker.deviceID,
         contentItem: play.contentItem,
       });
-      // Success shows up in the mini player; no need to interrupt.
+      // Success shows up in the mini player, which now follows this speaker.
+      selectSpeaker(speaker.deviceID);
       haptics.success();
       if (station.kind === "radioBrowser") {
         countStationClick(station.stationuuid).catch((err: unknown) => {
@@ -468,7 +471,7 @@ function SpeakerCastItem({
     if (isPowerOff) {
       return "Standby";
     }
-    return `Playing · Vol ${speaker.volume}%`;
+    return `${playStatusLabel(speaker)} · Vol ${speaker.volume}%`;
   };
 
   const renderTrailing = () => {

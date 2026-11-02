@@ -34,6 +34,10 @@ export interface SpeakerCardProps {
   onPlayPause: () => void;
   /** The player; on iOS 18+ it zooms open from the artwork. */
   playerHref: Href;
+  /** Runs as the player opens, before it shows. */
+  onOpen?: () => void;
+  /** The speaker the app controls: outlined with the accent. */
+  selected?: boolean;
   onOpenSettings: () => void;
   /** Long-press menu on the speaker's artwork and name. */
   menu?: ContextMenuConfig;
@@ -58,6 +62,8 @@ export function SpeakerCard({
   onVolumeCommit,
   onPlayPause,
   playerHref,
+  onOpen,
+  selected = false,
   onOpenSettings,
   menu,
   status,
@@ -148,7 +154,7 @@ export function SpeakerCard({
       );
     }
     return (
-      <Link href={playerHref} asChild>
+      <Link href={playerHref} onPress={onOpen} asChild>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
@@ -164,7 +170,7 @@ export function SpeakerCard({
   };
 
   return (
-    <View style={$card}>
+    <View style={[$card, selected && $selected]}>
       <View style={$top}>
         {menu ? (
           <ContextMenu {...menu} fill>
@@ -222,7 +228,14 @@ const $card: ViewStyle = {
   padding: space.sm,
   gap: space.xs,
   borderRadius: radius.md,
+  // Kept when not selected, so selecting doesn't shift the card.
+  borderWidth: 1,
+  borderColor: "transparent",
   backgroundColor: color.surface1,
+};
+
+const $selected: ViewStyle = {
+  borderColor: color.accent,
 };
 
 const $top: ViewStyle = {

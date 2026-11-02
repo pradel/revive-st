@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 
@@ -5,11 +6,8 @@ import { haptics } from "@/lib/haptics";
 import { MiniPlayer, type MiniPlayerProps } from "@/ui/ds/MiniPlayer";
 
 import { useSpeakerCommands } from "../hooks/useSpeakerCommands";
-import {
-  findActiveSpeaker,
-  isSpeakerPlaying,
-  trackTitle,
-} from "../lib/playback";
+import { hasLoadedMedia, isSpeakerPlaying, trackTitle } from "../lib/playback";
+import { useSelectedSpeaker } from "../lib/selection";
 import { useSpeakers } from "../registry/store";
 
 /**
@@ -20,25 +18,51 @@ import { useSpeakers } from "../registry/store";
 export const usesTabBarAccessory =
   Platform.OS === "ios" && Number.parseInt(Platform.Version, 10) >= 26;
 
-/** Mini player props for the playing (or paused) speaker, if any. */
+/**
+ * Mini player props for the selected speaker: shown while it has something
+ * loaded, or while another speaker plays (then it says the selected one
+ * plays nothing, and its speaker button counts the others).
+ */
 export function useNowPlaying(): Omit<MiniPlayerProps, "variant"> | null {
+  const router = useRouter();
   const { online } = useSpeakers();
   const { playPauseMutation } = useSpeakerCommands();
-  const speaker = findActiveSpeaker(online);
+  const speaker = useSelectedSpeaker();
+  const others = online.filter(
+    (item) => item.deviceID !== speaker?.deviceID && isSpeakerPlaying(item),
+  ).length;
 
   if (!speaker) {
     return null;
   }
+  const reachable = speaker.status === "online";
+  const hasMedia = reachable && hasLoadedMedia(speaker);
+  if (!hasMedia && others === 0) {
+    return null;
+  }
+  const canSwitch = online.some((item) => item.deviceID !== speaker.deviceID);
   return {
-    title: trackTitle(speaker),
-    subtitle: [speaker.artist, speaker.name].filter(Boolean).join(" · "),
-    artworkUri: speaker.artUrl,
+    title: hasMedia ? trackTitle(speaker) : "Nothing playing",
+    subtitle: hasMedia
+      ? [speaker.artist, speaker.name].filter(Boolean).join(" · ")
+      : reachable
+        ? speaker.name
+        : `${speaker.name} · Offline`,
+    artworkUri: hasMedia ? speaker.artUrl : null,
     isPlaying: isSpeakerPlaying(speaker),
-    playerHref: `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing`,
-    onPlayPause: () => {
-      haptics.tap();
-      playPauseMutation.mutate({ deviceID: speaker.deviceID });
-    },
+    playerHref: "/now-playing",
+    onPlayPause: hasMedia
+      ? () => {
+          haptics.tap();
+          playPauseMutation.mutate({ deviceID: speaker.deviceID });
+        }
+      : undefined,
+    onChooseSpeaker: canSwitch
+      ? () => {
+          router.push("/speaker-picker");
+        }
+      : undefined,
+    othersPlaying: others,
   };
 }
 

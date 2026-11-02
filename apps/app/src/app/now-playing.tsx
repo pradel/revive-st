@@ -1,6 +1,6 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Image } from "expo-image";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import {
   Pressable,
   StyleSheet,
@@ -9,6 +9,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
+import { PresetStrip } from "@/features/speakers/components/PresetStrip";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   hasLoadedMedia,
@@ -18,50 +19,72 @@ import {
   trackDetail,
   trackTitle,
 } from "@/features/speakers/lib/playback";
-import { useSpeaker } from "@/features/speakers/registry/store";
+import { useSelectedSpeaker } from "@/features/speakers/lib/selection";
+import { useSpeakers } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
-import { icons } from "@/ui/ds/Icon";
+import { Icon, icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { Screen } from "@/ui/ds/Screen";
 import { Slider } from "@/ui/ds/Slider";
 import { Text } from "@/ui/ds/Text";
 import { color, radius, space } from "@/ui/tokens";
 
-const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
-
+/** The player of the selected speaker; its name switches to another one. */
 export default function NowPlayingModal() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { volumeMutation, playPauseMutation, keyMutation } =
     useSpeakerCommands();
 
-  const speaker = useSpeaker(id);
+  const selected = useSelectedSpeaker();
+  const { online } = useSpeakers();
+  const canSwitch = online.some(
+    (speaker) => speaker.deviceID !== selected?.deviceID,
+  );
+  const speaker = selected?.status === "online" ? selected : undefined;
   const volumeDraft = useSliderDraft(speaker?.volume ?? 0, (volume) => {
     if (speaker) {
       volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
     }
   });
 
+  const chooseSpeaker = () => {
+    router.push("/speaker-picker");
+  };
+
   if (!speaker) {
     return (
       <Screen presentation="sheet">
         <EmptyState
           icon={icons.wifiOff}
-          title="Speaker not found"
-          description="This speaker is no longer detected on your local network."
+          title={
+            selected?.status === "connecting"
+              ? `Connecting to ${selected.name}…`
+              : selected
+                ? `${selected.name} is offline`
+                : "No speaker"
+          }
+          description="Make sure the speaker is on and on the same Wi-Fi network as your phone."
           actions={
-            <Button
-              label="Close"
-              variant="secondary"
-              onPress={() => {
-                router.back();
-              }}
-            />
+            <>
+              {canSwitch ? (
+                <Button
+                  label="Choose another speaker"
+                  onPress={chooseSpeaker}
+                />
+              ) : null}
+              <Button
+                label="Close"
+                variant="secondary"
+                onPress={() => {
+                  router.back();
+                }}
+              />
+            </>
           }
         />
       </Screen>
@@ -104,14 +127,27 @@ export default function NowPlayingModal() {
             router.back();
           }}
         />
-        <View style={$headerTitle}>
-          <Text variant="subhead" numberOfLines={1}>
-            {speaker.name}
-          </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`${speaker.name}, ${playStatusLabel(speaker)}`}
+          accessibilityHint={canSwitch ? "Chooses another speaker" : undefined}
+          disabled={!canSwitch}
+          onPress={chooseSpeaker}
+          hitSlop={8}
+          style={({ pressed }) => [$headerTitle, pressed && $headerPressed]}
+        >
+          <View style={$headerName}>
+            <Text variant="subhead" numberOfLines={1}>
+              {speaker.name}
+            </Text>
+            {canSwitch ? (
+              <Icon name={icons.chevronDown} size={12} color="textSecondary" />
+            ) : null}
+          </View>
           <Text variant="caption" color="textSecondary">
             {playStatusLabel(speaker)}
           </Text>
-        </View>
+        </Pressable>
         <IconButton
           icon={icons.settings}
           accessibilityLabel={`${speaker.name} settings`}
@@ -210,38 +246,13 @@ export default function NowPlayingModal() {
           </Text>
         </View>
 
-        <View style={$presets}>
-          {PRESET_SLOTS.map((slot) => {
-            const preset = speaker.presets?.find((item) => item.id === slot);
-            return (
-              <Pressable
-                key={slot}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  preset
-                    ? `Preset ${slot}: ${preset.contentItem.itemName}`
-                    : `Preset ${slot}, empty`
-                }
-                disabled={!preset}
-                onPress={() => {
-                  sendKey(`PRESET_${slot}` as KeyValue);
-                }}
-                style={({ pressed }) => [
-                  $presetKey,
-                  preset ? $presetFilled : null,
-                  pressed && $presetPressed,
-                ]}
-              >
-                <Text
-                  variant="headline"
-                  color={preset ? "textPrimary" : "textTertiary"}
-                >
-                  {slot}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <PresetStrip
+          presets={speaker.presets ?? []}
+          width={undefined}
+          onPlay={(slot) => {
+            sendKey(`PRESET_${slot}` as KeyValue);
+          }}
+        />
       </View>
     </Screen>
   );
@@ -310,24 +321,12 @@ const $volumeValue: TextStyle = {
   textAlign: "right",
 };
 
-const $presets: ViewStyle = {
+const $headerPressed: ViewStyle = {
+  opacity: 0.6,
+};
+
+const $headerName: ViewStyle = {
   flexDirection: "row",
-  gap: space.xs,
-};
-
-const $presetKey: ViewStyle = {
-  flex: 1,
-  aspectRatio: 1,
   alignItems: "center",
-  justifyContent: "center",
-  borderRadius: radius.sm,
-  backgroundColor: color.surface1,
-};
-
-const $presetFilled: ViewStyle = {
-  backgroundColor: color.surface2,
-};
-
-const $presetPressed: ViewStyle = {
-  backgroundColor: color.surface3,
+  gap: space.xxs,
 };

@@ -11,6 +11,10 @@ import {
   useLocalNetworkIntro,
 } from "@/features/speakers/lib/local-network";
 import {
+  loadSelectedSpeaker,
+  useSelectionLoaded,
+} from "@/features/speakers/lib/selection";
+import {
   speakerRegistry,
   useSpeakerDiscovery,
   useSpeakers,
@@ -27,12 +31,15 @@ SplashScreen.setOptions({ duration: 250, fade: true });
 
 /**
  * Hides the splash once the first screen is ready: the Local Network intro
- * (iOS, first launch), or home with the remembered speakers listed.
+ * (iOS, first launch), or home with the remembered speakers listed and the
+ * selected one known.
  */
 function SplashGate() {
   const intro = useLocalNetworkIntro();
   const { restored } = useSpeakers();
-  const ready = intro === "needed" || (intro === "done" && restored);
+  const selectionLoaded = useSelectionLoaded();
+  const ready =
+    intro === "needed" || (intro === "done" && restored && selectionLoaded);
   useEffect(() => {
     if (ready) {
       SplashScreen.hide();
@@ -53,6 +60,7 @@ export default function RootLayout() {
     // they're listed once it's known.
     void loadServerUrl().then(async () => speakerRegistry.restore());
     void loadLocalNetworkIntro();
+    void loadSelectedSpeaker();
   }, []);
 
   return (
@@ -77,7 +85,7 @@ export default function RootLayout() {
                   options={{ headerLargeTitleEnabled: false }}
                 />
                 <Stack.Screen
-                  name="speakers/[id]/now-playing"
+                  name="now-playing"
                   options={{
                     presentation: "formSheet",
                     sheetGrabberVisible: true,
@@ -86,6 +94,16 @@ export default function RootLayout() {
                 />
                 <Stack.Screen
                   name="cast"
+                  options={{
+                    presentation: "formSheet",
+                    sheetAllowedDetents: "fitToContents",
+                    sheetGrabberVisible: true,
+                    headerShown: false,
+                    contentStyle: { backgroundColor: color.surface1 },
+                  }}
+                />
+                <Stack.Screen
+                  name="speaker-picker"
                   options={{
                     presentation: "formSheet",
                     sheetAllowedDetents: "fitToContents",
