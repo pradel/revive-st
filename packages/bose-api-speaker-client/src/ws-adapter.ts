@@ -337,6 +337,8 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
 
 export interface BoseWebSocketClientOptions {
   host: string;
+  /** Default 8080. */
+  port?: number;
   deviceID: string;
   onUpdate: (update: BoseWSUpdate) => void;
   onDisconnect?: () => void;
@@ -377,7 +379,7 @@ export class BoseWebSocketClient {
     this.close(true);
     this.isClosedIntentional = false;
 
-    const wsUrl = `ws://${this.options.host}:8080`;
+    const wsUrl = `ws://${this.options.host}:${this.options.port ?? 8080}`;
     console.log(
       `[BoseWebSocketClient] Connecting to ${wsUrl} (deviceID: ${this.options.deviceID})`,
     );
