@@ -1,4 +1,5 @@
-import { DEFAULT_SERVER_URL, serverHost } from "../server/server-url";
+import { DEFAULT_SERVER_URL } from "../server/server-url";
+import { isSameOrigin } from "../speakers/lib/account-id";
 import type { RadioStatus } from "../speakers/lib/speaker-radio";
 
 /**
@@ -7,6 +8,27 @@ import type { RadioStatus } from "../speakers/lib/speaker-radio";
  * uses now.
  */
 export type RadioChoice = "hosted" | "own" | "keep";
+
+/**
+ * The option the speaker already plays radio through, when it's one of the
+ * first two: the hosted server, or the user's own server the app is set to.
+ * Picking it keeps the speaker as it is, so no "keep" option repeats it.
+ */
+export function currentChoice(
+  radio: RadioStatus | undefined,
+  ourServer: string,
+): "hosted" | "own" | undefined {
+  if (radio?.kind !== "ready") {
+    return undefined;
+  }
+  if (isSameOrigin(radio.margeURL, DEFAULT_SERVER_URL)) {
+    return "hosted";
+  }
+  return ourServer !== DEFAULT_SERVER_URL &&
+    isSameOrigin(radio.margeURL, ourServer)
+    ? "own"
+    : undefined;
+}
 
 /** The "keep" choice, as the speaker's radio makes it. */
 export interface KeepOption {
@@ -17,29 +39,27 @@ export interface KeepOption {
 }
 
 /**
- * What keeping the speaker as it is means: keeping the server it plays radio
- * through, or one it uses that isn't giving it radio yet, or doing without
- * radio for now (Bose's servers are gone, and a speaker paired nowhere has
- * none).
+ * What keeping the speaker as it is means: keeping another server it plays
+ * radio through, or one it uses that isn't giving it radio yet, or doing
+ * without radio for now (Bose's servers are gone, and a speaker paired
+ * nowhere has none). None until its radio is checked, and none when it
+ * already plays through one of the other options (`currentChoice`).
  */
 export function keepOption(
   radio: RadioStatus | undefined,
   ourServer: string,
-): KeepOption {
+): KeepOption | undefined {
   if (
     radio === undefined ||
     radio.kind === "checking" ||
-    radio.kind === "unreachable"
+    radio.kind === "unreachable" ||
+    currentChoice(radio, ourServer) !== undefined
   ) {
-    return {
-      title: "Keep its current server",
-      subtitle: "Still checking which one it uses",
-      button: "Keep it as it is",
-    };
+    return undefined;
   }
   if (radio.kind === "ready") {
     return {
-      title: `Keep ${radio.through ?? `Revive ST (${serverHost(ourServer)})`}`,
+      title: `Keep ${radio.through ?? radio.serverName}`,
       subtitle: "It already plays internet radio through it",
       button: "Keep it as it is",
     };
@@ -59,13 +79,17 @@ export function keepOption(
 }
 
 /**
- * The choice offered first: a speaker that already plays radio keeps its
- * server, any other goes to the server the app is set to.
+ * The choice offered first: what a speaker that already plays radio uses,
+ * else the server the app is set to.
  */
 export function defaultRadioChoice(
   radio: RadioStatus | undefined,
   ourServer: string,
 ): RadioChoice {
+  const current = currentChoice(radio, ourServer);
+  if (current !== undefined) {
+    return current;
+  }
   if (radio?.kind === "ready") {
     return "keep";
   }

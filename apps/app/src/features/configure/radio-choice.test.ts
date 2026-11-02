@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { DEFAULT_SERVER_URL } from "../server/server-url";
 import { radioStatus, type SpeakerRadio } from "../speakers/lib/speaker-radio";
-import { defaultRadioChoice, keepOption } from "./radio-choice";
+import { currentChoice, defaultRadioChoice, keepOption } from "./radio-choice";
 
 const SELF_HOSTED = "http://192.168.1.10:3000";
 const BOTH = { radioBrowser: true, customStations: true };
@@ -26,21 +26,60 @@ const onOurs: SpeakerRadio = {
   paired: true,
   sources: BOTH,
 };
+const onHosted: SpeakerRadio = { ...onOurs, margeURL: DEFAULT_SERVER_URL };
 
 const status = (radio: SpeakerRadio, ourServer = DEFAULT_SERVER_URL) =>
   radioStatus(radio, false, ourServer);
 
+describe("currentChoice", () => {
+  it.each([
+    ["the hosted server", onHosted, DEFAULT_SERVER_URL, "hosted"],
+    ["the hosted server, the app on its own", onHosted, SELF_HOSTED, "hosted"],
+    ["the user's own server", onOurs, SELF_HOSTED, "own"],
+  ] as const)(
+    "tells a speaker already plays radio through %s",
+    (_label, radio, ourServer, choice) => {
+      expect(currentChoice(status(radio, ourServer), ourServer)).toBe(choice);
+    },
+  );
+
+  it.each([
+    ["another Revive ST server", onOurs, DEFAULT_SERVER_URL],
+    ["a third-party server", onSoundcork(), DEFAULT_SERVER_URL],
+    [
+      "our server, without radio",
+      { ...onHosted, paired: false },
+      DEFAULT_SERVER_URL,
+    ],
+  ] as const)("is none for %s", (_label, radio, ourServer) => {
+    expect(currentChoice(status(radio, ourServer), ourServer)).toBeUndefined();
+  });
+});
+
 describe("keepOption", () => {
   it("keeps the server a speaker already plays radio through", () => {
-    expect(keepOption(status(onSoundcork()), DEFAULT_SERVER_URL).title).toBe(
+    expect(keepOption(status(onSoundcork()), DEFAULT_SERVER_URL)?.title).toBe(
       "Keep soundcork",
     );
   });
 
-  it("names our own server by its address", () => {
-    expect(keepOption(status(onOurs, SELF_HOSTED), SELF_HOSTED).title).toBe(
-      "Keep Revive ST (192.168.1.10:3000)",
+  it("names another Revive ST server by its address", () => {
+    expect(keepOption(status(onOurs), DEFAULT_SERVER_URL)?.title).toBe(
+      "Keep 192.168.1.10:3000",
     );
+  });
+
+  it("doesn't repeat the option the speaker already plays radio through", () => {
+    expect(keepOption(status(onHosted), DEFAULT_SERVER_URL)).toBeUndefined();
+    expect(
+      keepOption(status(onOurs, SELF_HOSTED), SELF_HOSTED),
+    ).toBeUndefined();
+  });
+
+  it("isn't offered until the speaker's radio is checked", () => {
+    expect(
+      keepOption({ kind: "checking" }, DEFAULT_SERVER_URL),
+    ).toBeUndefined();
   });
 
   it("keeps a server that isn't giving the speaker radio yet", () => {
@@ -61,6 +100,12 @@ describe("defaultRadioChoice", () => {
   it("keeps a speaker that already plays radio where it is", () => {
     expect(defaultRadioChoice(status(onSoundcork()), DEFAULT_SERVER_URL)).toBe(
       "keep",
+    );
+  });
+
+  it("selects the option a speaker already plays radio through", () => {
+    expect(defaultRadioChoice(status(onHosted), DEFAULT_SERVER_URL)).toBe(
+      "hosted",
     );
   });
 

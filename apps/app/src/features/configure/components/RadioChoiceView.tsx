@@ -1,8 +1,9 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
-import { View, type TextStyle, type ViewStyle } from "react-native";
+import { Linking, View, type TextStyle, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
+import { APP_CONFIG } from "@/config";
 import {
   $setupButtons,
   $setupCard,
@@ -10,29 +11,38 @@ import {
   SetupHeader,
 } from "@/features/onboarding/components/SetupLayout";
 import { switchServer } from "@/features/server/server";
-import { DEFAULT_SERVER_URL } from "@/features/server/server-url";
+import {
+  DEFAULT_SERVER_URL,
+  parseServerUrl,
+  serverHost,
+} from "@/features/server/server-url";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
 import { Button } from "@/ui/ds/Button";
 import { Icon, type IconName, icons } from "@/ui/ds/Icon";
 import { ListRow } from "@/ui/ds/ListRow";
 import { Text } from "@/ui/ds/Text";
 import { TextField } from "@/ui/ds/TextField";
-import { color, radius, space } from "@/ui/tokens";
+import { color, space } from "@/ui/tokens";
 
 import {
+  currentChoice,
   defaultRadioChoice,
   keepOption,
   type RadioChoice,
 } from "../radio-choice";
 
-const HOSTED_ICON: IconName = { ios: "cloud", android: "cloud", web: "cloud" };
+const HOSTED_ICON: IconName = {
+  ios: "cloud.fill",
+  android: "cloud",
+  web: "cloud",
+};
 const OWN_ICON: IconName = { ios: "server.rack", android: "dns", web: "dns" };
 
 /**
  * After Wi-Fi setup: which server the speaker gets internet radio from. The
  * hosted server and the user's own become the app's server (as in Settings),
- * which the setup that follows points the speaker at; keeping its server
- * leaves the speaker as it is.
+ * which the setup that follows points the speaker at; the one it already
+ * plays radio through, or keeping its server, leaves the speaker as it is.
  */
 export function RadioChoiceView({
   speakerName,
@@ -49,28 +59,46 @@ export function RadioChoiceView({
   onChosen: () => void;
   onKeep: () => void;
 }) {
-  const [choice, setChoice] = useState<RadioChoice>(() =>
-    defaultRadioChoice(radio, ourServer),
-  );
+  // Until the user picks, the default follows the speaker's radio, which may
+  // still be checked when the screen opens.
+  const [picked, setPicked] = useState<RadioChoice>();
   const [address, setAddress] = useState(
     ourServer === DEFAULT_SERVER_URL ? "" : ourServer,
   );
+  const current = currentChoice(radio, ourServer);
   const keep = keepOption(radio, ourServer);
+  const choice =
+    picked === undefined || (picked === "keep" && keep === undefined)
+      ? defaultRadioChoice(radio, ourServer)
+      : picked;
+
+  const parsed = parseServerUrl(address.trim());
+  const target =
+    choice === "hosted"
+      ? DEFAULT_SERVER_URL
+      : parsed.isOk()
+        ? parsed.value
+        : undefined;
+  // Picking the server the speaker already plays radio through leaves it as
+  // it is; for its own server, only while the address still names it.
+  const keepsAsIs =
+    choice === "keep" ||
+    (choice === current && (choice === "hosted" || target === ourServer));
+  const switching = !keepsAsIs && target !== ourServer;
 
   const pick = useMutation({
     // Throws the problem to show: a malformed address or a server that
     // doesn't answer like a Revive ST server this app works with.
-    mutationFn: async (picked: Exclude<RadioChoice, "keep">) => {
-      const target = picked === "hosted" ? DEFAULT_SERVER_URL : address;
+    mutationFn: async (chosen: Exclude<RadioChoice, "keep">) => {
       if (target !== ourServer) {
-        await switchServer(target);
+        await switchServer(chosen === "hosted" ? DEFAULT_SERVER_URL : address);
       }
     },
     onSuccess: onChosen,
   });
 
   const submit = () => {
-    if (choice === "keep") {
+    if (choice === "keep" || keepsAsIs) {
       onKeep();
     } else {
       pick.mutate(choice);
@@ -87,15 +115,17 @@ export function RadioChoiceView({
       title={title}
       subtitle={subtitle}
       leading={
-        <Icon
-          name={icon}
-          color={choice === value ? "accent" : "textSecondary"}
-        />
+        <View style={$iconWell}>
+          <Icon
+            name={icon}
+            color={choice === value ? "accent" : "textPrimary"}
+          />
+        </View>
       }
       selected={choice === value}
       disabled={pick.isPending}
       onPress={() => {
-        setChoice(value);
+        setPicked(value);
         pick.reset();
       }}
     />
@@ -107,16 +137,31 @@ export function RadioChoiceView({
         overline={speakerName}
         icon={icons.radio}
         title="How should this speaker get radio?"
-        description={`Internet radio and presets on SoundTouch speakers come from an online server. Pick the one ${speakerName} uses.`}
+        description="Internet radio and presets come from an online server."
       />
       <Card style={[$setupCard, $listCard]}>
-        {option("hosted", "Revive ST", "Hosted for you, free", HOSTED_ICON)}
-        {option("own", "My own server", "A Revive ST server you run", OWN_ICON)}
-        {option("keep", keep.title, keep.subtitle, icons.speaker)}
+        {option(
+          "hosted",
+          "Revive ST",
+          current === "hosted"
+            ? "Current · it plays radio through it"
+            : "Hosted for you, free",
+          HOSTED_ICON,
+        )}
+        {option(
+          "own",
+          "My own server",
+          current === "own"
+            ? `Current · ${serverHost(ourServer)}`
+            : "A Revive ST server you run",
+          OWN_ICON,
+        )}
+        {keep !== undefined &&
+          option("keep", keep.title, keep.subtitle, icons.speaker)}
       </Card>
 
       {choice === "own" && (
-        <View style={$setupCard}>
+        <View style={$field}>
           <TextField
             icon={OWN_ICON}
             placeholder="http://192.168.1.10:3000"
@@ -136,9 +181,9 @@ export function RadioChoiceView({
       )}
 
       {pick.error !== null && (
-        <View style={[$setupCard, $problem]}>
-          <Icon name={icons.warning} color="danger" />
-          <Text variant="body" style={$flex}>
+        <View style={$problem}>
+          <Icon name={icons.warning} color="danger" size={16} />
+          <Text variant="subhead" color="danger" style={$flex}>
             {pick.error.message}
           </Text>
         </View>
@@ -146,17 +191,43 @@ export function RadioChoiceView({
 
       <View style={$setupButtons}>
         <Button
-          label={choice === "keep" ? keep.button : "Continue"}
+          label={
+            choice === "keep" && keep !== undefined
+              ? keep.button
+              : keepsAsIs
+                ? "Keep it as it is"
+                : "Continue"
+          }
           loading={pick.isPending}
           onPress={submit}
         />
-        <Text variant="caption" color="textTertiary" style={$setupNote}>
-          {choice === "hosted"
-            ? "The hosted server keeps your presets, your speakers' device ids and when each last contacted it. The app sets up speakers for the server you pick; speakers already set up keep theirs until you set them up again."
-            : choice === "own"
-              ? "The app sets up speakers for the server you pick; speakers already set up keep theirs until you set them up again."
-              : "You can set it up later from its settings."}
-        </Text>
+        {keepsAsIs ? (
+          <Text variant="caption" color="textTertiary" style={$setupNote}>
+            You can set it up later from its settings.
+          </Text>
+        ) : (
+          <>
+            {choice === "hosted" && (
+              <Text
+                variant="caption"
+                color="accent"
+                style={$setupNote}
+                accessibilityRole="link"
+                onPress={() => {
+                  void Linking.openURL(APP_CONFIG.PRIVACY_URL);
+                }}
+              >
+                What the hosted server keeps
+              </Text>
+            )}
+            {switching && (
+              <Text variant="caption" color="textTertiary" style={$setupNote}>
+                Speakers already set up keep their server until you set them up
+                again.
+              </Text>
+            )}
+          </>
+        )}
       </View>
     </>
   );
@@ -168,13 +239,27 @@ const $listCard: ViewStyle = {
   overflow: "hidden",
 };
 
+const $iconWell: ViewStyle = {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  alignItems: "center",
+  justifyContent: "center",
+  backgroundColor: color.surface2,
+};
+
+const $field: ViewStyle = {
+  width: "100%",
+  marginBottom: space.sm,
+};
+
 const $problem: ViewStyle = {
+  width: "100%",
   flexDirection: "row",
-  alignItems: "flex-start",
-  gap: space.sm,
-  padding: space.md,
-  borderRadius: radius.md,
-  backgroundColor: color.dangerMuted,
+  alignItems: "center",
+  gap: space.xs,
+  paddingHorizontal: space.xs,
+  marginBottom: space.sm,
 };
 
 const $flex: TextStyle = {
