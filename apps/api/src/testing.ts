@@ -86,16 +86,6 @@ export const syncPresets = (
     ).pipe(HttpClientRequest.bodyJsonUnsafe({ presets })),
   );
 
-/** The app creating a household account. */
-export const mintAccountId = HttpClient.post("/api/internal/accounts").pipe(
-  Effect.flatMap(
-    HttpIncomingMessage.schemaBodyJson(
-      Schema.Struct({ accountId: Schema.String }),
-    ),
-  ),
-  Effect.map(({ accountId }) => accountId),
-);
-
 /** The speaker's last contact, as the app reads it. */
 export const getLastContactAt = (deviceId: string) =>
   HttpClient.get(`/api/internal/device/${deviceId}/contact`).pipe(

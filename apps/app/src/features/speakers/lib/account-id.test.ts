@@ -8,8 +8,8 @@ import {
 } from "./account-id";
 
 const SERVER = "https://api.revivest.app";
-const MINTED = "6f1c2a3b-4d5e-4f60-8a1b-2c3d4e5f6a7b";
-const OTHER_MINTED = "0a1b2c3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d";
+const HOUSEHOLD = "6f1c2a3b-4d5e-4f60-8a1b-2c3d4e5f6a7b";
+const OTHER_HOUSEHOLD = "0a1b2c3d-4e5f-4a6b-9c7d-8e9f0a1b2c3d";
 
 const onOurServer = (margeURL: string | undefined) => margeURL === SERVER;
 
@@ -22,11 +22,11 @@ describe("pickHouseholdAccountId", () => {
   it("joins the account another speaker on our server uses", () => {
     expect(
       pickHouseholdAccountId({
-        otherSpeakers: [onServer(MINTED)],
-        storedAccountId: OTHER_MINTED,
+        otherSpeakers: [onServer(HOUSEHOLD)],
+        storedAccountId: OTHER_HOUSEHOLD,
         onOurServer,
       }),
-    ).toBe(MINTED);
+    ).toBe(HOUSEHOLD);
   });
 
   it.each([
@@ -34,7 +34,7 @@ describe("pickHouseholdAccountId", () => {
     ["a Bose cloud account number", onServer("1234567")],
     [
       "an account on another server",
-      { margeAccountUUID: MINTED, margeURL: "https://other.example" },
+      { margeAccountUUID: HOUSEHOLD, margeURL: "https://other.example" },
     ],
     ["an unpaired speaker", onServer("")],
   ])("never spreads %s", (_label, other) => {
@@ -51,13 +51,13 @@ describe("pickHouseholdAccountId", () => {
     expect(
       pickHouseholdAccountId({
         otherSpeakers: [onServer("revivest-user")],
-        storedAccountId: MINTED,
+        storedAccountId: HOUSEHOLD,
         onOurServer,
       }),
-    ).toBe(MINTED);
+    ).toBe(HOUSEHOLD);
   });
 
-  it("ignores a stored account the server did not mint", () => {
+  it("ignores a stored account id that isn't a random UUID", () => {
     expect(
       pickHouseholdAccountId({
         otherSpeakers: [],
@@ -69,9 +69,12 @@ describe("pickHouseholdAccountId", () => {
 });
 
 describe("isSafeAccountId", () => {
-  it.each([MINTED, "1234567", "revivest-user"])("accepts %s", (accountId) => {
-    expect(isSafeAccountId(accountId)).toBe(true);
-  });
+  it.each([HOUSEHOLD, "1234567", "revivest-user"])(
+    "accepts %s",
+    (accountId) => {
+      expect(isSafeAccountId(accountId)).toBe(true);
+    },
+  );
 
   it.each(["", "a b", "a;sys reboot", "a\nb", "<x>"])(
     "rejects %j",

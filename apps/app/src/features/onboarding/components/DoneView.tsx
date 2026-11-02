@@ -23,8 +23,9 @@ import {
 const HANDOFF_TIMEOUT_MS = 15_000;
 
 /**
- * Rescans the home network and hands off to the speaker's configuration once
- * the speaker list contains it; offers the dashboard if it doesn't show up.
+ * Rescans the home network and hands off to the speaker's internet radio
+ * setup, starting with which server it gets radio from, once the speaker list
+ * contains it; offers the dashboard if it doesn't show up.
  */
 export function DoneView({
   speaker,
@@ -54,7 +55,7 @@ export function DoneView({
   useEffect(() => {
     if (listed && acknowledged) {
       router.replace(
-        `/speakers/${encodeURIComponent(speaker.deviceID)}/configure`,
+        `/speakers/${encodeURIComponent(speaker.deviceID)}/configure?choose=1`,
       );
     }
   }, [listed, acknowledged, router, speaker.deviceID]);

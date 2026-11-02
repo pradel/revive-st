@@ -3,6 +3,8 @@
  * the way the app sets one up, then restarts, boots against the server and
  * plays, stores and renames through it, over real sockets.
  */
+import { randomUUID } from "node:crypto";
+
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import {
@@ -24,7 +26,6 @@ import { PresetsRepo } from "./presets/presets-repo.ts";
 import {
   getLastContactAt,
   MISSING_UUID,
-  mintAccountId,
   RadioBrowserTest,
   speaker,
   STATION_UUID,
@@ -83,17 +84,18 @@ const postToSpeaker = (path: string, body: string) =>
 
 /**
  * What the app does to set a speaker up for the server (see the configure
- * session in apps/app): saves its presets for the household, writes the
- * server's addresses and the account over the TAP console, pairs it over
- * HTTP, has it fetch its sources, then restarts it. Resolves once the
- * speaker has booted against the server, with its last contact before the
- * restart.
+ * session in apps/app): makes a household account id, saves the speaker's
+ * presets for it, writes the server's addresses and the account over the
+ * TAP console, pairs it over HTTP, has it fetch its sources, then restarts
+ * it. Resolves once the speaker has booted against the server, with its
+ * last contact before the restart.
  */
 const setUp = (presets: readonly { id: number; contentItem: ContentItem }[]) =>
   Effect.gen(function* () {
     const emulated = yield* SpeakerEmulator;
     const server = yield* origin;
-    const accountId = yield* mintAccountId;
+    // The app makes household account ids itself.
+    const accountId = randomUUID();
     const synced = yield* syncPresets(emulated.deviceId, presets, accountId);
     assert.strictEqual(synced.status, 200);
 

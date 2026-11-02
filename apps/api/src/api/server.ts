@@ -3,8 +3,12 @@ import { HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/http-api";
 
 import packageJson from "../../package.json" with { type: "json" };
 
+/** The app tells a Revive ST server by this name (`REVIVE_SERVER_NAME`). */
 export const SERVER_NAME = "Revive ST API";
-/** The `@revive-st/api` release, bumped by Changesets. */
+/**
+ * The `@revive-st/api` release, bumped by Changesets independently of the
+ * app, which refuses a server older than its `MIN_SERVER_VERSION`.
+ */
 export const SERVER_VERSION = packageJson.version;
 export const OPENAPI_PATH = "/openapi.json";
 export const DOCS_PATH = "/docs";
@@ -12,7 +16,8 @@ export const DOCS_PATH = "/docs";
 export const ServerStatus = Schema.Struct({
   name: Schema.Literal(SERVER_NAME),
   version: Schema.String.annotate({
-    description: "The server's release, e.g. `0.3.0`.",
+    description:
+      "The server's release, e.g. `0.3.0`. The app refuses a server older than the release it needs.",
   }),
   docs: Schema.Literal(DOCS_PATH).annotate({
     description: "The API reference.",
