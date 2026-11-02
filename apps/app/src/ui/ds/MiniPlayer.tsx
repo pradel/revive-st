@@ -135,7 +135,10 @@ export function MiniPlayer({
         {paged ? (
           // Under the whole bar, not just the pages: they stay put, centered,
           // whatever the page shown.
-          <View style={[$dots, glass && $dotsGlass]} pointerEvents="none">
+          <View
+            style={[$dots, glass && $dotsGlass, docked && $dotsDocked]}
+            pointerEvents="none"
+          >
             {pages.map((page, pageIndex) => (
               <View
                 key={page.key}
@@ -307,7 +310,11 @@ function PageView({
           ...(docked ? $openDocked : undefined),
           ...(glass ? $openGlass : undefined),
           // The dots under the pages take the rest of the bottom padding.
-          ...(position ? $openAboveDots : undefined),
+          ...(position
+            ? docked
+              ? $openAboveDotsDocked
+              : $openAboveDots
+            : undefined),
           ...(isPressed ? (glass ? $pressedGlass : $pressed) : undefined),
         }}
       >
@@ -427,6 +434,10 @@ const $dotsGlass: ViewStyle = {
   paddingBottom: space.sm - 2,
 };
 
+const $dotsDocked: ViewStyle = {
+  paddingBottom: space.sm,
+};
+
 const $dot: ViewStyle = {
   width: 5,
   height: 5,
@@ -459,13 +470,19 @@ const $open: ViewStyle = {
   borderRadius: radius.md,
 };
 
+/** A full-width strip: Material's 16dp side margins and room to breathe. */
 const $openDocked: ViewStyle = {
   paddingHorizontal: space.md,
+  paddingVertical: space.sm,
   borderRadius: 0,
 };
 
 const $openAboveDots: ViewStyle = {
   paddingBottom: space.xxs,
+};
+
+const $openAboveDotsDocked: ViewStyle = {
+  paddingBottom: space.xs,
 };
 
 const $pressed: ViewStyle = {
