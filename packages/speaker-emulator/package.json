@@ -12,12 +12,12 @@
   },
   "dependencies": {
     "@effect/platform-node": "4.1.0",
+    "better-result": "3.0.1",
     "bose-api-speaker-client": "workspace:*",
     "effect": "4.1.0"
   },
   "devDependencies": {
     "@types/node": "26.6.5",
-    "better-result": "3.0.1",
     "vite-plus": "catalog:",
     "vitest": "catalog:"
   }

@@ -7,3 +7,4 @@ export {
 } from "./config.ts";
 export { SpeakerEmulator, type SpeakerPorts } from "./emulator.ts";
 export type { NowPlaying, SpeakerState } from "./state.ts";
+export { eventually, openConsole, orDie, speakerHttp } from "./testing.ts";

@@ -151,8 +151,8 @@ export const sourcesXml = (deviceId: string, state: SpeakerState) =>
     XML_DECLARATION,
     `<sources deviceID="${escapeXml(deviceId)}">`,
     ...sourceItems(state).map(
-      ({ source, sourceAccount, status, name }) =>
-        `<sourceItem source="${escapeXml(source)}" sourceAccount="${escapeXml(sourceAccount)}" status="${status}" isLocal="${source === "AUX" || source === "BLUETOOTH"}" multiroomallowed="true">${escapeXml(name)}</sourceItem>`,
+      ({ source, sourceAccount, status, name, isLocal }) =>
+        `<sourceItem source="${escapeXml(source)}" sourceAccount="${escapeXml(sourceAccount)}" status="${status}" isLocal="${isLocal}" multiroomallowed="true">${escapeXml(name)}</sourceItem>`,
     ),
     "</sources>",
   ].join("");
@@ -311,20 +311,15 @@ export const configurationReply = (urls: ServerUrls) =>
 // ---------------------------------------------------------------------------
 // Bodies sent to the servers
 
-export interface BootReport {
-  readonly deviceId: string;
-  readonly ipAddress: string;
-}
-
 /** The `<device-data>` report a speaker posts to `power_on` at every start. */
-export const powerOnXml = ({ deviceId, ipAddress }: BootReport) =>
+export const powerOnXml = ({ deviceId, type, ipAddress }: Identity) =>
   [
     XML_DECLARATION,
     "<device-data>",
     `<device id="${escapeXml(deviceId)}">`,
     element("serialnumber", serialNumber(deviceId)),
     element("firmware-version", FIRMWARE_VERSION),
-    '<product product_code="SoundTouch 10 sm2" type="5">',
+    `<product product_code="${escapeXml(type)} sm2" type="5">`,
     element("serialnumber", serialNumber(deviceId)),
     "</product>",
     "</device>",
@@ -340,21 +335,25 @@ export const powerOnXml = ({ deviceId, ipAddress }: BootReport) =>
   ].join("");
 
 /** A stats event (`scmudc`), as speakers post them at boot. */
-export const statsEventJson = (deviceId: string, accountId: string) =>
+export const statsEventJson = (
+  { deviceId, type }: Identity,
+  accountId: string,
+  sentAt: Date,
+) =>
   JSON.stringify({
     envelope: {
       monoTime: 0,
       payloadProtocolVersion: "3.1",
       payloadType: "scmudc",
       protocolVersion: "1.0",
-      time: new Date(0).toISOString(),
+      time: sentAt.toISOString(),
       uniqueId: deviceId,
     },
     payload: {
       deviceInfo: {
         boseID: accountId,
         deviceID: deviceId,
-        deviceType: "SoundTouch 10",
+        deviceType: type,
         serialNumber: serialNumber(deviceId),
         softwareVersion: FIRMWARE_VERSION,
         systemSerialNumber: serialNumber(deviceId),

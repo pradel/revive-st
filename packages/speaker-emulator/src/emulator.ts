@@ -67,7 +67,9 @@ export interface SpeakerPorts {
 }
 
 const portOf = (address: NetAddress.SocketAddress) =>
-  address._tag === "UnixPathAddress" ? 0 : address.port;
+  address._tag === "UnixPathAddress"
+    ? Effect.die(new Error("The emulator listens on TCP ports only"))
+    : Effect.succeed(address.port);
 
 /**
  * A SoundTouch speaker on 127.0.0.1: its API, its WebSocket notifications
@@ -110,7 +112,10 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
   const notify = (xml: string) =>
     Effect.asVoid(PubSub.publish(notifications, xml));
   const listeners = yield* Ref.make(0);
-  /** Open while the speaker is up; requests wait on it while it restarts. */
+  /**
+   * Open while the speaker is up. Requests wait on it while it restarts and
+   * new connections are dropped.
+   */
   const up = yield* Latch.make(true);
   /** Completed when the speaker goes down, dropping its connections. */
   const goingDown = yield* Ref.make(yield* Deferred.make<undefined>());
@@ -129,7 +134,6 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
     done: Deferred.Deferred<undefined>,
   ) {
     yield* Effect.sleep(config.shutdownDelay ?? "50 millis");
-    yield* Ref.update(state, (current) => ({ ...current, up: false }));
     yield* up.close;
     yield* FiberHandle.clear(playback);
     yield* Deferred.succeed(yield* Ref.get(goingDown), undefined);
@@ -137,7 +141,6 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
     yield* Ref.set(goingDown, yield* Deferred.make<undefined>());
     yield* Ref.update(state, (current): SpeakerState => ({
       ...current,
-      up: true,
       running: current.saved,
       margeAccountUUID: current.pendingAccountId ?? current.margeAccountUUID,
       pendingAccountId: undefined,
@@ -149,7 +152,12 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
     yield* Deferred.succeed(done, undefined);
   });
 
+  /** Starts a restart, or joins the one under way. */
   const startRestart = Effect.gen(function* () {
+    const current = yield* Ref.get(bootDone);
+    if (!(yield* Deferred.isDone(current))) {
+      return current;
+    }
     const done = yield* Deferred.make<undefined>();
     yield* Ref.set(bootDone, done);
     yield* Effect.forkIn(restart(done), scope);
@@ -364,7 +372,7 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
   yield* Effect.forkIn(
     notificationsServer.run((socket) =>
       Effect.gen(function* () {
-        if (!(yield* Ref.get(state)).up) {
+        if (!Latch.isOpen(up)) {
           return;
         }
         const down = yield* Ref.get(goingDown);
@@ -380,7 +388,9 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
         const forward = Effect.forever(
           Effect.flatMap(PubSub.take(subscription), writer.write),
         );
-        yield* Effect.raceAll([
+        // The first to finish ends the connection: a failed `pull` means
+        // the client hung up.
+        yield* Effect.raceAllFirst([
           forward,
           Effect.forever(pull),
           Deferred.await(down),
@@ -453,7 +463,7 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
   yield* Effect.forkIn(
     consoleServer.run((socket) =>
       Effect.gen(function* () {
-        if (!(yield* Ref.get(state)).up) {
+        if (!Latch.isOpen(up)) {
           return;
         }
         const down = yield* Ref.get(goingDown);
@@ -487,9 +497,9 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
     deviceId,
     host: HOST,
     ports: {
-      http: portOf(httpServer.address),
-      notifications: portOf(notificationsServer.address),
-      console: portOf(consoleServer.address),
+      http: yield* portOf(httpServer.address),
+      notifications: yield* portOf(notificationsServer.address),
+      console: yield* portOf(consoleServer.address),
     },
     state: Ref.get(state),
     exchanges: Ref.get(exchanges),

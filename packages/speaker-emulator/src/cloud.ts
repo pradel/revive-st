@@ -5,7 +5,7 @@
  * (repos/Bose-SoundTouch/tests/interactions_20260328-103522-477978.md).
  */
 import type { ContentItem, Preset } from "bose-api-speaker-client";
-import { Effect, Option, Ref, Schema } from "effect";
+import { DateTime, Effect, Option, Ref, Schema } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/http";
 
 import { USER_AGENT } from "./config.ts";
@@ -172,6 +172,26 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     }
   });
 
+  /**
+   * Syncs the account, then reads its provider settings and the speaker's
+   * group, as a speaker does at boot and right after it pairs.
+   */
+  const fetchAccount = Effect.fnUntraced(function* (
+    accountId: string,
+    providers: ReadonlyMap<string, string>,
+  ) {
+    const marge = yield* margeUrl;
+    yield* syncAccount(accountId, providers);
+    yield* send(
+      HttpClientRequest.get(`${marge}/account/${accountId}/provider_settings`),
+    );
+    yield* send(
+      HttpClientRequest.get(
+        `${marge}/account/${accountId}/device/${deviceId}/group/`,
+      ),
+    );
+  });
+
   /** What a speaker calls while it starts, in the order firmware 27 does. */
   const boot = Effect.gen(function* () {
     const { running, margeAccountUUID: accountId } = yield* Ref.get(state);
@@ -181,7 +201,11 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
         `${running.statsServerUrl}/v1/scmudc/${deviceId}`,
       ).pipe(
         HttpClientRequest.bodyText(
-          statsEventJson(deviceId, accountId),
+          statsEventJson(
+            identity,
+            accountId,
+            new Date(DateTime.toEpochMillis(yield* DateTime.now)),
+          ),
           "text/json; charset=utf-8",
         ),
       ),
@@ -206,17 +230,7 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     );
     const providers = yield* sourceProviders;
     if (accountId !== "") {
-      yield* syncAccount(accountId, providers);
-      yield* send(
-        HttpClientRequest.get(
-          `${marge}/account/${accountId}/provider_settings`,
-        ),
-      );
-      yield* send(
-        HttpClientRequest.get(
-          `${marge}/account/${accountId}/device/${deviceId}/group/`,
-        ),
-      );
+      yield* fetchAccount(accountId, providers);
     }
     yield* send(
       HttpClientRequest.get(`${marge}/device/${deviceId}/streaming_token`),
@@ -241,7 +255,10 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     }
   });
 
-  /** `/setMargeAccount`: registers with the account; paired only once it answers. */
+  /**
+   * `/setMargeAccount`: registers with the account, paired only once Marge
+   * accepts, then syncs the account at once (recorded session, 0054-0059).
+   */
   const pair = Effect.fnUntraced(function* (accountId: string) {
     const { name } = yield* Ref.get(state);
     const reply = yield* send(
@@ -260,6 +277,7 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
       margeAccountUUID: accountId,
     }));
     yield* notify(infoUpdated(deviceId));
+    yield* fetchAccount(accountId, yield* sourceProviders);
     return true;
   });
 
@@ -296,7 +314,8 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     presetId: number,
     contentItem: ContentItem,
   ) {
-    const now = Math.floor(Date.now() / 1000);
+    // Presets are stamped in seconds, as `/presets` reports them.
+    const now = Math.floor(DateTime.toEpochMillis(yield* DateTime.now) / 1000);
     const current = yield* Ref.updateAndGet(state, (before) => {
       const existing = before.presets.find(({ id }) => id === presetId);
       const preset: Preset = {
@@ -373,7 +392,11 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
           HttpClientRequest.post(
             `${yield* margeUrl}/account/${current.margeAccountUUID}/device/${deviceId}/recent`,
           ),
-          recentXml(source.id, contentItem, new Date()),
+          recentXml(
+            source.id,
+            contentItem,
+            new Date(DateTime.toEpochMillis(yield* DateTime.now)),
+          ),
         ),
       );
     }

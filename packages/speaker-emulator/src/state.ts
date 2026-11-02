@@ -30,8 +30,6 @@ export interface BmxService {
 }
 
 export interface SpeakerState {
-  /** Answering on its ports; `false` while restarting. */
-  readonly up: boolean;
   readonly name: string;
   readonly margeAccountUUID: string;
   /** Set by `envswitch accountid set`; applies at the next start. */
@@ -60,7 +58,6 @@ export const initialState = (config: SpeakerConfig): SpeakerState => {
   const accountSources = config.accountSources ?? [];
   const sourceTypes = new Set(accountSources.map(({ source }) => source));
   return {
-    up: true,
     name: config.name ?? `SoundTouch ${config.deviceId.slice(-4)}`,
     margeAccountUUID: config.margeAccountUUID ?? "",
     pendingAccountId: undefined,
@@ -85,16 +82,24 @@ export interface SourceItem {
   readonly sourceAccount: string;
   readonly status: "READY" | "UNAVAILABLE";
   readonly name: string;
+  readonly isLocal: boolean;
 }
 
 /** Sources on the speaker itself, listed whatever its account. */
 export const LOCAL_SOURCES: readonly SourceItem[] = [
-  { source: "AUX", sourceAccount: "AUX", status: "READY", name: "AUX IN" },
+  {
+    source: "AUX",
+    sourceAccount: "AUX",
+    status: "READY",
+    name: "AUX IN",
+    isLocal: true,
+  },
   {
     source: "BLUETOOTH",
     sourceAccount: "",
     status: "UNAVAILABLE",
     name: "",
+    isLocal: true,
   },
 ];
 
@@ -106,6 +111,7 @@ export const sourceItems = (state: SpeakerState): readonly SourceItem[] => [
     sourceAccount,
     status: state.activeSourceTypes.has(source) ? "READY" : "UNAVAILABLE",
     name: sourceAccount,
+    isLocal: false,
   })),
 ];
 

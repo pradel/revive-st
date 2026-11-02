@@ -2,21 +2,17 @@
  * bose-api-speaker-client against the emulator over real sockets: the
  * speaker's API, its WebSocket notifications and its TAP console.
  */
-import net from "node:net";
-
-import type { Result } from "better-result";
 import {
-  BoseHttpAdapter,
   BoseWebSocketClient,
   type BoseWSUpdate,
   type ContentItem,
-  TelnetClient,
 } from "bose-api-speaker-client";
-import { Effect, Schedule, type Scope } from "effect";
+import { Effect, type Scope } from "effect";
 import { assert, describe, it } from "vite-plus/test";
 
 import type { SpeakerConfig } from "./config.ts";
 import { SpeakerEmulator } from "./emulator.ts";
+import { eventually, openConsole, orDie, speakerHttp } from "./testing.ts";
 
 const DEVICE_ID = "A81B6A631A1E";
 
@@ -45,30 +41,6 @@ const PAIRED: SpeakerConfig = {
   accountSources: [{ id: "10005", source: "RADIO_BROWSER", sourceAccount: "" }],
 };
 
-const http = Effect.gen(function* () {
-  const speaker = yield* SpeakerEmulator;
-  return new BoseHttpAdapter({ ip: speaker.host, port: speaker.ports.http });
-});
-
-/** Runs `request`, failing the test when the client reports an error. */
-const ok = <Value, Failure>(request: () => Promise<Result<Value, Failure>>) =>
-  Effect.flatMap(Effect.promise(request), (result) =>
-    result.isOk() ? Effect.succeed(result.value) : Effect.die(result.error),
-  );
-
-/** Retries `check` until it holds, for what arrives asynchronously. */
-const eventually = <Value>(check: Effect.Effect<Value | undefined>) =>
-  check.pipe(
-    Effect.flatMap((value) =>
-      value === undefined
-        ? Effect.fail("not yet" as const)
-        : Effect.succeed(value),
-    ),
-    Effect.retry(Schedule.spaced("20 millis")),
-    Effect.timeout("3 seconds"),
-    Effect.orDie,
-  );
-
 /** Runs `test` against a speaker of its own. */
 const withSpeaker = async <Value, Failure>(
   test: Effect.Effect<Value, Failure, SpeakerEmulator | Scope.Scope>,
@@ -82,21 +54,21 @@ describe("BoseHttpAdapter", () => {
   it("reads the speaker's info, presets, sources and now playing", async () =>
     withSpeaker(
       Effect.gen(function* () {
-        const client = yield* http;
-        const info = yield* ok(async () => client.getInfo());
+        const client = yield* speakerHttp;
+        const info = yield* orDie(async () => client.getInfo());
         assert.strictEqual(info.deviceID, DEVICE_ID);
         assert.strictEqual(info.name, "Living Room");
         assert.strictEqual(info.margeURL, "http://127.0.0.1:9");
         assert.strictEqual(info.margeAccountUUID, "household-1");
         assert.strictEqual(info.networkInfo.macAddress, "A8:1B:6A:63:1A:1E");
 
-        const { presets } = yield* ok(async () => client.getPresets());
+        const { presets } = yield* orDie(async () => client.getPresets());
         assert.deepStrictEqual(
           presets.map(({ id, contentItem }) => ({ id, contentItem })),
           [{ id: 1, contentItem: RADIO }],
         );
 
-        const sources = yield* ok(async () => client.getSources());
+        const sources = yield* orDie(async () => client.getSources());
         assert.deepStrictEqual(
           sources.sourceItems.map(({ source, status }) => ({ source, status })),
           [
@@ -106,7 +78,7 @@ describe("BoseHttpAdapter", () => {
           ],
         );
 
-        const nowPlaying = yield* ok(async () => client.getNowPlaying());
+        const nowPlaying = yield* orDie(async () => client.getNowPlaying());
         assert.strictEqual(nowPlaying.source, "STANDBY");
       }),
     ));
@@ -114,17 +86,17 @@ describe("BoseHttpAdapter", () => {
   it("stores a preset and sets the volume", async () =>
     withSpeaker(
       Effect.gen(function* () {
-        const client = yield* http;
+        const client = yield* speakerHttp;
         const stored = { ...RADIO, itemName: `Jazz <"FM"> & 'Co'` };
-        yield* ok(async () => client.storePreset(4, stored));
-        const { presets } = yield* ok(async () => client.getPresets());
+        yield* orDie(async () => client.storePreset(4, stored));
+        const { presets } = yield* orDie(async () => client.getPresets());
         assert.deepStrictEqual(
           presets.find(({ id }) => id === 4)?.contentItem,
           stored,
         );
 
-        yield* ok(async () => client.setVolume({ volume: 37 }));
-        const volume = yield* ok(async () => client.getVolume());
+        yield* orDie(async () => client.setVolume({ volume: 37 }));
+        const volume = yield* orDie(async () => client.getVolume());
         assert.strictEqual(volume.actualvolume, 37);
         assert.strictEqual(volume.muteenabled, false);
       }),
@@ -132,11 +104,11 @@ describe("BoseHttpAdapter", () => {
 });
 
 describe("BoseWebSocketClient", () => {
-  it("reports volume, name and now playing changes", async () =>
+  it("reports volume, name and now playing changes until it disconnects", async () =>
     withSpeaker(
       Effect.gen(function* () {
         const speaker = yield* SpeakerEmulator;
-        const client = yield* http;
+        const client = yield* speakerHttp;
         const updates: BoseWSUpdate[] = [];
         const notifications = new BoseWebSocketClient({
           host: speaker.host,
@@ -170,20 +142,27 @@ describe("BoseWebSocketClient", () => {
             ),
           );
 
-        yield* ok(async () => client.setVolume({ volume: 12 }));
+        yield* orDie(async () => client.setVolume({ volume: 12 }));
         const volume = yield* received("volume");
         assert.strictEqual(volume.volume?.actualVolume, 12);
 
-        yield* ok(async () => client.setName("Kitchen & Bath"));
+        yield* orDie(async () => client.setName("Kitchen & Bath"));
         const name = yield* received("nameUpdated");
         assert.strictEqual(name.name, "Kitchen & Bath");
 
-        yield* ok(async () =>
+        yield* orDie(async () =>
           client.pressKey({ key: "POWER", state: "press", sender: "Gabbo" }),
         );
         const nowPlaying = yield* received("nowPlaying");
         assert.strictEqual(nowPlaying.nowPlaying?.source, "AUX");
         assert.strictEqual(nowPlaying.nowPlaying?.playStatus, "PLAY_STATE");
+
+        notifications.close();
+        yield* eventually(
+          Effect.map(speaker.listeners, (count) =>
+            count === 0 ? count : undefined,
+          ),
+        );
       }),
       // Unpaired: it renames itself without asking a Marge server.
       { deviceId: DEVICE_ID },
@@ -195,40 +174,42 @@ describe("TelnetClient", () => {
     withSpeaker(
       Effect.gen(function* () {
         const speaker = yield* SpeakerEmulator;
-        const tap = new TelnetClient({
-          host: speaker.host,
-          port: speaker.ports.console,
-          socket: net,
-        });
-        yield* ok(async () => tap.connect());
-        yield* Effect.addFinalizer(() =>
-          Effect.sync(() => {
-            tap.disconnect();
-          }),
-        );
-        const run = (command: string) =>
-          ok(async () => tap.executeCommand(command, { quietMs: 100 }));
+        const tap = yield* openConsole;
 
         assert.include(
-          yield* run("sys configuration margeServerUrl http://127.0.0.1:10"),
+          yield* tap.run(
+            "sys configuration margeServerUrl http://127.0.0.1:10",
+          ),
           "OK",
         );
         assert.include(
-          yield* run("getpdo CurrentSystemConfiguration"),
+          yield* tap.run("getpdo CurrentSystemConfiguration"),
           'margeServerUrl {\r\n  text: "http://127.0.0.1:10"\r\n}',
         );
-        assert.include(yield* run("sys frobnicate"), "Command not found");
+        assert.include(yield* tap.run("sys frobnicate"), "Command not found");
 
-        const reboot = yield* Effect.promise(async () =>
-          tap.executeCommand("sys reboot", { quietMs: 100 }),
-        );
-        assert.isTrue(reboot.isErr() && reboot.error.reason === "closed");
-        yield* speaker.booted;
+        yield* tap.reboot;
         // `sys configuration` alone doesn't survive the restart.
         assert.strictEqual(
           (yield* speaker.state).running.margeServerUrl,
           "http://127.0.0.1:9",
         );
+      }),
+    ));
+});
+
+describe("SpeakerEmulator", () => {
+  it("joins a restart already under way", async () =>
+    withSpeaker(
+      Effect.gen(function* () {
+        const speaker = yield* SpeakerEmulator;
+        yield* Effect.all([speaker.reboot, speaker.reboot], {
+          concurrency: "unbounded",
+        });
+        const powerOns = (yield* speaker.exchanges).filter(({ url }) =>
+          url.endsWith("/streaming/support/power_on"),
+        );
+        assert.strictEqual(powerOns.length, 1);
       }),
     ));
 });
