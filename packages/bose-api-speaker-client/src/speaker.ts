@@ -21,6 +21,8 @@ import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
 export interface SpeakerOptions {
   ip: string;
   port?: number;
+  /** The WebSocket notifications port. Default 8080. */
+  notificationsPort?: number;
   deviceID: string;
   onStateUpdate?: (state: SpeakerState) => void;
   /**
@@ -219,6 +221,7 @@ export class Speaker {
 
     this.ws = new BoseWebSocketClient({
       host: this.options.ip,
+      port: this.options.notificationsPort,
       deviceID: this.options.deviceID,
       onUpdate: (update) => {
         this.handleWSUpdate(update);

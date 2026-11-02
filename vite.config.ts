@@ -108,7 +108,10 @@ export default defineConfig({
       {
         // Effect idioms: anonymous `Effect.gen`/`Effect.fn` generators (spans
         // are named via `Effect.fn("name")`) and `_tag` discriminants.
-        files: ["apps/api/src/**/*.ts"],
+        files: [
+          "apps/api/src/**/*.ts",
+          "packages/speaker-emulator/src/**/*.ts",
+        ],
         rules: {
           "func-names": "off",
           "no-underscore-dangle": ["error", { allow: ["_tag"] }],

@@ -23,7 +23,9 @@
   },
   "devDependencies": {
     "@effect/vitest": "4.1.0",
+    "@revive-st/speaker-emulator": "workspace:*",
     "@types/node": "26.6.5",
+    "better-result": "3.0.1",
     "drizzle-kit": "1.0.0-rc.5",
     "typescript": "7.0.2",
     "vite-plus": "catalog:",

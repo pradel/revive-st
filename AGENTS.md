@@ -52,6 +52,7 @@ Multi-context — `CONTEXT-MAP.md` at the root points to per-context `CONTEXT.md
 - `packages/bose-api-speaker-client/`: Typed HTTP client for the Bose Speaker API.
 - `packages/bose-wifi/`: Expo native module for Wi-Fi speaker setup.
 - `packages/design/`: Shared colour palette (app and website), the logo mark (`brand/logo-mark.svg`) and the SoundTouch speaker drawings (`speakers/*.svg`); `vp run design#icons` builds the app icon, adaptive icon, splash and favicons from the mark and the palette, and copies the mark and speaker drawings into the website.
+- `packages/speaker-emulator/`: An emulated SoundTouch speaker (Effect) for tests: its API, WebSocket notifications and TAP console on 127.0.0.1, and the requests it makes to its servers when restarted, paired, renamed or playing. `bose-api-speaker-client` is tested against it there; `apps/api/src/speaker-emulator.test.ts` sets one up as the app does and boots it against the API.
 - `docs/` — Project documentation including Bose API reference, agent skills guides.
 - `.github/workflows/` — CI/CD pipeline definitions.
 - `repos/` — Vendored reference repositories, gitignored; see below.
