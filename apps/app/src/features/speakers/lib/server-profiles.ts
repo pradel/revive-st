@@ -1,4 +1,5 @@
 import { DEFAULT_SERVER_URL } from "../../server/server-url";
+import { REVIVE_SERVER_NAME } from "../../server/server-version";
 import { isSameOrigin } from "./account-id";
 
 /**
@@ -113,9 +114,6 @@ const isBareOrigin = (marge: URL) =>
 /** STR's agent answers on 8888, or 17008 on the models that keep 8888 closed. */
 const STR_PORTS = [8888, 17_008];
 
-/** What a Revive ST server's `GET /` names itself (`SERVER_NAME` in `apps/api`). */
-const REVIVE_API_NAME = "Revive ST API";
-
 const PROFILES: readonly ServerProfile[] = [
   {
     // Ours and the one run for everyone are known by their address; another
@@ -128,7 +126,7 @@ const PROFILES: readonly ServerProfile[] = [
       isSameOrigin(marge.href, DEFAULT_SERVER_URL) ||
       (isBareOrigin(marge) &&
         field(await probeJson(`${marge.origin}/`, signal), "name") ===
-          REVIVE_API_NAME),
+          REVIVE_SERVER_NAME),
   },
   {
     // Serves Marge under `/marge`, which no other server does.

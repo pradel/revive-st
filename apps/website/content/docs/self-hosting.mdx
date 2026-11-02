@@ -3,7 +3,7 @@ title: Self-hosting
 description: Run your own Revive ST server so your speakers don't depend on ours.
 ---
 
-By default, the app and your speakers use the Revive ST server at `api.revivest.app`: it stores your presets, and your speakers ask it for their account, presets and stations every time they start. You can run that server yourself, on a computer at home, so your speakers keep working whatever happens to ours.
+By default, the app and your speakers use the Revive ST server at `api.revivest.app`: it stores your household account id, your speakers' device ids, when each speaker last contacted it, and your presets (see the [Privacy Policy](/privacy)), and your speakers ask it for their account, presets and stations every time they start. You can run that server yourself, on a computer at home, so your speakers keep working whatever happens to ours, and none of that data reaches us.
 
 ## What you need
 
@@ -56,7 +56,7 @@ To restore a snapshot, stop the server, download the snapshot, unzip it (`gunzip
 
 ## Point the app at your server
 
-In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching.
+In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching. When you connect a new speaker to your Wi-Fi from the app, it also asks how that speaker should get radio: pick **My own server** and enter the same address.
 
 Plain `http://` only works with an IP address, a `.local` name or a name without dots (like `nas`). For any other name, put the server behind a reverse proxy with HTTPS and enter its `https://` address.
 
@@ -74,6 +74,8 @@ docker compose up -d
 ```
 
 The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`. The server's address shows the version it runs.
+
+The app and the server are released separately, and each app release works with servers from a given release on. If your server is older than that, the app says so when you save its address or set up a speaker, and names the release it needs: update the server, then try again.
 
 ## Tracing (optional)
 

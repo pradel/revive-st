@@ -4,14 +4,11 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 
 import {
-  checkServer,
   saveServerUrl,
+  switchServer as switchToServer,
   useServerUrl,
 } from "@/features/server/server";
-import {
-  DEFAULT_SERVER_URL,
-  parseServerUrl,
-} from "@/features/server/server-url";
+import { DEFAULT_SERVER_URL } from "@/features/server/server-url";
 import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
 import { FormButtonRow, FormFooterText } from "@/ui/form/rows";
@@ -25,19 +22,7 @@ export default function ServerSettings() {
   const [error, setError] = useState<string | null>(null);
 
   const switchServer = useMutation({
-    // Throws the problem to show: a malformed address or a server that
-    // doesn't answer like ours.
-    mutationFn: async (input: string) => {
-      const parsed = parseServerUrl(input.trim());
-      if (!parsed.isOk()) {
-        throw new Error(parsed.error);
-      }
-      const problem = await checkServer(parsed.value);
-      if (problem !== undefined) {
-        throw new Error(problem);
-      }
-      await saveServerUrl(parsed.value);
-    },
+    mutationFn: switchToServer,
     onSuccess: () => {
       router.back();
     },

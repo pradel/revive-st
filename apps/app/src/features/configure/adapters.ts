@@ -10,7 +10,11 @@ import TcpSocket from "react-native-tcp-socket";
 import { zeroconfDiscovery } from "@/features/onboarding/adapters/discovery";
 import { realClock } from "@/features/onboarding/adapters/runtime";
 import type { Log } from "@/features/onboarding/session/ports";
-import { getServerUrl, serverFetch } from "@/features/server/server";
+import {
+  fetchServerCheck,
+  getServerUrl,
+  serverFetch,
+} from "@/features/server/server";
 import { resolveHouseholdAccountId } from "@/features/speakers/lib/account";
 import { syncPresetsToMarge } from "@/features/speakers/lib/marge-api";
 import { logger } from "@/lib/logger";
@@ -125,6 +129,13 @@ const consolePort: ConsolePort = {
 
 const server: ServerPort = {
   origin: getServerUrl,
+  check: async (signal) => {
+    try {
+      return Result.ok(await fetchServerCheck(getServerUrl(), signal));
+    } catch (error) {
+      return Result.err(failure(error));
+    }
+  },
   householdAccount: async (speakerAccount, otherSpeakers) => {
     try {
       return Result.ok(

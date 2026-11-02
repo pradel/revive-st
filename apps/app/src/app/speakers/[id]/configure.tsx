@@ -1,5 +1,5 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollView, type TextStyle, type ViewStyle } from "react-native";
 
 import { KeepAwake } from "@/components/KeepAwake";
@@ -9,6 +9,7 @@ import {
   IntroView,
   WorkingView,
 } from "@/features/configure/components/ConfigureViews";
+import { RadioChoiceView } from "@/features/configure/components/RadioChoiceView";
 import type { ConfigureView } from "@/features/configure/session/types";
 import {
   isConfigureScenarioName,
@@ -52,9 +53,11 @@ function useOutcomeEffects(view: ConfigureView | undefined) {
 
 export default function ConfigureSpeaker() {
   const router = useRouter();
-  const { id, simulate } = useLocalSearchParams<{
+  const { id, simulate, choose } = useLocalSearchParams<{
     id: string;
     simulate?: string;
+    /** "1" right after Wi-Fi setup: ask which server it gets radio from first. */
+    choose?: string;
   }>();
   const scenario =
     __DEV__ && simulate !== undefined && isConfigureScenarioName(simulate)
@@ -63,7 +66,9 @@ export default function ConfigureSpeaker() {
   const { online: speakers } = useSpeakers();
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
-  const host = serverHost(useServerUrl());
+  const serverUrl = useServerUrl();
+  const host = serverHost(serverUrl);
+  const [chosen, setChosen] = useState(choose !== "1");
   const radio = speaker?.radio;
   const setup =
     radio?.kind === "ready" || radio?.kind === "needsSetup"
@@ -127,6 +132,19 @@ export default function ConfigureSpeaker() {
             actions={
               <Button label="Go back" variant="secondary" onPress={close} />
             }
+          />
+        );
+      }
+      if (!chosen) {
+        return (
+          <RadioChoiceView
+            speakerName={speakerName}
+            radio={radio}
+            ourServer={serverUrl}
+            onChosen={() => {
+              setChosen(true);
+            }}
+            onKeep={close}
           />
         );
       }

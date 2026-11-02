@@ -2,6 +2,7 @@ import { type Result, TaggedError } from "better-result";
 import type { Preset } from "bose-api-speaker-client";
 
 import type { Clock, Discovery, Log } from "../../onboarding/session/ports";
+import type { ServerCheck } from "../../server/server-version";
 import type { SpeakerAccount } from "../../speakers/lib/account-id";
 
 /** A request that failed: network error, timeout, error reply or unreadable reply. */
@@ -75,7 +76,12 @@ export type LastContact =
 export interface ServerPort {
   /** The server's origin, read once per run. */
   origin: () => string;
-  /** The household account `speaker` gets paired with (see `resolveHouseholdAccountId`). */
+  /** Whether it's a Revive ST server this app works with (`GET /`). */
+  check: (signal: AbortSignal) => Promise<Result<ServerCheck, PortFailure>>;
+  /**
+   * The household account `speaker` gets paired with on this server, made on
+   * the phone when the household has none (see `resolveHouseholdAccountId`).
+   */
   householdAccount: (
     speaker: SpeakerAccount,
     otherSpeakers: readonly SpeakerAccount[],

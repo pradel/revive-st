@@ -1,5 +1,10 @@
 import { matchError, TaggedError } from "better-result";
 
+import {
+  MIN_SERVER_VERSION,
+  oldRelease,
+  type ServerCheck,
+} from "../../server/server-version";
 import { SERVER_URL_FIELDS, type ServerUrls } from "./console";
 import type { RecoveryAction, StepId } from "./types";
 
@@ -14,9 +19,14 @@ export class InvalidServer extends TaggedError("InvalidServer")<{
   origin: string;
 }> {}
 
+/** The server picked in Settings isn't a Revive ST server this app works with. */
+export class UnsupportedServer extends TaggedError("UnsupportedServer")<{
+  check: Exclude<ServerCheck, { kind: "supported" }>;
+}> {}
+
 export class ServerUnreachable extends TaggedError("ServerUnreachable")<{
   /** What the run needed from the server. */
-  need: "account" | "presets" | "contact";
+  need: "status" | "presets" | "contact";
   message: string;
 }> {}
 
@@ -71,6 +81,7 @@ export class UnexpectedError extends TaggedError("UnexpectedError")<{
 export type ConfigureError =
   | SpeakerOffline
   | InvalidServer
+  | UnsupportedServer
   | ServerUnreachable
   | ConsoleUnavailable
   | CommandFailed
@@ -91,6 +102,8 @@ export function recoveryActions(error: ConfigureError): RecoveryAction[] {
     SpeakerOffline: retry,
     // Only another server in Settings helps.
     InvalidServer: () => [],
+    // Once the server is updated or another one is picked, it can go again.
+    UnsupportedServer: retry,
     ServerUnreachable: retry,
     ConsoleUnavailable: retry,
     CommandFailed: retry,
@@ -129,13 +142,13 @@ const SERVER_UNREACHABLE_COPY: Record<
   ServerUnreachable["need"],
   (speakerName: string, serverHost: string) => ErrorCopy
 > = {
+  status: (_speakerName, serverHost) => ({
+    title: "Can't reach Revive ST",
+    message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${UNCHANGED}`,
+  }),
   presets: (speakerName, serverHost) => ({
     title: "Couldn't save your presets",
     message: `The Revive ST server (${serverHost}) didn't accept ${speakerName}'s presets, so setup stopped before they could be lost. Check this phone's internet connection. ${UNCHANGED}`,
-  }),
-  account: (_speakerName, serverHost) => ({
-    title: "Can't reach Revive ST",
-    message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${UNCHANGED}`,
   }),
   contact: (speakerName, serverHost) => ({
     title: "Can't reach Revive ST",
@@ -158,6 +171,16 @@ export function describeError(
       title: "Server address not usable",
       message: `${serverHost} can't be given to a speaker. Pick another server in Settings. ${UNCHANGED}`,
     }),
+    UnsupportedServer: ({ check }) =>
+      check.kind === "notRevive"
+        ? {
+            title: "Not a Revive ST server",
+            message: `${serverHost} doesn't answer like a Revive ST server. Check the server in Settings. ${UNCHANGED}`,
+          }
+        : {
+            title: "Update your Revive ST server",
+            message: `${serverHost} runs ${oldRelease(check.version)}, and this app needs ${MIN_SERVER_VERSION} or newer. Update the server, then try again. ${UNCHANGED}`,
+          },
     ServerUnreachable: (unreachable) =>
       SERVER_UNREACHABLE_COPY[unreachable.need](speakerName, serverHost),
     ConsoleUnavailable: () => ({
