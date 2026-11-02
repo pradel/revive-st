@@ -24,8 +24,9 @@ export interface ScreenProps {
    *   bar. Title and actions belong to the header (`Stack.Title`,
    *   `Stack.Toolbar`).
    * - `fullscreen`: headerless; content is kept clear of the status bar.
-   * - `sheet`: presented as a sheet that already starts below the status bar,
-   *   so only the bottom (gesture bar) inset applies.
+   * - `sheet`: presented as a sheet. On iOS it starts below the status bar;
+   *   an Android sheet can reach under it. `SafeAreaView` only pads the part
+   *   that overlaps a system bar, so both keep clear of the bars.
    */
   presentation?: "stack" | "fullscreen" | "sheet";
   /**
@@ -39,7 +40,7 @@ export interface ScreenProps {
 const edges: Record<NonNullable<ScreenProps["presentation"]>, Edge[]> = {
   stack: [],
   fullscreen: ["top"],
-  sheet: ["bottom"],
+  sheet: ["top", "bottom"],
 };
 
 const FooterInset = createContext(0);

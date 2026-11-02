@@ -1,20 +1,14 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
-import {
-  Pressable,
-  StyleSheet,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { StyleSheet, View, type TextStyle, type ViewStyle } from "react-native";
 
+import { PlayerBar } from "@/features/speakers/components/PlayerBar";
 import { PresetStrip } from "@/features/speakers/components/PresetStrip";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   hasLoadedMedia,
   isSpeakerPlaying,
-  playStatusLabel,
   sourceLabel,
   trackDetail,
   trackTitle,
@@ -27,18 +21,26 @@ import { Artwork } from "@/ui/ds/Artwork";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
-import { Icon, icons } from "@/ui/ds/Icon";
+import { icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { Screen } from "@/ui/ds/Screen";
 import { Slider } from "@/ui/ds/Slider";
 import { Text } from "@/ui/ds/Text";
+import { nativeIcons } from "@/ui/nativeIcons";
 import { color, radius, space } from "@/ui/tokens";
 
-/** The player of the selected speaker; its name switches to another one. */
+/**
+ * The player of the selected speaker. Its bottom bar switches the speaker's
+ * source, picks another speaker and opens the speaker's settings.
+ */
 export default function NowPlayingModal() {
   const router = useRouter();
-  const { volumeMutation, playPauseMutation, keyMutation } =
-    useSpeakerCommands();
+  const {
+    volumeMutation,
+    playPauseMutation,
+    keyMutation,
+    selectSourceMutation,
+  } = useSpeakerCommands();
 
   const selected = useSelectedSpeaker();
   const { online } = useSpeakers();
@@ -118,48 +120,6 @@ export default function NowPlayingModal() {
         ) : null
       }
     >
-      <View style={$header}>
-        <IconButton
-          icon={icons.chevronDown}
-          accessibilityLabel="Close player"
-          tint="textPrimary"
-          onPress={() => {
-            router.back();
-          }}
-        />
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${speaker.name}, ${playStatusLabel(speaker)}`}
-          accessibilityHint={canSwitch ? "Chooses another speaker" : undefined}
-          disabled={!canSwitch}
-          onPress={chooseSpeaker}
-          hitSlop={8}
-          style={({ pressed }) => [$headerTitle, pressed && $headerPressed]}
-        >
-          <View style={$headerName}>
-            <Text variant="subhead" numberOfLines={1}>
-              {speaker.name}
-            </Text>
-            {canSwitch ? (
-              <Icon name={icons.chevronDown} size={12} color="textSecondary" />
-            ) : null}
-          </View>
-          <Text variant="caption" color="textSecondary">
-            {playStatusLabel(speaker)}
-          </Text>
-        </Pressable>
-        <IconButton
-          icon={icons.settings}
-          accessibilityLabel={`${speaker.name} settings`}
-          tint="textPrimary"
-          onPress={() => {
-            router.push(
-              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
-            );
-          }}
-        />
-      </View>
-
       <View style={$content}>
         <Link.AppleZoomTarget>
           <View style={$artShadow}>
@@ -253,6 +213,38 @@ export default function NowPlayingModal() {
             sendKey(`PRESET_${slot}` as KeyValue);
           }}
         />
+
+        <PlayerBar
+          speakerName={speaker.name}
+          onChooseSpeaker={chooseSpeaker}
+          onOpenSettings={() => {
+            router.push(
+              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+            );
+          }}
+          sources={[
+            {
+              id: "BLUETOOTH",
+              title: "Bluetooth",
+              icon: nativeIcons.bluetooth,
+              selected: speaker.source === "BLUETOOTH",
+            },
+            {
+              id: "AUX",
+              title: "AUX",
+              icon: nativeIcons.aux,
+              selected: speaker.source === "AUX",
+            },
+          ]}
+          onSelectSource={(source) => {
+            haptics.tap();
+            selectSourceMutation.mutate({
+              deviceID: speaker.deviceID,
+              source,
+              sourceAccount: source === "AUX" ? "AUX" : undefined,
+            });
+          }}
+        />
       </View>
     </Screen>
   );
@@ -267,23 +259,13 @@ const $scrim: ViewStyle = {
   backgroundColor: color.scrim,
 };
 
-const $header: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: space.xs,
-  paddingTop: space.xs,
-};
-
-const $headerTitle: ViewStyle = {
-  flex: 1,
-  alignItems: "center",
-};
-
 const $content: ViewStyle = {
   flex: 1,
   justifyContent: "space-evenly",
   paddingHorizontal: space.screen,
-  paddingBottom: space.xl,
+  // Clear of the sheet's grabber; the bar sits above the home indicator.
+  paddingTop: space.xl,
+  paddingBottom: space.md,
 };
 
 const $artShadow: ViewStyle = {
@@ -319,14 +301,4 @@ const $slider: ViewStyle = {
 const $volumeValue: TextStyle = {
   width: 32,
   textAlign: "right",
-};
-
-const $headerPressed: ViewStyle = {
-  opacity: 0.6,
-};
-
-const $headerName: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: space.xxs,
 };

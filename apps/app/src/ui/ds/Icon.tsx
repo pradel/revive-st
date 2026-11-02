@@ -45,6 +45,11 @@ export const icons = {
     web: "speaker",
   },
   star: { ios: "star", android: "star_outline", web: "star_outline" },
+  source: {
+    ios: "rectangle.connected.to.line.below",
+    android: "input",
+    web: "input",
+  },
   starFilled: { ios: "star.fill", android: "star", web: "star" },
   volume: {
     ios: "speaker.wave.2.fill",
