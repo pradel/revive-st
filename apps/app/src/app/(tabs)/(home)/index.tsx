@@ -13,6 +13,11 @@ import {
 
 import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
+import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-actions";
+import {
+  SWITCHABLE_SOURCES,
+  useSwitchSource,
+} from "@/features/speakers/components/sources";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
@@ -21,11 +26,12 @@ import {
   isRadioSource,
   isSpeakerPlaying,
   isStandby,
-  playStatusLabel,
+  speakerStateLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
 import {
   selectSpeaker,
+  useCanSwitchSpeaker,
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
@@ -91,19 +97,18 @@ export default function Index() {
     playPauseMutation,
     keyMutation,
     powerToggleMutation,
-    selectSourceMutation,
     savePresetMutation,
   } = useSpeakerCommands();
+  const switchSource = useSwitchSource();
   const openSpeakerSetup = useOpenSpeakerSetup();
   const [showOffline, setShowOffline] = useState(false);
 
   // The presets shelf, the mini player and Now Playing act on it; it's
   // highlighted once there's more than one speaker to tell apart.
   const selected = useSelectedSpeaker();
-  const highlightSelected = listedSpeakers.length > 1;
-  const canSwitch = speakers.some(
-    (speaker) => speaker.deviceID !== selected?.deviceID,
-  );
+  const highlightedID =
+    listedSpeakers.length > 1 ? selected?.deviceID : undefined;
+  const canSwitch = useCanSwitchSpeaker();
 
   // Offline speakers go to their own section, so they don't push the ones
   // that answer down; the others keep their place by name.
@@ -174,20 +179,12 @@ export default function Index() {
         id: "source",
         title: "Source",
         icon: nativeIcons.source,
-        actions: [
-          {
-            id: "source-bluetooth",
-            title: "Bluetooth",
-            icon: nativeIcons.bluetooth,
-            checked: speaker.source === "BLUETOOTH",
-          },
-          {
-            id: "source-aux",
-            title: "AUX",
-            icon: nativeIcons.aux,
-            checked: speaker.source === "AUX",
-          },
-        ],
+        actions: SWITCHABLE_SOURCES.map((source) => ({
+          id: `source-${source.id}`,
+          title: source.title,
+          icon: source.icon,
+          checked: speaker.source === source.id,
+        })),
       },
       {
         id: "power",
@@ -196,7 +193,6 @@ export default function Index() {
       },
     ],
     onAction: (id) => {
-      const { deviceID } = speaker;
       switch (id) {
         case "now-playing":
           openNowPlaying(speaker);
@@ -204,43 +200,34 @@ export default function Index() {
         case "settings":
           openSettings(speaker);
           break;
-        case "source-bluetooth":
-          haptics.tap();
-          selectSourceMutation.mutate({ deviceID, source: "BLUETOOTH" });
-          break;
-        case "source-aux":
-          haptics.tap();
-          selectSourceMutation.mutate({
-            deviceID,
-            source: "AUX",
-            sourceAccount: "AUX",
-          });
-          break;
         case "power":
           togglePower(speaker);
           break;
-        default:
-          break;
+        default: {
+          const source = SWITCHABLE_SOURCES.find(
+            (item) => `source-${item.id}` === id,
+          );
+          if (source) {
+            switchSource(speaker, source);
+          }
+        }
       }
     },
   });
 
   const unreachableMenu = (speaker: BoseSpeaker): ContextMenuConfig => ({
-    actions: [
-      { id: "retry", title: "Try again", icon: nativeIcons.refresh },
-      {
-        id: "forget",
-        title: "Forget speaker",
-        icon: nativeIcons.delete,
-        destructive: true,
-      },
-    ],
+    actions: OFFLINE_SPEAKER_ACTIONS.map(
+      ({ id, title, icon, destructive }) => ({
+        id,
+        title,
+        icon,
+        destructive,
+      }),
+    ),
     onAction: (id) => {
-      if (id === "retry") {
-        speakerRegistry.retry(speaker.deviceID);
-      } else {
-        speakerRegistry.forget(speaker.deviceID);
-      }
+      OFFLINE_SPEAKER_ACTIONS.find((action) => action.id === id)?.run(
+        speaker.deviceID,
+      );
     },
   });
 
@@ -296,14 +283,13 @@ export default function Index() {
   });
 
   const renderSpeaker = (speaker: BoseSpeaker) => {
-    const isSelected =
-      highlightSelected && speaker.deviceID === selected?.deviceID;
+    const isSelected = speaker.deviceID === highlightedID;
     if (speaker.status === "online" && isStandby(speaker)) {
       return (
         <SpeakerRow
           key={speaker.deviceID}
           name={speaker.name}
-          detail={["Standby", radioSummary(speaker.radio)]
+          detail={[speakerStateLabel(speaker), radioSummary(speaker.radio)]
             .filter(Boolean)
             .join(" · ")}
           modelDrawing={speakerDrawing(speaker.type)}
@@ -325,15 +311,11 @@ export default function Index() {
       <SpeakerCard
         key={speaker.deviceID}
         name={speaker.name}
-        status={speaker.status === "online" ? undefined : speaker.status}
-        onRetry={() => {
-          haptics.tap();
-          speakerRegistry.retry(speaker.deviceID);
-        }}
+        status={speaker.status === "connecting" ? "connecting" : undefined}
         nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
         detail={[
           speaker.artist,
-          playStatusLabel(speaker),
+          speakerStateLabel(speaker),
           radioSummary(speaker.radio),
         ]
           .filter(Boolean)
@@ -389,13 +371,10 @@ export default function Index() {
         </View>
       ) : null;
     }
-    const presetSpeaker = selected;
     return (
       <Shelf title={title} action={change}>
         {PRESET_SLOTS.map((slot) => {
-          const preset = presetSpeaker.presets?.find(
-            (item) => item.id === slot,
-          );
+          const preset = selected.presets?.find((item) => item.id === slot);
           if (!preset) {
             return (
               <Tile
@@ -403,7 +382,7 @@ export default function Index() {
                 title="Empty"
                 subtitle={`Preset ${slot}`}
                 muted
-                menu={presetMenu(presetSpeaker, slot, true)}
+                menu={presetMenu(selected, slot, true)}
               />
             );
           }
@@ -419,9 +398,9 @@ export default function Index() {
                   : icons.music
               }
               onPress={() => {
-                playPreset(presetSpeaker, slot);
+                playPreset(selected, slot);
               }}
-              menu={presetMenu(presetSpeaker, slot, false)}
+              menu={presetMenu(selected, slot, false)}
             />
           );
         })}
@@ -574,7 +553,7 @@ export default function Index() {
                       <SpeakerRow
                         key={speaker.deviceID}
                         name={speaker.name}
-                        detail="Offline · Tap to try again"
+                        detail={`${speakerStateLabel(speaker)} · Tap to try again`}
                         modelDrawing={speakerDrawing(speaker.type)}
                         accessibilityHint="Tries to reach the speaker again"
                         onPress={() => {
@@ -582,10 +561,7 @@ export default function Index() {
                           speakerRegistry.retry(speaker.deviceID);
                         }}
                         menu={unreachableMenu(speaker)}
-                        selected={
-                          highlightSelected &&
-                          speaker.deviceID === selected?.deviceID
-                        }
+                        selected={speaker.deviceID === highlightedID}
                       />
                     ))}
                   </View>

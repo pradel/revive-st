@@ -43,12 +43,10 @@ export interface SpeakerCardProps {
   /** Long-press menu on the speaker's artwork and name. */
   menu?: ContextMenuConfig;
   /**
-   * A remembered speaker not reached yet (`connecting`) or that didn't answer
-   * (`offline`): its controls are dimmed and inactive, and tapping an offline
-   * one tries it again (`onRetry`).
+   * A remembered speaker not reached yet: its controls are dimmed and
+   * inactive until it answers.
    */
-  status?: "connecting" | "offline";
-  onRetry?: () => void;
+  status?: "connecting";
 }
 
 export function SpeakerCard({
@@ -68,7 +66,6 @@ export function SpeakerCard({
   onOpenSettings,
   menu,
   status,
-  onRetry,
 }: SpeakerCardProps) {
   const volumeDraft = useSliderDraft(volume, onVolumeCommit);
   // `Link asChild` takes only a flat style object (no function or array), so
@@ -76,11 +73,7 @@ export function SpeakerCard({
   const [isPressed, setIsPressed] = useState(false);
   const reachable = status === undefined;
   const statusLine =
-    status === "connecting"
-      ? "Connecting…"
-      : status === "offline"
-        ? "Offline · Tap to try again"
-        : (nowPlaying ?? "Nothing playing");
+    status === "connecting" ? "Connecting…" : (nowPlaying ?? "Nothing playing");
 
   const artworkView = (
     <Artwork
@@ -136,22 +129,6 @@ export function SpeakerCard({
         >
           {content}
         </View>
-      );
-    }
-    if (status === "offline") {
-      return (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${name}, offline`}
-          accessibilityHint="Tries to reach the speaker again"
-          {...triggerProps}
-          onPress={onRetry}
-          // Its own pressed state: the card swaps this for a plain view while
-          // connecting, which would leave a tracked press stuck on.
-          style={({ pressed }) => (pressed ? $mainPressed : $main)}
-        >
-          {content}
-        </Pressable>
       );
     }
     return (

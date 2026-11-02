@@ -22,8 +22,9 @@ export function PresetStrip({
   /**
    * The row's width, measured by the caller. Inside a form row (`RNHostView`)
    * flex alone sizes the slots by their captions, so they get fixed widths.
+   * Elsewhere, omit it and the slots share the row by flex.
    */
-  width: number | undefined;
+  width?: number;
   onPlay: (slot: number) => void;
 }) {
   // Six equal slots; until the row is measured they share it by flex.

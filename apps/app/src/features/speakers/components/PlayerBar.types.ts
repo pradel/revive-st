@@ -1,22 +1,15 @@
-import type { nativeIcons } from "@/ui/nativeIcons";
-
-/** An input the speaker can switch to, e.g. Bluetooth or AUX. */
-export interface PlayerSource {
-  id: string;
-  title: string;
-  icon: (typeof nativeIcons)[keyof typeof nativeIcons];
-  /** The speaker is on this input. */
-  selected: boolean;
-}
+import type { SwitchableSource } from "./sources";
 
 /**
- * The player's bottom bar: the source menu on the left, the speaker shown
- * in the middle (tap to pick another one), its settings on the right.
+ * The player's bottom bar: the source menu (`SWITCHABLE_SOURCES`) on the
+ * left, the speaker shown in the middle (tap to pick another one), its
+ * settings on the right.
  */
 export interface PlayerBarProps {
   speakerName: string;
+  /** The speaker's current source, checked in the menu. */
+  currentSource?: string;
+  onSelectSource: (source: SwitchableSource) => void;
   onChooseSpeaker: () => void;
   onOpenSettings: () => void;
-  sources: readonly PlayerSource[];
-  onSelectSource: (id: string) => void;
 }

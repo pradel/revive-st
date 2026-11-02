@@ -1,16 +1,17 @@
-import { Image } from "expo-image";
 import { StyleSheet, View, type ViewStyle } from "react-native";
 import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 
 import { color } from "@/ui/tokens";
 
+import { ArtworkBackdrop } from "./ArtworkBackdrop";
+
 const FADE_MS = 250;
 
 /**
- * Fills a speaker card or row to mark the selected speaker: its artwork,
- * blurred and darkened so text stays readable, or the accent tint when
- * nothing with artwork plays. Fades in and out as the selection moves. Put
- * it first in a container that clips (`overflow: "hidden"`).
+ * Fills a speaker card or row to mark the selected speaker: its artwork
+ * (`ArtworkBackdrop`), or the accent tint when nothing with artwork plays.
+ * Fades in and out as the selection moves. Put it first in a container that
+ * clips (`overflow: "hidden"`).
  */
 export function SelectionBackdrop({
   artworkUri,
@@ -25,16 +26,7 @@ export function SelectionBackdrop({
       pointerEvents="none"
     >
       {artworkUri ? (
-        <>
-          <Image
-            source={{ uri: artworkUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            blurRadius={40}
-            transition={FADE_MS}
-          />
-          <View style={$scrim} />
-        </>
+        <ArtworkBackdrop uri={artworkUri} />
       ) : (
         <View style={$tint} />
       )}
@@ -42,20 +34,11 @@ export function SelectionBackdrop({
   );
 }
 
-const $fill: ViewStyle = {
+const $tint: ViewStyle = {
   position: "absolute",
   top: 0,
   right: 0,
   bottom: 0,
   left: 0,
-};
-
-const $scrim: ViewStyle = {
-  ...$fill,
-  backgroundColor: color.scrim,
-};
-
-const $tint: ViewStyle = {
-  ...$fill,
   backgroundColor: color.accentMuted,
 };

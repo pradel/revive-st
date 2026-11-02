@@ -12,6 +12,7 @@ import {
   hasLoadedMedia,
   isSpeakerPlaying,
   isStandby,
+  speakerStateLabel,
   trackTitle,
 } from "../lib/playback";
 import { selectSpeaker, useSelectedSpeaker } from "../lib/selection";
@@ -21,11 +22,9 @@ import type { BoseSpeaker } from "../registry/types";
 const toPage = (speaker: BoseSpeaker): MiniPlayerPage => {
   const reachable = speaker.status === "online";
   const hasMedia = reachable && hasLoadedMedia(speaker);
-  const state = !reachable
-    ? "Offline"
-    : isStandby(speaker)
-      ? "Standby"
-      : undefined;
+  // A speaker that isn't reached, or is in standby, says so.
+  const state =
+    !reachable || isStandby(speaker) ? speakerStateLabel(speaker) : undefined;
   return {
     key: speaker.deviceID,
     title: hasMedia ? trackTitle(speaker) : "Nothing playing",

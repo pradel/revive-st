@@ -9,46 +9,46 @@ import {
 import { isLiquidGlassAvailable } from "expo-glass-effect";
 import type { ViewStyle } from "react-native";
 
+import { icons } from "@/ui/ds/Icon";
 import { color } from "@/ui/tokens";
 
 import type { PlayerBarProps } from "./PlayerBar.types";
+import { SWITCHABLE_SOURCES } from "./sources";
 
 /** Glass buttons on iOS 26, bordered ones before. */
 const style = buttonStyle(isLiquidGlassAvailable() ? "glass" : "bordered");
+const white = tint(color.textPrimary);
+const round = [
+  style,
+  buttonBorderShape("circle"),
+  labelStyle("iconOnly"),
+  controlSize("large"),
+  white,
+];
+const pill = [style, buttonBorderShape("capsule"), controlSize("large"), white];
 
 /** The system's own buttons and menu, so they match the rest of iOS. */
 export function PlayerBar({
   speakerName,
+  currentSource,
+  onSelectSource,
   onChooseSpeaker,
   onOpenSettings,
-  sources,
-  onSelectSource,
 }: PlayerBarProps) {
-  const round = [
-    style,
-    buttonBorderShape("circle"),
-    labelStyle("iconOnly"),
-    controlSize("large"),
-    tint(color.textPrimary),
-  ];
   return (
     <Host matchContents={{ vertical: true }} style={$host}>
       <HStack spacing={12}>
-        <Menu
-          label="Source"
-          systemImage="rectangle.connected.to.line.below"
-          modifiers={round}
-        >
-          {sources.map((source) => (
+        <Menu label="Source" systemImage={icons.source.ios} modifiers={round}>
+          {SWITCHABLE_SOURCES.map((source) => (
             <Toggle
               key={source.id}
               label={source.title}
               systemImage={
                 typeof source.icon === "string" ? source.icon : undefined
               }
-              isOn={source.selected}
+              isOn={source.id === currentSource}
               onIsOnChange={() => {
-                onSelectSource(source.id);
+                onSelectSource(source);
               }}
             />
           ))}
@@ -56,19 +56,14 @@ export function PlayerBar({
         <Spacer />
         <Button
           label={speakerName}
-          systemImage="hifispeaker.fill"
+          systemImage={icons.speaker.ios}
           onPress={onChooseSpeaker}
-          modifiers={[
-            style,
-            buttonBorderShape("capsule"),
-            controlSize("large"),
-            tint(color.textPrimary),
-          ]}
+          modifiers={pill}
         />
         <Spacer />
         <Button
           label="Speaker settings"
-          systemImage="gearshape"
+          systemImage={icons.settings.ios}
           onPress={onOpenSettings}
           modifiers={round}
         />

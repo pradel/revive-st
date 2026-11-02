@@ -27,7 +27,7 @@ export function canSavePreset(speaker: BoseSpeaker) {
   return !isStandby(speaker) && Boolean(speaker.track);
 }
 
-export function playStatusLabel(speaker: BoseSpeaker) {
+function playStatusLabel(speaker: BoseSpeaker) {
   switch (speaker.playStatus) {
     case undefined:
     case "":
@@ -44,6 +44,20 @@ export function playStatusLabel(speaker: BoseSpeaker) {
     default:
       return speaker.playStatus;
   }
+}
+
+/**
+ * The speaker's state in a word, as every list shows it: whether it's
+ * reached ("Connecting…", "Offline"), then in standby, then its play status.
+ */
+export function speakerStateLabel(speaker: BoseSpeaker) {
+  if (speaker.status === "connecting") {
+    return "Connecting…";
+  }
+  if (speaker.status === "offline") {
+    return "Offline";
+  }
+  return isStandby(speaker) ? "Standby" : playStatusLabel(speaker);
 }
 
 export function sourceLabel(source: string) {

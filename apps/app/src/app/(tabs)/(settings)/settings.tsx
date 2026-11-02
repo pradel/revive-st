@@ -11,6 +11,8 @@ import {
 } from "@/features/onboarding/session/testing/scenarios";
 import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
+import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-actions";
+import { speakerStateLabel } from "@/features/speakers/lib/playback";
 import {
   speakerRegistry,
   useSpeakers,
@@ -25,12 +27,6 @@ import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
 import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
 
-const statusLabel: Record<BoseSpeaker["status"], string> = {
-  online: "Online",
-  connecting: "Connecting…",
-  offline: "Offline",
-};
-
 /** An offline speaker's settings can't be read: try it again or forget it. */
 const askAboutOffline = (speaker: BoseSpeaker) => {
   Alert.alert(
@@ -38,19 +34,13 @@ const askAboutOffline = (speaker: BoseSpeaker) => {
     "Make sure it's on and on the same Wi-Fi network as your phone. Forgetting it removes it from the list until a scan finds it again.",
     [
       { text: "Cancel", style: "cancel" },
-      {
-        text: "Forget",
-        style: "destructive",
+      ...OFFLINE_SPEAKER_ACTIONS.map((action) => ({
+        text: action.title,
+        style: action.destructive ? ("destructive" as const) : undefined,
         onPress: () => {
-          speakerRegistry.forget(speaker.deviceID);
+          action.run(speaker.deviceID);
         },
-      },
-      {
-        text: "Try again",
-        onPress: () => {
-          speakerRegistry.retry(speaker.deviceID);
-        },
-      },
+      })),
     ],
   );
 };
@@ -72,7 +62,7 @@ export default function AppSettings() {
                 key={speaker.deviceID}
                 icon={formIcons.speaker}
                 label={speaker.name}
-                description={`${speaker.type} · ${statusLabel[speaker.status]}`}
+                description={`${speaker.type} · ${speakerStateLabel(speaker)}`}
                 disabled={speaker.status === "connecting"}
                 onPress={() => {
                   if (speaker.status === "offline") {

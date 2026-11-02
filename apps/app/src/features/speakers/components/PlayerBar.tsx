@@ -7,6 +7,7 @@ import { Text } from "@/ui/ds/Text";
 import { color, radius, space } from "@/ui/tokens";
 
 import type { PlayerBarProps } from "./PlayerBar.types";
+import { SWITCHABLE_SOURCES } from "./sources";
 
 const CONTROL = 48;
 
@@ -16,22 +17,27 @@ const CONTROL = 48;
  */
 export function PlayerBar({
   speakerName,
+  currentSource,
+  onSelectSource,
   onChooseSpeaker,
   onOpenSettings,
-  sources,
-  onSelectSource,
 }: PlayerBarProps) {
   return (
     <View style={$bar}>
       <MenuView
-        actions={sources.map((source) => ({
+        actions={SWITCHABLE_SOURCES.map((source) => ({
           id: source.id,
           title: source.title,
           image: source.icon,
-          state: source.selected ? "on" : "off",
+          state: source.id === currentSource ? "on" : "off",
         }))}
         onPressAction={({ nativeEvent }) => {
-          onSelectSource(nativeEvent.event);
+          const source = SWITCHABLE_SOURCES.find(
+            (item) => item.id === nativeEvent.event,
+          );
+          if (source) {
+            onSelectSource(source);
+          }
         }}
       >
         <View

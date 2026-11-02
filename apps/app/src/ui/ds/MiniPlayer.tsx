@@ -1,5 +1,4 @@
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
-import { Image } from "expo-image";
 import { Link, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -14,6 +13,7 @@ import {
 import { artwork, color, radius, space } from "@/ui/tokens";
 
 import { Artwork } from "./Artwork";
+import { ArtworkBackdrop } from "./ArtworkBackdrop";
 import { icons } from "./Icon";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
@@ -88,14 +88,9 @@ export function MiniPlayer({
   return (
     <View style={docked ? $dockedWrapper : $wrapper}>
       <View style={docked ? undefined : glass ? $glassBar : $bar}>
+        {/* Android has no glass: the scrim keeps the text readable instead. */}
         {(glass || docked) && shown?.artworkUri ? (
-          <Image
-            source={{ uri: shown.artworkUri }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            blurRadius={40}
-            transition={300}
-          />
+          <ArtworkBackdrop uri={shown.artworkUri} scrim={!glass} />
         ) : null}
         {glass ? (
           <GlassView
@@ -103,9 +98,6 @@ export function MiniPlayer({
             glassEffectStyle="regular"
             colorScheme="dark"
           />
-        ) : docked && shown?.artworkUri ? (
-          // Android has no glass: a scrim keeps the text readable instead.
-          <View style={$scrim} />
         ) : null}
         <View style={[$row, glass && $rowGlass]}>
           {paged ? (
@@ -382,15 +374,6 @@ const $bar: ViewStyle = {
 const $glassBar: ViewStyle = {
   borderRadius: radius.lg,
   overflow: "hidden",
-};
-
-const $scrim: ViewStyle = {
-  position: "absolute",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  backgroundColor: color.scrim,
 };
 
 /** As wide as the play button it stands in for. */

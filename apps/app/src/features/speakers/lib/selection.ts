@@ -76,3 +76,10 @@ export function useSelectedSpeaker(): BoseSpeaker | undefined {
   const { deviceID } = useSyncExternalStore(subscribe, getSelection);
   return resolveSelectedSpeaker(listed, deviceID);
 }
+
+/** Whether another reached speaker could be selected instead. */
+export function useCanSwitchSpeaker(): boolean {
+  const { online } = useSpeakers();
+  const selected = useSelectedSpeaker();
+  return online.some((speaker) => speaker.deviceID !== selected?.deviceID);
+}

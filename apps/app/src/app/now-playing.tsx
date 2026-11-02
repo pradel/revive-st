@@ -1,10 +1,10 @@
 import type { KeyValue } from "bose-api-speaker-client";
-import { Image } from "expo-image";
 import { Link, useRouter } from "expo-router";
-import { StyleSheet, View, type TextStyle, type ViewStyle } from "react-native";
+import { View, type TextStyle, type ViewStyle } from "react-native";
 
 import { PlayerBar } from "@/features/speakers/components/PlayerBar";
 import { PresetStrip } from "@/features/speakers/components/PresetStrip";
+import { useSwitchSource } from "@/features/speakers/components/sources";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   hasLoadedMedia,
@@ -13,11 +13,14 @@ import {
   trackDetail,
   trackTitle,
 } from "@/features/speakers/lib/playback";
-import { useSelectedSpeaker } from "@/features/speakers/lib/selection";
-import { useSpeakers } from "@/features/speakers/registry/store";
+import {
+  useCanSwitchSpeaker,
+  useSelectedSpeaker,
+} from "@/features/speakers/lib/selection";
 import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
+import { ArtworkBackdrop } from "@/ui/ds/ArtworkBackdrop";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -26,7 +29,6 @@ import { IconButton } from "@/ui/ds/IconButton";
 import { Screen } from "@/ui/ds/Screen";
 import { Slider } from "@/ui/ds/Slider";
 import { Text } from "@/ui/ds/Text";
-import { nativeIcons } from "@/ui/nativeIcons";
 import { color, radius, space } from "@/ui/tokens";
 
 /**
@@ -35,18 +37,12 @@ import { color, radius, space } from "@/ui/tokens";
  */
 export default function NowPlayingModal() {
   const router = useRouter();
-  const {
-    volumeMutation,
-    playPauseMutation,
-    keyMutation,
-    selectSourceMutation,
-  } = useSpeakerCommands();
+  const { volumeMutation, playPauseMutation, keyMutation } =
+    useSpeakerCommands();
+  const switchSource = useSwitchSource();
 
   const selected = useSelectedSpeaker();
-  const { online } = useSpeakers();
-  const canSwitch = online.some(
-    (speaker) => speaker.deviceID !== selected?.deviceID,
-  );
+  const canSwitch = useCanSwitchSpeaker();
   const speaker = selected?.status === "online" ? selected : undefined;
   const volumeDraft = useSliderDraft(speaker?.volume ?? 0, (volume) => {
     if (speaker) {
@@ -107,16 +103,7 @@ export default function NowPlayingModal() {
       presentation="sheet"
       backdrop={
         speaker.artUrl ? (
-          <>
-            <Image
-              source={{ uri: speaker.artUrl }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              blurRadius={60}
-              transition={300}
-            />
-            <View style={$scrim} />
-          </>
+          <ArtworkBackdrop uri={speaker.artUrl} blurRadius={60} />
         ) : null
       }
     >
@@ -208,7 +195,6 @@ export default function NowPlayingModal() {
 
         <PresetStrip
           presets={speaker.presets ?? []}
-          width={undefined}
           onPlay={(slot) => {
             sendKey(`PRESET_${slot}` as KeyValue);
           }}
@@ -222,42 +208,15 @@ export default function NowPlayingModal() {
               `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
             );
           }}
-          sources={[
-            {
-              id: "BLUETOOTH",
-              title: "Bluetooth",
-              icon: nativeIcons.bluetooth,
-              selected: speaker.source === "BLUETOOTH",
-            },
-            {
-              id: "AUX",
-              title: "AUX",
-              icon: nativeIcons.aux,
-              selected: speaker.source === "AUX",
-            },
-          ]}
+          currentSource={speaker.source}
           onSelectSource={(source) => {
-            haptics.tap();
-            selectSourceMutation.mutate({
-              deviceID: speaker.deviceID,
-              source,
-              sourceAccount: source === "AUX" ? "AUX" : undefined,
-            });
+            switchSource(speaker, source);
           }}
         />
       </View>
     </Screen>
   );
 }
-
-const $scrim: ViewStyle = {
-  position: "absolute",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  backgroundColor: color.scrim,
-};
 
 const $content: ViewStyle = {
   flex: 1,

@@ -6,6 +6,7 @@ import {
   FlatList,
   RefreshControl,
   View,
+  type ScrollViewProps,
   type ViewStyle,
 } from "react-native";
 
@@ -480,7 +481,7 @@ export default function RadioBrowser() {
           onEndReachedThreshold={0.5}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
-          renderScrollComponent={(props) => <ScreenScrollView {...props} />}
+          renderScrollComponent={renderScroll}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           refreshControl={
@@ -501,7 +502,7 @@ export default function RadioBrowser() {
           ListHeaderComponent={controls}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
-          renderScrollComponent={(props) => <ScreenScrollView {...props} />}
+          renderScrollComponent={renderScroll}
           ListEmptyComponent={
             <EmptyState
               icon={icons.starFilled}
@@ -523,6 +524,11 @@ export default function RadioBrowser() {
     </Screen>
   );
 }
+
+/** The lists' scroll view, clear of the floating mini player (iOS). */
+const renderScroll = (props: ScrollViewProps) => (
+  <ScreenScrollView {...props} />
+);
 
 const $controls: ViewStyle = {
   paddingHorizontal: space.screen,

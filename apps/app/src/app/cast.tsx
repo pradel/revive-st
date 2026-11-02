@@ -12,7 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { countStationClick } from "@/features/radio/lib/radio-browser";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
-import { playStatusLabel } from "@/features/speakers/lib/playback";
+import { isStandby, speakerStateLabel } from "@/features/speakers/lib/playback";
 import {
   StationNotStartedError,
   stationFit,
@@ -436,9 +436,6 @@ function SpeakerCastItem({
   onCast: (play: StationPlay) => void;
 }) {
   const { radio } = speaker;
-  const isPowerOff =
-    speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
-
   const isLoading = radio.kind === "checking";
   const isError = radio.kind === "unreachable";
   const fit = stationFit(radio, station);
@@ -468,10 +465,10 @@ function SpeakerCastItem({
     if (fit.kind === "noSource") {
       return unplayableText(station, fit.server, fit.setupAdds);
     }
-    if (isPowerOff) {
-      return "Standby";
+    if (isStandby(speaker)) {
+      return speakerStateLabel(speaker);
     }
-    return `${playStatusLabel(speaker)} · Vol ${speaker.volume}%`;
+    return `${speakerStateLabel(speaker)} · Vol ${speaker.volume}%`;
   };
 
   const renderTrailing = () => {

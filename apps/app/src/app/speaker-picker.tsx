@@ -5,7 +5,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   hasLoadedMedia,
   isStandby,
-  playStatusLabel,
+  speakerStateLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
 import {
@@ -24,10 +24,10 @@ import { space } from "@/ui/tokens";
 /** What the speaker plays, in a few words, under its name. */
 const speakerSummary = (speaker: BoseSpeaker) => {
   if (isStandby(speaker)) {
-    return "Standby";
+    return speakerStateLabel(speaker);
   }
   return hasLoadedMedia(speaker)
-    ? `${trackTitle(speaker)} · ${playStatusLabel(speaker)}`
+    ? `${trackTitle(speaker)} · ${speakerStateLabel(speaker)}`
     : "Nothing playing";
 };
 
