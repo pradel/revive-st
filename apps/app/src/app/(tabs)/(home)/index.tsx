@@ -99,9 +99,9 @@ export default function Index() {
   const [showOffline, setShowOffline] = useState(false);
 
   // The presets shelf, the mini player and Now Playing act on it; it's
-  // outlined once there's more than one speaker to tell apart.
+  // highlighted once there's more than one speaker to tell apart.
   const selected = useSelectedSpeaker();
-  const outlineSelected = listedSpeakers.length > 1;
+  const highlightSelected = listedSpeakers.length > 1;
   const canSwitch = speakers.some(
     (speaker) => speaker.deviceID !== selected?.deviceID,
   );
@@ -298,7 +298,7 @@ export default function Index() {
 
   const renderSpeaker = (speaker: BoseSpeaker) => {
     const isSelected =
-      outlineSelected && speaker.deviceID === selected?.deviceID;
+      highlightSelected && speaker.deviceID === selected?.deviceID;
     if (speaker.status === "online" && isStandby(speaker)) {
       return (
         <SpeakerRow
@@ -584,7 +584,7 @@ export default function Index() {
                         }}
                         menu={unreachableMenu(speaker)}
                         selected={
-                          outlineSelected &&
+                          highlightSelected &&
                           speaker.deviceID === selected?.deviceID
                         }
                       />

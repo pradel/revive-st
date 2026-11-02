@@ -10,6 +10,7 @@ import {
 } from "./ContextMenu";
 import { icons } from "./Icon";
 import { IconButton } from "./IconButton";
+import { SelectionBackdrop } from "./SelectionBackdrop";
 import { Text } from "./Text";
 
 export interface SpeakerRowProps {
@@ -24,7 +25,7 @@ export interface SpeakerRowProps {
   onPowerOn?: () => void;
   /** Long-press menu on the speaker's name. */
   menu?: ContextMenuConfig;
-  /** The speaker the app controls: outlined with the accent. */
+  /** The speaker the app controls: filled with the accent tint. */
   selected?: boolean;
 }
 
@@ -45,6 +46,7 @@ export function SpeakerRow({
   const renderMain = (triggerProps?: ContextMenuTriggerProps) => (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ selected }}
       accessibilityLabel={`${name}, ${detail}`}
       accessibilityHint={accessibilityHint}
       onPress={onPress}
@@ -71,7 +73,8 @@ export function SpeakerRow({
   );
 
   return (
-    <View style={[$row, selected && $selected]}>
+    <View style={$row}>
+      {selected ? <SelectionBackdrop /> : null}
       {menu ? (
         <ContextMenu {...menu} fill>
           {renderMain}
@@ -97,14 +100,9 @@ const $row: ViewStyle = {
   marginHorizontal: space.screen,
   padding: space.xs,
   borderRadius: radius.md,
-  // Kept when not selected, so selecting doesn't shift the row.
-  borderWidth: 1,
-  borderColor: "transparent",
+  // Clips the selected speaker's backdrop to the row's corners.
+  overflow: "hidden",
   backgroundColor: color.surface1,
-};
-
-const $selected: ViewStyle = {
-  borderColor: color.accent,
 };
 
 const $main: ViewStyle = {

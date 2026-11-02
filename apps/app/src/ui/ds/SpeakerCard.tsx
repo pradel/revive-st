@@ -13,6 +13,7 @@ import {
 } from "./ContextMenu";
 import { Icon, icons } from "./Icon";
 import { IconButton } from "./IconButton";
+import { SelectionBackdrop } from "./SelectionBackdrop";
 import { Slider } from "./Slider";
 import { Text } from "./Text";
 
@@ -36,7 +37,7 @@ export interface SpeakerCardProps {
   playerHref: Href;
   /** Runs as the player opens, before it shows. */
   onOpen?: () => void;
-  /** The speaker the app controls: outlined with the accent. */
+  /** The speaker the app controls: filled with its artwork or the accent. */
   selected?: boolean;
   onOpenSettings: () => void;
   /** Long-press menu on the speaker's artwork and name. */
@@ -157,6 +158,7 @@ export function SpeakerCard({
       <Link href={playerHref} onPress={onOpen} asChild>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ selected }}
           accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
           accessibilityHint="Opens the player"
           {...triggerProps}
@@ -170,7 +172,12 @@ export function SpeakerCard({
   };
 
   return (
-    <View style={[$card, selected && $selected]}>
+    <View style={$card}>
+      {selected ? (
+        <SelectionBackdrop
+          artworkUri={reachable && nowPlaying ? artworkUri : null}
+        />
+      ) : null}
       <View style={$top}>
         {menu ? (
           <ContextMenu {...menu} fill>
@@ -228,14 +235,9 @@ const $card: ViewStyle = {
   padding: space.sm,
   gap: space.xs,
   borderRadius: radius.md,
-  // Kept when not selected, so selecting doesn't shift the card.
-  borderWidth: 1,
-  borderColor: "transparent",
+  // Clips the selected speaker's backdrop to the card's corners.
+  overflow: "hidden",
   backgroundColor: color.surface1,
-};
-
-const $selected: ViewStyle = {
-  borderColor: color.accent,
 };
 
 const $top: ViewStyle = {
