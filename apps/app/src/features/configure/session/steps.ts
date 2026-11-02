@@ -264,9 +264,9 @@ export async function prepare(
   );
   if (account.isErr()) {
     return Result.err(
-      new ServerUnreachable({
-        need: "account",
-        message: account.error.message,
+      new UnexpectedError({
+        step: "prepare",
+        message: `Couldn't read or save the household account: ${account.error.message}`,
       }),
     );
   }
@@ -276,8 +276,7 @@ export async function prepare(
     return Result.err(
       new UnexpectedError({
         step: "prepare",
-        message:
-          "The server returned an account id that can't be sent to a speaker",
+        message: "The household account id can't be sent to a speaker",
       }),
     );
   }

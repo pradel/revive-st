@@ -16,7 +16,7 @@ export const SERVER_ORIGIN = "https://api.revivest.app";
 export const TARGET_ID = "AABBCCDDEEFF";
 export const TARGET_HOST = "192.168.1.20";
 export const NEW_HOST = "192.168.1.42";
-export const MINTED_ACCOUNT = "4f0c6d1e-7c1a-4b8e-9f3a-2d5b6c7e8f90";
+export const NEW_ACCOUNT = "4f0c6d1e-7c1a-4b8e-9f3a-2d5b6c7e8f90";
 export const HOUSEHOLD_ACCOUNT = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
 
 export const PRESETS: Preset[] = [
@@ -54,7 +54,7 @@ function worldConfig(
   const { speaker: speakerOverrides, ...rest } = overrides;
   return {
     server: { origin: SERVER_ORIGIN },
-    mintedAccountId: MINTED_ACCOUNT,
+    newAccountId: NEW_ACCOUNT,
     ...rest,
     speaker: speakerConfig(speakerOverrides),
   };

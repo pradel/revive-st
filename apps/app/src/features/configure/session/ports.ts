@@ -78,7 +78,10 @@ export interface ServerPort {
   origin: () => string;
   /** Whether it's a Revive ST server this app works with (`GET /`). */
   check: (signal: AbortSignal) => Promise<Result<ServerCheck, PortFailure>>;
-  /** The household account `speaker` gets paired with (see `resolveHouseholdAccountId`). */
+  /**
+   * The household account `speaker` gets paired with on this server, made on
+   * the phone when the household has none (see `resolveHouseholdAccountId`).
+   */
   householdAccount: (
     speaker: SpeakerAccount,
     otherSpeakers: readonly SpeakerAccount[],

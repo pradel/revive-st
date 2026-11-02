@@ -31,7 +31,8 @@ export class InternalApi extends HttpApiGroup.make("internal")
       OpenApi.annotations({
         summary: "Create a household account",
         description:
-          "A new, unguessable household account id. Minted here because the app has no cryptographic random source without a native module.",
+          "A new, unguessable household account id. Deprecated: apps since 0.0.4 make the id themselves (a random UUID); kept for the 0.0.3 app and earlier, until the `X-Revive-App-Version` header shows none still calls it.",
+        deprecated: true,
       }),
     ),
     HttpApiEndpoint.post(

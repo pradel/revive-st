@@ -26,7 +26,7 @@ export class UnsupportedServer extends TaggedError("UnsupportedServer")<{
 
 export class ServerUnreachable extends TaggedError("ServerUnreachable")<{
   /** What the run needed from the server. */
-  need: "status" | "account" | "presets" | "contact";
+  need: "status" | "presets" | "contact";
   message: string;
 }> {}
 
@@ -138,21 +138,18 @@ const fieldList = (fields: readonly (keyof ServerUrls)[]) =>
 const UNCHANGED = "Nothing was changed on the speaker.";
 const NOT_RESTARTED = "The speaker wasn't restarted, so it works as before.";
 
-const serverDidNotAnswer = (_speakerName: string, serverHost: string) => ({
-  title: "Can't reach Revive ST",
-  message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${UNCHANGED}`,
-});
-
 const SERVER_UNREACHABLE_COPY: Record<
   ServerUnreachable["need"],
   (speakerName: string, serverHost: string) => ErrorCopy
 > = {
-  status: serverDidNotAnswer,
+  status: (_speakerName, serverHost) => ({
+    title: "Can't reach Revive ST",
+    message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${UNCHANGED}`,
+  }),
   presets: (speakerName, serverHost) => ({
     title: "Couldn't save your presets",
     message: `The Revive ST server (${serverHost}) didn't accept ${speakerName}'s presets, so setup stopped before they could be lost. Check this phone's internet connection. ${UNCHANGED}`,
   }),
-  account: serverDidNotAnswer,
   contact: (speakerName, serverHost) => ({
     title: "Can't reach Revive ST",
     message: `The Revive ST server (${serverHost}) stopped answering before ${speakerName} was restarted. Check this phone's internet connection and try again.`,

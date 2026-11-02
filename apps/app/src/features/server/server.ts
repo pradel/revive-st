@@ -5,7 +5,11 @@ import { Platform } from "react-native";
 import { appVersion } from "@/lib/app-version";
 import { logger } from "@/lib/logger";
 
-import { DEFAULT_SERVER_URL, isSafeServerUrl } from "./server-url";
+import {
+  DEFAULT_SERVER_URL,
+  isSafeServerUrl,
+  parseServerUrl,
+} from "./server-url";
 import {
   checkServerStatus,
   MIN_SERVER_VERSION,
@@ -138,4 +142,21 @@ export async function checkServer(url: string): Promise<string | undefined> {
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * Switches to the Revive ST server at `input`, as the user typed it, once it
+ * answers as one this app works with. Throws the problem to show: a malformed
+ * address or a server that doesn't answer like ours.
+ */
+export async function switchServer(input: string): Promise<void> {
+  const parsed = parseServerUrl(input.trim());
+  if (!parsed.isOk()) {
+    throw new Error(parsed.error);
+  }
+  const problem = await checkServer(parsed.value);
+  if (problem !== undefined) {
+    throw new Error(problem);
+  }
+  await saveServerUrl(parsed.value);
 }

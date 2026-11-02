@@ -80,8 +80,8 @@ export interface FakeWorldConfig {
   server: FakeServerConfig;
   /** The household's other speakers. */
   otherSpeakers?: SpeakerAccount[];
-  /** Account the server mints for a new household. */
-  mintedAccountId?: string;
+  /** Account the app makes for a new household. */
+  newAccountId?: string;
 }
 
 /** What happened, in order, with the world's time. */
@@ -94,7 +94,7 @@ export interface WorldEvent {
     | "down"
     | "up"
     | "contact"
-    | "accountMinted";
+    | "accountCreated";
   detail?: string;
 }
 
@@ -442,11 +442,10 @@ class FakeServerPort implements ServerPort {
     if (speaker.margeAccountUUID) {
       return Result.ok(speaker.margeAccountUUID);
     }
-    const minted =
-      this.#world.config.mintedAccountId ??
-      "4f0c6d1e-7c1a-4b8e-9f3a-2d5b6c7e8f90";
-    this.#world.record("accountMinted", minted);
-    return Result.ok(minted);
+    const created =
+      this.#world.config.newAccountId ?? "4f0c6d1e-7c1a-4b8e-9f3a-2d5b6c7e8f90";
+    this.#world.record("accountCreated", created);
+    return Result.ok(created);
   }
 
   async savePresets(

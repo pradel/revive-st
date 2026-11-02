@@ -1,8 +1,9 @@
 /**
- * Whether `accountId` is one our server minted: a random UUID. Only those are
- * shared between a household's speakers; a shared or guessable id a speaker
- * was paired with elsewhere (`revivest-user`, a Bose cloud account number)
- * never spreads to another speaker.
+ * Whether `accountId` is a household account id: a random (version 4) UUID,
+ * as the app makes them. Only those are shared between a household's
+ * speakers; a shared or guessable id a speaker was paired with elsewhere
+ * (`revivest-user`, a Bose cloud account number) never spreads to another
+ * speaker.
  */
 export const isHouseholdAccountId = (
   accountId: string | null | undefined,

@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose max-w-none">
           <h1 className="mb-2">🔒 Privacy Policy</h1>
-          <p className="text-fg-tertiary mb-8">Effective as of: 2026-11-01</p>
+          <p className="text-fg-tertiary mb-8">Effective as of: 2026-11-02</p>
 
           <p>
             This policy explains what data Revive ST handles and why. It covers
@@ -74,19 +74,31 @@ export default function PrivacyPage() {
           <p>
             Since Bose shut down its cloud, your speakers need a server to fetch
             their account, presets and radio stations from when they start up.
-            When you set a speaker up for internet radio, the App configures it
-            to use ours by default. The Server stores:
+            When you set a speaker up for internet radio, the App asks which
+            server it should use: ours, one you run, or the one it already uses.
+            If you pick ours, the Server stores:
           </p>
           <ul>
             <li>
               <strong>A household account id:</strong> a random identifier the
-              Server generates the first time you configure a speaker. It
-              isn&apos;t linked to your name, email address or phone.
+              App generates on your phone the first time you set up a speaker
+              for the Server. It isn&apos;t linked to your name, email address
+              or phone.
             </li>
             <li>
               <strong>Your speakers&apos; device ids</strong> (each
               speaker&apos;s network hardware address) and the date each one was
               paired with your household account.
+            </li>
+            <li>
+              <strong>When each speaker last contacted the Server:</strong> the
+              time of its latest request, such as when it starts, fetches its
+              presets or stations, or sends its usage report (whose content
+              isn&apos;t kept). Only the latest time is kept, per device id and
+              not per household. The App reads it to confirm that a speaker it
+              set up reached the Server; anyone who knows a speaker&apos;s
+              device id can read it too, but it says nothing more than when that
+              speaker last made a request.
             </li>
             <li>
               <strong>Your presets:</strong> for each of the 6 preset buttons,
@@ -95,8 +107,10 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <p>
-            We use this data only to give your speakers their presets and radio
-            stations back. We keep it for as long as your speakers use the
+            Nothing else about your speakers is stored: not their name, IP
+            address or serial number. We use this data only to give your
+            speakers their presets and radio stations back, and to confirm a
+            setup worked. We keep it for as long as your speakers use the
             Server, or until you ask us to delete it.
           </p>
           <p>
@@ -112,7 +126,9 @@ export default function PrivacyPage() {
           <p>
             Like any web server, the Server records the requests it receives:
             the requesting IP address, the time and the requested address, which
-            can contain your household account id. When a request fails, it also
+            can contain your household account id. Requests from the App also
+            name its version and platform (iOS or Android), which we use to know
+            which App versions are still in use. When a request fails, it also
             records what the speaker or App sent, with the account id masked. We
             use these records only to keep the Server working and secure. Our
             hosting provider deletes them automatically after at most 30 days.

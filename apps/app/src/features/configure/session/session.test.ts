@@ -8,7 +8,7 @@ import { BOSE_URLS, type FakeConfigureWorld } from "./testing/fakes";
 import {
   createScenario,
   HOUSEHOLD_ACCOUNT,
-  MINTED_ACCOUNT,
+  NEW_ACCOUNT,
   NEW_HOST,
   PRESETS,
   type ScenarioName,
@@ -93,7 +93,7 @@ describe("configure session", () => {
     });
     expect(world.saved).toEqual(ourUrls);
     expect(world.running).toEqual(ourUrls);
-    expect(world.margeAccountUUID).toBe(MINTED_ACCOUNT);
+    expect(world.margeAccountUUID).toBe(NEW_ACCOUNT);
     expect(world.restarts).toBe(1);
     expect(world.openConsoles).toBe(0);
   });
@@ -103,7 +103,7 @@ describe("configure session", () => {
 
     await untilDone();
 
-    expect(world.storedPresets.get(`${MINTED_ACCOUNT}/${TARGET_ID}`)).toEqual(
+    expect(world.storedPresets.get(`${NEW_ACCOUNT}/${TARGET_ID}`)).toEqual(
       PRESETS,
     );
     const saved = world.firstEvent("presetsSaved")?.at ?? Infinity;
@@ -129,7 +129,7 @@ describe("configure session", () => {
 
     expect(failed.step).toBe("prepare");
     expect(failed.actions).toEqual(["retry"]);
-    expect(world.firstEvent("accountMinted")).toBeUndefined();
+    expect(world.firstEvent("accountCreated")).toBeUndefined();
     expect(world.firstEvent("presetsSaved")).toBeUndefined();
     expect(world.firstEvent("command")).toBeUndefined();
     expect(world.saved).toEqual(BOSE_URLS);
@@ -142,7 +142,7 @@ describe("configure session", () => {
 
     expect(done.serverConfirmed).toBe(true);
     expect(world.margeAccountUUID).toBe(HOUSEHOLD_ACCOUNT);
-    expect(world.firstEvent("accountMinted")).toBeUndefined();
+    expect(world.firstEvent("accountCreated")).toBeUndefined();
     // Still answering for 8 s after the command, and already on our server:
     // only the request it made while starting again ends the wait.
     const up = world.firstEvent("up")?.at ?? Infinity;
@@ -162,7 +162,7 @@ describe("configure session", () => {
 
     await untilDone();
 
-    expect(world.margeAccountUUID).toBe(MINTED_ACCOUNT);
+    expect(world.margeAccountUUID).toBe(NEW_ACCOUNT);
   });
 
   it("does not restart the speaker when it refuses a command", async () => {
