@@ -122,6 +122,19 @@ describe("configure session", () => {
     expect(world.saved).toEqual(BOSE_URLS);
   });
 
+  it("stops before touching the speaker or the account when the server is older than the app supports", async () => {
+    const { world, untilFailed } = start("serverTooOld");
+
+    const failed = await untilFailed("UnsupportedServer");
+
+    expect(failed.step).toBe("prepare");
+    expect(failed.actions).toEqual(["retry"]);
+    expect(world.firstEvent("accountMinted")).toBeUndefined();
+    expect(world.firstEvent("presetsSaved")).toBeUndefined();
+    expect(world.firstEvent("command")).toBeUndefined();
+    expect(world.saved).toEqual(BOSE_URLS);
+  });
+
   it("keeps a paired speaker's account and only finishes once it has really restarted", async () => {
     const { world, untilDone } = start("reconfigure");
 

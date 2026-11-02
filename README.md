@@ -61,7 +61,7 @@ We welcome contributions of all kinds, whether you want to fix a bug, add a new 
 2. **Create a branch** for your feature or bug fix (`git checkout -b feature/my-new-feature`).
 3. **Write your code** and ensure it passes all tests (`vp check`, `vp test`).
 4. **Commit your changes** using [Conventional Commits](https://www.conventionalcommits.org/).
-5. **Add a changeset** for user-visible changes to the app or the server (`pnpm changeset`): one sentence written for users. The app and the server always share a version; the website and internal packages aren't versioned.
+5. **Add a changeset** for user-visible changes to the app or the server (`pnpm changeset`): one sentence written for users, under the package it changes. The app and the server are versioned and released separately; the website and internal packages aren't versioned. Their only contract is the SoundTouch protocol the speakers use, fixed by their firmware, and the app's endpoints under `/api/internal` (accounts, presets, a speaker's last contact). When the app starts relying on something a server release added, raise `MIN_SERVER_VERSION` in `apps/app/src/features/server/server-version.ts` to that release: the app checks the version the server reports at `GET /` before it saves a server address or sets up a speaker.
 6. **Open a Pull Request** against the `main` branch.
 
 For large features or architecture changes, please open an issue first to discuss what you would like to change.

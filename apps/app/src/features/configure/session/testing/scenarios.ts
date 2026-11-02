@@ -117,6 +117,11 @@ export const scenarios = {
         server: { origin: SERVER_ORIGIN, noContactEndpoint: true },
       }),
   },
+  serverTooOld: {
+    description: "Self-hosted server older than this app supports",
+    config: () =>
+      worldConfig({ server: { origin: SERVER_ORIGIN, version: "0.0.1" } }),
+  },
   speakerOffline: {
     description: "Speaker never contacts the server after the restart",
     config: () => worldConfig({ speaker: { contactsServer: false } }),

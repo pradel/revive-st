@@ -6,6 +6,12 @@ import { appVersion } from "@/lib/app-version";
 import { logger } from "@/lib/logger";
 
 import { DEFAULT_SERVER_URL, isSafeServerUrl } from "./server-url";
+import {
+  checkServerStatus,
+  MIN_SERVER_VERSION,
+  oldRelease,
+  type ServerCheck,
+} from "./server-version";
 
 const SERVER_URL_KEY = "server_url";
 const CHECK_TIMEOUT_MS = 8000;
@@ -79,9 +85,27 @@ export async function serverFetch(url: string, init?: RequestInit) {
 }
 
 /**
- * Checks that a Revive ST server answers at `url`: its speaker registry,
- * which the speakers fetch first, lists the BMX services. Returns the
- * problem, if any.
+ * What the server at `url` says about itself at `GET /`: whether it's a
+ * Revive ST server, and one this app works with. Throws when it can't be
+ * reached, and once `signal` aborts.
+ */
+export async function fetchServerCheck(
+  url: string,
+  signal?: AbortSignal,
+): Promise<ServerCheck> {
+  const response = await serverFetch(`${url}/`, { signal });
+  if (!response.ok) {
+    return { kind: "notRevive" };
+  }
+  return checkServerStatus(await response.json().catch(() => null));
+}
+
+const NOT_REVIVE = "That server doesn't look like a Revive ST server.";
+
+/**
+ * Checks that a Revive ST server this app works with answers at `url`, and
+ * that its speaker registry, which the speakers fetch first, lists the BMX
+ * services. Returns the problem, if any.
  */
 export async function checkServer(url: string): Promise<string | undefined> {
   const controller = new AbortController();
@@ -89,6 +113,13 @@ export async function checkServer(url: string): Promise<string | undefined> {
     controller.abort();
   }, CHECK_TIMEOUT_MS);
   try {
+    const check = await fetchServerCheck(url, controller.signal);
+    if (check.kind === "notRevive") {
+      return NOT_REVIVE;
+    }
+    if (check.kind === "tooOld") {
+      return `That server runs ${oldRelease(check.version)}, and this app needs ${MIN_SERVER_VERSION} or newer. Update the server, then try again.`;
+    }
     const response = await serverFetch(`${url}/v2/registry.json`, {
       signal: controller.signal,
     });
@@ -98,9 +129,7 @@ export async function checkServer(url: string): Promise<string | undefined> {
     const body = (await response.json().catch(() => null)) as {
       bmx_services?: unknown;
     } | null;
-    return Array.isArray(body?.bmx_services)
-      ? undefined
-      : "That server doesn't look like a Revive ST server.";
+    return Array.isArray(body?.bmx_services) ? undefined : NOT_REVIVE;
   } catch (error) {
     logger.warn("[server] Could not reach", url, error);
     return controller.signal.aborted

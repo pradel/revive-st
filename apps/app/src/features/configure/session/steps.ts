@@ -35,6 +35,7 @@ import {
   SettingsNotSaved,
   SpeakerOffline,
   UnexpectedError,
+  UnsupportedServer,
 } from "./errors";
 import {
   type ConfigureDeps,
@@ -49,6 +50,8 @@ import type { ConfigureTarget, StepId, WorkingDetail } from "./types";
 export const REQUEST_TIMEOUT_MS = 3000;
 /** How long the speaker gets to answer before setup starts. */
 export const INFO_BUDGET_MS = 9000;
+/** How long the server gets to say which release it runs. */
+export const SERVER_CHECK_TIMEOUT_MS = 8000;
 export const INFO_INTERVAL_MS = 3000;
 /** Console connection attempts; each one times out on its own (bose-api-speaker-client). */
 export const CONSOLE_OPEN_ATTEMPTS = 3;
@@ -194,7 +197,7 @@ async function runCommand(
 }
 
 /**
- * Checks the speaker and the server, picks the account and stores the
+ * Checks the server and the speaker, picks the account and stores the
  * speaker's presets on the server: the speaker replaces its presets with the
  * stored ones when it starts paired, so they must be there first.
  */
@@ -203,7 +206,11 @@ export async function prepare(
   signal: AbortSignal,
   ctx: RunContext,
 ): StepResult<
-  SpeakerOffline | InvalidServer | ServerUnreachable | UnexpectedError
+  | SpeakerOffline
+  | InvalidServer
+  | UnsupportedServer
+  | ServerUnreachable
+  | UnexpectedError
 > {
   const { deps } = env;
   env.working("prepare", { kind: "checkingSpeaker" });
@@ -213,6 +220,25 @@ export async function prepare(
   }
   ctx.origin = origin;
   ctx.urls = serverUrlsFor(origin);
+
+  const check = await withTimeout(
+    deps.clock,
+    SERVER_CHECK_TIMEOUT_MS,
+    signal,
+    async (call) => deps.server.check(call),
+    () =>
+      new PortFailure({
+        message: `No answer within ${SERVER_CHECK_TIMEOUT_MS} ms`,
+      }),
+  );
+  if (check.isErr()) {
+    return Result.err(
+      new ServerUnreachable({ need: "status", message: check.error.message }),
+    );
+  }
+  if (check.value.kind !== "supported") {
+    return Result.err(new UnsupportedServer({ check: check.value }));
+  }
 
   const info = await speakerInfo(deps, signal, ctx.host, INFO_BUDGET_MS);
   if (info.isErr()) {

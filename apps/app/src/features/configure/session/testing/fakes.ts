@@ -7,6 +7,12 @@ import {
   MemoryLog,
   type SchedulingClock,
 } from "../../../onboarding/session/testing/fakes";
+import {
+  checkServerStatus,
+  MIN_SERVER_VERSION,
+  REVIVE_SERVER_NAME,
+  type ServerCheck,
+} from "../../../server/server-version";
 import type { SpeakerAccount } from "../../../speakers/lib/account-id";
 import { SERVER_URL_FIELDS, type ServerUrls } from "../console";
 import {
@@ -61,6 +67,8 @@ export interface FakeSpeakerConfig {
 
 export interface FakeServerConfig {
   origin: string;
+  /** The release it reports at `GET /`. Default `MIN_SERVER_VERSION`. */
+  version?: string;
   /** The server predates the contact endpoint. */
   noContactEndpoint?: boolean;
   /** Refuses to store presets. */
@@ -415,6 +423,16 @@ class FakeServerPort implements ServerPort {
 
   origin(): string {
     return this.#world.config.server.origin;
+  }
+
+  async check(signal: AbortSignal): Promise<Result<ServerCheck, PortFailure>> {
+    await delay(this.#world, 100, signal);
+    return Result.ok(
+      checkServerStatus({
+        name: REVIVE_SERVER_NAME,
+        version: this.#world.config.server.version ?? MIN_SERVER_VERSION,
+      }),
+    );
   }
 
   async householdAccount(
