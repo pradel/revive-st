@@ -67,12 +67,13 @@ export function MiniPlayer({
   const docked = variant === "docked";
   const ownsBackground = floating || docked;
   const shown = pages[index];
+  const paged = pages.length > 1;
 
   const renderPage = (page: MiniPlayerPage, pageIndex: number) => (
     <PageView
       page={page}
       position={
-        pages.length > 1
+        paged
           ? { index: pageIndex, count: pages.length, onIndexChange }
           : undefined
       }
@@ -87,26 +88,57 @@ export function MiniPlayer({
     <View
       style={floating ? $wrapper : docked ? $dockedWrapper : $accessoryWrapper}
     >
-      <View style={[$row, floating && $bar, docked && $dockedRow]}>
-        {pages.length > 1 ? (
-          <Pager
-            pages={pages}
-            index={index}
-            onIndexChange={onIndexChange}
-            showDots={variant !== "inline"}
-            renderPage={renderPage}
-          />
-        ) : shown ? (
-          <View style={$single}>{renderPage(shown, 0)}</View>
-        ) : null}
-        {onPlayPause && shown ? (
-          <IconButton
-            icon={shown.isPlaying ? icons.pause : icons.play}
-            accessibilityLabel={shown.isPlaying ? "Pause" : "Play"}
-            onPress={onPlayPause}
-            tint="textPrimary"
-            iconSize={ownsBackground ? 22 : 18}
-          />
+      <View style={floating ? $bar : undefined}>
+        <View style={[$row, ownsBackground && $rowPadded]}>
+          {paged ? (
+            <Pager
+              pages={pages}
+              index={index}
+              onIndexChange={onIndexChange}
+              renderPage={renderPage}
+            />
+          ) : shown ? (
+            <View style={$single}>{renderPage(shown, 0)}</View>
+          ) : null}
+          {onPlayPause && shown ? (
+            <IconButton
+              icon={shown.isPlaying ? icons.pause : icons.play}
+              accessibilityLabel={shown.isPlaying ? "Pause" : "Play"}
+              onPress={onPlayPause}
+              tint="textPrimary"
+              iconSize={ownsBackground ? 22 : 18}
+            />
+          ) : paged ? (
+            // Keeps the pages as wide whether the speaker shown can play
+            // or not, so they don't resize as they slide.
+            <View style={$buttonSlot} />
+          ) : null}
+        </View>
+        {paged && variant !== "inline" ? (
+          // Under the whole bar, not just the pages: they stay put, centered,
+          // whatever the page shown.
+          <View
+            style={[$dots, ownsBackground ? $dotsInBar : $dotsInAccessory]}
+            pointerEvents="none"
+          >
+            {pages.map((page, pageIndex) => (
+              <View
+                key={page.key}
+                style={[
+                  $dot,
+                  !ownsBackground && $dotSmall,
+                  {
+                    backgroundColor:
+                      pageIndex === index
+                        ? color.textPrimary
+                        : page.isPlaying
+                          ? color.accent
+                          : color.textTertiary,
+                  },
+                ]}
+              />
+            ))}
+          </View>
         ) : null}
       </View>
     </View>
@@ -122,13 +154,11 @@ function Pager({
   pages,
   index,
   onIndexChange,
-  showDots,
   renderPage,
 }: {
   pages: readonly MiniPlayerPage[];
   index: number;
   onIndexChange: (index: number) => void;
-  showDots: boolean;
   renderPage: (page: MiniPlayerPage, index: number) => ReactNode;
 }) {
   const [width, setWidth] = useState<number>();
@@ -200,26 +230,6 @@ function Pager({
           ))}
         </ScrollView>
       )}
-      {showDots ? (
-        <View style={$dots} pointerEvents="none">
-          {pages.map((page, pageIndex) => (
-            <View
-              key={page.key}
-              style={[
-                $dot,
-                {
-                  backgroundColor:
-                    pageIndex === index
-                      ? color.textPrimary
-                      : page.isPlaying
-                        ? color.accent
-                        : color.textTertiary,
-                },
-              ]}
-            />
-          ))}
-        </View>
-      ) : null}
     </View>
   );
 }
@@ -289,6 +299,8 @@ function PageView({
           ...$open,
           ...(ownsBackground ? undefined : $openAccessory),
           ...(docked ? $openDocked : undefined),
+          // The dots under the pages take the rest of the bottom padding.
+          ...(position && ownsBackground ? $openAboveDots : undefined),
           ...(isPressed ? $pressed : undefined),
         }}
       >
@@ -308,7 +320,9 @@ function PageView({
             />
           </Link.AppleZoom>
         )}
-        <View style={$text}>
+        {/* The accessory has a fixed height: with dots under the pages,
+            the two lines sit tight to leave them room. */}
+        <View style={[$text, position && !ownsBackground && $textTight]}>
           <Text variant="subhead" color="textPrimary" numberOfLines={1}>
             {page.title}
           </Text>
@@ -349,7 +363,6 @@ const $row: ViewStyle = {
 };
 
 const $bar: ViewStyle = {
-  paddingRight: space.xs,
   borderRadius: radius.md,
   backgroundColor: color.surface2,
   shadowColor: color.shadow,
@@ -359,8 +372,14 @@ const $bar: ViewStyle = {
   elevation: 8,
 };
 
-const $dockedRow: ViewStyle = {
+/** On a bar the app draws, the play button keeps clear of its edge. */
+const $rowPadded: ViewStyle = {
   paddingRight: space.xs,
+};
+
+/** As wide as the play button it stands in for. */
+const $buttonSlot: ViewStyle = {
+  width: 40,
 };
 
 const $single: ViewStyle = {
@@ -378,16 +397,33 @@ const $pager: ViewStyle = {
   borderRadius: radius.md,
 };
 
-/**
- * A line of its own under the pages, centered, so a long subtitle never
- * runs into it.
- */
+/** A line of its own under the pages and the play button, centered. */
 const $dots: ViewStyle = {
   flexDirection: "row",
   justifyContent: "center",
-  gap: 5,
+  gap: 6,
+};
+
+/**
+ * Under the pages' own bottom padding: a little more space below the dots
+ * than above them, so they read as part of the bar's edge.
+ */
+const $dotsInBar: ViewStyle = {
+  paddingBottom: space.xxs + 2,
+};
+
+/**
+ * The accessory centers its content in a fixed height: the space under the
+ * dots lifts the block so they don't sit on the capsule's edge.
+ */
+const $dotsInAccessory: ViewStyle = {
   paddingTop: 2,
-  paddingBottom: 3,
+  paddingBottom: 5,
+};
+
+const $dotSmall: ViewStyle = {
+  width: 4,
+  height: 4,
 };
 
 const $dot: ViewStyle = {
@@ -415,6 +451,10 @@ const $openDocked: ViewStyle = {
   borderRadius: 0,
 };
 
+const $openAboveDots: ViewStyle = {
+  paddingBottom: space.xxs,
+};
+
 const $pressed: ViewStyle = {
   backgroundColor: color.surface3,
 };
@@ -422,4 +462,8 @@ const $pressed: ViewStyle = {
 const $text: ViewStyle = {
   flex: 1,
   gap: 2,
+};
+
+const $textTight: ViewStyle = {
+  gap: 0,
 };
