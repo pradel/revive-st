@@ -298,6 +298,8 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
       }
     }
     yield* Ref.update(state, (current) => ({ ...current, name }));
+    // A SoundTouch 10 on firmware 27.0.6 sends both, in this order.
+    yield* notify(infoUpdated(deviceId));
     yield* notify(nameUpdated(deviceId, name));
   });
 

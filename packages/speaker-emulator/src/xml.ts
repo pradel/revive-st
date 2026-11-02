@@ -43,10 +43,6 @@ export interface Identity {
   readonly ipAddress: string;
 }
 
-/** The MAC address as `/info` and `/networkInfo` write it. */
-const macAddress = (deviceId: string) =>
-  deviceId.match(/.{2}/g)?.join(":") ?? deviceId;
-
 export const serialNumber = (deviceId: string) => `EMU${deviceId}`;
 
 export const infoXml = (identity: Identity, state: SpeakerState) =>
@@ -71,7 +67,8 @@ export const infoXml = (identity: Identity, state: SpeakerState) =>
     ...["SCM", "SMSC"].map((type) =>
       [
         `<networkInfo type="${type}">`,
-        element("macAddress", macAddress(identity.deviceId)),
+        // Firmware 27 writes MAC addresses without separators.
+        element("macAddress", identity.deviceId),
         element("ipAddress", identity.ipAddress),
         "</networkInfo>",
       ].join(""),
@@ -88,7 +85,7 @@ export const networkInfoXml = (identity: Identity) =>
   [
     XML_DECLARATION,
     '<networkInfo wifiProfileCount="1"><interfaces>',
-    `<interface type="WIFI_INTERFACE" name="wlan0" macAddress="${macAddress(identity.deviceId)}" ipAddress="${escapeXml(identity.ipAddress)}" ssid="Emulated" frequencyKHz="5500000" state="NETWORK_WIFI_CONNECTED" signal="EXCELLENT_SIGNAL" mode="STATION"/>`,
+    `<interface type="WIFI_INTERFACE" name="wlan0" macAddress="${escapeXml(identity.deviceId)}" ipAddress="${escapeXml(identity.ipAddress)}" ssid="Emulated" frequencyKHz="5500000" state="NETWORK_WIFI_CONNECTED" signal="EXCELLENT_SIGNAL" mode="STATION"/>`,
     "</interfaces></networkInfo>",
   ].join("");
 

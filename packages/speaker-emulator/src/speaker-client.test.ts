@@ -60,7 +60,7 @@ describe("BoseHttpAdapter", () => {
         assert.strictEqual(info.name, "Living Room");
         assert.strictEqual(info.margeURL, "http://127.0.0.1:9");
         assert.strictEqual(info.margeAccountUUID, "household-1");
-        assert.strictEqual(info.networkInfo.macAddress, "A8:1B:6A:63:1A:1E");
+        assert.strictEqual(info.networkInfo.macAddress, DEVICE_ID);
 
         const { presets } = yield* orDie(async () => client.getPresets());
         assert.deepStrictEqual(

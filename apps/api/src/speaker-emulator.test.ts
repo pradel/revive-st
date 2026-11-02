@@ -203,8 +203,8 @@ layer(TestLayer, { excludeTestServices: true })("an emulated speaker", (it) => {
             (yield* getLastContactAt(emulated.deviceId)) ?? 0,
             contactBeforeRestart ?? Infinity,
           );
-          // The server doesn't serve the speaker's streaming token, which
-          // the speaker boots without.
+          // The server has never served the streaming token: speakers set up
+          // for it boot without one and play its stations.
           assert.deepStrictEqual(yield* failedSince(0), [
             `GET /streaming/device/${emulated.deviceId}/streaming_token 404`,
           ]);

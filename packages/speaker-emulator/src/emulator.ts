@@ -318,7 +318,21 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
       ),
     ),
     write("/name", readName, (name) =>
-      cloud.rename(name).pipe(Effect.andThen(accepted("/name"))),
+      Effect.gen(function* () {
+        yield* cloud.rename(name);
+        const current = yield* Ref.get(state);
+        // Firmware 27.0.6 answers with its info, `margeURL` holding its
+        // software update address (captured; `GET /info` is right).
+        return xml(
+          infoXml(identity, {
+            ...current,
+            running: {
+              ...current.running,
+              margeServerUrl: current.running.swUpdateUrl,
+            },
+          }),
+        );
+      }),
     ),
     write("/key", readKey, ({ key, state: keyState }) =>
       // Keys act when pressed; the release that follows does nothing.
