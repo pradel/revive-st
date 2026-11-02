@@ -1,3 +1,5 @@
+import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
+import { Image } from "expo-image";
 import { Link, type Href } from "expo-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -15,6 +17,12 @@ import { Artwork } from "./Artwork";
 import { icons } from "./Icon";
 import { IconButton } from "./IconButton";
 import { Text } from "./Text";
+
+/**
+ * iOS 26: the floating card is Liquid Glass, like the tab bar under it,
+ * tinted by the artwork shown behind it.
+ */
+const liquidGlass = isLiquidGlassAvailable();
 
 /** What the mini player shows for one speaker. */
 export interface MiniPlayerPage {
@@ -60,6 +68,7 @@ export function MiniPlayer({
   const docked = variant === "docked";
   const shown = pages[index];
   const paged = pages.length > 1;
+  const glass = !docked && liquidGlass;
 
   const renderPage = (page: MiniPlayerPage, pageIndex: number) => (
     <PageView
@@ -78,8 +87,26 @@ export function MiniPlayer({
   // can focus each one.
   return (
     <View style={docked ? $dockedWrapper : $wrapper}>
-      <View style={docked ? undefined : $bar}>
-        <View style={$row}>
+      <View style={docked ? undefined : glass ? $glassBar : $bar}>
+        {glass ? (
+          <>
+            {shown?.artworkUri ? (
+              <Image
+                source={{ uri: shown.artworkUri }}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                blurRadius={40}
+                transition={300}
+              />
+            ) : null}
+            <GlassView
+              style={StyleSheet.absoluteFill}
+              glassEffectStyle="regular"
+              colorScheme="dark"
+            />
+          </>
+        ) : null}
+        <View style={[$row, glass && $rowGlass]}>
           {paged ? (
             <Pager
               pages={pages}
@@ -107,7 +134,7 @@ export function MiniPlayer({
         {paged ? (
           // Under the whole bar, not just the pages: they stay put, centered,
           // whatever the page shown.
-          <View style={$dots} pointerEvents="none">
+          <View style={[$dots, glass && $dotsGlass]} pointerEvents="none">
             {pages.map((page, pageIndex) => (
               <View
                 key={page.key}
@@ -238,6 +265,7 @@ function PageView({
   // `Link asChild` takes only a flat style object, so the pressed state is
   // tracked here.
   const [isPressed, setIsPressed] = useState(false);
+  const glass = !docked && liquidGlass;
 
   const actions = position
     ? [
@@ -280,9 +308,10 @@ function PageView({
         style={{
           ...$open,
           ...(docked ? $openDocked : undefined),
+          ...(glass ? $openGlass : undefined),
           // The dots under the pages take the rest of the bottom padding.
           ...(position ? $openAboveDots : undefined),
-          ...(isPressed ? $pressed : undefined),
+          ...(isPressed ? (glass ? $pressedGlass : $pressed) : undefined),
         }}
       >
         <Link.AppleZoom>
@@ -342,6 +371,15 @@ const $bar: ViewStyle = {
   elevation: 8,
 };
 
+/**
+ * Rounded like the tab bar's glass; its padding (`$openGlass`) keeps the
+ * artwork's corners concentric with the card's.
+ */
+const $glassBar: ViewStyle = {
+  borderRadius: radius.lg,
+  overflow: "hidden",
+};
+
 /** As wide as the play button it stands in for. */
 const $buttonSlot: ViewStyle = {
   width: 40,
@@ -362,6 +400,11 @@ const $pager: ViewStyle = {
   borderRadius: radius.md,
 };
 
+/** Matches the glass card's wider page padding (`$openGlass`). */
+const $rowGlass: ViewStyle = {
+  paddingRight: space.sm,
+};
+
 /**
  * A line of its own under the pages and the play button, centered. Under
  * the pages' own bottom padding: a little more space below the dots than
@@ -372,6 +415,10 @@ const $dots: ViewStyle = {
   justifyContent: "center",
   gap: 6,
   paddingBottom: space.xxs + 2,
+};
+
+const $dotsGlass: ViewStyle = {
+  paddingBottom: space.sm - 2,
 };
 
 const $dot: ViewStyle = {
@@ -400,6 +447,15 @@ const $openAboveDots: ViewStyle = {
 
 const $pressed: ViewStyle = {
   backgroundColor: color.surface3,
+};
+
+/** A light wash over the glass, not an opaque surface. */
+const $pressedGlass: ViewStyle = {
+  backgroundColor: color.separator,
+};
+
+const $openGlass: ViewStyle = {
+  padding: space.sm,
 };
 
 const $text: ViewStyle = {

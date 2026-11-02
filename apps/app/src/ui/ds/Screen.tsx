@@ -1,10 +1,21 @@
-import type { ReactNode } from "react";
-import { Platform, StyleSheet, View, type ViewStyle } from "react-native";
+import { createContext, use, useState, type ReactNode } from "react";
+import {
+  Platform,
+  ScrollView,
+  StyleSheet,
+  View,
+  type ScrollViewProps,
+  type ViewStyle,
+} from "react-native";
 import { SafeAreaView, type Edge } from "react-native-safe-area-context";
 
 export interface ScreenProps {
   children: ReactNode;
-  /** Pinned below the content and above the bottom inset (e.g. `MiniPlayer`). */
+  /**
+   * Pinned at the bottom, above the bottom inset (e.g. `MiniPlayer`). In a
+   * tab on iOS it floats over the content, which scrolls under it in a
+   * `ScreenScrollView`.
+   */
   footer?: ReactNode;
   /** Full-bleed layer drawn behind the safe area (e.g. blurred artwork). */
   backdrop?: ReactNode;
@@ -31,6 +42,26 @@ const edges: Record<NonNullable<ScreenProps["presentation"]>, Edge[]> = {
   sheet: ["bottom"],
 };
 
+const FooterInset = createContext(0);
+
+/**
+ * A scroll view whose end scrolls clear of the screen's floating footer
+ * (iOS tabs). Also a `FlatList`'s `renderScrollComponent`.
+ */
+export function ScreenScrollView(props: ScrollViewProps) {
+  const footerInset = use(FooterInset);
+  return (
+    <ScrollView
+      {...props}
+      contentInset={{ ...props.contentInset, bottom: footerInset }}
+      scrollIndicatorInsets={{
+        ...props.scrollIndicatorInsets,
+        bottom: footerInset,
+      }}
+    />
+  );
+}
+
 /**
  * Screen root: lays out content → footer, keeping clear of the system bars
  * that no native header covers. The `bg` color comes from the stack's
@@ -45,25 +76,51 @@ export function Screen({
   presentation = "stack",
   inTabs = false,
 }: ScreenProps) {
+  const [footerHeight, setFooterHeight] = useState(0);
+  const floatingFooter = footer && inTabs && Platform.OS === "ios";
   return (
-    <View style={$fill}>
-      {backdrop ? (
-        <View style={StyleSheet.absoluteFill}>{backdrop}</View>
-      ) : null}
-      <SafeAreaView style={$fill} edges={edges[presentation]}>
-        <View style={$fill}>{children}</View>
-        {footer ? (
-          inTabs && Platform.OS === "android" ? (
-            footer
-          ) : (
-            <SafeAreaView edges={["bottom"]}>{footer}</SafeAreaView>
-          )
+    <FooterInset value={floatingFooter ? footerHeight : 0}>
+      <View style={$fill}>
+        {backdrop ? (
+          <View style={StyleSheet.absoluteFill}>{backdrop}</View>
         ) : null}
-      </SafeAreaView>
-    </View>
+        <SafeAreaView style={$fill} edges={edges[presentation]}>
+          <View style={$fill}>{children}</View>
+          {footer && !floatingFooter ? (
+            inTabs ? (
+              footer
+            ) : (
+              <SafeAreaView edges={["bottom"]}>{footer}</SafeAreaView>
+            )
+          ) : null}
+        </SafeAreaView>
+        {floatingFooter ? (
+          <SafeAreaView
+            edges={["bottom"]}
+            style={$floatingFooter}
+            pointerEvents="box-none"
+          >
+            <View
+              onLayout={(event) => {
+                setFooterHeight(event.nativeEvent.layout.height);
+              }}
+            >
+              {footer}
+            </View>
+          </SafeAreaView>
+        ) : null}
+      </View>
+    </FooterInset>
   );
 }
 
 const $fill: ViewStyle = {
   flex: 1,
+};
+
+const $floatingFooter: ViewStyle = {
+  position: "absolute",
+  left: 0,
+  right: 0,
+  bottom: 0,
 };

@@ -6,7 +6,6 @@ import {
   Linking,
   Platform,
   RefreshControl,
-  ScrollView,
   View,
   type TextStyle,
   type ViewStyle,
@@ -42,7 +41,7 @@ import type { ContextMenuConfig } from "@/ui/ds/ContextMenu";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { Icon, icons } from "@/ui/ds/Icon";
 import { ListRow } from "@/ui/ds/ListRow";
-import { Screen } from "@/ui/ds/Screen";
+import { Screen, ScreenScrollView } from "@/ui/ds/Screen";
 import { SectionHeader } from "@/ui/ds/SectionHeader";
 import { Shelf } from "@/ui/ds/Shelf";
 import { SpeakerCard } from "@/ui/ds/SpeakerCard";
@@ -442,7 +441,7 @@ export default function Index() {
           onPress={openSpeakerSetup}
         />
       </Stack.Toolbar>
-      <ScrollView
+      <ScreenScrollView
         contentContainerStyle={[
           $content,
           listedSpeakers.length === 0 && $centered,
@@ -595,7 +594,7 @@ export default function Index() {
             ) : null}
           </>
         )}
-      </ScrollView>
+      </ScreenScrollView>
     </Screen>
   );
 }

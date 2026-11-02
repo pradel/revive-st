@@ -35,7 +35,7 @@ import { FilterChips } from "@/ui/ds/FilterChips";
 import { icons } from "@/ui/ds/Icon";
 import { IconButton } from "@/ui/ds/IconButton";
 import { ListRow } from "@/ui/ds/ListRow";
-import { Screen } from "@/ui/ds/Screen";
+import { Screen, ScreenScrollView } from "@/ui/ds/Screen";
 import { SectionHeader } from "@/ui/ds/SectionHeader";
 import { SegmentedControl } from "@/ui/ds/SegmentedControl";
 import { Shelf } from "@/ui/ds/Shelf";
@@ -480,6 +480,7 @@ export default function RadioBrowser() {
           onEndReachedThreshold={0.5}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
+          renderScrollComponent={(props) => <ScreenScrollView {...props} />}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           refreshControl={
@@ -500,6 +501,7 @@ export default function RadioBrowser() {
           ListHeaderComponent={controls}
           contentContainerStyle={$listContent}
           contentInsetAdjustmentBehavior="automatic"
+          renderScrollComponent={(props) => <ScreenScrollView {...props} />}
           ListEmptyComponent={
             <EmptyState
               icon={icons.starFilled}
