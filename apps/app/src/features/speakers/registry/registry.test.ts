@@ -290,6 +290,27 @@ describe("speaker registry", () => {
     ]);
   });
 
+  it("lists speakers by name, not in the order they were found", async () => {
+    const office = { ...KITCHEN, name: "Office" };
+    const { registry, network, listed, find, settle } = world({
+      stored: [office],
+    });
+    network.set(
+      "192.168.1.31",
+      onNetwork({ deviceID: "B0F6FD000002", name: "Bedroom" }),
+    );
+    await registry.restore();
+
+    registry.rescan();
+    find("192.168.1.31");
+    await settle();
+
+    expect(listed().map((speaker) => speaker.name)).toEqual([
+      "Bedroom",
+      "Office",
+    ]);
+  });
+
   it("keeps the last radio when a check isn't answered", async () => {
     const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
     network.set(KITCHEN.host, onNetwork({ radio: undefined }));

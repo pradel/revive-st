@@ -1,11 +1,6 @@
 import { NativeTabs } from "expo-router/native-tabs";
 import { Platform } from "react-native";
 
-import {
-  NowPlayingAccessory,
-  useNowPlaying,
-  usesTabBarAccessory,
-} from "@/features/speakers/components/NowPlayingBar";
 import { color } from "@/ui/tokens";
 
 const android = Platform.OS === "android";
@@ -28,20 +23,12 @@ const androidBar = android
   : {};
 
 export default function TabLayout() {
-  const nowPlaying = useNowPlaying();
-
   return (
     <NativeTabs
       backgroundColor={android ? color.surface1 : color.bg}
       tintColor={color.accent}
-      minimizeBehavior="onScrollDown"
       {...androidBar}
     >
-      {usesTabBarAccessory && nowPlaying ? (
-        <NativeTabs.BottomAccessory>
-          <NowPlayingAccessory {...nowPlaying} />
-        </NativeTabs.BottomAccessory>
-      ) : null}
       <NativeTabs.Trigger name="(home)">
         <NativeTabs.Trigger.Icon
           sf={{ default: "house", selected: "house.fill" }}

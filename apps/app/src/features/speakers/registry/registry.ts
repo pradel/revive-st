@@ -123,9 +123,15 @@ export function createSpeakerRegistry(
 
   function takeSnapshot(): SpeakersSnapshot {
     const ourServer = deps.ourServer.url();
-    const listed = [...records.values()].map((record) =>
-      toView(record, ourServer),
-    );
+    // By name, so the list doesn't depend on which speaker answered first.
+    // `map` makes a new array, so it's sorted in place (Hermes lacks
+    // `toSorted`).
+    const listed = [...records.values()]
+      .map((record) => toView(record, ourServer))
+      .sort(
+        (a, b) =>
+          a.name.localeCompare(b.name) || a.deviceID.localeCompare(b.deviceID),
+      );
     return {
       listed,
       online: listed.filter((speaker) => speaker.status === "online"),

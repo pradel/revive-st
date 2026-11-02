@@ -18,21 +18,6 @@ export function hasLoadedMedia(speaker: BoseSpeaker) {
   );
 }
 
-/**
- * Speaker for the mini player and the Home presets shelf: the first one
- * playing, else the first one paused with something loaded (it stays
- * visible while paused, like Sonos).
- */
-export function findActiveSpeaker(speakers: readonly BoseSpeaker[]) {
-  return (
-    speakers.find((speaker) => isSpeakerPlaying(speaker)) ??
-    speakers.find(
-      (speaker) =>
-        speaker.playStatus === "PAUSE_STATE" && hasLoadedMedia(speaker),
-    )
-  );
-}
-
 export function isStandby(speaker: BoseSpeaker) {
   return speaker.source === "STANDBY" || speaker.playStatus === "STANDBY";
 }
@@ -42,7 +27,7 @@ export function canSavePreset(speaker: BoseSpeaker) {
   return !isStandby(speaker) && Boolean(speaker.track);
 }
 
-export function playStatusLabel(speaker: BoseSpeaker) {
+function playStatusLabel(speaker: BoseSpeaker) {
   switch (speaker.playStatus) {
     case undefined:
     case "":
@@ -59,6 +44,20 @@ export function playStatusLabel(speaker: BoseSpeaker) {
     default:
       return speaker.playStatus;
   }
+}
+
+/**
+ * The speaker's state in a word, as every list shows it: whether it's
+ * reached ("Connecting…", "Offline"), then in standby, then its play status.
+ */
+export function speakerStateLabel(speaker: BoseSpeaker) {
+  if (speaker.status === "connecting") {
+    return "Connecting…";
+  }
+  if (speaker.status === "offline") {
+    return "Offline";
+  }
+  return isStandby(speaker) ? "Standby" : playStatusLabel(speaker);
 }
 
 export function sourceLabel(source: string) {

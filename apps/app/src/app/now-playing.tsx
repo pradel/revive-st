@@ -1,27 +1,26 @@
 import type { KeyValue } from "bose-api-speaker-client";
-import { Image } from "expo-image";
-import { Link, useLocalSearchParams, useRouter } from "expo-router";
-import {
-  Pressable,
-  StyleSheet,
-  View,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { Link, useRouter } from "expo-router";
+import { View, type TextStyle, type ViewStyle } from "react-native";
 
+import { PlayerBar } from "@/features/speakers/components/PlayerBar";
+import { PresetStrip } from "@/features/speakers/components/PresetStrip";
+import { useSwitchSource } from "@/features/speakers/components/sources";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   hasLoadedMedia,
   isSpeakerPlaying,
-  playStatusLabel,
   sourceLabel,
   trackDetail,
   trackTitle,
 } from "@/features/speakers/lib/playback";
-import { useSpeaker } from "@/features/speakers/registry/store";
+import {
+  useCanSwitchSpeaker,
+  useSelectedSpeaker,
+} from "@/features/speakers/lib/selection";
 import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
+import { ArtworkBackdrop } from "@/ui/ds/ArtworkBackdrop";
 import { Button } from "@/ui/ds/Button";
 import { Chip } from "@/ui/ds/Chip";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -32,36 +31,58 @@ import { Slider } from "@/ui/ds/Slider";
 import { Text } from "@/ui/ds/Text";
 import { color, radius, space } from "@/ui/tokens";
 
-const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
-
+/**
+ * The player of the selected speaker. Its bottom bar switches the speaker's
+ * source, picks another speaker and opens the speaker's settings.
+ */
 export default function NowPlayingModal() {
-  const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { volumeMutation, playPauseMutation, keyMutation } =
     useSpeakerCommands();
+  const switchSource = useSwitchSource();
 
-  const speaker = useSpeaker(id);
+  const selected = useSelectedSpeaker();
+  const canSwitch = useCanSwitchSpeaker();
+  const speaker = selected?.status === "online" ? selected : undefined;
   const volumeDraft = useSliderDraft(speaker?.volume ?? 0, (volume) => {
     if (speaker) {
       volumeMutation.mutate({ deviceID: speaker.deviceID, volume });
     }
   });
 
+  const chooseSpeaker = () => {
+    router.push("/speaker-picker");
+  };
+
   if (!speaker) {
     return (
       <Screen presentation="sheet">
         <EmptyState
           icon={icons.wifiOff}
-          title="Speaker not found"
-          description="This speaker is no longer detected on your local network."
+          title={
+            selected?.status === "connecting"
+              ? `Connecting to ${selected.name}…`
+              : selected
+                ? `${selected.name} is offline`
+                : "No speaker"
+          }
+          description="Make sure the speaker is on and on the same Wi-Fi network as your phone."
           actions={
-            <Button
-              label="Close"
-              variant="secondary"
-              onPress={() => {
-                router.back();
-              }}
-            />
+            <>
+              {canSwitch ? (
+                <Button
+                  label="Choose another speaker"
+                  onPress={chooseSpeaker}
+                />
+              ) : null}
+              <Button
+                label="Close"
+                variant="secondary"
+                onPress={() => {
+                  router.back();
+                }}
+              />
+            </>
           }
         />
       </Screen>
@@ -82,48 +103,10 @@ export default function NowPlayingModal() {
       presentation="sheet"
       backdrop={
         speaker.artUrl ? (
-          <>
-            <Image
-              source={{ uri: speaker.artUrl }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              blurRadius={60}
-              transition={300}
-            />
-            <View style={$scrim} />
-          </>
+          <ArtworkBackdrop uri={speaker.artUrl} blurRadius={60} />
         ) : null
       }
     >
-      <View style={$header}>
-        <IconButton
-          icon={icons.chevronDown}
-          accessibilityLabel="Close player"
-          tint="textPrimary"
-          onPress={() => {
-            router.back();
-          }}
-        />
-        <View style={$headerTitle}>
-          <Text variant="subhead" numberOfLines={1}>
-            {speaker.name}
-          </Text>
-          <Text variant="caption" color="textSecondary">
-            {playStatusLabel(speaker)}
-          </Text>
-        </View>
-        <IconButton
-          icon={icons.settings}
-          accessibilityLabel={`${speaker.name} settings`}
-          tint="textPrimary"
-          onPress={() => {
-            router.push(
-              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
-            );
-          }}
-        />
-      </View>
-
       <View style={$content}>
         <Link.AppleZoomTarget>
           <View style={$artShadow}>
@@ -210,69 +193,38 @@ export default function NowPlayingModal() {
           </Text>
         </View>
 
-        <View style={$presets}>
-          {PRESET_SLOTS.map((slot) => {
-            const preset = speaker.presets?.find((item) => item.id === slot);
-            return (
-              <Pressable
-                key={slot}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  preset
-                    ? `Preset ${slot}: ${preset.contentItem.itemName}`
-                    : `Preset ${slot}, empty`
-                }
-                disabled={!preset}
-                onPress={() => {
-                  sendKey(`PRESET_${slot}` as KeyValue);
-                }}
-                style={({ pressed }) => [
-                  $presetKey,
-                  preset ? $presetFilled : null,
-                  pressed && $presetPressed,
-                ]}
-              >
-                <Text
-                  variant="headline"
-                  color={preset ? "textPrimary" : "textTertiary"}
-                >
-                  {slot}
-                </Text>
-              </Pressable>
+        <PresetStrip
+          presets={speaker.presets ?? []}
+          onPlay={(slot) => {
+            sendKey(`PRESET_${slot}` as KeyValue);
+          }}
+        />
+
+        <PlayerBar
+          speakerName={speaker.name}
+          onChooseSpeaker={chooseSpeaker}
+          onOpenSettings={() => {
+            router.push(
+              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
             );
-          })}
-        </View>
+          }}
+          currentSource={speaker.source}
+          onSelectSource={(source) => {
+            switchSource(speaker, source);
+          }}
+        />
       </View>
     </Screen>
   );
 }
 
-const $scrim: ViewStyle = {
-  position: "absolute",
-  top: 0,
-  right: 0,
-  bottom: 0,
-  left: 0,
-  backgroundColor: color.scrim,
-};
-
-const $header: ViewStyle = {
-  flexDirection: "row",
-  alignItems: "center",
-  paddingHorizontal: space.xs,
-  paddingTop: space.xs,
-};
-
-const $headerTitle: ViewStyle = {
-  flex: 1,
-  alignItems: "center",
-};
-
 const $content: ViewStyle = {
   flex: 1,
   justifyContent: "space-evenly",
   paddingHorizontal: space.screen,
-  paddingBottom: space.xl,
+  // Clear of the sheet's grabber; the bar sits above the home indicator.
+  paddingTop: space.xl,
+  paddingBottom: space.md,
 };
 
 const $artShadow: ViewStyle = {
@@ -308,26 +260,4 @@ const $slider: ViewStyle = {
 const $volumeValue: TextStyle = {
   width: 32,
   textAlign: "right",
-};
-
-const $presets: ViewStyle = {
-  flexDirection: "row",
-  gap: space.xs,
-};
-
-const $presetKey: ViewStyle = {
-  flex: 1,
-  aspectRatio: 1,
-  alignItems: "center",
-  justifyContent: "center",
-  borderRadius: radius.sm,
-  backgroundColor: color.surface1,
-};
-
-const $presetFilled: ViewStyle = {
-  backgroundColor: color.surface2,
-};
-
-const $presetPressed: ViewStyle = {
-  backgroundColor: color.surface3,
 };
