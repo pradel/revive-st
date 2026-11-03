@@ -4,14 +4,18 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
 import { useConfigureRun } from "@/features/configure/store";
+import { serverHost } from "@/features/server/server-url";
 import { PresetStrip } from "@/features/speakers/components/PresetStrip";
 import {
   SpeakerSettingsHeader,
   type SpeakerStatus,
 } from "@/features/speakers/components/SpeakerSettingsHeader";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import { useRadioSetupQuery } from "@/features/speakers/hooks/useSpeakerManager";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
+import {
+  speakerRegistry,
+  useSpeaker,
+} from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
@@ -75,24 +79,22 @@ export default function SpeakerSettings() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const {
-    speakers,
     keyMutation,
     setBassMutation,
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
-    loadPresets,
-  } = useBose();
+  } = useSpeakerCommands();
 
-  const speaker = speakers.find((item) => item.deviceID === id);
+  const speaker = useSpeaker(id);
+  const deviceID = speaker?.deviceID;
 
   useEffect(() => {
-    if (speaker?.deviceID) {
-      void loadPresets(speaker.deviceID);
+    if (deviceID) {
+      void speakerRegistry.refresh(deviceID);
     }
-  }, [speaker?.deviceID, loadPresets]);
+  }, [deviceID]);
 
-  const radioSetup = useRadioSetupQuery(speaker?.host ?? "");
   const configureRun = useConfigureRun(id);
   const [presetsWidth, setPresetsWidth] = useState<number>();
 
@@ -121,8 +123,8 @@ export default function SpeakerSettings() {
   // its internet radio setup.
   const refresh = async () => {
     await Promise.allSettled([
-      loadPresets(speaker.deviceID),
-      radioSetup.refetch(),
+      speakerRegistry.refresh(speaker.deviceID),
+      speakerRegistry.refreshRadio(speaker.deviceID),
     ]);
   };
 
@@ -144,6 +146,7 @@ export default function SpeakerSettings() {
     Boolean(levelControls);
 
   const settingUp = configureRun.view?.kind === "working";
+  const radioCheckFailed = speaker.radio.kind === "unreachable";
   const radio = ((): { value: string; status: SpeakerStatus } => {
     if (settingUp) {
       return {
@@ -151,27 +154,53 @@ export default function SpeakerSettings() {
         status: { label: "Setting up internet radio…", tone: "neutral" },
       };
     }
-    if (radioSetup.isLoading) {
+    const radioState = speaker.radio;
+    if (radioState.kind === "unreachable") {
+      return {
+        value: "Unavailable",
+        status: { label: "Couldn't check internet radio", tone: "danger" },
+      };
+    }
+    if (radioState.kind === "checking") {
       return {
         value: "Checking…",
         status: { label: "Checking…", tone: "neutral" },
       };
     }
-    if (radioSetup.isError) {
+    // Its server puts its own settings back at every start: it can't be set up.
+    if (
+      radioState.kind === "needsSetup" &&
+      radioState.setup.kind === "blocked"
+    ) {
       return {
-        value: "Unavailable",
-        status: { label: "Can't reach speaker", tone: "danger" },
+        value: "Not ready",
+        status: {
+          label: `Online · Internet radio not ready on ${radioState.setup.server}`,
+          tone: "warning",
+        },
       };
     }
-    if (radioSetup.data) {
+    if (radioState.kind === "needsSetup") {
+      return {
+        value: "Needs setup",
+        status: {
+          label: "Online · Internet radio needs setup",
+          tone: "warning",
+        },
+      };
+    }
+    if (radioState.through === null) {
       return {
         value: "Ready",
         status: { label: "Online · Internet radio ready", tone: "ok" },
       };
     }
     return {
-      value: "Needs setup",
-      status: { label: "Online · Internet radio needs setup", tone: "warning" },
+      value: radioState.through,
+      status: {
+        label: `Online · Internet radio through ${radioState.through}`,
+        tone: "ok",
+      },
     };
   })();
 
@@ -366,11 +395,20 @@ export default function SpeakerSettings() {
               router.push("./configure");
             }}
           />
-          {!settingUp && radioSetup.isError ? (
+          {speaker.radio.kind === "ready" ||
+          speaker.radio.kind === "needsSetup" ? (
+            <FormValueRow
+              icon={formIcons.server}
+              label="Server"
+              description={serverHost(speaker.radio.margeURL)}
+              value={speaker.radio.serverName}
+            />
+          ) : null}
+          {!settingUp && radioCheckFailed ? (
             <FormButtonRow
               label="Check again"
               onPress={() => {
-                void radioSetup.refetch();
+                void speakerRegistry.refreshRadio(speaker.deviceID);
               }}
             />
           ) : null}
@@ -381,11 +419,11 @@ export default function SpeakerSettings() {
               router.push("./about");
             }}
           />
-          {!settingUp && radioSetup.isError ? (
+          {!settingUp && radioCheckFailed ? (
             <FieldGroup.SectionFooter>
               <FormFooterText color={color.danger}>
-                Couldn't reach the speaker. Make sure your phone is on the same
-                Wi-Fi network.
+                Couldn't check internet radio. Make sure your phone is on the
+                same Wi-Fi network as the speaker.
               </FormFooterText>
             </FieldGroup.SectionFooter>
           ) : null}

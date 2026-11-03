@@ -99,6 +99,8 @@ function guardDeps(raw: ConfigureDeps, signal: AbortSignal): ConfigureDeps {
     },
     server: {
       origin: () => server.origin(),
+      check: async (requestSignal) =>
+        call(async () => server.check(requestSignal)),
       householdAccount: async (speakerAccount, otherSpeakers) =>
         call(async () =>
           server.householdAccount(speakerAccount, otherSpeakers),

@@ -97,6 +97,11 @@ export type BoseWSUpdate =
       deviceID: string;
     }
   | {
+      /** The speaker's sources changed (`sourcesUpdated`). */
+      type: "sources";
+      deviceID: string;
+    }
+  | {
       type: "nameUpdated";
       deviceID: string;
       name: string;
@@ -306,6 +311,10 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     return { type: "info", deviceID };
   }
 
+  if (xml.includes("<sourcesUpdated")) {
+    return { type: "sources", deviceID };
+  }
+
   if (xml.includes("<recentsUpdated") || xml.includes("<recents>")) {
     const block = /<recents[\s\S]*?<\/recents>/.exec(xml);
     if (block) {
@@ -328,6 +337,8 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
 
 export interface BoseWebSocketClientOptions {
   host: string;
+  /** Default 8080. */
+  port?: number;
   deviceID: string;
   onUpdate: (update: BoseWSUpdate) => void;
   onDisconnect?: () => void;
@@ -368,7 +379,7 @@ export class BoseWebSocketClient {
     this.close(true);
     this.isClosedIntentional = false;
 
-    const wsUrl = `ws://${this.options.host}:8080`;
+    const wsUrl = `ws://${this.options.host}:${this.options.port ?? 8080}`;
     console.log(
       `[BoseWebSocketClient] Connecting to ${wsUrl} (deviceID: ${this.options.deviceID})`,
     );

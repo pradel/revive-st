@@ -3,7 +3,7 @@ title: Self-hosting
 description: Run your own Revive ST server so your speakers don't depend on ours.
 ---
 
-By default, the app and your speakers use the Revive ST server at `api.revivest.app`: it stores your presets, and your speakers ask it for their account, presets and stations every time they start. You can run that server yourself, on a computer at home, so your speakers keep working whatever happens to ours.
+By default, the app and your speakers use the Revive ST server at `api.revivest.app`: it stores your household account id, your speakers' device ids, when each speaker last contacted it, and your presets (see the [Privacy Policy](/privacy)), and your speakers ask it for their account, presets and stations every time they start. You can run that server yourself, on a computer at home, so your speakers keep working whatever happens to ours, and none of that data reaches us.
 
 ## What you need
 
@@ -40,11 +40,11 @@ Your accounts and presets are stored in the `/data` volume, in the SQLite databa
 | `LOG_LEVEL`          | `info`              | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less.                                                                                                                                                                                                          |
 | `LOG_FORMAT`         | `pretty`            | `json` writes one JSON object per line, for log collectors.                                                                                                                                                                                                                                                                              |
 | `RATE_LIMIT`         | `true`              | `false` turns off the per-client rate limits on writes. Clients are told apart by the `X-Real-IP` header, else their connection's address. Turn the limits off behind a proxy that doesn't set `X-Real-IP`, where every client would share the proxy's limit; without a proxy, a client can name its own `X-Real-IP` and get round them. |
-| `DATABASE_BUDGET_MB` | `2500`              | Past this size the server pairs no new speaker; speakers already paired keep working. SQLite refuses to grow at one and a half times it, so leave room for that on the database's disk. A backup also needs about as much again in the temporary directory while it runs.                                                                |
+| `DATABASE_BUDGET_MB` | `2500`              | Past this size the server pairs no new speaker; speakers already paired keep working. SQLite refuses to grow at one and a half times it, so leave room for that on the database's disk.                                                                                                                                                  |
 
-### Daily backups to S3 storage (optional)
+### Backups to S3 storage (optional)
 
-The server can store a gzipped snapshot of its database in a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…) every day at 03:00 UTC, taken while it keeps serving. At start, it takes one right away if the newest snapshot is more than a day old, so a restart never costs a day. Snapshots are named `db/<date and time>.db.gz`; to keep only the last 30 days, add a lifecycle rule to the bucket. The snapshot goes through the temporary directory and up in 8 MiB parts (a multipart upload), so memory stays flat whatever the database's size; an upload that fails is aborted, and a server stopped mid-upload leaves parts that a lifecycle rule aborting incomplete multipart uploads cleans up.
+The server can back up its database with [Litestream](https://litestream.io) to a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), while it keeps serving: every hour it sends what changed, once a day a full snapshot, and when it stops, its last changes. An hour is the normal interval between backups, so a crash usually loses at most the last hour; if backups keep failing (the server logs `Database backup failed`), it can lose more. Backups are stored under `litestream/` in the bucket; snapshots are kept 30 days. Litestream doesn't delete the hourly changes, so add a lifecycle rule to the bucket that deletes objects under `litestream/0000/` after 31 days.
 
 | Setting                | What it does                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -54,17 +54,51 @@ The server can store a gzipped snapshot of its database in a bucket on any S3-co
 | `S3_ACCESS_KEY_ID`     | An access key allowed to read and write objects in this bucket only (on R2: an API token with **Object Read & Write** on it).  |
 | `S3_SECRET_ACCESS_KEY` | That key's secret.                                                                                                             |
 
-To restore a snapshot, stop the server, download the snapshot, unzip it (`gunzip`) into `/data/revivest.db`, delete `revivest.db-wal` and `revivest.db-shm`, and start the server.
+To restore the latest backup, stop the server, restore the backup beside the database, and only once that succeeded, replace the database with it and start the server again. With Docker Compose:
+
+```bash
+docker compose stop revive-st &&
+docker compose run --rm revive-st sh -c '
+  set -e
+  db="$DATABASE_PATH"; dir=$(dirname "$db")
+  rm -f "$db.restored"
+  litestream restore -o "$db.restored" "$db"
+  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream" "$dir/.revivest-snapshot-day"
+  mv "$db.restored" "$db"
+' &&
+docker compose start revive-st
+```
+
+With Docker alone, run the restore with the volume and the same `-e` settings as the server (the `S3_` ones, and `DATABASE_PATH` if you changed it):
+
+```bash
+docker stop revive-st &&
+docker run --rm -v revive-st-data:/data \
+  -e S3_BUCKET=… -e S3_ENDPOINT=… -e S3_ACCESS_KEY_ID=… -e S3_SECRET_ACCESS_KEY=… \
+  ghcr.io/pradel/revive-st-api:latest sh -c '
+  set -e
+  db="$DATABASE_PATH"; dir=$(dirname "$db")
+  rm -f "$db.restored"
+  litestream restore -o "$db.restored" "$db"
+  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream" "$dir/.revivest-snapshot-day"
+  mv "$db.restored" "$db"
+' &&
+docker start revive-st
+```
+
+If the restore fails, the database is left as it was and the server stays stopped: start it again with `docker compose start revive-st` or `docker start revive-st`.
+
+To go back to an earlier point, add `-timestamp` to the `litestream restore` line, like `litestream restore -timestamp 2026-11-02T10:00:00Z -o "$db.restored" "$db"`. Restore points begin at the oldest daily snapshot still kept, which can be up to about a day newer than 30 days ago.
 
 ## Point the app at your server
 
-In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching.
+In the app, open **Settings** → **Network** → **Server**, enter your server's address, for example `http://192.168.1.10:3000`, and tap **Save**. The app checks that a Revive ST server answers there before switching. When you connect a new speaker to your Wi-Fi from the app, it also asks how that speaker should get radio: pick **My own server** and enter the same address.
 
 Plain `http://` only works with an IP address, a `.local` name or a name without dots (like `nas`). For any other name, put the server behind a reverse proxy with HTTPS and enter its `https://` address.
 
 ## Set up your speakers
 
-For each speaker, open its settings and tap **Set up internet radio**. A speaker set up for another server shows **Needs setup** until you do. The app saves the speaker's presets to your server, points the speaker's radio, account, statistics and software update addresses at it, and restarts the speaker. Setup finishes once the speaker has contacted your server after the restart; servers older than this check finish without it.
+For each speaker, open its settings and tap **Set up internet radio**. Until you do, a speaker set up for [another server](/docs/other-servers) keeps playing radio through it, and its settings name that server. The app saves the speaker's presets to your server, points the speaker's radio, account, statistics and software update addresses at it, and restarts the speaker. Setup finishes once the speaker has contacted your server after the restart; servers older than this check finish without it.
 
 A speaker keeps using the server it was set up with until you set it up again, whatever server the app is set to.
 
@@ -76,6 +110,8 @@ docker compose up -d
 ```
 
 The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`. The server's address shows the version it runs.
+
+The app and the server are released separately, and each app release works with servers from a given release on. If your server is older than that, the app says so when you save its address or set up a speaker, and names the release it needs: update the server, then try again.
 
 ## Tracing (optional)
 

@@ -1,8 +1,8 @@
 import { FieldGroup } from "@expo/ui";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 
-import { useBose } from "@/features/speakers/contexts/BoseContext";
 import { shortVersion } from "@/features/speakers/lib/firmware";
+import { useSpeaker } from "@/features/speakers/registry/store";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -15,8 +15,7 @@ import { FormSection } from "@/ui/form/Section";
 export default function AboutSpeaker() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { speakers } = useBose();
-  const speaker = speakers.find((item) => item.deviceID === id);
+  const speaker = useSpeaker(id);
 
   if (!speaker) {
     return (

@@ -13,6 +13,7 @@ import {
 } from "./ContextMenu";
 import { Icon, icons } from "./Icon";
 import { IconButton } from "./IconButton";
+import { SelectionBackdrop } from "./SelectionBackdrop";
 import { Slider } from "./Slider";
 import { Text } from "./Text";
 
@@ -34,16 +35,18 @@ export interface SpeakerCardProps {
   onPlayPause: () => void;
   /** The player; on iOS 18+ it zooms open from the artwork. */
   playerHref: Href;
+  /** Runs as the player opens, before it shows. */
+  onOpen?: () => void;
+  /** The speaker the app controls: filled with its artwork or the accent. */
+  selected?: boolean;
   onOpenSettings: () => void;
   /** Long-press menu on the speaker's artwork and name. */
   menu?: ContextMenuConfig;
   /**
-   * A remembered speaker not reached yet (`connecting`) or that didn't answer
-   * (`offline`): its controls are dimmed and inactive, and tapping an offline
-   * one tries it again (`onRetry`).
+   * A remembered speaker not reached yet: its controls are dimmed and
+   * inactive until it answers.
    */
-  status?: "connecting" | "offline";
-  onRetry?: () => void;
+  status?: "connecting";
 }
 
 export function SpeakerCard({
@@ -58,10 +61,11 @@ export function SpeakerCard({
   onVolumeCommit,
   onPlayPause,
   playerHref,
+  onOpen,
+  selected = false,
   onOpenSettings,
   menu,
   status,
-  onRetry,
 }: SpeakerCardProps) {
   const volumeDraft = useSliderDraft(volume, onVolumeCommit);
   // `Link asChild` takes only a flat style object (no function or array), so
@@ -69,11 +73,7 @@ export function SpeakerCard({
   const [isPressed, setIsPressed] = useState(false);
   const reachable = status === undefined;
   const statusLine =
-    status === "connecting"
-      ? "Connecting…"
-      : status === "offline"
-        ? "Offline · Tap to try again"
-        : (nowPlaying ?? "Nothing playing");
+    status === "connecting" ? "Connecting…" : (nowPlaying ?? "Nothing playing");
 
   const artworkView = (
     <Artwork
@@ -131,26 +131,11 @@ export function SpeakerCard({
         </View>
       );
     }
-    if (status === "offline") {
-      return (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`${name}, offline`}
-          accessibilityHint="Tries to reach the speaker again"
-          {...triggerProps}
-          onPress={onRetry}
-          // Its own pressed state: the card swaps this for a plain view while
-          // connecting, which would leave a tracked press stuck on.
-          style={({ pressed }) => (pressed ? $mainPressed : $main)}
-        >
-          {content}
-        </Pressable>
-      );
-    }
     return (
-      <Link href={playerHref} asChild>
+      <Link href={playerHref} onPress={onOpen} asChild>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ selected }}
           accessibilityLabel={`${name}, ${nowPlaying ?? "Nothing playing"}`}
           accessibilityHint="Opens the player"
           {...triggerProps}
@@ -165,6 +150,11 @@ export function SpeakerCard({
 
   return (
     <View style={$card}>
+      {selected ? (
+        <SelectionBackdrop
+          artworkUri={reachable && nowPlaying ? artworkUri : null}
+        />
+      ) : null}
       <View style={$top}>
         {menu ? (
           <ContextMenu {...menu} fill>
@@ -222,6 +212,8 @@ const $card: ViewStyle = {
   padding: space.sm,
   gap: space.xs,
   borderRadius: radius.md,
+  // Clips the selected speaker's backdrop to the card's corners.
+  overflow: "hidden",
   backgroundColor: color.surface1,
 };
 

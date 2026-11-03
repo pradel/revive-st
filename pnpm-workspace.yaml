@@ -2,6 +2,8 @@ packages:
   - apps/*
   - packages/*
 allowBuilds:
+  # Downloads its binary when first run instead.
+  "@posthog/cli": false
   esbuild: false
   msgpackr-extract: false
   sharp: false

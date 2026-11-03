@@ -9,10 +9,7 @@ import {
 import { MAX_DEVICES_PER_ACCOUNT } from "../devices/devices-repo.ts";
 import { AccountId } from "../marge/account.ts";
 import { Preset, SpeakerDeviceId } from "../presets/preset.ts";
-import {
-  AccountCreationRateLimit,
-  PresetSyncRateLimit,
-} from "../rate-limit.ts";
+import { PresetSyncRateLimit } from "../rate-limit.ts";
 
 /** A speaker's presets: at most one per button, so at most six. */
 const DevicePresets = Schema.Array(Preset).check(
@@ -27,19 +24,6 @@ const DevicePresets = Schema.Array(Preset).check(
 /** Endpoints the revive-st app calls directly. */
 export class InternalApi extends HttpApiGroup.make("internal")
   .add(
-    HttpApiEndpoint.post("createAccount", "/accounts", {
-      success: Schema.Struct({ accountId: AccountId }).annotate({
-        description: "The new account id, a UUID.",
-      }),
-    })
-      .middleware(AccountCreationRateLimit)
-      .annotateMerge(
-        OpenApi.annotations({
-          summary: "Create a household account",
-          description:
-            "A new, unguessable household account id. Minted here because the app has no cryptographic random source without a native module. Rate limited per client, `429` beyond.",
-        }),
-      ),
     HttpApiEndpoint.post(
       "syncPresets",
       "/account/:accountId/device/:deviceId/presets",

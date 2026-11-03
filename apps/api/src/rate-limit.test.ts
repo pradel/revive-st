@@ -8,7 +8,7 @@ import { DevicesRepo } from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RadioBrowser } from "./radio-browser/radio-browser.ts";
-import { ACCOUNT_CREATIONS, SPEAKER_WRITES } from "./rate-limit.ts";
+import { SPEAKER_WRITES } from "./rate-limit.ts";
 import { TuneIn } from "./tunein/tunein.ts";
 
 // `RATE_LIMIT` unset: limits are on. The test clock never advances, so no
@@ -33,13 +33,6 @@ const savePreset = (clientIp: string) =>
       HttpClientRequest.bodyText(
         "<preset><sourceid>10005</sourceid><name>FIP</name><location>/stations/byuuid/9610c454-0601-11e8-ae97-52543be04c81</location></preset>",
       ),
-    ),
-  ).pipe(Effect.map(({ status }) => status));
-
-const createAccount = (clientIp: string) =>
-  HttpClient.execute(
-    HttpClientRequest.post("/api/internal/accounts").pipe(
-      HttpClientRequest.setHeader("x-real-ip", clientIp),
     ),
   ).pipe(Effect.map(({ status }) => status));
 
@@ -68,17 +61,5 @@ layer(TestLayer)("rate limits", (it) => {
         );
         assert.strictEqual(read.status, 200);
       }),
-  );
-
-  it.effect("refuses a client's account creations past its limit", () =>
-    Effect.gen(function* () {
-      const allowed = yield* statusesOf(
-        ACCOUNT_CREATIONS.limit,
-        createAccount("198.51.100.1"),
-      );
-      assert.deepStrictEqual([...new Set(allowed)], [200]);
-      assert.strictEqual(yield* createAccount("198.51.100.1"), 429);
-      assert.strictEqual(yield* createAccount("198.51.100.2"), 200);
-    }),
   );
 });

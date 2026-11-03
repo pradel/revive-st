@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       <main className="flex-1 max-w-3xl mx-auto px-6 py-24 w-full">
         <div className="prose max-w-none">
           <h1 className="mb-2">🔒 Privacy Policy</h1>
-          <p className="text-fg-tertiary mb-8">Effective as of: 2026-10-31</p>
+          <p className="text-fg-tertiary mb-8">Effective as of: 2026-11-02</p>
 
           <p>
             This policy explains what data Revive ST handles and why. It covers
@@ -61,25 +61,50 @@ export default function PrivacyPage() {
               unless you choose to share the logs, for example with us when
               reporting a problem. Uninstalling the App deletes them.
             </li>
+            <li>
+              <strong>Your speakers&apos; servers.</strong> To tell which server
+              a speaker uses, the App may send a short request to that server or
+              to the speaker itself (for example the STR agent installed on it),
+              asking only for its name, version or status. These requests carry
+              nothing about you.
+            </li>
           </ul>
 
           <h2>On the Revive ST server</h2>
           <p>
             Since Bose shut down its cloud, your speakers need a server to fetch
             their account, presets and radio stations from when they start up.
-            By default, the App configures your speakers to use ours. The Server
-            stores:
+            When you connect a new speaker to your Wi-Fi from the App, it asks
+            which server the speaker should use for internet radio: ours, one
+            you run, or the one it already uses. Setting a speaker up later from
+            its settings uses the server chosen in the App&apos;s settings, ours
+            by default. For a speaker set up for ours, the Server stores:
           </p>
           <ul>
             <li>
-              <strong>A household account id:</strong> a random identifier the
-              Server generates the first time you configure a speaker. It
-              isn&apos;t linked to your name, email address or phone.
+              <strong>A household account id:</strong> the account your speakers
+              are paired with. For a speaker that isn&apos;t paired yet,
+              it&apos;s a random identifier the App generates on your phone; a
+              speaker already paired with an account, for example its former
+              Bose account number, keeps that account&apos;s id. The App sends
+              it to the Server with the speaker&apos;s presets when it sets the
+              speaker up, and the speaker uses it in its requests. It isn&apos;t
+              linked to your name, email address or phone.
             </li>
             <li>
               <strong>Your speakers&apos; device ids</strong> (each
               speaker&apos;s network hardware address) and the date each one was
               paired with your household account.
+            </li>
+            <li>
+              <strong>When each speaker last contacted the Server:</strong> the
+              time of its latest request, such as when it starts, fetches its
+              presets or stations, or sends its usage report (whose content
+              isn&apos;t kept). Only the latest time is kept, per device id and
+              not per household. The App reads it to confirm that a speaker it
+              set up reached the Server; anyone who knows a speaker&apos;s
+              device id can read it too, but it says nothing more than when that
+              speaker last made a request.
             </li>
             <li>
               <strong>Your presets:</strong> for each of the 6 preset buttons,
@@ -88,25 +113,42 @@ export default function PrivacyPage() {
             </li>
           </ul>
           <p>
-            We use this data only to give your speakers their presets and radio
-            stations back. We keep it for as long as your speakers use the
+            Nothing else about your speakers is stored: not their name, IP
+            address or serial number. We use this data only to give your
+            speakers their presets and radio stations back, and to confirm a
+            setup worked. We keep it for as long as your speakers use the
             Server, or until you ask us to delete it.
           </p>
           <p>
             You don&apos;t have to use our Server. You can{" "}
             <a href="/docs/self-hosting">run your own</a> and point the App and
-            your speakers to it, in which case none of the data in this section
-            reaches us.
+            your speakers to it, or keep a speaker on{" "}
+            <a href="/docs/other-servers">another community server</a> such as
+            soundcork, AfterTouch or STR. In either case none of the data in
+            this section reaches us.
           </p>
 
           <h2>Logs and diagnostics</h2>
           <p>
             Like any web server, the Server records the requests it receives:
             the requesting IP address, the time and the requested address, which
-            can contain your household account id. When a request fails, it also
+            can contain your household account id. Requests from the App also
+            name its version and platform (iOS or Android), which we use to know
+            which App versions are still in use. When a request fails, it also
             records what the speaker or App sent, with the account id masked. We
             use these records only to keep the Server working and secure. Our
             hosting provider deletes them automatically after at most 30 days.
+          </p>
+          <p>
+            When the App crashes or runs into an error, it sends a crash report:
+            the error and where in the App&apos;s code it happened, the App
+            version, the platform and operating system version, the phone&apos;s
+            make and model, its language and time zone, and a random identifier
+            for the install. Before the report leaves your phone, household
+            account ids, speaker device ids and IP addresses are removed from
+            the error. Crash reports don&apos;t include your location or what
+            you do in the App, and we use them only to find and fix bugs. An App
+            you <a href="/docs/build-the-app">build yourself</a> sends none.
           </p>
 
           <h2>Third parties</h2>
@@ -139,10 +181,21 @@ export default function PrivacyPage() {
               radio.
             </li>
             <li>
+              <strong>Other SoundTouch servers</strong> (soundcork, AfterTouch,
+              STR or one you run) give a speaker that uses them its account,
+              presets and stations. They are run by you or by those projects,
+              not by us, under their own terms.
+            </li>
+            <li>
               <strong>Expo</strong>, the platform the App is built with,
               receives an event each time the App starts: a random install
               identifier, the App version, the platform and the operating system
               version. We use it to count active installs and versions.
+            </li>
+            <li>
+              <strong>PostHog</strong> receives the App&apos;s crash reports,
+              along with the IP address they are sent from, which it
+              doesn&apos;t use to locate you.
             </li>
             <li>
               <strong>Fathom Analytics</strong> counts visits to this website
@@ -158,9 +211,9 @@ export default function PrivacyPage() {
           <p>
             We process the data stored on the Server because it is necessary to
             provide the service you ask for when you configure a speaker to use
-            it. We process logs, launch events and website statistics based on
-            our legitimate interest in keeping Revive ST working, secure and
-            improving.
+            it. We process logs, crash reports, launch events and website
+            statistics based on our legitimate interest in keeping Revive ST
+            working, secure and improving.
           </p>
 
           <h2>Your rights</h2>

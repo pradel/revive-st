@@ -1,12 +1,9 @@
-import { randomUUID } from "node:crypto";
-
 import { Effect } from "effect";
 import { HttpApiBuilder, HttpApiError } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
 import { DeviceContactsRepo } from "../devices/device-contacts-repo.ts";
 import { DevicesRepo } from "../devices/devices-repo.ts";
-import { AccountId } from "../marge/account.ts";
 import { sourceNamed } from "../marge/sources.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
 
@@ -19,9 +16,6 @@ export const InternalHandlers = HttpApiBuilder.group(
     const contactsRepo = yield* DeviceContactsRepo;
 
     return handlers
-      .handle("createAccount", () =>
-        Effect.sync(() => ({ accountId: AccountId.make(randomUUID()) })),
-      )
       .handle(
         "syncPresets",
         Effect.fn(function* ({ params, payload }) {

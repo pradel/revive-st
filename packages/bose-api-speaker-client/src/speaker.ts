@@ -23,6 +23,11 @@ export interface SpeakerOptions {
   port?: number;
   deviceID: string;
   onStateUpdate?: (state: SpeakerState) => void;
+  /**
+   * The speaker says its info (name, account, Marge server) or its sources
+   * changed; the new values have to be read again.
+   */
+  onSettingsChange?: () => void;
   onDisconnect?: () => void;
   onError?: (error: unknown) => void;
 }
@@ -493,10 +498,8 @@ export class Speaker {
         artUrl: undefined,
       };
       stateChanged = true;
-    } else if (update.type === "presets") {
-      // For presets update, we might want to refresh from HTTP since WS doesn't send the full list in the same format always.
-      // But actually, WS does not send the full preset list payload.
-      // Typically we'd fetch HTTP. But we can just emit an event to refresh if needed.
+    } else if (update.type === "info" || update.type === "sources") {
+      this.options.onSettingsChange?.();
     }
 
     if (stateChanged) {

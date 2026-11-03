@@ -7,7 +7,7 @@ Revive ST hosts a custom API server that acts both as the backend for our applic
 
 Every endpoint is also described in an OpenAPI document, `/openapi.json`, with an interactive reference at [`/docs`](https://api.revivest.app/docs). A self-hosted server serves both too.
 
-`GET /` answers whenever the server is up with its name, version and the paths of both, `{ "name": "Revive ST API", "version": "…", "docs": "/docs", "openapi": "/openapi.json" }`. Railway uses it as the deployment health check.
+`GET /` answers whenever the server is up with its name, version and the paths of both, `{ "name": "Revive ST API", "version": "…", "docs": "/docs", "openapi": "/openapi.json" }`. Railway uses it as the deployment health check, and the app reads the name and version to tell a Revive ST server it works with: it refuses a server older than its `MIN_SERVER_VERSION`.
 
 ## Accounts
 
@@ -15,7 +15,7 @@ Each household gets its own Marge account, and presets are stored per account an
 
 The id is not secret on the household's own network. SoundTouch speakers only speak plain HTTP: a speaker reports its account id unauthenticated in its `/info`, and the app sends it over HTTP when pairing a speaker (`setMargeAccount`). Anyone on that network can read it; this risk is accepted, as no speaker offers HTTPS. For the same reason the Android app allows cleartext HTTP, which can't be limited to speakers: their addresses are discovered at runtime. Every request to the Revive ST server uses HTTPS.
 
-When the app configures a speaker that is not paired with an account yet, it pairs it with the household's account: the one another of the household's speakers on this server uses, else the one the phone used before, else a new one minted by `POST /api/internal/accounts`. Only ids minted by the server are shared this way. A speaker already paired with an account keeps it.
+When the app configures a speaker that is not paired with an account yet, it pairs it with the household's account: the one another of the household's speakers on this server uses, else the one the phone used before, else a new random UUID the app makes with the system's secure random source. Only random UUIDs are shared this way, never a guessable id a speaker was paired with elsewhere. A speaker already paired with an account keeps it. The server takes any account id within the limits below: it doesn't keep a list of accounts.
 
 ## Limits
 
@@ -27,7 +27,6 @@ Writes are rate limited per client address (`X-Real-IP`, set by Railway's edge),
 | ---------------------------------------------------------------- | ---------------- |
 | A speaker saving or removing a preset, pairing, or being renamed | 60 a minute      |
 | The app syncing a speaker's presets                              | 300 a minute     |
-| The app minting an account                                       | 10 an hour       |
 
 Speaker reads are never limited: a household's speakers share one address and boot together.
 
@@ -126,10 +125,6 @@ The BMX service registry (`bmxRegistryUrl`). It points the speaker at three adap
 - `POST /token`: an anonymous account token.
 
 ## App Endpoints
-
-### `POST /api/internal/accounts`
-
-Returns a new household account id, `{ "accountId": "…" }`.
 
 ### `POST /api/internal/account/:accountId/device/:deviceId/presets`
 

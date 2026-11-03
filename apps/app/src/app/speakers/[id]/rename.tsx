@@ -3,7 +3,8 @@ import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 
 import { validateSpeakerName } from "@/features/onboarding/session/naming";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
+import { useSpeaker } from "@/features/speakers/registry/store";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -17,8 +18,8 @@ import { color } from "@/ui/tokens";
 export default function RenameSpeaker() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { speakers, setNameMutation } = useBose();
-  const speaker = speakers.find((item) => item.deviceID === id);
+  const { setNameMutation } = useSpeakerCommands();
+  const speaker = useSpeaker(id);
 
   const [draft, setDraft] = useState(speaker?.name ?? "");
   const [error, setError] = useState<string | null>(null);

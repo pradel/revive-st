@@ -25,6 +25,11 @@ export const icons = {
   next: { ios: "forward.fill", android: "skip_next", web: "skip_next" },
   pause: { ios: "pause.fill", android: "pause", web: "pause" },
   play: { ios: "play.fill", android: "play_arrow", web: "play_arrow" },
+  power: {
+    ios: "power",
+    android: "power_settings_new",
+    web: "power_settings_new",
+  },
   previous: {
     ios: "backward.fill",
     android: "skip_previous",
@@ -40,6 +45,11 @@ export const icons = {
     web: "speaker",
   },
   star: { ios: "star", android: "star_outline", web: "star_outline" },
+  source: {
+    ios: "rectangle.connected.to.line.below",
+    android: "input",
+    web: "input",
+  },
   starFilled: { ios: "star.fill", android: "star", web: "star" },
   volume: {
     ios: "speaker.wave.2.fill",

@@ -15,31 +15,6 @@ export const DatabasePath = Config.String("DATABASE_PATH").pipe(
   Config.withDefault("revivest.db"),
 );
 
-/**
- * Where the daily database snapshots go: a bucket on any S3-compatible
- * storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), addressed path-style
- * (`<S3_ENDPOINT>/<S3_BUCKET>/<key>`). Backups are off without `S3_BUCKET`;
- * with it, `S3_ENDPOINT` and the access keys are required. `S3_REGION`
- * defaults to `auto`, which R2 expects; AWS needs the bucket's region.
- */
-export const BackupConfig = Config.option(Config.String("S3_BUCKET")).pipe(
-  Config.flatMap(
-    Option.match({
-      onNone: () => Config.succeed(Option.none()),
-      onSome: (bucket) =>
-        Config.all({
-          bucket: Config.succeed(bucket),
-          endpoint: Config.URL("S3_ENDPOINT").pipe(
-            Config.map((url) => url.origin),
-          ),
-          region: Config.String("S3_REGION").pipe(Config.withDefault("auto")),
-          accessKeyId: Config.Redacted("S3_ACCESS_KEY_ID"),
-          secretAccessKey: Config.Redacted("S3_SECRET_ACCESS_KEY"),
-        }).pipe(Config.map(Option.some)),
-    }),
-  ),
-);
-
 export const ServerPort = Config.Port("PORT").pipe(Config.withDefault(3000));
 
 /**
@@ -58,8 +33,7 @@ export const DEFAULT_DATABASE_BUDGET_MB = 2500;
  * `DATABASE_BUDGET_MB`, in bytes: past this size the database takes no new
  * speaker, while those it has keep working. 2500 MB by default: with SQLite's
  * limit at 1.5 times it (3750 MB), the database and its write-ahead log fit
- * the 5 GB Railway volume. Backups copy it to the temporary directory, not
- * the volume.
+ * the 5 GB Railway volume.
  */
 export const DatabaseBudgetBytes = Config.Int("DATABASE_BUDGET_MB").pipe(
   Config.withDefault(DEFAULT_DATABASE_BUDGET_MB),

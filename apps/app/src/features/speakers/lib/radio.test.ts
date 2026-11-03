@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  type CastStation,
   confirmStationPlaying,
   customStationLocation,
   radioBrowserLocation,
+  stationFit,
   StationNotStartedError,
 } from "./radio";
+import { radioStatus, type StationSources } from "./speaker-radio";
 
 const LOCATION = radioBrowserLocation("9610c454-0601-11e8-ae97-52543be04c81");
 const PREVIOUS = radioBrowserLocation("2470f399-4883-44fb-8eb4-f54a6df61e72");
@@ -28,6 +31,121 @@ describe("customStationLocation", () => {
       imageUrl: "https://cdn.example/logo.png",
       streamUrl: "http://stream.example:8000/live?x=1&y=2",
     });
+  });
+});
+
+describe("stationFit", () => {
+  const OUR_SERVER = "https://api.revivest.app";
+  const SOUNDCORK = "http://192.168.1.10:8000/marge";
+  const radioBrowser: CastStation = {
+    kind: "radioBrowser",
+    stationuuid: "9610c454-0601-11e8-ae97-52543be04c81",
+    streamUrl: "http://stream.example/live.mp3",
+    name: "Dance Wave!",
+    favicon: "",
+  };
+  const custom: CastStation = {
+    kind: "custom",
+    streamUrl: "http://stream.example/live.mp3",
+    name: "My stream",
+    favicon: "",
+  };
+
+  /** A paired speaker on `margeURL` (ours by default), as last checked. */
+  const radio = (
+    sources: StationSources,
+    margeURL = OUR_SERVER,
+    paired = true,
+  ) =>
+    radioStatus(
+      {
+        server:
+          margeURL === OUR_SERVER
+            ? { kind: "revive", name: "Revive ST", setup: "setUp" }
+            : { kind: "soundcork", name: "soundcork", setup: "warn" },
+        margeURL,
+        paired,
+        sources,
+      },
+      false,
+      OUR_SERVER,
+    );
+
+  it("plays a Radio Browser station by its id where Radio Browser is offered", () => {
+    expect(
+      stationFit(
+        radio({ radioBrowser: true, customStations: true }),
+        radioBrowser,
+      ),
+    ).toMatchObject({
+      kind: "plays",
+      contentItem: { source: "RADIO_BROWSER", location: LOCATION },
+      through: null,
+    });
+  });
+
+  it("plays a Radio Browser station from its stream where only custom stations are offered", () => {
+    expect(
+      stationFit(
+        radio({ radioBrowser: false, customStations: true }, SOUNDCORK),
+        radioBrowser,
+      ),
+    ).toMatchObject({
+      kind: "plays",
+      contentItem: {
+        source: "LOCAL_INTERNET_RADIO",
+        location: customStationLocation(radioBrowser),
+      },
+      through: "soundcork",
+    });
+  });
+
+  it("offers setup to add custom stations on our server only", () => {
+    const sources = { radioBrowser: true, customStations: false };
+    expect(stationFit(radio(sources), custom)).toEqual({
+      kind: "noSource",
+      server: "Revive ST",
+      setupAdds: true,
+    });
+    expect(stationFit(radio(sources, SOUNDCORK), custom)).toEqual({
+      kind: "noSource",
+      server: "soundcork",
+      setupAdds: false,
+    });
+    // Another Revive ST server: setting the speaker up would move it to ours.
+    const otherRevive = radioStatus(
+      {
+        server: { kind: "revive", name: "Revive ST", setup: "setUp" },
+        margeURL: "http://192.168.1.50:3000",
+        paired: true,
+        sources,
+      },
+      false,
+      OUR_SERVER,
+    );
+    expect(stationFit(otherRevive, custom)).toEqual({
+      kind: "noSource",
+      server: "192.168.1.50:3000",
+      setupAdds: false,
+    });
+  });
+
+  it("can't add a source that plays a Radio Browser station whose stream isn't known", () => {
+    expect(
+      stationFit(radio({ radioBrowser: false, customStations: true }), {
+        ...radioBrowser,
+        streamUrl: "",
+      }),
+    ).toMatchObject({ kind: "noSource", setupAdds: false });
+  });
+
+  it("plays nothing on a speaker that needs setup", () => {
+    expect(
+      stationFit(
+        radio({ radioBrowser: true, customStations: true }, OUR_SERVER, false),
+        radioBrowser,
+      ),
+    ).toEqual({ kind: "notReady" });
   });
 });
 

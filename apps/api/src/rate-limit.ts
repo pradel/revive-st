@@ -51,13 +51,6 @@ export const PRESET_SYNCS: Limit = {
   window: "1 minute",
 };
 
-/** Minting an account, which the app does once per household. */
-export const ACCOUNT_CREATIONS: Limit = {
-  name: "account-creations",
-  limit: 10,
-  window: "1 hour",
-};
-
 /**
  * Rate limits writes per client (`RATE_LIMIT`), so one client can't fill the
  * database or the server's time. Speaker reads are never limited: a
@@ -104,16 +97,10 @@ export class PresetSyncRateLimit extends HttpApiMiddleware.Service<PresetSyncRat
   { error: TooManyRequests },
 ) {}
 
-export class AccountCreationRateLimit extends HttpApiMiddleware.Service<AccountCreationRateLimit>()(
-  "@revive-st/api/AccountCreationRateLimit",
-  { error: TooManyRequests },
-) {}
-
 /** The rate limit middlewares, sharing one in-memory store. */
 export const RateLimitLayer = Layer.mergeAll(
   Layer.effect(SpeakerWriteRateLimit, middlewareFor(SPEAKER_WRITES)),
   Layer.effect(PresetSyncRateLimit, middlewareFor(PRESET_SYNCS)),
-  Layer.effect(AccountCreationRateLimit, middlewareFor(ACCOUNT_CREATIONS)),
 ).pipe(
   Layer.provide(RateLimiter.layer),
   Layer.provide(RateLimiter.layerStoreMemory),

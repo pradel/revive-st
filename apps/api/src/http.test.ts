@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
@@ -29,57 +29,16 @@ import {
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import {
-  RadioBrowser,
-  RadioBrowserStationNotFound,
-  RadioBrowserUnavailable,
-} from "./radio-browser/radio-browser.ts";
-import { StationNotFound, TuneIn, TuneInUnavailable } from "./tunein/tunein.ts";
-
-/** TuneIn as the tests need it: `s1` plays, `s404` is gone, `s503` fails. */
-const TuneInTest = Layer.succeed(
-  TuneIn,
-  TuneIn.of({
-    station: (stationId) => {
-      switch (stationId) {
-        case "s404":
-          return Effect.fail(new StationNotFound({ stationId }));
-        case "s503":
-          return Effect.fail(new TuneInUnavailable({ reason: "down" }));
-        default:
-          return Effect.succeed({
-            streamUrls: ["http://a.example/1.mp3", "http://a.example/2.aac"],
-            name: "Smooth Jazz",
-            imageUrl: "https://cdn.example/logo.png",
-          });
-      }
-    },
-  }),
-);
-
-const STATION_UUID = "9610c454-0601-11e8-ae97-52543be04c81";
-const MISSING_UUID = "00000000-0000-0000-0000-000000000404";
-const UNAVAILABLE_UUID = "00000000-0000-0000-0000-000000000503";
-
-/** Radio Browser as the tests need it: one station, one gone, one failing. */
-const RadioBrowserTest = Layer.succeed(
-  RadioBrowser,
-  RadioBrowser.of({
-    station: (stationUuid) => {
-      switch (stationUuid) {
-        case MISSING_UUID:
-          return Effect.fail(new RadioBrowserStationNotFound({ stationUuid }));
-        case UNAVAILABLE_UUID:
-          return Effect.fail(new RadioBrowserUnavailable({ reason: "down" }));
-        default:
-          return Effect.succeed({
-            streamUrls: ["http://mp3channels.example/chillout"],
-            name: "Antenne Bayern - Chillout",
-            imageUrl: "https://cdn.example/antenne.png",
-          });
-      }
-    },
-  }),
-);
+  ACCOUNT,
+  getLastContactAt,
+  MISSING_UUID,
+  RadioBrowserTest,
+  speaker,
+  STATION_UUID,
+  syncPresets,
+  TuneInTest,
+  UNAVAILABLE_UUID,
+} from "./testing.ts";
 
 /** Every log line the server writes, Debug included, as JSON. */
 const logLines: string[] = [];
@@ -103,16 +62,6 @@ const TestLayer = HttpAppLayer.pipe(
   Layer.provideMerge(NodeHttpServer.layerTest),
 );
 
-/** The account the tests' speakers are paired with. */
-const ACCOUNT = "household-1";
-
-/**
- * A device id as speakers send it, a MAC address, derived from `label` so
- * each test names its own speakers.
- */
-const speaker = (label: string) =>
-  createHash("sha256").update(label).digest("hex").slice(0, 12).toUpperCase();
-
 const devicePath = (deviceId: string, accountId = ACCOUNT) =>
   `/streaming/account/${accountId}/device/${deviceId}`;
 
@@ -132,22 +81,6 @@ const getPresetsXml = (deviceId: string, accountId = ACCOUNT) =>
   HttpClient.get(`${devicePath(deviceId, accountId)}/presets`).pipe(
     Effect.flatMap((response) => response.text),
   );
-
-const syncPresets = (deviceId: string, presets: unknown, accountId = ACCOUNT) =>
-  HttpClient.execute(
-    HttpClientRequest.post(
-      `/api/internal/account/${accountId}/device/${deviceId}/presets`,
-    ).pipe(HttpClientRequest.bodyJsonUnsafe({ presets })),
-  );
-
-const mintAccountId = HttpClient.post("/api/internal/accounts").pipe(
-  Effect.flatMap(
-    HttpIncomingMessage.schemaBodyJson(
-      Schema.Struct({ accountId: Schema.String }),
-    ),
-  ),
-  Effect.map(({ accountId }) => accountId),
-);
 
 const STATION_LOCATION = `/stations/byuuid/${STATION_UUID}`;
 
@@ -238,17 +171,6 @@ const postPowerOn = (body: string) =>
     HttpClientRequest.post("/streaming/support/power_on").pipe(
       HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
     ),
-  );
-
-/** The speaker's last contact, as the app reads it. */
-const getLastContactAt = (deviceId: string) =>
-  HttpClient.get(`/api/internal/device/${deviceId}/contact`).pipe(
-    Effect.flatMap(
-      HttpIncomingMessage.schemaBodyJson(
-        Schema.Struct({ lastContactAt: Schema.NullOr(Schema.Number) }),
-      ),
-    ),
-    Effect.map(({ lastContactAt }) => lastContactAt),
   );
 
 /**
@@ -491,21 +413,9 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     }),
   );
 
-  it.effect("mints a distinct account id per request", () =>
-    Effect.gen(function* () {
-      const first = yield* mintAccountId;
-      const second = yield* mintAccountId;
-      assert.match(
-        first,
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-      );
-      assert.notStrictEqual(first, second);
-    }),
-  );
-
   it.effect("never logs an account id", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       yield* putPreset(
         speaker("logged"),
         1,
@@ -583,8 +493,9 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     Effect.gen(function* () {
       // Other tests log calls to the same routes.
       const firstLine = logLines.length;
+      const appPath = `/api/internal/device/${speaker("app")}/contact`;
       yield* HttpClient.execute(
-        HttpClientRequest.post("/api/internal/accounts").pipe(
+        HttpClientRequest.get(appPath).pipe(
           HttpClientRequest.setHeaders({
             "X-Revive-App-Version": "1.2.3",
             "X-Revive-App-Platform": "ios",
@@ -604,7 +515,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
         parsed
           .map(({ annotations }) => annotations)
           .filter((annotations) => annotations["http.url"] === url);
-      const fromApp = annotationsOf("/api/internal/accounts");
+      const fromApp = annotationsOf(appPath);
       assert.isNotEmpty(fromApp);
       for (const annotations of fromApp) {
         assert.strictEqual(annotations["app.version"], "1.2.3");
@@ -864,7 +775,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("stores nothing for a device id that isn't a MAC address", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const notMac = "not-a-mac-address";
       const saved = yield* putPreset(
         notMac,
@@ -910,7 +821,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     `pairs at most ${MAX_DEVICES_PER_ACCOUNT} speakers with an account`,
     () =>
       Effect.gen(function* () {
-        const accountId = yield* mintAccountId;
+        const accountId = randomUUID();
         const deviceIds = Array.from(
           { length: MAX_DEVICES_PER_ACCOUNT },
           (_unused, index) => speaker(`full-${index}`),
@@ -1129,7 +1040,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("accepts a speaker's rename and pairs it", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const response = yield* putDevice(
         "EC1127C25A50",
         `<?xml version="1.0" encoding="UTF-8" ?><device deviceid="EC1127C25A50"><name>Kitchen &amp; Co</name><macaddress>EC1127C25A50</macaddress></device>`,
@@ -1149,7 +1060,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("rejects a rename for another speaker than the path's", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const response = yield* putDevice(
         "EC1127C25A50",
         `<device deviceid="EC1127C25A51"><name>Kitchen</name></device>`,
@@ -1162,7 +1073,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("lists each paired device in the account with its presets", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       assert.include(yield* getFullXml(accountId), "<devices/>");
 
       const registered = speaker("registered");
@@ -1189,7 +1100,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("pairs a speaker that looks its group up at boot", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const booting = speaker("booting");
       const response = yield* HttpClient.get(
         `${devicePath(booting, accountId)}/group/`,
@@ -1203,7 +1114,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("pairs a speaker whose presets the app syncs", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const synced = speaker("app-synced");
       yield* syncPresets(synced, [], accountId);
       assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
@@ -1216,8 +1127,8 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
     "keeps a speaker in its account when another account pairs it",
     () =>
       Effect.gen(function* () {
-        const household = yield* mintAccountId;
-        const stranger = yield* mintAccountId;
+        const household = randomUUID();
+        const stranger = randomUUID();
         const victim = speaker("victim");
         yield* registerDevice(victim, household);
         yield* putPreset(victim, 1, speakerPresetXml({ name: "Ours" }), {
@@ -1248,7 +1159,7 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
 
   it.effect("does not pair a speaker whose preset or recent is malformed", () =>
     Effect.gen(function* () {
-      const accountId = yield* mintAccountId;
+      const accountId = randomUUID();
       const malformed = speaker("malformed");
       const preset = yield* putPreset(malformed, 1, "not xml", { accountId });
       const recent = yield* HttpClient.execute(

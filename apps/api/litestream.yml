@@ -1,0 +1,19 @@
+# Litestream ships the database to S3-compatible storage. `start.sh` runs
+# `litestream replicate -once` every hour, with a full snapshot once a day,
+# and sets every variable below.
+snapshot:
+  # Daily snapshots are kept 30 days. The hourly changes between them are
+  # never deleted by Litestream when it runs with `-once`: expire them with a
+  # bucket lifecycle rule on `litestream/0000/` (31 days).
+  retention: 720h
+dbs:
+  - path: ${DATABASE_PATH}
+    replica:
+      type: s3
+      bucket: ${S3_BUCKET}
+      path: litestream
+      endpoint: ${S3_ENDPOINT}
+      region: ${S3_REGION}
+      force-path-style: true
+      access-key-id: ${S3_ACCESS_KEY_ID}
+      secret-access-key: ${S3_SECRET_ACCESS_KEY}

@@ -102,13 +102,22 @@ export default defineConfig({
         rules: { "no-console": "off" },
       },
       {
+        // Build-time environment: the app config runs in Node, and Expo
+        // inlines the app's `EXPO_PUBLIC_*` variables.
+        files: ["apps/app/app.config.ts", "apps/app/src/lib/crash-reports.ts"],
+        globals: { process: "readonly" },
+      },
+      {
         files: ["packages/**/*.ts"],
         rules: { "no-console": "off" },
       },
       {
         // Effect idioms: anonymous `Effect.gen`/`Effect.fn` generators (spans
         // are named via `Effect.fn("name")`) and `_tag` discriminants.
-        files: ["apps/api/src/**/*.ts"],
+        files: [
+          "apps/api/src/**/*.ts",
+          "packages/speaker-emulator/src/**/*.ts",
+        ],
         rules: {
           "func-names": "off",
           "no-underscore-dangle": ["error", { allow: ["_tag"] }],

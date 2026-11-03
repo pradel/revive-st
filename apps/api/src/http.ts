@@ -63,9 +63,6 @@ const pathOf = (url: string) => url.split("?", 1)[0];
 
 const ACCOUNT_SEGMENT = /(\/account\/)([^/]+)/;
 
-/** The id `POST /api/internal/accounts` mints, in its JSON reply. */
-const ACCOUNT_ID_FIELD = /("accountId"\s*:\s*")[^"]*(")/g;
-
 const decodePathSegment = (segment: string) => {
   try {
     return decodeURIComponent(segment);
@@ -86,12 +83,8 @@ const redactedPath = (url: string) => {
     segment === undefined ? undefined : decodePathSegment(segment);
   return {
     path: path.replace(ACCOUNT_SEGMENT, "$1…"),
-    redact: (text: string) => {
-      const masked = text.replace(ACCOUNT_ID_FIELD, "$1…$2");
-      return accountId === undefined
-        ? masked
-        : masked.replaceAll(accountId, "…");
-    },
+    redact: (text: string) =>
+      accountId === undefined ? text : text.replaceAll(accountId, "…"),
   };
 };
 

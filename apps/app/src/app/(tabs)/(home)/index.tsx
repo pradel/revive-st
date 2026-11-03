@@ -1,39 +1,57 @@
 import type { KeyValue } from "bose-api-speaker-client";
 import { Stack, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   Linking,
   Platform,
   RefreshControl,
-  ScrollView,
   View,
+  type TextStyle,
   type ViewStyle,
 } from "react-native";
 
 import { useOpenSpeakerSetup } from "@/features/onboarding/components/SetupUnavailable";
 import { NowPlayingBar } from "@/features/speakers/components/NowPlayingBar";
-import { useBose } from "@/features/speakers/contexts/BoseContext";
-import type { BoseSpeaker } from "@/features/speakers/hooks/useSpeakerManager";
+import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-actions";
+import {
+  SWITCHABLE_SOURCES,
+  useSwitchSource,
+} from "@/features/speakers/components/sources";
+import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
   canSavePreset,
-  findActiveSpeaker,
   hasLoadedMedia,
   isRadioSource,
   isSpeakerPlaying,
   isStandby,
-  playStatusLabel,
+  speakerStateLabel,
   trackTitle,
 } from "@/features/speakers/lib/playback";
+import {
+  selectSpeaker,
+  useCanSwitchSpeaker,
+  useSelectedSpeaker,
+} from "@/features/speakers/lib/selection";
+import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
+import {
+  speakerRegistry,
+  useSpeakers,
+} from "@/features/speakers/registry/store";
+import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
 import { logger } from "@/lib/logger";
 import { Button } from "@/ui/ds/Button";
 import type { ContextMenuConfig } from "@/ui/ds/ContextMenu";
 import { EmptyState } from "@/ui/ds/EmptyState";
-import { icons } from "@/ui/ds/Icon";
-import { Screen } from "@/ui/ds/Screen";
+import { Icon, icons } from "@/ui/ds/Icon";
+import { ListRow } from "@/ui/ds/ListRow";
+import { Screen, ScreenScrollView } from "@/ui/ds/Screen";
+import { SectionHeader } from "@/ui/ds/SectionHeader";
 import { Shelf } from "@/ui/ds/Shelf";
 import { SpeakerCard } from "@/ui/ds/SpeakerCard";
+import { SpeakerRow } from "@/ui/ds/SpeakerRow";
 import { Text } from "@/ui/ds/Text";
 import { Tile } from "@/ui/ds/Tile";
 import { nativeIcons } from "@/ui/nativeIcons";
@@ -41,6 +59,7 @@ import { PulseRing } from "@/ui/PulseRing";
 import { color, space } from "@/ui/tokens";
 
 const PRESET_SLOTS = [1, 2, 3, 4, 5, 6] as const;
+type PresetSlot = (typeof PRESET_SLOTS)[number];
 
 /**
  * iOS can't tell the app that Local Network access was refused: scans just
@@ -55,44 +74,97 @@ const openAppSettings = () => {
   void Linking.openSettings();
 };
 
+/**
+ * The speaker's radio in a few words, for a line under its name: whether it
+ * needs setting up, or the other server it plays through. Nothing for a
+ * speaker ready on our server, or not checked yet.
+ */
+const radioSummary = (radio: RadioStatus): string | undefined => {
+  if (radio.kind === "needsSetup") {
+    return "Radio needs setup";
+  }
+  return radio.kind === "ready" && radio.through !== null
+    ? `Radio via ${radio.through}`
+    : undefined;
+};
+
 export default function Index() {
   const router = useRouter();
+  const { online: speakers, listed: listedSpeakers, scan } = useSpeakers();
+  const isScanning = scan !== null;
   const {
-    speakers,
-    listedSpeakers,
-    isScanning,
-    isRefreshing,
-    rescan,
-    retrySpeaker,
-    forgetSpeaker,
     volumeMutation,
     playPauseMutation,
     keyMutation,
     powerToggleMutation,
-    selectSourceMutation,
     savePresetMutation,
-  } = useBose();
+  } = useSpeakerCommands();
+  const switchSource = useSwitchSource();
   const openSpeakerSetup = useOpenSpeakerSetup();
+  const [showOffline, setShowOffline] = useState(false);
 
-  const presetSpeaker = findActiveSpeaker(speakers) ?? speakers[0];
+  // The presets shelf, the mini player and Now Playing act on it; it's
+  // highlighted once there's more than one speaker to tell apart.
+  const selected = useSelectedSpeaker();
+  const highlightedID =
+    listedSpeakers.length > 1 ? selected?.deviceID : undefined;
+  const canSwitch = useCanSwitchSpeaker();
 
-  const playerHref = (speaker: BoseSpeaker) =>
-    `/speakers/${encodeURIComponent(speaker.deviceID)}/now-playing` as const;
+  // Offline speakers go to their own section, so they don't push the ones
+  // that answer down; the others keep their place by name.
+  const shownSpeakers = listedSpeakers.filter(
+    (speaker) => speaker.status !== "offline",
+  );
+  const offlineSpeakers = listedSpeakers.filter(
+    (speaker) => speaker.status === "offline",
+  );
+  const playingSpeakers = speakers.filter((speaker) =>
+    isSpeakerPlaying(speaker),
+  );
+  // A speaker its server keeps from being set up isn't counted: there's
+  // nothing to do for it here.
+  const needingRadioSetup = speakers.filter(
+    (speaker) =>
+      speaker.radio.kind === "needsSetup" &&
+      speaker.radio.setup.kind !== "blocked",
+  );
 
   const openNowPlaying = (speaker: BoseSpeaker) => {
-    router.push(playerHref(speaker));
+    selectSpeaker(speaker.deviceID);
+    router.push("/now-playing");
   };
 
   const openSettings = (speaker: BoseSpeaker) => {
     router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
   };
 
-  const playPreset = (speaker: BoseSpeaker, slot: number) => {
+  const openSpeakerPicker = () => {
+    router.push("/speaker-picker");
+  };
+
+  const playPreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     haptics.tap();
     keyMutation.mutate({
       deviceID: speaker.deviceID,
       key: `PRESET_${slot}` as KeyValue,
     });
+  };
+
+  const togglePower = (speaker: BoseSpeaker) => {
+    const turningOn = isStandby(speaker);
+    haptics.toggle(turningOn);
+    // Turning a speaker on is choosing to listen to it.
+    if (turningOn) {
+      selectSpeaker(speaker.deviceID);
+    }
+    powerToggleMutation.mutate({ deviceID: speaker.deviceID });
+  };
+
+  const pauseAll = () => {
+    haptics.tap();
+    for (const speaker of playingSpeakers) {
+      keyMutation.mutate({ deviceID: speaker.deviceID, key: "PAUSE" });
+    }
   };
 
   const speakerMenu = (speaker: BoseSpeaker): ContextMenuConfig => ({
@@ -107,20 +179,12 @@ export default function Index() {
         id: "source",
         title: "Source",
         icon: nativeIcons.source,
-        actions: [
-          {
-            id: "source-bluetooth",
-            title: "Bluetooth",
-            icon: nativeIcons.bluetooth,
-            checked: speaker.source === "BLUETOOTH",
-          },
-          {
-            id: "source-aux",
-            title: "AUX",
-            icon: nativeIcons.aux,
-            checked: speaker.source === "AUX",
-          },
-        ],
+        actions: SWITCHABLE_SOURCES.map((source) => ({
+          id: `source-${source.id}`,
+          title: source.title,
+          icon: source.icon,
+          checked: speaker.source === source.id,
+        })),
       },
       {
         id: "power",
@@ -129,7 +193,6 @@ export default function Index() {
       },
     ],
     onAction: (id) => {
-      const { deviceID } = speaker;
       switch (id) {
         case "now-playing":
           openNowPlaying(speaker);
@@ -137,44 +200,34 @@ export default function Index() {
         case "settings":
           openSettings(speaker);
           break;
-        case "source-bluetooth":
-          haptics.tap();
-          selectSourceMutation.mutate({ deviceID, source: "BLUETOOTH" });
-          break;
-        case "source-aux":
-          haptics.tap();
-          selectSourceMutation.mutate({
-            deviceID,
-            source: "AUX",
-            sourceAccount: "AUX",
-          });
-          break;
         case "power":
-          haptics.toggle(isStandby(speaker));
-          powerToggleMutation.mutate({ deviceID });
+          togglePower(speaker);
           break;
-        default:
-          break;
+        default: {
+          const source = SWITCHABLE_SOURCES.find(
+            (item) => `source-${item.id}` === id,
+          );
+          if (source) {
+            switchSource(speaker, source);
+          }
+        }
       }
     },
   });
 
   const unreachableMenu = (speaker: BoseSpeaker): ContextMenuConfig => ({
-    actions: [
-      { id: "retry", title: "Try again", icon: nativeIcons.refresh },
-      {
-        id: "forget",
-        title: "Forget speaker",
-        icon: nativeIcons.delete,
-        destructive: true,
-      },
-    ],
+    actions: OFFLINE_SPEAKER_ACTIONS.map(
+      ({ id, title, icon, destructive }) => ({
+        id,
+        title,
+        icon,
+        destructive,
+      }),
+    ),
     onAction: (id) => {
-      if (id === "retry") {
-        retrySpeaker(speaker);
-      } else {
-        forgetSpeaker(speaker.deviceID);
-      }
+      OFFLINE_SPEAKER_ACTIONS.find((action) => action.id === id)?.run(
+        speaker.deviceID,
+      );
     },
   });
 
@@ -183,7 +236,7 @@ export default function Index() {
     listedSpeakers.length > 0 &&
     listedSpeakers.every((speaker) => speaker.status === "offline");
 
-  const savePreset = (speaker: BoseSpeaker, slot: number) => {
+  const savePreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     savePresetMutation.mutate(
       { deviceID: speaker.deviceID, presetId: slot },
       {
@@ -204,7 +257,7 @@ export default function Index() {
 
   const presetMenu = (
     speaker: BoseSpeaker,
-    slot: number,
+    slot: PresetSlot,
     isEmpty: boolean,
   ): ContextMenuConfig => ({
     actions: [
@@ -229,6 +282,135 @@ export default function Index() {
     },
   });
 
+  const renderSpeaker = (speaker: BoseSpeaker) => {
+    const isSelected = speaker.deviceID === highlightedID;
+    if (speaker.status === "online" && isStandby(speaker)) {
+      return (
+        <SpeakerRow
+          key={speaker.deviceID}
+          name={speaker.name}
+          detail={[speakerStateLabel(speaker), radioSummary(speaker.radio)]
+            .filter(Boolean)
+            .join(" · ")}
+          modelDrawing={speakerDrawing(speaker.type)}
+          accessibilityHint="Opens the player"
+          onPress={() => {
+            openNowPlaying(speaker);
+          }}
+          onPowerOn={() => {
+            togglePower(speaker);
+          }}
+          menu={speakerMenu(speaker)}
+          selected={isSelected}
+        />
+      );
+    }
+    const hasMedia = hasLoadedMedia(speaker);
+    const reachable = speaker.status === "online";
+    return (
+      <SpeakerCard
+        key={speaker.deviceID}
+        name={speaker.name}
+        status={speaker.status === "connecting" ? "connecting" : undefined}
+        nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
+        detail={[
+          speaker.artist,
+          speakerStateLabel(speaker),
+          radioSummary(speaker.radio),
+        ]
+          .filter(Boolean)
+          .join(" · ")}
+        artworkUri={speaker.artUrl}
+        modelDrawing={speakerDrawing(speaker.type)}
+        isPlaying={isSpeakerPlaying(speaker)}
+        canPlayPause={hasMedia}
+        volume={speaker.volume ?? 0}
+        onVolumeCommit={(volume) => {
+          volumeMutation.mutate({
+            deviceID: speaker.deviceID,
+            volume,
+          });
+        }}
+        onPlayPause={() => {
+          haptics.tap();
+          selectSpeaker(speaker.deviceID);
+          playPauseMutation.mutate({ deviceID: speaker.deviceID });
+        }}
+        playerHref="/now-playing"
+        onOpen={() => {
+          selectSpeaker(speaker.deviceID);
+        }}
+        selected={isSelected}
+        onOpenSettings={() => {
+          openSettings(speaker);
+        }}
+        menu={reachable ? speakerMenu(speaker) : undefined}
+      />
+    );
+  };
+
+  const renderPresets = () => {
+    if (!selected) {
+      return null;
+    }
+    const title =
+      listedSpeakers.length > 1 ? `Presets · ${selected.name}` : "Presets";
+    const change = canSwitch
+      ? { label: "Change", onPress: openSpeakerPicker }
+      : undefined;
+    if (selected.status !== "online" || !selected.presets) {
+      // Its presets come from the speaker itself; another one can be picked.
+      return canSwitch ? (
+        <View>
+          <SectionHeader title={title} action={change} />
+          <Text variant="subhead" color="textTertiary" style={$presetsNote}>
+            {selected.status === "offline"
+              ? `${selected.name} is offline.`
+              : `Connecting to ${selected.name}…`}
+          </Text>
+        </View>
+      ) : null;
+    }
+    return (
+      <Shelf title={title} action={change}>
+        {PRESET_SLOTS.map((slot) => {
+          const preset = selected.presets?.find((item) => item.id === slot);
+          if (!preset) {
+            return (
+              <Tile
+                key={slot}
+                title="Empty"
+                subtitle={`Preset ${slot}`}
+                muted
+                menu={presetMenu(selected, slot, true)}
+              />
+            );
+          }
+          return (
+            <Tile
+              key={slot}
+              title={preset.contentItem.itemName}
+              subtitle={`Preset ${slot}`}
+              artworkUri={preset.contentItem.containerArt || null}
+              fallbackIcon={
+                isRadioSource(preset.contentItem.source)
+                  ? icons.radio
+                  : icons.music
+              }
+              onPress={() => {
+                playPreset(selected, slot);
+              }}
+              menu={presetMenu(selected, slot, false)}
+            />
+          );
+        })}
+      </Shelf>
+    );
+  };
+
+  const firstNeedingSetup = needingRadioSetup[0];
+  const offlineExpanded = showOffline || shownSpeakers.length === 0;
+
   return (
     <Screen inTabs footer={<NowPlayingBar />}>
       <Stack.Toolbar placement="right">
@@ -238,7 +420,7 @@ export default function Index() {
           onPress={openSpeakerSetup}
         />
       </Stack.Toolbar>
-      <ScrollView
+      <ScreenScrollView
         contentContainerStyle={[
           $content,
           listedSpeakers.length === 0 && $centered,
@@ -249,8 +431,10 @@ export default function Index() {
           // Only a scan the user asked for shows the spinner: the automatic
           // one at launch would push the list down while it's already shown.
           <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={rescan}
+            refreshing={scan === "user"}
+            onRefresh={() => {
+              speakerRegistry.rescan();
+            }}
             tintColor={color.textSecondary}
             colors={[color.accent]}
             progressBackgroundColor={color.surface2}
@@ -286,7 +470,9 @@ export default function Index() {
                   label={isScanning ? "Scanning…" : "Scan again"}
                   variant="secondary"
                   loading={isScanning}
-                  onPress={rescan}
+                  onPress={() => {
+                    speakerRegistry.rescan();
+                  }}
                 />
                 {LOCAL_NETWORK_HINT ? (
                   <Button
@@ -300,55 +486,34 @@ export default function Index() {
           />
         ) : (
           <>
-            <View style={$cards}>
-              {listedSpeakers.map((speaker) => {
-                const hasMedia = hasLoadedMedia(speaker);
-                const reachable = speaker.status === "online";
-                return (
-                  <SpeakerCard
-                    key={speaker.deviceID}
-                    name={speaker.name}
-                    status={
-                      speaker.status === "online" ? undefined : speaker.status
-                    }
-                    onRetry={() => {
-                      haptics.tap();
-                      retrySpeaker(speaker);
-                    }}
-                    nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
-                    detail={[speaker.artist, playStatusLabel(speaker)]
-                      .filter(Boolean)
-                      .join(" · ")}
-                    artworkUri={speaker.artUrl}
-                    modelDrawing={speakerDrawing(speaker.type)}
-                    isPlaying={isSpeakerPlaying(speaker)}
-                    canPlayPause={hasMedia}
-                    volume={speaker.volume ?? 0}
-                    onVolumeCommit={(volume) => {
-                      volumeMutation.mutate({
-                        deviceID: speaker.deviceID,
-                        volume,
-                      });
-                    }}
-                    onPlayPause={() => {
-                      haptics.tap();
-                      playPauseMutation.mutate({ deviceID: speaker.deviceID });
-                    }}
-                    playerHref={playerHref(speaker)}
-                    onOpenSettings={() => {
-                      openSettings(speaker);
-                    }}
-                    menu={
-                      reachable
-                        ? speakerMenu(speaker)
-                        : speaker.status === "offline"
-                          ? unreachableMenu(speaker)
-                          : undefined
-                    }
+            {playingSpeakers.length > 1 ? (
+              <SectionHeader
+                title={`${playingSpeakers.length} playing`}
+                action={{ label: "Pause all", onPress: pauseAll }}
+              />
+            ) : null}
+
+            {firstNeedingSetup && needingRadioSetup.length > 1 ? (
+              <ListRow
+                title={`${needingRadioSetup.length} speakers need internet radio setup`}
+                subtitle={`Start with ${firstNeedingSetup.name}`}
+                leading={<Icon name={icons.warning} color="warning" />}
+                trailing={
+                  <Icon
+                    name={icons.chevronRight}
+                    size={16}
+                    color="textTertiary"
                   />
-                );
-              })}
-            </View>
+                }
+                onPress={() => {
+                  router.push(
+                    `/speakers/${encodeURIComponent(firstNeedingSetup.deviceID)}/configure`,
+                  );
+                }}
+              />
+            ) : null}
+
+            <View style={$cards}>{shownSpeakers.map(renderSpeaker)}</View>
 
             {allOffline ? (
               <View style={$offlineHint}>
@@ -365,52 +530,47 @@ export default function Index() {
               </View>
             ) : null}
 
-            {presetSpeaker?.presets && (
-              <Shelf
-                title={
-                  speakers.length > 1
-                    ? `Presets · ${presetSpeaker.name}`
-                    : "Presets"
-                }
-              >
-                {PRESET_SLOTS.map((slot) => {
-                  const preset = presetSpeaker.presets?.find(
-                    (item) => item.id === slot,
-                  );
-                  if (!preset) {
-                    return (
-                      <Tile
-                        key={slot}
-                        title="Empty"
-                        subtitle={`Preset ${slot}`}
-                        muted
-                        menu={presetMenu(presetSpeaker, slot, true)}
-                      />
-                    );
+            {renderPresets()}
+
+            {offlineSpeakers.length > 0 ? (
+              <>
+                <SectionHeader
+                  title={`Offline (${offlineSpeakers.length})`}
+                  action={
+                    shownSpeakers.length > 0
+                      ? {
+                          label: showOffline ? "Hide" : "Show",
+                          onPress: () => {
+                            setShowOffline((shown) => !shown);
+                          },
+                        }
+                      : undefined
                   }
-                  return (
-                    <Tile
-                      key={slot}
-                      title={preset.contentItem.itemName}
-                      subtitle={`Preset ${slot}`}
-                      artworkUri={preset.contentItem.containerArt || null}
-                      fallbackIcon={
-                        isRadioSource(preset.contentItem.source)
-                          ? icons.radio
-                          : icons.music
-                      }
-                      onPress={() => {
-                        playPreset(presetSpeaker, slot);
-                      }}
-                      menu={presetMenu(presetSpeaker, slot, false)}
-                    />
-                  );
-                })}
-              </Shelf>
-            )}
+                />
+                {offlineExpanded ? (
+                  <View style={$cards}>
+                    {offlineSpeakers.map((speaker) => (
+                      <SpeakerRow
+                        key={speaker.deviceID}
+                        name={speaker.name}
+                        detail={`${speakerStateLabel(speaker)} · Tap to try again`}
+                        modelDrawing={speakerDrawing(speaker.type)}
+                        accessibilityHint="Tries to reach the speaker again"
+                        onPress={() => {
+                          haptics.tap();
+                          speakerRegistry.retry(speaker.deviceID);
+                        }}
+                        menu={unreachableMenu(speaker)}
+                        selected={speaker.deviceID === highlightedID}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+              </>
+            ) : null}
           </>
         )}
-      </ScrollView>
+      </ScreenScrollView>
     </Screen>
   );
 }
@@ -432,4 +592,8 @@ const $offlineHint: ViewStyle = {
   marginHorizontal: space.screen,
   marginTop: space.md,
   gap: space.sm,
+};
+
+const $presetsNote: TextStyle = {
+  paddingHorizontal: space.screen,
 };

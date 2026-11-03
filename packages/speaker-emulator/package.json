@@ -1,0 +1,24 @@
+{
+  "name": "@revive-st/speaker-emulator",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "test": "vp test run",
+    "test:watch": "vp test watch"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.1.0",
+    "better-result": "3.0.1",
+    "bose-api-speaker-client": "workspace:*",
+    "effect": "4.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.5",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}

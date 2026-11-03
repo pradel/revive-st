@@ -115,7 +115,7 @@ const wsClient = new BoseWebSocketClient({
   },
 });
 
-// Connect to the speaker (uses default ws://<host>:8080)
+// Connect to the speaker (ws://<host>:8080; `port` overrides 8080)
 wsClient.connect();
 
 // Close connection when done
