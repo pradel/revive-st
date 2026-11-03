@@ -44,7 +44,7 @@ const posthog =
 // Release tagging: PostHog links these EAS properties to the project and
 // account on expo.dev. The app version and build are already on every report.
 // The EAS Update ones (`eas/update_id`, `eas/channel`, `eas/runtime_version`)
-// need expo-updates, which the app doesn't use.
+// need expo-updates, which the app doesn't use (docs/adr/0005).
 const eas: unknown = Constants.expoConfig?.extra?.eas;
 void posthog?.register({
   "eas/project_id":

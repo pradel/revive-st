@@ -23,7 +23,7 @@ import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
 import { Form } from "@/ui/form/Form";
 import { formIcons } from "@/ui/form/icons";
-import { FormLinkRow, FormValueRow } from "@/ui/form/rows";
+import { FormFooterText, FormLinkRow, FormValueRow } from "@/ui/form/rows";
 import { FormSection } from "@/ui/form/Section";
 import { color } from "@/ui/tokens";
 
@@ -81,7 +81,7 @@ export default function AppSettings() {
         <FormSection title="About">
           <FormValueRow
             icon={formIcons.speaker}
-            label="Revive SoundTouch"
+            label="Revive ST"
             value={`Version ${appVersion}`}
           />
           <FormLinkRow
@@ -105,6 +105,19 @@ export default function AppSettings() {
               void Linking.openURL(APP_CONFIG.FEEDBACK_URL);
             }}
           />
+          <FormLinkRow
+            icon={formIcons.privacy}
+            label="Privacy policy"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.PRIVACY_URL);
+            }}
+          />
+          <FieldGroup.SectionFooter>
+            <FormFooterText>
+              Revive ST is not affiliated with or endorsed by Bose Corporation.
+              Bose and SoundTouch are trademarks of Bose Corporation.
+            </FormFooterText>
+          </FieldGroup.SectionFooter>
         </FormSection>
 
         <FormSection title="Network">

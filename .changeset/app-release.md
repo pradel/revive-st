@@ -15,5 +15,6 @@ Several speakers, radio through other servers, and a redesigned setup.
 - Redesigned speaker settings with the model's drawing, preset artwork tiles and an "About this speaker" screen; Home presets show artwork.
 - New app icon and splash screen; on Android the now-playing bar docks on the tab bar.
 - On iPhone, the first launch explains Local Network access, and adding a speaker says setup is coming soon.
-- Settings has a "Send feedback" link, and renaming a speaker gives up after 15 seconds.
+- Settings has "Send feedback" and "Privacy policy" links and says Revive ST isn't affiliated with Bose, and renaming a speaker gives up after 15 seconds.
+- The iPhone app no longer declares location or Wi-Fi hotspot access it never uses, and the Android app drops unused permissions.
 - Crashes and errors are reported to PostHog, without account ids, device ids or addresses, and a screen that fails to render offers "Try again" instead of a blank app.
