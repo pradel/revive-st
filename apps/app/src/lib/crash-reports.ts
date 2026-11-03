@@ -5,7 +5,8 @@ import { APP_CONFIG } from "@/config";
 
 import { scrubCrashReport } from "./crash-report-scrub";
 
-const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+// Typed `any` where Expo's generated `expo-env.d.ts` is missing, as in CI.
+const apiKey: unknown = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
 
 /**
  * Crash reporting: uncaught JavaScript errors, unhandled rejections and
@@ -15,7 +16,7 @@ const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
  * builds made without the PostHog project key, such as contributors'.
  */
 const posthog =
-  apiKey && !__DEV__
+  typeof apiKey === "string" && apiKey !== "" && !__DEV__
     ? new PostHog(apiKey, {
         host: APP_CONFIG.POSTHOG_HOST,
         captureAppLifecycleEvents: false,
