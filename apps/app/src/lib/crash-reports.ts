@@ -1,0 +1,45 @@
+import PostHog from "posthog-react-native";
+
+import { APP_CONFIG } from "@/config";
+
+import { scrubCrashReport } from "./crash-report-scrub";
+
+const apiKey = process.env.EXPO_PUBLIC_POSTHOG_API_KEY;
+
+/**
+ * Crash reporting: uncaught JavaScript errors, unhandled rejections and
+ * native crashes (Android NDK ones included) go to PostHog's EU cloud, and
+ * nothing else: no analytics, screens, feature flags, surveys or replays, no
+ * person profiles and no location from the IP. Off in development and in
+ * builds made without the PostHog project key, such as contributors'.
+ */
+const posthog =
+  apiKey && !__DEV__
+    ? new PostHog(apiKey, {
+        host: APP_CONFIG.POSTHOG_HOST,
+        captureAppLifecycleEvents: false,
+        enableSessionReplay: false,
+        personProfiles: "never",
+        preloadFeatureFlags: false,
+        disableRemoteFeatureFlags: true,
+        sendFeatureFlagEvent: false,
+        setDefaultPersonProperties: false,
+        disableSurveys: true,
+        disableGeoip: true,
+        errorTracking: {
+          autocapture: {
+            uncaughtExceptions: true,
+            unhandledRejections: true,
+            console: false,
+            nativeCrashes: true,
+            androidNdkCrashes: true,
+          },
+        },
+        before_send: scrubCrashReport,
+      })
+    : null;
+
+/** Reports an error the app caught, such as a screen that failed to render. */
+export function reportError(error: unknown): void {
+  posthog?.captureException(error);
+}

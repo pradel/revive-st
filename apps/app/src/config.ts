@@ -4,4 +4,6 @@ export const APP_CONFIG = {
   WEBSITE_URL: "https://www.revivest.app",
   /** What the hosted server stores. */
   PRIVACY_URL: "https://www.revivest.app/privacy",
+  /** Where crash reports go: PostHog's EU cloud. */
+  POSTHOG_HOST: "https://eu.i.posthog.com",
 };

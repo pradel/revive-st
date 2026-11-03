@@ -102,6 +102,12 @@ export default defineConfig({
         rules: { "no-console": "off" },
       },
       {
+        // Build-time environment: the app config runs in Node, and Expo
+        // inlines the app's `EXPO_PUBLIC_*` variables.
+        files: ["apps/app/app.config.ts", "apps/app/src/lib/crash-reports.ts"],
+        globals: { process: "readonly" },
+      },
+      {
         files: ["packages/**/*.ts"],
         rules: { "no-console": "off" },
       },
