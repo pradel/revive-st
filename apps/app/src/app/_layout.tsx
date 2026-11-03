@@ -1,7 +1,8 @@
-import { Stack, ThemeProvider } from "expo-router";
+import { Stack, ThemeProvider, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { View, type ViewStyle } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 
@@ -19,8 +20,13 @@ import {
   useSpeakerDiscovery,
   useSpeakers,
 } from "@/features/speakers/registry/store";
+import { reportError } from "@/lib/crash-reports";
 import { initLogger } from "@/lib/logger";
 import { QueryProvider } from "@/providers/QueryProvider";
+import { Button } from "@/ui/ds/Button";
+import { EmptyState } from "@/ui/ds/EmptyState";
+import { icons } from "@/ui/ds/Icon";
+import { Screen } from "@/ui/ds/Screen";
 import { navigationTheme, stackScreenOptions } from "@/ui/navigation";
 import { color } from "@/ui/tokens";
 
@@ -47,6 +53,44 @@ function SplashGate() {
   }, [ready]);
   return null;
 }
+
+/**
+ * Shown instead of a blank app when a screen fails to render: the error is
+ * reported, and "Try again" renders the app again.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error);
+  }, [error]);
+  useEffect(() => {
+    // The error may come before the first screen hid the splash.
+    SplashScreen.hide();
+  }, []);
+  return (
+    <Screen presentation="fullscreen">
+      <View style={$centered}>
+        <EmptyState
+          icon={icons.warning}
+          title="Something went wrong"
+          description="Revive ST ran into a problem showing this screen."
+          actions={
+            <Button
+              label="Try again"
+              onPress={() => {
+                void retry();
+              }}
+            />
+          }
+        />
+      </View>
+    </Screen>
+  );
+}
+
+const $centered: ViewStyle = {
+  flex: 1,
+  justifyContent: "center",
+};
 
 export default function RootLayout() {
   const intro = useLocalNetworkIntro();

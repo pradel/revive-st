@@ -139,6 +139,17 @@ export default function PrivacyPage() {
             use these records only to keep the Server working and secure. Our
             hosting provider deletes them automatically after at most 30 days.
           </p>
+          <p>
+            When the App crashes or runs into an error, it sends a crash report:
+            the error and where in the App&apos;s code it happened, the App
+            version, the platform and operating system version, the phone&apos;s
+            make and model, its language and time zone, and a random identifier
+            for the install. Before the report leaves your phone, household
+            account ids, speaker device ids and IP addresses are removed from
+            the error. Crash reports don&apos;t include your location or what
+            you do in the App, and we use them only to find and fix bugs. An App
+            you <a href="/docs/build-the-app">build yourself</a> sends none.
+          </p>
 
           <h2>Third parties</h2>
           <ul>
@@ -182,6 +193,11 @@ export default function PrivacyPage() {
               version. We use it to count active installs and versions.
             </li>
             <li>
+              <strong>PostHog</strong> receives the App&apos;s crash reports,
+              along with the IP address they are sent from, which it
+              doesn&apos;t use to locate you.
+            </li>
+            <li>
               <strong>Fathom Analytics</strong> counts visits to this website
               without cookies and without collecting personal data.
             </li>
@@ -195,9 +211,9 @@ export default function PrivacyPage() {
           <p>
             We process the data stored on the Server because it is necessary to
             provide the service you ask for when you configure a speaker to use
-            it. We process logs, launch events and website statistics based on
-            our legitimate interest in keeping Revive ST working, secure and
-            improving.
+            it. We process logs, crash reports, launch events and website
+            statistics based on our legitimate interest in keeping Revive ST
+            working, secure and improving.
           </p>
 
           <h2>Your rights</h2>
