@@ -16,4 +16,4 @@ Several speakers, radio through other servers, and a redesigned setup.
 - New app icon and splash screen; on Android the now-playing bar docks on the tab bar.
 - On iPhone, the first launch explains Local Network access, and adding a speaker says setup is coming soon.
 - Settings has a "Send feedback" link, and renaming a speaker gives up after 15 seconds.
-- Crashes and errors are reported to PostHog's EU cloud, without account ids, device ids or addresses, and a screen that fails to render offers "Try again" instead of a blank app.
+- Crashes and errors are reported to PostHog, without account ids, device ids or addresses, and a screen that fails to render offers "Try again" instead of a blank app.

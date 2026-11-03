@@ -193,9 +193,9 @@ export default function PrivacyPage() {
               version. We use it to count active installs and versions.
             </li>
             <li>
-              <strong>PostHog</strong> receives the App&apos;s crash reports, in
-              its EU region (Frankfurt, Germany), along with the IP address they
-              are sent from, which it doesn&apos;t use to locate you.
+              <strong>PostHog</strong> receives the App&apos;s crash reports,
+              along with the IP address they are sent from, which it
+              doesn&apos;t use to locate you.
             </li>
             <li>
               <strong>Fathom Analytics</strong> counts visits to this website
