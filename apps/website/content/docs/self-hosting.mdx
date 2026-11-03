@@ -40,9 +40,9 @@ Your accounts and presets are stored in the `/data` volume, in the SQLite databa
 | `LOG_LEVEL`     | `info`              | `debug` also logs every request the server answers, not only rejected ones (4xx) and errors (5xx). `warn` and `error` log less. |
 | `LOG_FORMAT`    | `pretty`            | `json` writes one JSON object per line, for log collectors.                                                                     |
 
-### Daily backups to S3 storage (optional)
+### Backups to S3 storage (optional)
 
-The server can store a gzipped snapshot of its database in a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…) every day at 03:00 UTC, taken while it keeps serving. At start, it takes one right away if the newest snapshot is more than a day old, so a restart never costs a day. Snapshots are named `db/<date and time>.db.gz`; to keep only the last 30 days, add a lifecycle rule to the bucket.
+The server can back up its database with [Litestream](https://litestream.io) to a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), while it keeps serving: every hour it sends what changed, once a day a full snapshot, and when it stops, its last changes. A crash loses at most the last hour. Backups are stored under `litestream/` in the bucket; snapshots are kept 30 days. Litestream doesn't delete the hourly changes, so add a lifecycle rule to the bucket that deletes objects under `litestream/0000/` after 31 days.
 
 | Setting                | What it does                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -52,7 +52,16 @@ The server can store a gzipped snapshot of its database in a bucket on any S3-co
 | `S3_ACCESS_KEY_ID`     | An access key allowed to read and write objects in this bucket only (on R2: an API token with **Object Read & Write** on it).  |
 | `S3_SECRET_ACCESS_KEY` | That key's secret.                                                                                                             |
 
-To restore a snapshot, stop the server, download the snapshot, unzip it (`gunzip`) into `/data/revivest.db`, delete `revivest.db-wal` and `revivest.db-shm`, and start the server.
+To restore the latest backup, stop the server, replace the database with the backup, and start it again:
+
+```bash
+docker compose stop revive-st
+docker compose run --rm revive-st sh -c \
+  'rm -rf /data/revivest.db /data/revivest.db-wal /data/revivest.db-shm /data/.revivest.db-litestream /data/.revivest-snapshot-day && litestream restore /data/revivest.db'
+docker compose start revive-st
+```
+
+To go back to an earlier point in the last 30 days, add `-timestamp`, like `litestream restore -timestamp 2026-11-02T10:00:00Z /data/revivest.db`.
 
 ## Point the app at your server
 

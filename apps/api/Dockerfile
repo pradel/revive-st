@@ -35,14 +35,20 @@ RUN pnpm --filter @revive-st/api deploy --prod /prod
 
 FROM node:26-slim
 WORKDIR /app
+# `S3_REGION`: R2 expects `auto`; AWS needs the bucket's region.
 ENV NODE_ENV=production \
     PORT=3000 \
-    DATABASE_PATH=/data/revivest.db
+    DATABASE_PATH=/data/revivest.db \
+    S3_REGION=auto
+# Ships the database to S3 storage when `S3_BUCKET` is set; see `start.sh`.
+COPY --from=litestream/litestream:0.5.14 /usr/local/bin/litestream /usr/local/bin/litestream
+COPY apps/api/litestream.yml /etc/litestream.yml
 COPY --from=deps /prod/node_modules node_modules
 COPY apps/api/drizzle drizzle
 COPY apps/api/public public
 COPY --from=build /repo/apps/api/dist dist
+COPY --chmod=0755 apps/api/start.sh start.sh
 RUN mkdir /data && chown node:node /data
 USER node
 EXPOSE 3000
-CMD ["node", "dist/main.mjs"]
+CMD ["./start.sh"]

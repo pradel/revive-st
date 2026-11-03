@@ -2,10 +2,10 @@
 "@revive-st/api": patch
 ---
 
-Built-in SQLite, daily backups, speaker contacts and input limits.
+Built-in SQLite, hourly backups, speaker contacts and input limits.
 
 - The database runs on Node's built-in SQLite; `DATABASE_PATH` (default `/data/revivest.db` in the container) replaces `DATABASE_URL`.
-- With `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` set, a gzipped database snapshot goes to S3-compatible storage daily at 03:00 UTC.
+- With `S3_BUCKET`, `S3_ENDPOINT`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` set, Litestream backs the database up to S3-compatible storage: its changes every hour, a full snapshot daily (kept 30 days), and a last sync when the server stops.
 - Each speaker's last contact is recorded and served at `GET /api/internal/device/:deviceId/contact`.
 - Speakers get a custom stations source (`LOCAL_INTERNET_RADIO`) for streams added by URL.
 - The speaker's rename, recents, firmware update (kept on 27.0.6) and stats calls are answered.
