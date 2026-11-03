@@ -7,6 +7,7 @@ import Forum from "@expo/material-symbols/forum.xml";
 import Info from "@expo/material-symbols/info.xml";
 import Language from "@expo/material-symbols/language.xml";
 import MusicNote from "@expo/material-symbols/music_note.xml";
+import PrivacyTip from "@expo/material-symbols/privacy_tip.xml";
 import Radio from "@expo/material-symbols/radio.xml";
 import Refresh from "@expo/material-symbols/refresh.xml";
 import Speaker from "@expo/material-symbols/speaker.xml";
@@ -24,6 +25,7 @@ export const formIcons = {
   feedback: { ios: "bubble.left.and.bubble.right", android: Forum },
   info: { ios: "info.circle", android: Info },
   music: { ios: "music.note", android: MusicNote },
+  privacy: { ios: "hand.raised", android: PrivacyTip },
   radio: { ios: "radio", android: Radio },
   refresh: { ios: "arrow.clockwise", android: Refresh },
   server: { ios: "server.rack", android: Dns },
