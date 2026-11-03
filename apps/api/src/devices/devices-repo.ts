@@ -1,7 +1,7 @@
 import { and, asc, eq, sql } from "drizzle-orm";
 import { Context, DateTime, Effect, Layer, Schema } from "effect";
 
-import { Database } from "../db/database.ts";
+import { Database, hasRoom, StorageBudget } from "../db/database.ts";
 import { devicesTable } from "../db/schema.ts";
 import type { AccountId } from "../marge/account.ts";
 import { DeviceId } from "../presets/preset.ts";
@@ -11,9 +11,16 @@ const decodeDeviceIds = Schema.decodeUnknownEffect(Schema.Array(DeviceId));
 /**
  * The most speakers one account can be paired with: more than any household
  * has, and few enough that an account id, which anyone can make up, can't be
- * used to store unlimited presets.
+ * used to store unlimited presets, nor make its `/full` document large.
  */
-export const MAX_DEVICES_PER_ACCOUNT = 50;
+export const MAX_DEVICES_PER_ACCOUNT = 20;
+
+/**
+ * Whether a speaker is paired with an account: it is, the account already
+ * has `MAX_DEVICES_PER_ACCOUNT` others, or the database is past its
+ * `StorageBudget` and takes no new speaker.
+ */
+export type Pairing = "paired" | "accountFull" | "storageFull";
 
 /**
  * The speakers paired with each account. Pairing only ever adds a speaker to
@@ -25,13 +32,13 @@ export class DevicesRepo extends Context.Service<
   DevicesRepo,
   {
     /**
-     * Pairs `deviceId` with `accountId` unless the account already has
-     * `MAX_DEVICES_PER_ACCOUNT` speakers. Whether the device is paired.
+     * Pairs `deviceId` with `accountId` unless the account is full or the
+     * database past its budget. A speaker already paired stays paired.
      */
     readonly pair: (
       accountId: AccountId,
       deviceId: DeviceId,
-    ) => Effect.Effect<boolean>;
+    ) => Effect.Effect<Pairing>;
     /** The devices paired with `accountId`, oldest pairing first. */
     readonly findByAccount: (
       accountId: AccountId,
@@ -42,6 +49,14 @@ export class DevicesRepo extends Context.Service<
     DevicesRepo,
     Effect.gen(function* () {
       const db = yield* Database;
+      const { softBytes } = yield* StorageBudget;
+
+      const accountSize = (accountId: AccountId) =>
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(devicesTable)
+          .where(eq(devicesTable.accountId, accountId))
+          .pipe(Effect.map(([row]) => row?.count ?? 0));
 
       const pair = Effect.fn("DevicesRepo.pair")(function* (
         accountId: AccountId,
@@ -54,6 +69,7 @@ export class DevicesRepo extends Context.Service<
           SELECT ${accountId}, ${deviceId}, ${now}
           WHERE (SELECT count(*) FROM devices WHERE account_id = ${accountId})
             < ${MAX_DEVICES_PER_ACCOUNT}
+            AND ${hasRoom(softBytes)}
           ON CONFLICT DO NOTHING
         `);
         const [row] = yield* db
@@ -65,13 +81,21 @@ export class DevicesRepo extends Context.Service<
               eq(devicesTable.deviceId, deviceId),
             ),
           );
-        if (row === undefined) {
-          // Never log the account id: it guards the household's presets.
+        if (row !== undefined) {
+          return "paired";
+        }
+        // Never log the account id: it guards the household's presets.
+        if ((yield* accountSize(accountId)) >= MAX_DEVICES_PER_ACCOUNT) {
           yield* Effect.logWarning("Account full: speaker not paired", {
             deviceId,
           });
+          return "accountFull";
         }
-        return row !== undefined;
+        yield* Effect.logWarning("Storage budget reached: speaker not paired", {
+          deviceId,
+          softBytes,
+        });
+        return "storageFull";
       }, Effect.orDie);
 
       const findByAccount = Effect.fn("DevicesRepo.findByAccount")(function* (

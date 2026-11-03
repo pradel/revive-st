@@ -9,6 +9,7 @@ import {
 import { MAX_DEVICES_PER_ACCOUNT } from "../devices/devices-repo.ts";
 import { AccountId } from "../marge/account.ts";
 import { Preset, SpeakerDeviceId } from "../presets/preset.ts";
+import { PresetSyncRateLimit } from "../rate-limit.ts";
 
 /** A speaker's presets: at most one per button, so at most six. */
 const DevicePresets = Schema.Array(Preset).check(
@@ -34,14 +35,16 @@ export class InternalApi extends HttpApiGroup.make("internal")
         success: Schema.Struct({ success: Schema.Literal(true) }).annotate({
           description: "The presets are stored.",
         }),
-        error: HttpApiError.Conflict,
+        error: [HttpApiError.Conflict, HttpApiError.ServiceUnavailable],
       },
-    ).annotateMerge(
-      OpenApi.annotations({
-        summary: "Sync a speaker's presets",
-        description: `Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped. At most one preset per button, each field within its maximum length. A device id that isn't 12 hex digits gets \`400\`. \`409\` when the account already has ${MAX_DEVICES_PER_ACCOUNT} other speakers; nothing is stored then.`,
-      }),
-    ),
+    )
+      .middleware(PresetSyncRateLimit)
+      .annotateMerge(
+        OpenApi.annotations({
+          summary: "Sync a speaker's presets",
+          description: `Stores the presets the app read from the speaker, so the speaker gets them back from the Marge presets endpoint. Pairs the speaker with the account and replaces its stored presets: slots left out are deleted, and an empty list clears them all. Presets from a source the account doesn't offer are dropped. At most one preset per button, each field within its maximum length. A device id that isn't 12 hex digits gets \`400\`. \`409\` when the account already has ${MAX_DEVICES_PER_ACCOUNT} other speakers, \`503\` for a new speaker once the server's storage budget is reached; nothing is stored then. Rate limited per client, \`429\` beyond.`,
+        }),
+      ),
     HttpApiEndpoint.get("deviceContact", "/device/:deviceId/contact", {
       params: { deviceId: SpeakerDeviceId },
       success: Schema.Struct({
