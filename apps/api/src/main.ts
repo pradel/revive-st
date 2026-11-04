@@ -1,7 +1,7 @@
 import { createServer } from "node:http";
 
 import { NodeHttpServer, NodeRuntime } from "@effect/platform-node";
-import { Layer } from "effect";
+import { Cause, Exit, Layer, Runtime } from "effect";
 import { FetchHttpClient } from "effect/http";
 import { OtlpSerialization, OtlpTracer } from "effect/observability";
 
@@ -40,8 +40,22 @@ const TracingLayer = OtlpTracer.layerFromConfig().pipe(
   Layer.provide([OtlpSerialization.layerProtobuf, FetchHttpClient.layer]),
 );
 
+/**
+ * A stop signal (SIGTERM, SIGINT) ends the server with code 0 rather than
+ * Effect's 130: Litestream, which runs the server when backups are on
+ * (`start.sh`), only syncs the last changes after a server it stopped exits
+ * cleanly.
+ */
+const teardown: Runtime.Teardown = (exit, onExit) => {
+  if (Exit.isFailure(exit) && Cause.hasInterruptsOnly(exit.cause)) {
+    onExit(0);
+  } else {
+    Runtime.defaultTeardown(exit, onExit);
+  }
+};
+
 // Provided last so every layer build and request is traced and logged with
 // them, the exporter's own errors included.
 Layer.launch(
   MainLayer.pipe(Layer.provide(TracingLayer), Layer.provide(LoggingLayer)),
-).pipe(NodeRuntime.runMain);
+).pipe(NodeRuntime.runMain({ teardown }));
