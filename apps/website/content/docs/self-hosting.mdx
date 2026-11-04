@@ -42,7 +42,7 @@ Your accounts and presets are stored in the `/data` volume, in the SQLite databa
 
 ### Backups to S3 storage (optional)
 
-The server can back up its database with [Litestream](https://litestream.io) to a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), while it keeps serving: every hour it sends what changed, once a day a full snapshot, and when it stops, its last changes. An hour is the normal interval between backups, so a crash usually loses at most the last hour; if backups keep failing (the server logs `Database backup failed`), it can lose more. Backups are stored under `litestream/` in the bucket; snapshots are kept 30 days. Litestream doesn't delete the hourly changes, so add a lifecycle rule to the bucket that deletes objects under `litestream/0000/` after 31 days.
+The server can back up its database with [Litestream](https://litestream.io) to a bucket on any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO…), while it keeps serving. Litestream runs beside the server: it sends what changed about every minute, a full snapshot once a day, and the last changes when the server stops. A crash loses about the last two minutes; if uploads keep failing (Litestream logs each failure as an error), it can lose more. Backups are stored under `litestream/` in the bucket; snapshots are kept 30 days, and Litestream deletes older changes itself. It uses about 20 MB of memory. The first time it backs up a database, Litestream keeps a full copy of it beside the database for up to an hour, so leave room for one more copy on the database's disk.
 
 | Setting                | What it does                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
@@ -61,7 +61,7 @@ docker compose run --rm revive-st sh -c '
   db="$DATABASE_PATH"; dir=$(dirname "$db")
   rm -f "$db.restored"
   litestream restore -o "$db.restored" "$db"
-  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream" "$dir/.revivest-snapshot-day"
+  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream"
   mv "$db.restored" "$db"
 ' &&
 docker compose start revive-st
@@ -78,7 +78,7 @@ docker run --rm -v revive-st-data:/data \
   db="$DATABASE_PATH"; dir=$(dirname "$db")
   rm -f "$db.restored"
   litestream restore -o "$db.restored" "$db"
-  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream" "$dir/.revivest-snapshot-day"
+  rm -rf "$db-wal" "$db-shm" "$dir/.$(basename "$db")-litestream"
   mv "$db.restored" "$db"
 ' &&
 docker start revive-st
