@@ -1,5 +1,11 @@
 # @revive-st/app
 
+## 0.0.5
+
+### Patch Changes
+
+- a900473: The Android app is much smaller: release builds drop unused code, and the APK on GitHub only carries what 64-bit phones run.
+
 ## 0.0.4
 
 ### Patch Changes
