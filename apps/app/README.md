@@ -19,6 +19,8 @@ It checks out the release's tag, builds the APK on EAS (build profile `apk`: the
 
 The commands live in `packages/release` (Effect), whose tests (`vp run release#test`) cover these rules with fake tools.
 
+The APK only contains the 64-bit ARM native libraries (`ORG_GRADLE_PROJECT_reactNativeArchitectures` in the `apk` profile of `eas.json`): every phone that runs Android 11 except a few 32-bit-only ones. The store build keeps every architecture, since Google Play sends each phone only its own. Release builds are shrunk with R8 (`enableMinifyInReleaseBuilds` in `app.json`); a native module that's only reached through reflection can need a keep rule, so test a release build on a phone after adding one.
+
 You need `gh` and EAS logged in (`gh auth login`, `vpx eas-cli@latest login`) and the Android SDK build-tools (`ANDROID_HOME`, else `~/Library/Android/sdk`).
 
 ### Signing key
