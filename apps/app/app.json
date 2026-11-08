@@ -72,7 +72,13 @@
             "usePrecompiledHeaders": true,
             "enableMinifyInReleaseBuilds": true,
             "enableShrinkResourcesInReleaseBuilds": true,
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "packagingOptions": {
+              "exclude": [
+                "org/bouncycastle/pqc/**",
+                "**/libjdns_sd_embedded.so"
+              ]
+            }
           }
         }
       ],

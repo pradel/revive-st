@@ -21,6 +21,8 @@ The commands live in `packages/release` (Effect), whose tests (`vp run release#t
 
 The APK only contains the 64-bit ARM native libraries (`ORG_GRADLE_PROJECT_reactNativeArchitectures` in the `apk` profile of `eas.json`): every phone that runs Android 11 except a few 32-bit-only ones. The store build keeps every architecture, since Google Play sends each phone only its own. Release builds are shrunk with R8 (`enableMinifyInReleaseBuilds` in `app.json`); a native module that's only reached through reflection can need a keep rule, so test a release build on a phone after adding one.
 
+The APK also stores its native libraries and code compressed (`withCompressedApkPackaging` in `app.config.ts`, applied when `EAS_BUILD_PROFILE` is `apk`), since it's downloaded as is; Google Play compresses its own downloads, so the store build keeps Android's default. Every release build leaves out two unused parts of its dependencies (`packagingOptions.exclude` in `app.json`): BouncyCastle's post-quantum data files, which `react-native-tcp-socket` pulls in, and `react-native-zeroconf`'s DNS-SD library, which it only loads for its `DNSSD` implementation (the app uses the default, Android's own discovery).
+
 You need `gh` and EAS logged in (`gh auth login`, `vpx eas-cli@latest login`) and the Android SDK build-tools (`ANDROID_HOME`, else `~/Library/Android/sdk`).
 
 ### Signing key
