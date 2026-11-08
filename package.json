@@ -3,7 +3,8 @@
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "release:app": "./scripts/release-app.sh",
+    "release:app": "vp run release#apk",
+    "release:store": "vp run release#store",
     "ready": "vp check && vp run -r test && vp run -r build",
     "dev": "vp run website#dev",
     "repos:sync": "./scripts/sync-repos.sh",

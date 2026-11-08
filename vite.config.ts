@@ -116,6 +116,7 @@ export default defineConfig({
         // are named via `Effect.fn("name")`) and `_tag` discriminants.
         files: [
           "apps/api/src/**/*.ts",
+          "packages/release/src/**/*.ts",
           "packages/speaker-emulator/src/**/*.ts",
         ],
         rules: {

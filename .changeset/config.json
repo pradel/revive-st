@@ -12,6 +12,7 @@
     "@revive-st/website",
     "@revive-st/design",
     "@revive-st/speaker-emulator",
+    "@revive-st/release",
     "bose-api-speaker-client",
     "expo-bose-wifi"
   ]
