@@ -70,8 +70,15 @@
           "android": {
             "minSdkVersion": 30,
             "usePrecompiledHeaders": true,
-            "enableMinifyInReleaseBuilds": false,
-            "usesCleartextTraffic": true
+            "enableMinifyInReleaseBuilds": true,
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "usesCleartextTraffic": true,
+            "packagingOptions": {
+              "exclude": [
+                "org/bouncycastle/pqc/**",
+                "**/libjdns_sd_embedded.so"
+              ]
+            }
           }
         }
       ],

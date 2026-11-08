@@ -1,5 +1,9 @@
 import type { ExpoConfig, ConfigContext } from "expo/config";
-import { withAndroidManifest, type ConfigPlugin } from "expo/config-plugins";
+import {
+  withAndroidManifest,
+  withAppBuildGradle,
+  type ConfigPlugin,
+} from "expo/config-plugins";
 
 import pkg from "./package.json";
 
@@ -38,8 +42,34 @@ const withoutLocationServices: ConfigPlugin = (config) =>
     return mod;
   });
 
-export default ({ config }: ConfigContext): ExpoConfig =>
-  withoutLocationServices({
+const COMPRESSED_PACKAGING_MARKER = "// Revive ST: compressed APK packaging";
+
+/**
+ * Stores the native libraries and the code compressed in the APK, which an
+ * Android 11+ build otherwise stores uncompressed so the phone can map them
+ * straight from the file. The GitHub APK (build profile `apk`) is downloaded
+ * as is, so this makes it about 21 MB smaller; phones then extract the files
+ * at install. Google Play compresses its downloads itself, so the store
+ * build keeps the default.
+ */
+const withCompressedApkPackaging: ConfigPlugin = (config) =>
+  withAppBuildGradle(config, (mod) => {
+    if (!mod.modResults.contents.includes(COMPRESSED_PACKAGING_MARKER)) {
+      mod.modResults.contents += `
+${COMPRESSED_PACKAGING_MARKER}
+android {
+    packagingOptions {
+        jniLibs { useLegacyPackaging true }
+        dex { useLegacyPackaging true }
+    }
+}
+`;
+    }
+    return mod;
+  });
+
+export default ({ config }: ConfigContext): ExpoConfig => {
+  const appConfig = withoutLocationServices({
     ...config,
     name: "Revive ST",
     slug: "revive-st",
@@ -47,3 +77,8 @@ export default ({ config }: ConfigContext): ExpoConfig =>
     version: pkg.version,
     plugins: [...(config.plugins ?? []), ...crashSymbolsPlugins],
   });
+  // EAS Build sets EAS_BUILD_PROFILE to the profile it builds.
+  return process.env.EAS_BUILD_PROFILE === "apk"
+    ? withCompressedApkPackaging(appConfig)
+    : appConfig;
+};
