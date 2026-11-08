@@ -1,0 +1,21 @@
+{
+  "name": "@revive-st/release",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "test": "vp test run",
+    "test:watch": "vp test watch"
+  },
+  "dependencies": {
+    "@effect/platform-node": "4.1.0",
+    "effect": "4.1.0"
+  },
+  "devDependencies": {
+    "@effect/vitest": "4.1.0",
+    "@types/node": "26.6.5",
+    "vite-plus": "catalog:",
+    "vitest": "catalog:"
+  }
+}
