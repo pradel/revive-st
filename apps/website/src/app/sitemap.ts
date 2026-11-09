@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 /* eslint-disable no-undef */
+import { PRODUCTS } from "@/lib/changelog";
 import { source } from "@/lib/source";
 
 export const dynamic = "force-static";
@@ -28,6 +29,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 1,
     },
+    ...["/changelog", ...PRODUCTS.map(({ slug }) => `/changelog/${slug}`)].map(
+      (path) => ({
+        url: url(path),
+        lastModified: new Date(),
+        changeFrequency: "weekly" as const,
+        priority: 0.5,
+      }),
+    ),
     ...docs,
   ];
 }

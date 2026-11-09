@@ -35,6 +35,9 @@ jobs:
           publish-script: pnpm changeset publish
           commit-message: "chore(release): version packages"
           pr-title: "chore(release): version packages"
+        env:
+          # @changesets/changelog-github looks up each changeset's pull request.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Find the published API version
         id: api

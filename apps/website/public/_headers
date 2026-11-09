@@ -1,6 +1,12 @@
 # Cloudflare Workers static assets headers
 # (https://developers.cloudflare.com/workers/static-assets/headers/).
+
 # Next.js names these files after their content, so a changed file gets a new
 # name and browsers can keep them for good.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
+
+# src/app/opengraph-image.tsx is exported without an extension, so Cloudflare
+# can't tell its type; link previews need it.
+/opengraph-image
+  Content-Type: image/png
