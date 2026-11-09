@@ -28,6 +28,7 @@ import {
   speaker,
   STATION_UUID,
   syncPresets,
+  RateLimitsOff,
   TuneInTest,
   UNAVAILABLE_UUID,
 } from "./testing.ts";
@@ -37,6 +38,7 @@ const logLines: string[] = [];
 
 const TestLayer = HttpAppLayer.pipe(
   Layer.provide([
+    RateLimitsOff,
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
     DeviceContactsRepo.layerTest,

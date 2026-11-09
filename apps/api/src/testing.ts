@@ -4,7 +4,7 @@
  */
 import { createHash } from "node:crypto";
 
-import { Effect, Layer, Schema } from "effect";
+import { Effect, Layer, Option, Schema } from "effect";
 import {
   HttpClient,
   HttpClientRequest,
@@ -16,7 +16,17 @@ import {
   RadioBrowserStationNotFound,
   RadioBrowserUnavailable,
 } from "./radio-browser/radio-browser.ts";
+import { RateLimits } from "./rate-limit.ts";
 import { StationNotFound, TuneIn, TuneInUnavailable } from "./tunein/tunein.ts";
+
+/**
+ * No rate limits, for tests that make more requests from one client than its
+ * limits allow; `rate-limit.test.ts` covers them.
+ */
+export const RateLimitsOff = Layer.succeed(
+  RateLimits,
+  RateLimits.of({ check: () => Effect.succeed(Option.none()) }),
+);
 
 /** TuneIn as the tests need it: `s1` plays, `s404` is gone, `s503` fails. */
 export const TuneInTest = Layer.succeed(

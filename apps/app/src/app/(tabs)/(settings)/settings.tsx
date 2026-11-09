@@ -85,6 +85,13 @@ export default function AppSettings() {
             value={`Version ${appVersion}`}
           />
           <FormLinkRow
+            icon={formIcons.changelog}
+            label="What's new"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.CHANGELOG_URL);
+            }}
+          />
+          <FormLinkRow
             icon={formIcons.website}
             label="Website"
             onPress={() => {

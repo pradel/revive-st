@@ -17,6 +17,18 @@ export const DatabasePath = Config.String("DATABASE_PATH").pipe(
 
 export const ServerPort = Config.Port("PORT").pipe(Config.withDefault(3000));
 
+/**
+ * `CLIENT_IP_HEADER`: the request header a trusted proxy puts the client's
+ * address in, like `cf-connecting-ip` behind Cloudflare. Without it, the
+ * client is the connection's peer. Only set it when that proxy is the only
+ * way to reach the server: anyone else could put any address in the header.
+ */
+export const ClientIpHeader = Config.option(
+  Config.String("CLIENT_IP_HEADER").pipe(
+    Config.map((header) => header.toLowerCase()),
+  ),
+);
+
 const LOG_LEVELS = {
   debug: "Debug",
   info: "Info",
