@@ -24,6 +24,7 @@ export function baseOptions(): BaseLayoutProps {
       {
         text: "Changelog",
         url: "/changelog",
+        active: "nested-url",
       },
       {
         text: "Feedback",

@@ -11,15 +11,26 @@ const run = promisify(execFile);
 // eslint-disable-next-line no-undef
 const repoRoot = join(process.cwd(), "../..");
 
-/** The packages shown, with their changesets CHANGELOG. */
-const PACKAGES = [
-  { name: "@revive-st/app", label: "App", changelog: "apps/app/CHANGELOG.md" },
+/**
+ * The products shown, with their changesets CHANGELOG. `slug` names their tab,
+ * `/changelog/<slug>`, and starts their entries' anchors, `#app-0.0.5`.
+ */
+export const PRODUCTS = [
   {
+    slug: "app",
+    name: "@revive-st/app",
+    label: "App",
+    changelog: "apps/app/CHANGELOG.md",
+  },
+  {
+    slug: "server",
     name: "@revive-st/api",
     label: "Server",
     changelog: "apps/api/CHANGELOG.md",
   },
-];
+] as const;
+
+export type ProductSlug = (typeof PRODUCTS)[number]["slug"];
 
 async function git(...args: string[]): Promise<string> {
   const { stdout } = await run("git", ["-C", repoRoot, ...args], {
@@ -69,10 +80,13 @@ async function releaseCommits(
 }
 
 /**
- * Every app and server release, read from their CHANGELOG.md when the site is
- * built and dated by git. Versions not committed yet are left out.
+ * Every release of `product`, or of every product, read from their
+ * CHANGELOG.md when the site is built and dated by git. Versions not committed
+ * yet are left out.
  */
-export async function releases(): Promise<ChangelogTimelineEntry[]> {
+export async function releases(
+  product?: ProductSlug,
+): Promise<ChangelogTimelineEntry[]> {
   // A shallow clone dates every release to its one commit.
   if ((await git("rev-parse", "--is-shallow-repository")).trim() === "true") {
     throw new Error(
@@ -86,7 +100,9 @@ export async function releases(): Promise<ChangelogTimelineEntry[]> {
   const tagged = new Set(tags.split("\n"));
 
   const entries = await Promise.all(
-    PACKAGES.map(async ({ name, label, changelog }) => {
+    PRODUCTS.filter(
+      ({ slug }) => product === undefined || slug === product,
+    ).map(async ({ slug, name, label, changelog }) => {
       const [markdown, commits] = await Promise.all([
         readFile(join(repoRoot, changelog), "utf8"),
         releaseCommits(changelog),
@@ -104,7 +120,7 @@ export async function releases(): Promise<ChangelogTimelineEntry[]> {
           const tag = `${name}@${version}`;
           return [
             {
-              id: tag,
+              id: `${slug}-${version}`,
               title: `${label} ${version}`,
               date: commit.date,
               // The release workflow tags the release commit after the site's
