@@ -78,7 +78,7 @@ const FAQS = [
   {
     question: "What if Revive ST shuts down one day?",
     answer:
-      "Your speakers keep working. The app and its server are open source under the MIT licence, so you can run the server at home with Docker and point your speakers at it, whatever happens to this project. The app also works with other community servers such as soundcork, AfterTouch and STR.",
+      "Your speakers keep working. The app and its server are open source under the MIT licence, so you can run the server at home with Docker and point your speakers at it, whatever happens to this project.",
     link: {
       text: "Read the self-hosting guide \u2192",
       href: "/docs/self-hosting",
@@ -374,6 +374,10 @@ export default function HomePage() {
               <FeatureCard
                 title="Set up in minutes"
                 description="Revive ST finds every SoundTouch on your Wi‑Fi, and a guided setup connects new or reset speakers. Speakers on soundcork, AfterTouch or STR work as they are."
+                link={{
+                  text: "Using other SoundTouch servers \u2192",
+                  href: "/docs/other-servers",
+                }}
               >
                 <ul aria-hidden className="mt-auto space-y-2 pt-8">
                   {[
@@ -401,15 +405,27 @@ export default function HomePage() {
               <div className="md:col-span-3 flex flex-col md:flex-row md:items-center justify-between gap-4 rounded-3xl bg-surface-1 px-8 py-6">
                 <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-fg-secondary">
                   {[
-                    "Rename speakers",
-                    "Real-time sync across phones",
-                    "Bluetooth & AUX switching",
-                    "No account to create",
-                    "Works with soundcork, AfterTouch & STR",
+                    { text: "Rename speakers" },
+                    { text: "Real-time sync across phones" },
+                    { text: "Bluetooth & AUX switching" },
+                    { text: "No account to create" },
+                    {
+                      text: "Works with soundcork, AfterTouch & STR",
+                      href: "/docs/other-servers",
+                    },
                   ].map((item) => (
-                    <li key={item} className="flex items-center gap-1.5">
+                    <li key={item.text} className="flex items-center gap-1.5">
                       <Check className="size-4 text-accent" strokeWidth={3} />
-                      {item}
+                      {item.href ? (
+                        <Link
+                          href={item.href}
+                          className="underline decoration-fg-tertiary/60 underline-offset-4 transition-colors hover:text-fg"
+                        >
+                          {item.text}
+                        </Link>
+                      ) : (
+                        item.text
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -644,11 +660,13 @@ function Eyebrow({ children }: { children: React.ReactNode }) {
 function FeatureCard({
   title,
   description,
+  link,
   className = "",
   children,
 }: {
   title: string;
   description: string;
+  link?: { text: string; href: string };
   className?: string;
   children: React.ReactNode;
 }) {
@@ -658,6 +676,14 @@ function FeatureCard({
     >
       <h3 className="mb-2 text-xl font-bold tracking-tight text-fg">{title}</h3>
       <p className="max-w-md text-fg-secondary text-pretty">{description}</p>
+      {link && (
+        <Link
+          href={link.href}
+          className="mt-2 self-start font-medium text-accent hover:underline"
+        >
+          {link.text}
+        </Link>
+      )}
       <div className="flex flex-1 flex-col pb-8 has-[.screenshot-peek]:pb-0">
         {children}
       </div>

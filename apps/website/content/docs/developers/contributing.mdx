@@ -59,7 +59,7 @@ The app recognises the server each speaker uses (Revive ST, soundcork, AfterTouc
 1. Add its kind to `SERVER_KINDS`.
 2. Add a profile to `PROFILES`: its name as its users know it, its setup policy (`setUp`, `warn` before the speaker leaves it, or `blocked` if it puts its own settings back at every start), and `identify`, which tells from the speaker's `margeURL` and address whether it uses this server. Profiles are asked in order and the first match wins; prefer telling from the address, and keep network probes to one request where you can.
 3. Add a test to `server-profiles.test.ts` with what the server really answers.
-4. Add it to the [Other SoundTouch servers](/docs/other-servers) page.
+4. Add it to the [other servers page](/docs/other-servers), its title and description included: they name each server, so searches for it find the page.
 
 Whether radio plays through a server isn't part of its profile: the speaker reports which kinds of station its server gives it.
 
