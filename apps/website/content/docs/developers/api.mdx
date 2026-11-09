@@ -21,6 +21,8 @@ When the app configures a speaker that is not paired with an account yet, it pai
 
 Anyone can make up an account id, so the server bounds what one can store. A request naming an account id over 64 characters, or a device id that isn't 12 hex digits (a MAC address), gets `400`. Request bodies over 32 KiB are refused. Each preset field has a maximum length: name 512 characters, location 4096, artwork 2048, source account 256, source and content type 64; a preset over any of them gets `400` and nothing is stored. An account pairs at most 50 speakers.
 
+Each client, by IP address, is also limited, so one can't flood the server, the station directories behind it or its database, or guess account ids. A client gets 600 requests a minute (`GET /` aside), of which 60 station lookups (`/bmx/tunein/v1/playback/station/…`, `/bmx/radiobrowser/stations/byuuid/…`) and 60 `POST`, `PUT` or `DELETE` requests. It also gets 20 requests an hour naming an account no speaker is paired with: a new household's setup spends a few. A client out of those is refused every request naming an account, paired or not, so its guesses can't be told apart. A request over a limit gets an empty `429` with `Retry-After` in seconds, and isn't logged. The counts are kept in memory and start over when the server restarts.
+
 ## Marge Emulation Endpoints (Bose SoundTouch)
 
 These endpoints are requested directly by the Bose SoundTouch speakers. They emulate the behavior of Bose's legacy streaming services so the speakers play internet radio from TuneIn and Radio Browser.

@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { ByteSize, Cause, Effect, Exit, Layer, Option } from "effect";
+import { ByteSize, Cause, Duration, Effect, Exit, Layer, Option } from "effect";
 import {
   HttpIncomingMessage,
   HttpMiddleware,
@@ -19,6 +19,8 @@ import { InternalHandlers } from "./handlers/internal.ts";
 import { MargeHandlers } from "./handlers/marge.ts";
 import { ServerHandlers } from "./handlers/server.ts";
 import { StatsHandlers, UpdatesHandlers } from "./handlers/speaker-services.ts";
+import { RateLimits } from "./rate-limit.ts";
+import { ACCOUNT_SEGMENT, accountIdOf, pathOf } from "./request-path.ts";
 
 const ApiLayer = HttpApiBuilder.layer(ReviveApi, {
   openapiPath: OPENAPI_PATH,
@@ -56,19 +58,6 @@ const truncateBody = (body: string) =>
     ? body
     : `${body.slice(0, MAX_LOGGED_BODY_LENGTH)}… (${body.length - MAX_LOGGED_BODY_LENGTH} more chars)`;
 
-/** The path only: query strings carry encoded station data. */
-const pathOf = (url: string) => url.split("?", 1)[0];
-
-const ACCOUNT_SEGMENT = /(\/account\/)([^/]+)/;
-
-const decodePathSegment = (segment: string) => {
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-};
-
 /**
  * The request path with its account id masked, and a function masking it in
  * bodies. The id is the only secret guarding a household's presets, so no
@@ -76,9 +65,7 @@ const decodePathSegment = (segment: string) => {
  */
 const redactedPath = (url: string) => {
   const path = pathOf(url);
-  const segment = ACCOUNT_SEGMENT.exec(path)?.[2];
-  const accountId =
-    segment === undefined ? undefined : decodePathSegment(segment);
+  const accountId = accountIdOf(path);
   return {
     path: path.replace(ACCOUNT_SEGMENT, "$1…"),
     redact: (text: string) =>
@@ -202,11 +189,49 @@ const NotModifiedLayer = HttpRouter.middleware(
   { global: true },
 );
 
-// Railway terminates TLS and is the only route to the server, so its
-// forwarded host and protocol are trusted unconditionally.
+// The server runs behind a proxy (on Railway, Cloudflare then Railway's edge),
+// so the forwarded host and protocol are trusted unconditionally. The client
+// address this takes from `X-Forwarded-For` is its first entry, which the
+// client can set: rate limits read `CLIENT_IP_HEADER` instead.
 const trustForwardedHeaders = HttpMiddleware.xForwardedHeaders({
   trustedProxies: () => true,
 });
+
+/**
+ * Answers a request over one of its client's limits with a bare `429` and
+ * `Retry-After`, before its body is read. It is not logged: a client hitting
+ * its limits would flood the logs.
+ */
+const rateLimit = <Failure, Requirements>(
+  httpApp: Effect.Effect<
+    HttpServerResponse.HttpServerResponse,
+    Failure,
+    Requirements | HttpServerRequest.HttpServerRequest
+  >,
+) =>
+  HttpServerRequest.HttpServerRequest.use((request) =>
+    RateLimits.use((limits) => limits.check(request)).pipe(
+      Effect.flatMap(
+        Option.match({
+          onNone: () => httpApp,
+          onSome: (retryAfter) =>
+            Effect.succeed(
+              HttpServerResponse.empty({
+                status: 429,
+                headers: {
+                  "retry-after": String(
+                    Math.max(
+                      1,
+                      Math.ceil(Duration.toMillis(retryAfter) / 1000),
+                    ),
+                  ),
+                },
+              }),
+            ),
+        }),
+      ),
+    ),
+  );
 
 /**
  * The largest request body read. The biggest legitimate ones (six presets
@@ -218,7 +243,7 @@ const MAX_BODY_SIZE = ByteSize.kibibytes(32);
 /**
  * The HTTP application, served on whichever `HttpServer` is provided.
  * Requires `PresetsRepo`, `DevicesRepo`, `DeviceContactsRepo`, `TuneIn`,
- * `RadioBrowser` and the platform services of the server layer.
+ * `RadioBrowser`, `RateLimits` and the platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
   Layer.mergeAll(ApiLayer, DocsLayer, MediaLayer, NotModifiedLayer),
@@ -227,7 +252,7 @@ export const HttpAppLayer = HttpRouter.serve(
     routerConfig: { ignoreTrailingSlash: true },
     disableLogger: true,
     middleware: (httpApp) =>
-      trustForwardedHeaders(logResponses(httpApp)).pipe(
+      trustForwardedHeaders(rateLimit(logResponses(httpApp))).pipe(
         Effect.provideService(HttpIncomingMessage.MaxBodySize, MAX_BODY_SIZE),
       ),
   },

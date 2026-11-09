@@ -13,9 +13,11 @@ import { HttpAppLayer } from "./http.ts";
 import { LoggingLayer } from "./logging.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RadioBrowser } from "./radio-browser/radio-browser.ts";
+import { RateLimits } from "./rate-limit.ts";
 import { TuneIn } from "./tunein/tunein.ts";
 
 const MainLayer = HttpAppLayer.pipe(
+  Layer.provide(RateLimits.layer),
   Layer.provide([
     PresetsRepo.layer,
     DevicesRepo.layer,

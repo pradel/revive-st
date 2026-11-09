@@ -23,6 +23,7 @@ import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
+import { RateLimits } from "./rate-limit.ts";
 import {
   getLastContactAt,
   MISSING_UUID,
@@ -33,7 +34,9 @@ import {
   TuneInTest,
 } from "./testing.ts";
 
+// The real rate limits: a household's speakers stay within them.
 const TestLayer = HttpAppLayer.pipe(
+  Layer.provide(RateLimits.layer),
   Layer.provide([
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
