@@ -14,14 +14,14 @@
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
-    "@effect/platform-node": "4.1.0",
-    "@effect/sql-sqlite-node": "4.1.0",
+    "@effect/platform-node": "4.1.2",
+    "@effect/sql-sqlite-node": "4.1.2",
     "bose-api-speaker-client": "workspace:*",
     "drizzle-orm": "1.0.0-rc.5",
-    "effect": "4.1.0"
+    "effect": "4.1.2"
   },
   "devDependencies": {
-    "@effect/vitest": "4.1.0",
+    "@effect/vitest": "4.1.2",
     "@revive-st/speaker-emulator": "workspace:*",
     "@types/node": "26.6.6",
     "drizzle-kit": "1.0.0-rc.5",

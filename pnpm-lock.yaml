@@ -196,24 +196,24 @@ importers:
   apps/api:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)(redis@6.3.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)(redis@6.3.0)
       '@effect/sql-sqlite-node':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)
       bose-api-speaker-client:
         specifier: workspace:*
         version: link:../../packages/bose-api-speaker-client
       drizzle-orm:
         specifier: 1.0.0-rc.5
-        version: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
+        version: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.2))(@effect/sql-sqlite-node@4.1.2(effect@4.1.2))(@libsql/client@0.18.0)(effect@4.1.2)(zod@4.6.7)
       effect:
-        specifier: 4.1.0
-        version: 4.1.0
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@effect/vitest':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)(vitest@5.1.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)(vitest@5.1.0)
       '@revive-st/speaker-emulator':
         specifier: workspace:*
         version: link:../../packages/speaker-emulator
@@ -222,7 +222,7 @@ importers:
         version: 26.6.6
       drizzle-kit:
         specifier: 1.0.0-rc.5
-        version: 1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7))
+        version: 1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.2))(@effect/sql-sqlite-node@4.1.2(effect@4.1.2))(@libsql/client@0.18.0)(effect@4.1.2)(zod@4.6.7))
       typescript:
         specifier: 7.0.2
         version: 7.0.2
@@ -485,15 +485,15 @@ importers:
   packages/release:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)(redis@6.3.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)(redis@6.3.0)
       effect:
-        specifier: 4.1.0
-        version: 4.1.0
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@effect/vitest':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)(vitest@5.1.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)(vitest@5.1.0)
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
@@ -507,8 +507,8 @@ importers:
   packages/speaker-emulator:
     dependencies:
       '@effect/platform-node':
-        specifier: 4.1.0
-        version: 4.1.0(effect@4.1.0)(redis@6.3.0)
+        specifier: 4.1.2
+        version: 4.1.2(effect@4.1.2)(redis@6.3.0)
       better-result:
         specifier: 3.0.1
         version: 3.0.1
@@ -516,8 +516,8 @@ importers:
         specifier: workspace:*
         version: link:../bose-api-speaker-client
       effect:
-        specifier: 4.1.0
-        version: 4.1.0
+        specifier: 4.1.2
+        version: 4.1.2
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -1053,33 +1053,33 @@ packages:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
     engines: {node: '>=12'}
 
-  '@effect/platform-node-shared@4.1.0':
-    resolution: {integrity: sha512-uYQfFRoxWLo8fIhiSeBcmz/R1ooOfE3HF3cWHFgxz82tZMk2Wn02BGABcdLmaAch9VpDLbtWnuhSxNyBsGMUFg==}
+  '@effect/platform-node-shared@4.1.2':
+    resolution: {integrity: sha512-wSwl9A/G1hcVvF8nLI+YfB3EyOIDvWS6+lsTZBkmgDnPBL7m8YWZF+1HD+mdEsb52SUGfukip46Q3gRwSdk3QA==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
-      effect: ^4.1.0
+      effect: ^4.1.2
 
-  '@effect/platform-node@4.1.0':
-    resolution: {integrity: sha512-v+X7moGVF9k5oMVvz0slA+NgtEod+W+oygeI285MDJgSlUCW3JcqElj+cD3rlijFZtpKhC7RLkU1GuCxjGHTpA==}
+  '@effect/platform-node@4.1.2':
+    resolution: {integrity: sha512-ye0UjxORdd5Qu3paZ1LljgGOALWHt7muP9VTpjUSCNfcesiB/Hm7wPJIvZeu4gnwpTe5BtEnO1VHngWqjJp8mA==}
     engines: {node: '>=22.19.0'}
     peerDependencies:
-      effect: ^4.1.0
-      redis: '>=5.0.0 <7.0.0'
+      effect: ^4.1.2
+      redis: '>=5.1.0 <7.0.0'
 
   '@effect/sql-libsql@4.1.0':
     resolution: {integrity: sha512-mr5b0rDgNmczFEC00Vgr6a+nGkoq1XWcvCMdeqPaq55Ienm0KO8cEppxYWF691D7V2TJW+XLtV6sgm1fktKlaQ==}
     peerDependencies:
       effect: ^4.1.0
 
-  '@effect/sql-sqlite-node@4.1.0':
-    resolution: {integrity: sha512-Z8PxzlVlfp5JCGYAg9CwehHkvLEwMf/NF7htdDkKy65G4vE78ARkDMUSyeIzZ1zpadMxbbCEUJ2FM9M5/0Nxgg==}
+  '@effect/sql-sqlite-node@4.1.2':
+    resolution: {integrity: sha512-fTmI8Ol1Lf8rGITtdIW285nuT9G46ETOPZ48CxlZ7vkfWDYgipYnH0dILxPGcZ6f/BMLeybmLRKKBcRWStShfQ==}
     peerDependencies:
-      effect: ^4.1.0
+      effect: ^4.1.2
 
-  '@effect/vitest@4.1.0':
-    resolution: {integrity: sha512-+APF69oTYgGj5WCewowk1/udepH74xz4ONyH7d+UfcK0SrF3osiSwsWEyODUpJvWd6MIk5F5PcFJiE4evMuG2A==}
+  '@effect/vitest@4.1.2':
+    resolution: {integrity: sha512-JJPwAHkJHxvM/woW9mMW/khjasAHcmwWdOMAgMy16rfqsxcVhFDnrRsvN9VI2+kMv8zDCCyBE2q1n5hzZlfE0w==}
     peerDependencies:
-      effect: ^4.1.0
+      effect: ^4.1.2
       vitest: 5.1.0
 
   '@emnapi/runtime@1.11.3':
@@ -4032,8 +4032,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.1.0:
-    resolution: {integrity: sha512-lGx2MJJyrXA8RZb2UpQ/0Nkb5Utaimby7oD92+18noBxLPE85IFOvptdzau8dvcxAOwfwHo9iqapbKeFzqQM/Q==}
+  effect@4.1.2:
+    resolution: {integrity: sha512-d3Oah1WyKxFLFh19yWheS5IXIVaITzxZ71JkE1rkUozq/6EcJSU5nPk5bF2QrSygZ3SQoiNQB8TsxFriyMeMaQ==}
 
   electron-to-chromium@1.5.372:
     resolution: {integrity: sha512-M3yhbAlilnwqC8D21t28UCDGHyitShTmmLRU/H+b74P6Ski16Nb9HONYEaVpMj/pwC7BEo5B95FpjODLCWbtfA==}
@@ -6380,6 +6380,18 @@ packages:
       utf-8-validate:
         optional: true
 
+  ws@8.22.1:
+    resolution: {integrity: sha512-oyL6OPYme/CmiFvNuGzeoxCJ4nOrZE2O1FwM9MWM1AsGri6nLXB2pg+lNA8aLeXMSav0J6eIVS1j6vUPzUtK9g==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xcode@4.0.0:
     resolution: {integrity: sha512-dDaoWzc9EP2fp9FS9PVZUkyvFxY4y1TOV9pcKaKLk++Ei/qb97XDFEVP7GnW7Osii/TzVABJ0jq2F+9/lq0TVA==}
     engines: {node: '>=14.17.0'}
@@ -7094,41 +7106,41 @@ snapshots:
     dependencies:
       '@jridgewell/trace-mapping': 0.3.9
 
-  '@effect/platform-node-shared@4.1.0(effect@4.1.0)':
+  '@effect/platform-node-shared@4.1.2(effect@4.1.2)':
     dependencies:
       '@types/ws': 8.18.2
-      effect: 4.1.0
-      ws: 8.22.0
+      effect: 4.1.2
+      ws: 8.22.1
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/platform-node@4.1.0(effect@4.1.0)(redis@6.3.0)':
+  '@effect/platform-node@4.1.2(effect@4.1.2)(redis@6.3.0)':
     dependencies:
-      '@effect/platform-node-shared': 4.1.0(effect@4.1.0)
-      effect: 4.1.0
+      '@effect/platform-node-shared': 4.1.2(effect@4.1.2)
+      effect: 4.1.2
       redis: 6.3.0
       undici: 8.12.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@effect/sql-libsql@4.1.0(effect@4.1.0)':
+  '@effect/sql-libsql@4.1.0(effect@4.1.2)':
     dependencies:
       '@libsql/client': 0.18.0
-      effect: 4.1.0
+      effect: 4.1.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
     optional: true
 
-  '@effect/sql-sqlite-node@4.1.0(effect@4.1.0)':
+  '@effect/sql-sqlite-node@4.1.2(effect@4.1.2)':
     dependencies:
-      effect: 4.1.0
+      effect: 4.1.2
 
-  '@effect/vitest@4.1.0(effect@4.1.0)(vitest@5.1.0)':
+  '@effect/vitest@4.1.2(effect@4.1.2)(vitest@5.1.0)':
     dependencies:
-      effect: 4.1.0
+      effect: 4.1.2
       vitest: 5.1.0(@types/node@26.6.6)(@vitest/browser-preview@5.1.0)(@vitest/ui@5.1.0)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@7.0.2)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(typescript@7.0.2)(yaml@2.9.1)
 
   '@emnapi/runtime@1.11.3':
@@ -9936,21 +9948,21 @@ snapshots:
 
   dom-accessibility-api@0.5.16: {}
 
-  drizzle-kit@1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)):
+  drizzle-kit@1.0.0-rc.5(drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.2))(@effect/sql-sqlite-node@4.1.2(effect@4.1.2))(@libsql/client@0.18.0)(effect@4.1.2)(zod@4.6.7)):
     optionalDependencies:
-      drizzle-orm: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7)
+      drizzle-orm: 1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.2))(@effect/sql-sqlite-node@4.1.2(effect@4.1.2))(@libsql/client@0.18.0)(effect@4.1.2)(zod@4.6.7)
 
-  drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.0))(@effect/sql-sqlite-node@4.1.0(effect@4.1.0))(@libsql/client@0.18.0)(effect@4.1.0)(zod@4.6.7):
+  drizzle-orm@1.0.0-rc.5(@effect/sql-libsql@4.1.0(effect@4.1.2))(@effect/sql-sqlite-node@4.1.2(effect@4.1.2))(@libsql/client@0.18.0)(effect@4.1.2)(zod@4.6.7):
     optionalDependencies:
-      '@effect/sql-libsql': 4.1.0(effect@4.1.0)
-      '@effect/sql-sqlite-node': 4.1.0(effect@4.1.0)
+      '@effect/sql-libsql': 4.1.0(effect@4.1.2)
+      '@effect/sql-sqlite-node': 4.1.2(effect@4.1.2)
       '@libsql/client': 0.18.0
-      effect: 4.1.0
+      effect: 4.1.2
       zod: 4.6.7
 
   ee-first@1.1.1: {}
 
-  effect@4.1.0: {}
+  effect@4.1.2: {}
 
   electron-to-chromium@1.5.372: {}
 
@@ -12964,6 +12976,8 @@ snapshots:
   ws@8.21.0: {}
 
   ws@8.22.0: {}
+
+  ws@8.22.1: {}
 
   xcode@4.0.0:
     dependencies:
