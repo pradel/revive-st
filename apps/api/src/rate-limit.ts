@@ -6,7 +6,7 @@ import { RADIO_BROWSER_BASE_PATH, TUNEIN_BASE_PATH } from "./api/bmx.ts";
 import { ClientIpHeader } from "./config.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
 import { AccountId } from "./marge/account.ts";
-import { accountIdOf, pathOf } from "./request-path.ts";
+import { accountIdOf, pathOf, routedPathOf } from "./request-path.ts";
 
 /** A token bucket each client has: `limit` requests, refilled over `window`. */
 interface Bucket {
@@ -70,6 +70,7 @@ export class RateLimits extends Context.Service<
       const devicesRepo = yield* DevicesRepo;
       const clientIpHeader = yield* ClientIpHeader;
 
+      /** The header's address when it carries one, else the peer's. */
       const clientOf = (request: HttpServerRequest.HttpServerRequest) => {
         const forwarded = Option.flatMap(clientIpHeader, (header) =>
           Option.fromUndefinedOr(request.headers[header]?.trim()),
@@ -80,6 +81,7 @@ export class RateLimits extends Context.Service<
         );
       };
 
+      /** Spends `tokens` from the client's `bucket`, failing when it has fewer. */
       const take = (bucket: Bucket, client: string, tokens: number) =>
         limiter.consume({
           algorithm: "token-bucket",
@@ -119,6 +121,7 @@ export class RateLimits extends Context.Service<
           Effect.orDie,
         );
 
+      /** Spends a token from every bucket the request falls in, in order. */
       const check = Effect.fn("RateLimits.check")(function* (
         request: HttpServerRequest.HttpServerRequest,
       ) {
@@ -128,7 +131,10 @@ export class RateLimits extends Context.Service<
         }
         const client = clientOf(request);
         const buckets = [ALL];
-        if (STATION_PATHS.some((prefix) => path.startsWith(prefix))) {
+        // Matched as the router matches routes, so another spelling of a
+        // station path can't skip its bucket.
+        const routedPath = routedPathOf(request.url).toLowerCase();
+        if (STATION_PATHS.some((prefix) => routedPath.startsWith(prefix))) {
           buckets.push(STATIONS);
         }
         if (WRITE_METHODS.includes(request.method)) {
@@ -141,7 +147,7 @@ export class RateLimits extends Context.Service<
           }
         }
         // Other ids are rejected by the endpoint itself.
-        const accountId = accountIdOf(path);
+        const accountId = accountIdOf(request.url);
         if (accountId === undefined || !isAccountId(accountId)) {
           return Option.none<Duration.Duration>();
         }

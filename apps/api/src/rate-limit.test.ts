@@ -79,6 +79,7 @@ const statuses = (
     { concurrency: 10 },
   );
 
+/** Asserts `response` is the bare `429` the limits answer with. */
 const assertTooManyRequests = (
   response: HttpClientResponse.HttpClientResponse,
   retryAfter: string,
@@ -124,10 +125,14 @@ describe("rate limits", () => {
 
   it.effect("allow each client 60 station lookups a minute", () =>
     Effect.gen(function* () {
+      // Spelled differently, the path still reaches the TuneIn station route.
       assert.deepStrictEqual(
-        yield* statuses(60, () => get(TUNEIN_STATION)),
+        yield* statuses(60, () =>
+          get("/BMX//tune%69n/v1/playback/station/s1/"),
+        ),
         Array.from({ length: 60 }, () => 200),
       );
+      yield* assertTooManyRequests(yield* get(TUNEIN_STATION), "1");
       yield* assertTooManyRequests(yield* get(RADIO_BROWSER_STATION), "1");
       assert.strictEqual(
         (yield* get("/streaming/sourceproviders")).status,
@@ -169,9 +174,10 @@ describe("rate limits", () => {
           (yield* syncPresets(speaker("household"), [], household)).status,
           200,
         );
+        // Spelled differently, the path still names an account.
         assert.deepStrictEqual(
           yield* statuses(19, () =>
-            get(`/streaming/account/${randomUUID()}/full`),
+            get(`/STREAMING//%61ccount/${randomUUID()}/full`),
           ),
           Array.from({ length: 19 }, () => 200),
         );
