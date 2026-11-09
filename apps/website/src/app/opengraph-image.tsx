@@ -1,8 +1,7 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
-
 import { palette } from "@revive-st/design";
 import { ImageResponse } from "next/og";
+
+import { inter, svgDataUrl } from "@/lib/og";
 
 /**
  * The image shown when a page of the site is shared, rendered at build time.
@@ -15,25 +14,6 @@ export const contentType = "image/png";
 export const dynamic = "force-static";
 
 const { dark } = palette;
-
-// eslint-disable-next-line no-undef
-const root = process.cwd();
-
-/** A file under `public/` as a data URL, for `<img>`. */
-async function svgDataUrl(file: string): Promise<string> {
-  const svg = await readFile(join(root, "public", file));
-  return `data:image/svg+xml;base64,${svg.toString("base64")}`;
-}
-
-/** Inter from @fontsource: Satori reads WOFF, not the WOFF2 next/font serves. */
-async function inter(weight: 500 | 700) {
-  return readFile(
-    join(
-      root,
-      `node_modules/@fontsource/inter/files/inter-latin-${weight}-normal.woff`,
-    ),
-  );
-}
 
 /**
  * The speakers in a row, drawn to scale: the drawings are 10 units per inch,
