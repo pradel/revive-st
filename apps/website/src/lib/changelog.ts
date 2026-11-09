@@ -30,7 +30,8 @@ async function git(...args: string[]): Promise<string> {
 
 /**
  * Release notes for readers: without changesets' "### Patch Changes"
- * headings and the commit hash before each change.
+ * headings, and without the commit hash that starts each change up to app
+ * 0.0.5 and server 0.0.4 (later ones end with a link to their pull request).
  */
 function notes(body: string): string {
   return body
