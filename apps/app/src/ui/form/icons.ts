@@ -4,6 +4,7 @@ import Cast from "@expo/material-symbols/cast.xml";
 import Code from "@expo/material-symbols/code.xml";
 import Dns from "@expo/material-symbols/dns.xml";
 import Forum from "@expo/material-symbols/forum.xml";
+import History from "@expo/material-symbols/history.xml";
 import Info from "@expo/material-symbols/info.xml";
 import Language from "@expo/material-symbols/language.xml";
 import MusicNote from "@expo/material-symbols/music_note.xml";
@@ -21,6 +22,7 @@ export const formIcons = {
   airplay: { ios: "airplayaudio", android: Cast },
   aux: { ios: "cable.connector", android: Cable },
   bluetooth: { ios: "wave.3.right", android: Bluetooth },
+  changelog: { ios: "clock.arrow.circlepath", android: History },
   code: { ios: "chevron.left.forwardslash.chevron.right", android: Code },
   feedback: { ios: "bubble.left.and.bubble.right", android: Forum },
   info: { ios: "info.circle", android: Info },
