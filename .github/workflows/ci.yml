@@ -13,6 +13,9 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
+        with:
+          # The website's changelog dates releases from git history.
+          fetch-depth: 0
 
       - name: vite-plus setup
         uses: voidzero-dev/setup-vp@v1.21.2

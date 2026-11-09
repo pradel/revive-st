@@ -27,7 +27,7 @@ import { WEBSITE_CONFIG } from "@/config";
 export const metadata: Metadata = {
   title: "Revive ST — SoundTouch Controller App for iPhone and Android",
   description:
-    "The SoundTouch app was shut down, but your speakers still work perfectly. Revive ST is the open-source replacement that brings back your preset buttons, internet radio, and full control. Get your speakers working again today!",
+    "The SoundTouch app is gone, but your Bose speakers still work. Revive ST is the open-source replacement: preset buttons, internet radio and full control.",
   alternates: {
     canonical: "/",
   },

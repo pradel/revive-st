@@ -18,6 +18,7 @@ const COLUMNS: {
       { text: "Features", href: "/#features" },
       { text: "Pricing", href: "/#pricing" },
       { text: "FAQ", href: "/#faq" },
+      { text: "Changelog", href: "/changelog" },
     ],
   },
   {

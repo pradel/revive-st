@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { siteOpenGraph } from "@/lib/shared";
+
 // eslint-disable-next-line no-undef
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -8,6 +10,7 @@ export const metadata: Metadata = {
   title: "Revive ST — SoundTouch Controller App",
   description:
     "The open-source replacement app for Bose SoundTouch speakers. Bring back full control to your hardware today. No subscription, no account needed.",
+  openGraph: siteOpenGraph,
 };
 
 import "./global.css";

@@ -22,6 +22,10 @@ export function baseOptions(): BaseLayoutProps {
         active: "nested-url",
       },
       {
+        text: "Changelog",
+        url: "/changelog",
+      },
+      {
         text: "Feedback",
         url: WEBSITE_CONFIG.FEEDBACK_URL,
         external: true,

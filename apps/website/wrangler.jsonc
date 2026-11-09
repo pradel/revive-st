@@ -1,6 +1,10 @@
 // The website is a static export (`output: "export"`): `next build` writes it
 // to `out/`, which Cloudflare serves as Workers static assets, with no Worker
 // script. https://developers.cloudflare.com/workers/static-assets/
+// Workers Builds clones only the latest commit; the build command runs
+// `git fetch --unshallow --tags` first, since the changelog dates releases and
+// the docs their last change from git history. Its watch paths include
+// apps/app/CHANGELOG.md and apps/api/CHANGELOG.md, so a release rebuilds it.
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "revive-st-website",
