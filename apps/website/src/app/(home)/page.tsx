@@ -49,10 +49,10 @@ const FAQS = [
   {
     question: "Is it a subscription?",
     answer:
-      "No. You pay once on the App Store or Google Play and get every update. The source code is free on GitHub if you'd rather build the app yourself.",
+      "No. You pay once on the App Store or Google Play and get every update. The source code is free on GitHub if you'd rather build the app yourself, and on Android you can also install the app from its APK on GitHub.",
     link: {
-      text: "Build the app yourself \u2192",
-      href: "/docs/build-the-app",
+      text: "Download and install \u2192",
+      href: "/docs/download-install",
     },
   },
   {

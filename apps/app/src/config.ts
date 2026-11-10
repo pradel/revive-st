@@ -12,6 +12,8 @@ export const APP_CONFIG = {
   CHANGELOG_URL: "https://www.revivest.app/changelog/app",
   /** What the app and the hosted server collect. */
   PRIVACY_URL: "https://www.revivest.app/privacy",
+  /** The terms of using the app and the hosted server. */
+  TERMS_URL: "https://www.revivest.app/terms",
   /** Where crash reports go. */
   POSTHOG_HOST: "https://us.i.posthog.com",
 };

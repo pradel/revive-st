@@ -131,6 +131,13 @@ export default function AppSettings() {
               void Linking.openURL(APP_CONFIG.PRIVACY_URL);
             }}
           />
+          <FormLinkRow
+            icon={formIcons.terms}
+            label="Terms of service"
+            onPress={() => {
+              void Linking.openURL(APP_CONFIG.TERMS_URL);
+            }}
+          />
           <FieldGroup.SectionFooter>
             <FormFooterText>
               Revive ST is not affiliated with or endorsed by Bose Corporation.
