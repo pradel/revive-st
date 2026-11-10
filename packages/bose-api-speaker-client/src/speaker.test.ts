@@ -437,5 +437,22 @@ describe("Speaker", () => {
       // Notifications sent while the socket was down were missed.
       expect(fetchMock).toHaveBeenCalled();
     });
+
+    it("keeps following the socket when the speaker reports its network state", () => {
+      const fetchMock = mockFetch(500, "");
+      speaker.connect();
+      wsMock.onopen?.();
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID="${DEVICE_ID}"><connectionStateUpdated state="NETWORK_WIFI_CONNECTED" signal="GOOD_SIGNAL" /></updates>`,
+      });
+      expect(speaker.getState().connectionState).toBe("connected");
+
+      wsMock.onclose?.({ code: 1006 });
+      vi.advanceTimersByTime(2000);
+      wsMock.onopen?.();
+      expect(speaker.getState().connectionState).toBe("connected");
+      expect(fetchMock).toHaveBeenCalled();
+    });
   });
 });

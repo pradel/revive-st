@@ -478,12 +478,10 @@ export class Speaker {
 
         stateChanged = true;
       }
-    } else if (update.type === "connectionState" && update.connectionState) {
-      const newState = update.connectionState.up ? "connected" : "disconnected";
-      if (this.state.connectionState !== newState) {
-        this.state.connectionState = newState;
-        stateChanged = true;
-      }
+    } else if (update.type === "connectionState") {
+      // The speaker's own network status, not this socket's: it arrives over
+      // an open socket, and one without `up` reads as down. `connectionState`
+      // follows the socket alone, as `onConnect` and `onDisconnect` set it.
     } else if (update.type === "nameUpdated" && update.name) {
       if (this.state.name !== update.name) {
         this.state.name = update.name;
