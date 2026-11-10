@@ -1,6 +1,6 @@
 {
   "name": "@revive-st/app",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "private": true,
   "license": "MIT",
   "main": "expo-router/entry",

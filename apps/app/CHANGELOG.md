@@ -1,5 +1,13 @@
 # @revive-st/app
 
+## 0.0.6
+
+### Patch Changes
+
+- The Android APK from GitHub tells you in Settings when a newer version is available, and opens its GitHub release page to download it. ([#131](https://github.com/pradel/revive-st/pull/131))
+
+- Settings links to what's new in each release of the app. ([#129](https://github.com/pradel/revive-st/pull/129))
+
 ## 0.0.5
 
 ### Patch Changes

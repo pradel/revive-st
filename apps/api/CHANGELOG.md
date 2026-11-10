@@ -1,5 +1,11 @@
 # @revive-st/api
 
+## 0.0.5
+
+### Patch Changes
+
+- Requests are rate limited per client IP address (read from the header named by `CLIENT_IP_HEADER` when set), and a request over a limit gets an empty `429` with `Retry-After`. ([#129](https://github.com/pradel/revive-st/pull/129))
+
 ## 0.0.4
 
 ### Patch Changes
