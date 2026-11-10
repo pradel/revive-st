@@ -23,7 +23,7 @@ overrides:
   vite@*: "catalog:"
   vitest@*: "catalog:"
 patchedDependencies:
-  expo-modules-jsi@58.0.21: patches/expo-modules-jsi@58.0.21.patch
+  expo-modules-jsi@58.0.22: patches/expo-modules-jsi@58.0.22.patch
   react-native-wifi-reborn@4.13.6: patches/react-native-wifi-reborn@4.13.6.patch
 minimumReleaseAgeExclude:
   - "@expo/cli@58.1.18"
