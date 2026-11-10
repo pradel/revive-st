@@ -73,6 +73,8 @@ export interface FakeServerConfig {
   noContactEndpoint?: boolean;
   /** Refuses to store presets. */
   rejectsPresets?: boolean;
+  /** Accepts the presets request but never answers. */
+  presetsHang?: boolean;
 }
 
 export interface FakeWorldConfig {
@@ -108,6 +110,8 @@ export class FakeConfigureWorld {
   readonly log = new MemoryLog();
   readonly events: WorldEvent[] = [];
 
+  /** The server the app has selected; the user may pick another during a run. */
+  appServer: string;
   host: string;
   up = true;
   /** The addresses the speaker runs with. */
@@ -132,6 +136,7 @@ export class FakeConfigureWorld {
     this.running = { ...(config.speaker.urls ?? BOSE_URLS) };
     this.saved = { ...this.running };
     this.margeAccountUUID = config.speaker.margeAccountUUID ?? "";
+    this.appServer = config.server.origin;
   }
 
   get openConsoles(): number {
@@ -422,7 +427,7 @@ class FakeServerPort implements ServerPort {
   }
 
   origin(): string {
-    return this.#world.config.server.origin;
+    return this.#world.appServer;
   }
 
   async check(signal: AbortSignal): Promise<Result<ServerCheck, PortFailure>> {
@@ -436,6 +441,7 @@ class FakeServerPort implements ServerPort {
   }
 
   async householdAccount(
+    _origin: string,
     speaker: SpeakerAccount,
   ): Promise<Result<string, PortFailure>> {
     await delay(this.#world, 100, new AbortController().signal);
@@ -449,14 +455,24 @@ class FakeServerPort implements ServerPort {
   }
 
   async savePresets(
+    origin: string,
     accountId: string,
     deviceID: string,
     presets: Preset[],
     signal: AbortSignal,
   ): Promise<Result<void, PortFailure>> {
+    if (this.#world.config.server.presetsHang) {
+      // Settles only when the run's timeout aborts `signal`. A day, not
+      // longer: the dev build plays scenarios on real timers.
+      await this.#world.clock.sleep(24 * 60 * 60_000, signal);
+    }
     await delay(this.#world, 100, signal);
     if (this.#world.config.server.rejectsPresets) {
       return Result.err(new PortFailure({ message: "HTTP 500" }));
+    }
+    if (origin !== this.#world.config.server.origin) {
+      // Another server: the world doesn't model what it stores.
+      return Result.ok(undefined);
     }
     this.#world.storedPresets.set(`${accountId}/${deviceID}`, presets);
     this.#world.record("presetsSaved");
@@ -464,10 +480,15 @@ class FakeServerPort implements ServerPort {
   }
 
   async lastContact(
+    origin: string,
     deviceID: string,
     signal: AbortSignal,
   ): Promise<Result<LastContact, PortFailure>> {
     await delay(this.#world, 100, signal);
+    if (origin !== this.#world.config.server.origin) {
+      // Another server never heard from the speaker.
+      return Result.ok({ supported: true, at: null });
+    }
     if (this.#world.config.server.noContactEndpoint) {
       return Result.ok({ supported: false });
     }

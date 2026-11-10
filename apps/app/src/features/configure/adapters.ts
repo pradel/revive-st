@@ -136,27 +136,27 @@ const server: ServerPort = {
       return Result.err(failure(error));
     }
   },
-  householdAccount: async (speakerAccount, otherSpeakers) => {
+  householdAccount: async (origin, speakerAccount, otherSpeakers) => {
     try {
       return Result.ok(
-        await resolveHouseholdAccountId(speakerAccount, otherSpeakers),
+        await resolveHouseholdAccountId(origin, speakerAccount, otherSpeakers),
       );
     } catch (error) {
       return Result.err(failure(error));
     }
   },
-  savePresets: async (accountId, deviceID, presets) => {
+  savePresets: async (origin, accountId, deviceID, presets, signal) => {
     try {
-      await syncPresetsToMarge(accountId, deviceID, presets);
+      await syncPresetsToMarge(origin, accountId, deviceID, presets, signal);
       return Result.ok(undefined);
     } catch (error) {
       return Result.err(failure(error));
     }
   },
-  lastContact: async (deviceID, signal) => {
+  lastContact: async (origin, deviceID, signal) => {
     try {
       const response = await serverFetch(
-        `${getServerUrl()}/api/internal/device/${encodeURIComponent(deviceID)}/contact`,
+        `${origin}/api/internal/device/${encodeURIComponent(deviceID)}/contact`,
         { signal },
       );
       if (response.status === 404) {

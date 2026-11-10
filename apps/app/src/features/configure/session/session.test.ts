@@ -3,7 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import { ManualClock } from "../../onboarding/session/testing/fakes";
 import { serverUrlsFor } from "./console";
 import { createConfigureSession } from "./session";
-import { RETURN_BUDGET_MS } from "./steps";
+import { RETURN_BUDGET_MS, SAVE_PRESETS_TIMEOUT_MS } from "./steps";
 import { BOSE_URLS, type FakeConfigureWorld } from "./testing/fakes";
 import {
   createScenario,
@@ -120,6 +120,42 @@ describe("configure session", () => {
     expect(failed.actions).toEqual(["retry"]);
     expect(world.firstEvent("command")).toBeUndefined();
     expect(world.saved).toEqual(BOSE_URLS);
+  });
+
+  it("gives up on a server that never answers the presets, before touching the speaker", async () => {
+    const { world, clock, untilFailed } = start("presetsHang");
+    const startedAt = clock.now();
+
+    const failed = await untilFailed("ServerUnreachable");
+
+    expect(failed.step).toBe("prepare");
+    expect(world.firstEvent("command")).toBeUndefined();
+    expect(clock.now() - startedAt).toBeLessThan(
+      SAVE_PRESETS_TIMEOUT_MS + 30_000,
+    );
+  });
+
+  it("keeps checking the server it set the speaker up for when the user picks another one", async () => {
+    const { world, untilWorking, untilDone } = start("happyPath");
+
+    await untilWorking("waitingForShutdown");
+    world.appServer = "https://other.example";
+    const done = await untilDone();
+
+    expect(done.serverConfirmed).toBe(true);
+  });
+
+  it("stores the presets and notes the last contact on the server it started with when the user picks another one", async () => {
+    const { world, untilWorking, untilDone } = start("happyPath");
+
+    await untilWorking("savingPresets");
+    world.appServer = "https://other.example";
+    const done = await untilDone();
+
+    expect(done.serverConfirmed).toBe(true);
+    expect(world.storedPresets.get(`${NEW_ACCOUNT}/${TARGET_ID}`)).toEqual(
+      PRESETS,
+    );
   });
 
   it("stops before touching the speaker or the account when the server is older than the app supports", async () => {
