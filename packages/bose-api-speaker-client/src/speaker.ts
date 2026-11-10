@@ -223,6 +223,16 @@ export class Speaker {
       onUpdate: (update) => {
         this.handleWSUpdate(update);
       },
+      onConnect: () => {
+        // After a drop, notifications sent while the socket was down were
+        // missed: read everything again.
+        const reconnected = this.state.connectionState === "disconnected";
+        this.state.connectionState = "connected";
+        this.emitState();
+        if (reconnected) {
+          void this.initialize();
+        }
+      },
       onDisconnect: () => {
         this.state.connectionState = "disconnected";
         this.emitState();
@@ -238,11 +248,6 @@ export class Speaker {
     });
 
     this.ws.connect();
-
-    // Assume connected if no immediate error, WS doesn't have an onConnect callback in BoseWebSocketClient,
-    // it relies on receiving updates or we can just set it to connected
-    this.state.connectionState = "connected";
-    this.emitState();
   }
 
   /**

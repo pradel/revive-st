@@ -288,6 +288,7 @@ describe("BoseWebSocketClient", () => {
   let wsCtor: ReturnType<typeof stubWebSocket>;
   let client: BoseWebSocketClient;
   const onUpdate = vi.fn();
+  const onConnect = vi.fn();
   const onDisconnect = vi.fn();
   const onError = vi.fn();
 
@@ -296,12 +297,14 @@ describe("BoseWebSocketClient", () => {
     wsMock = createMockWS();
     wsCtor = stubWebSocket(wsMock);
     onUpdate.mockClear();
+    onConnect.mockClear();
     onDisconnect.mockClear();
     onError.mockClear();
     client = new BoseWebSocketClient({
       host: "192.168.1.100",
       deviceID: "DEV001",
       onUpdate,
+      onConnect,
       onDisconnect,
       onError,
     });
@@ -323,6 +326,13 @@ describe("BoseWebSocketClient", () => {
       expect(wsMock.onopen).not.toBeNull();
       wsMock.onopen!();
       expect(onDisconnect).not.toHaveBeenCalled();
+    });
+
+    it("fires onConnect when the socket opens", () => {
+      client.connect();
+      expect(onConnect).not.toHaveBeenCalled();
+      wsMock.onopen!();
+      expect(onConnect).toHaveBeenCalledTimes(1);
     });
 
     it("fires onUpdate when a parsed message is received", () => {

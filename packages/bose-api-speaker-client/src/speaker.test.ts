@@ -1,5 +1,12 @@
 import { Result } from "better-result";
-import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vite-plus/test";
 
 import { Speaker } from "./speaker.ts";
 
@@ -12,6 +19,25 @@ function mockFetch(status: number, body: string) {
     .mockImplementation(async () =>
       Promise.resolve(new Response(body, { status })),
     );
+}
+
+function createMockWS() {
+  return {
+    onopen: null as (() => void) | null,
+    onmessage: null as ((event: { data: string }) => void) | null,
+    onerror: null as ((event: Event) => void) | null,
+    onclose: null as ((event: { code: number }) => void) | null,
+    close: vi.fn(),
+  };
+}
+
+function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
+  function WebSocketMock() {
+    return ws;
+  }
+  const ctor = vi.fn(WebSocketMock);
+  vi.stubGlobal("WebSocket", ctor);
+  return ctor;
 }
 
 describe("Speaker", () => {
@@ -371,5 +397,45 @@ describe("Speaker", () => {
     if (result.isErr()) {
       expect(result.error.name).toBe("HttpError");
     }
+  });
+
+  describe("connect", () => {
+    let wsMock: ReturnType<typeof createMockWS>;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      wsMock = createMockWS();
+      stubWebSocket(wsMock);
+    });
+
+    afterEach(() => {
+      speaker.disconnect();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it("reports connecting until the socket opens", () => {
+      speaker.connect();
+      expect(speaker.getState().connectionState).toBe("connecting");
+
+      wsMock.onopen?.();
+      expect(speaker.getState().connectionState).toBe("connected");
+    });
+
+    it("reports disconnected when the socket drops, and connected again when it reopens", () => {
+      const fetchMock = mockFetch(500, "");
+      speaker.connect();
+      wsMock.onopen?.();
+      expect(fetchMock).not.toHaveBeenCalled();
+
+      wsMock.onclose?.({ code: 1006 });
+      expect(speaker.getState().connectionState).toBe("disconnected");
+
+      vi.advanceTimersByTime(2000);
+      wsMock.onopen?.();
+      expect(speaker.getState().connectionState).toBe("connected");
+      // Notifications sent while the socket was down were missed.
+      expect(fetchMock).toHaveBeenCalled();
+    });
   });
 });

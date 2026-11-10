@@ -341,6 +341,8 @@ export interface BoseWebSocketClientOptions {
   port?: number;
   deviceID: string;
   onUpdate: (update: BoseWSUpdate) => void;
+  /** The socket opened, at first and after each reconnect. */
+  onConnect?: () => void;
   onDisconnect?: () => void;
   onError?: (error: unknown) => void;
 }
@@ -392,6 +394,7 @@ export class BoseWebSocketClient {
           `[BoseWebSocketClient] Connected to ${this.options.deviceID}`,
         );
         this.reconnectAttempts = 0;
+        this.options.onConnect?.();
       };
 
       this.ws.onmessage = (event) => {
