@@ -1,31 +1,28 @@
 import type { Preset } from "bose-api-speaker-client";
 
-import { getServerUrl, serverFetch } from "@/features/server/server";
-
-import { isSameOrigin } from "./account-id";
-
-/** Whether a speaker's Marge server, the `margeURL` of its `/info`, is ours. */
-export const usesOurServer = (margeURL: string | undefined) =>
-  isSameOrigin(margeURL, getServerUrl());
+import { serverFetch } from "@/features/server/server";
 
 /**
- * Stores a speaker's presets on our server, under the account the speaker is
- * (or is about to be) paired with, replacing what was stored. The speaker
- * mirrors the stored presets at boot, so they must be there before it
+ * Stores a speaker's presets on the server at `origin`, under the account the
+ * speaker is (or is about to be) paired with, replacing what was stored. The
+ * speaker mirrors the stored presets at boot, so they must be there before it
  * reboots paired. Throws when the server can't be reached or refuses them.
  */
 export async function syncPresetsToMarge(
+  origin: string,
   accountId: string,
   deviceId: string,
   presets: Preset[],
+  signal?: AbortSignal,
 ): Promise<void> {
-  const url = `${getServerUrl()}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
+  const url = `${origin}/api/internal/account/${encodeURIComponent(accountId)}/device/${encodeURIComponent(deviceId)}/presets`;
   const response = await serverFetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ presets }),
+    signal,
   });
   if (!response.ok) {
     throw new Error(

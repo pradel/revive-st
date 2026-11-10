@@ -131,6 +131,11 @@ export const scenarios = {
     config: () =>
       worldConfig({ server: { origin: SERVER_ORIGIN, rejectsPresets: true } }),
   },
+  presetsHang: {
+    description: "Server takes the presets request and never answers",
+    config: () =>
+      worldConfig({ server: { origin: SERVER_ORIGIN, presetsHang: true } }),
+  },
 } satisfies Record<string, Scenario>;
 
 export type ScenarioName = keyof typeof scenarios;

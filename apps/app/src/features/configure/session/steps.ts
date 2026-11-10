@@ -52,6 +52,8 @@ export const REQUEST_TIMEOUT_MS = 3000;
 export const INFO_BUDGET_MS = 9000;
 /** How long the server gets to say which release it runs. */
 export const SERVER_CHECK_TIMEOUT_MS = 8000;
+/** How long the server gets to store the speaker's presets. */
+export const SAVE_PRESETS_TIMEOUT_MS = 10_000;
 export const INFO_INTERVAL_MS = 3000;
 /** Console connection attempts; each one times out on its own (bose-api-speaker-client). */
 export const CONSOLE_OPEN_ATTEMPTS = 3;
@@ -256,6 +258,7 @@ export async function prepare(
   }
 
   const account = await deps.server.householdAccount(
+    origin,
     {
       margeAccountUUID: info.value.margeAccountUUID,
       margeURL: info.value.margeURL,
@@ -270,7 +273,8 @@ export async function prepare(
       }),
     );
   }
-  ctx.accountId = account.value;
+  const accountId = account.value;
+  ctx.accountId = accountId;
   ctx.pairing = info.value.margeAccountUUID === "";
   if (ctx.pairing && !isSafeAccountId(ctx.accountId)) {
     return Result.err(
@@ -290,11 +294,22 @@ export async function prepare(
       new SpeakerOffline({ host: ctx.host, message: presets.error.message }),
     );
   }
-  const saved = await deps.server.savePresets(
-    ctx.accountId,
-    ctx.target.deviceID,
-    presets.value,
+  const saved = await withTimeout(
+    deps.clock,
+    SAVE_PRESETS_TIMEOUT_MS,
     signal,
+    async (call) =>
+      deps.server.savePresets(
+        origin,
+        accountId,
+        ctx.target.deviceID,
+        presets.value,
+        call,
+      ),
+    () =>
+      new PortFailure({
+        message: `No answer within ${SAVE_PRESETS_TIMEOUT_MS} ms`,
+      }),
   );
   if (saved.isErr()) {
     return Result.err(
@@ -405,8 +420,17 @@ export async function restart(
   env: StepEnv,
   signal: AbortSignal,
   ctx: RunContext,
-): StepResult<ServerUnreachable | RestartFailed> {
+): StepResult<ServerUnreachable | RestartFailed | UnexpectedError> {
   const { deps } = env;
+  const { origin } = ctx;
+  if (origin === undefined) {
+    return Result.err(
+      new UnexpectedError({
+        step: "restart",
+        message: "Setup wasn't prepared",
+      }),
+    );
+  }
   env.working("restart", { kind: "restarting" });
   const baseline = await retryWithin(
     deps.clock,
@@ -414,7 +438,7 @@ export async function restart(
     { budgetMs: BASELINE_BUDGET_MS, intervalMs: CONTACT_POLL_MS },
     async (attempt) =>
       request(deps, attempt, async (call) =>
-        deps.server.lastContact(ctx.target.deviceID, call),
+        deps.server.lastContact(origin, ctx.target.deviceID, call),
       ),
     (last) => last ?? new PortFailure({ message: "No answer" }),
   );
@@ -611,7 +635,7 @@ export async function verify(
     { budgetMs: CONTACT_BUDGET_MS, intervalMs: CONTACT_POLL_MS },
     async (attempt): Promise<Result<void, ServerNotContacted>> => {
       const contact = await request(deps, attempt, async (call) =>
-        deps.server.lastContact(ctx.target.deviceID, call),
+        deps.server.lastContact(origin, ctx.target.deviceID, call),
       );
       const at =
         contact.isOk() && contact.value.supported ? contact.value.at : null;

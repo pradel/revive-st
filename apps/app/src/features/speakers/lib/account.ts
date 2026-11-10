@@ -1,10 +1,11 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { randomUUID } from "expo-crypto";
 
-import { getServerUrl } from "@/features/server/server";
-
-import { pickHouseholdAccountId, type SpeakerAccount } from "./account-id";
-import { usesOurServer } from "./marge-api";
+import {
+  isSameOrigin,
+  pickHouseholdAccountId,
+  type SpeakerAccount,
+} from "./account-id";
 
 /** Per server: an account lives on the server its speakers are paired on. */
 const HOUSEHOLD_ACCOUNT_KEY_PREFIX = "household_account_id:";
@@ -16,18 +17,19 @@ const HOUSEHOLD_ACCOUNT_KEY_PREFIX = "household_account_id:";
  * none yet. Knowing it is what grants access to the household's presets.
  */
 export async function resolveHouseholdAccountId(
+  origin: string,
   speaker: SpeakerAccount,
   otherSpeakers: readonly SpeakerAccount[],
 ): Promise<string> {
   if (speaker.margeAccountUUID) {
     return speaker.margeAccountUUID;
   }
-  const storageKey = `${HOUSEHOLD_ACCOUNT_KEY_PREFIX}${getServerUrl()}`;
+  const storageKey = `${HOUSEHOLD_ACCOUNT_KEY_PREFIX}${origin}`;
   const accountId =
     pickHouseholdAccountId({
       otherSpeakers,
       storedAccountId: await AsyncStorage.getItem(storageKey),
-      onOurServer: usesOurServer,
+      onOurServer: (margeURL) => isSameOrigin(margeURL, origin),
     }) ?? randomUUID();
   await AsyncStorage.setItem(storageKey, accountId);
   return accountId;

@@ -72,7 +72,11 @@ export type LastContact =
   | { supported: false }
   | { supported: true; at: number | null };
 
-/** Our server. Calls reject only when `signal` aborts. */
+/**
+ * Our server. Calls reject only when `signal` aborts. `origin` is the server
+ * the run started with (`origin()`, read once): a server the user picks
+ * during a run doesn't change it.
+ */
 export interface ServerPort {
   /** The server's origin, read once per run. */
   origin: () => string;
@@ -83,17 +87,20 @@ export interface ServerPort {
    * the phone when the household has none (see `resolveHouseholdAccountId`).
    */
   householdAccount: (
+    origin: string,
     speaker: SpeakerAccount,
     otherSpeakers: readonly SpeakerAccount[],
   ) => Promise<Result<string, PortFailure>>;
   /** Stores the speaker's presets under `accountId`, replacing what was stored. */
   savePresets: (
+    origin: string,
     accountId: string,
     deviceID: string,
     presets: Preset[],
     signal: AbortSignal,
   ) => Promise<Result<void, PortFailure>>;
   lastContact: (
+    origin: string,
     deviceID: string,
     signal: AbortSignal,
   ) => Promise<Result<LastContact, PortFailure>>;

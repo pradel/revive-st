@@ -149,7 +149,11 @@ export function createSpeakerRegistryDeps(): SpeakerRegistryDeps {
     },
     scanner: { start: startScanner },
     storage: { load: loadKnownSpeakers, save: saveKnownSpeakers },
-    ourServer: { url: getServerUrl, syncPresets: syncPresetsToMarge },
+    ourServer: {
+      url: getServerUrl,
+      syncPresets: async (accountId, deviceID, presets) =>
+        syncPresetsToMarge(getServerUrl(), accountId, deviceID, presets),
+    },
     later: (run, ms) => {
       const timer = setTimeout(run, ms);
       return () => {

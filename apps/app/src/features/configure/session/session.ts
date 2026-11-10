@@ -101,16 +101,28 @@ function guardDeps(raw: ConfigureDeps, signal: AbortSignal): ConfigureDeps {
       origin: () => server.origin(),
       check: async (requestSignal) =>
         call(async () => server.check(requestSignal)),
-      householdAccount: async (speakerAccount, otherSpeakers) =>
+      householdAccount: async (origin, speakerAccount, otherSpeakers) =>
         call(async () =>
-          server.householdAccount(speakerAccount, otherSpeakers),
+          server.householdAccount(origin, speakerAccount, otherSpeakers),
         ),
-      savePresets: async (accountId, deviceID, presets, requestSignal) =>
+      savePresets: async (
+        origin,
+        accountId,
+        deviceID,
+        presets,
+        requestSignal,
+      ) =>
         call(async () =>
-          server.savePresets(accountId, deviceID, presets, requestSignal),
+          server.savePresets(
+            origin,
+            accountId,
+            deviceID,
+            presets,
+            requestSignal,
+          ),
         ),
-      lastContact: async (deviceID, requestSignal) =>
-        call(async () => server.lastContact(deviceID, requestSignal)),
+      lastContact: async (origin, deviceID, requestSignal) =>
+        call(async () => server.lastContact(origin, deviceID, requestSignal)),
     },
     discovery: {
       browse: (browseSignal) => ({
