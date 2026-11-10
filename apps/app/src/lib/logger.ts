@@ -15,6 +15,8 @@ const PERSIST_DEBOUNCE_MS = 1000;
 let buffer: LogEntry[] = [];
 /** Whether the stored history is in `buffer`; until then, persisting would overwrite it. */
 let loaded = false;
+/** Bumped by each `clearLogs`, so a history read started before it is dropped. */
+let clears = 0;
 let cachedSnapshot: LogEntry[] = [];
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 const subscribers = new Set<(logs: LogEntry[]) => void>();
@@ -103,13 +105,15 @@ function interceptConsole(): void {
 }
 
 export async function initLogger(): Promise<void> {
+  const clearsAtStart = clears;
   let stored: string | null = null;
   try {
     stored = await AsyncStorage.getItem(STORAGE_KEY);
   } catch {
     // An unreadable history starts empty; the lines written meanwhile stay.
   }
-  buffer = restoredLog(stored, buffer);
+  // Cleared while it loaded: the history read is what the user deleted.
+  buffer = restoredLog(clears === clearsAtStart ? stored : null, buffer);
   loaded = true;
   cachedSnapshot = [...buffer];
   notifySubscribers();
@@ -124,6 +128,7 @@ export function getLogs(): LogEntry[] {
 }
 
 export async function clearLogs(): Promise<void> {
+  clears += 1;
   buffer = [];
   cachedSnapshot = [];
   try {
