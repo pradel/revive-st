@@ -204,6 +204,16 @@ export function createSpeakerRegistry(
   }
 
   function publish(deviceID: string, state: SpeakerState): void {
+    if (state.connectionState === "disconnected") {
+      // The live connection dropped, possibly before it first opened. The
+      // client retries on its own and sends a state again once it's back;
+      // until then commands can't reach it.
+      const status = records.get(deviceID)?.status;
+      if (status !== undefined && status !== "offline") {
+        update(deviceID, { status: "offline", live: undefined });
+      }
+      return;
+    }
     syncPresets(deviceID, state);
     const record = records.get(deviceID);
     if (record) {

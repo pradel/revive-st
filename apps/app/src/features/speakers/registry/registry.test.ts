@@ -52,6 +52,8 @@ interface FakeSpeaker {
   /** What the radio check returns; it fails without one. */
   radio?: SpeakerRadio;
   presets?: Preset[];
+  /** Its live connection (port 8080) is down. */
+  socketDown?: boolean;
   events?: SpeakerLinkEvents;
 }
 
@@ -74,7 +76,7 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
   const state = (speaker: FakeSpeaker): SpeakerState => ({
     volume: 20,
     isMuted: false,
-    connectionState: "connected",
+    connectionState: speaker.socketDown ? "disconnected" : "connected",
     powerState: "on",
     name: speaker.name,
     type: "SoundTouch 10",
@@ -367,6 +369,49 @@ describe("speaker registry", () => {
     expect(saved).toEqual([]);
   });
 
+  it("shows a reached speaker offline when its live connection drops, and online again when it's back", async () => {
+    const speaker = onNetwork();
+    const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+    const dropped: SpeakerState = {
+      volume: 20,
+      isMuted: false,
+      connectionState: "disconnected",
+      powerState: "on",
+    };
+
+    speaker.events?.onState(dropped);
+
+    expect(listed()).toMatchObject([{ status: "offline", volume: undefined }]);
+    expect(registry.client(KITCHEN.deviceID)).toBeUndefined();
+
+    speaker.events?.onState({ ...dropped, connectionState: "connected" });
+
+    expect(listed()).toMatchObject([{ status: "online", volume: 20 }]);
+    expect(registry.client(KITCHEN.deviceID)).toBeDefined();
+  });
+
+  it("shows a speaker offline, not connecting, when its live connection never opened", async () => {
+    const speaker = onNetwork({ socketDown: true });
+    const { registry, network, listed, report, settle } = world({
+      stored: [KITCHEN],
+    });
+    network.set(KITCHEN.host, speaker);
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([{ status: "offline" }]);
+
+    speaker.socketDown = false;
+    report(KITCHEN.host);
+
+    expect(listed()).toMatchObject([{ status: "online" }]);
+  });
+
   it("keeps a speaker forgotten while it was being reached", async () => {
     const { registry, network, listed, settle } = world({ stored: [KITCHEN] });
     network.set(KITCHEN.host, onNetwork());
@@ -412,6 +457,34 @@ describe("speaker registry", () => {
     expect(synced).toEqual([
       { accountId: ACCOUNT, deviceID: KITCHEN.deviceID },
     ]);
+  });
+
+  it("doesn't sync presets from a dropped connection's state", async () => {
+    const ours = onNetwork({
+      margeURL: OUR_SERVER,
+      account: ACCOUNT,
+      presets: PRESETS,
+    });
+    const { registry, network, synced, find, settle } = world();
+    network.set(KITCHEN.host, ours);
+    await registry.restore();
+    registry.rescan();
+    find(KITCHEN.host);
+    await settle();
+    expect(synced).toHaveLength(1);
+
+    ours.events?.onState({
+      volume: 30,
+      isMuted: false,
+      connectionState: "disconnected",
+      powerState: "on",
+      presets: [],
+      margeURL: OUR_SERVER,
+      margeAccountUUID: ACCOUNT,
+    });
+    await settle();
+
+    expect(synced).toHaveLength(1);
   });
 
   it("ends an automatic scan once every listed speaker answered, not one the user asked for", async () => {

@@ -107,6 +107,9 @@ const wsClient = new BoseWebSocketClient({
         console.log("Notification received:", update.type);
     }
   },
+  onConnect: () => {
+    console.log("Connected");
+  },
   onDisconnect: () => {
     console.log("Disconnected, reconnecting...");
   },
