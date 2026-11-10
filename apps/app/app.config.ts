@@ -77,8 +77,12 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: pkg.version,
     plugins: [...(config.plugins ?? []), ...crashSymbolsPlugins],
   });
-  // EAS Build sets EAS_BUILD_PROFILE to the profile it builds.
+  // EAS Build sets EAS_BUILD_PROFILE to the profile it builds. The GitHub
+  // APK also says so in `extra`, so it looks for its own updates.
   return process.env.EAS_BUILD_PROFILE === "apk"
-    ? withCompressedApkPackaging(appConfig)
+    ? withCompressedApkPackaging({
+        ...appConfig,
+        extra: { ...appConfig.extra, distribution: "github" },
+      })
     : appConfig;
 };

@@ -3,6 +3,7 @@ import Cable from "@expo/material-symbols/cable.xml";
 import Cast from "@expo/material-symbols/cast.xml";
 import Code from "@expo/material-symbols/code.xml";
 import Dns from "@expo/material-symbols/dns.xml";
+import Download from "@expo/material-symbols/download.xml";
 import Forum from "@expo/material-symbols/forum.xml";
 import History from "@expo/material-symbols/history.xml";
 import Info from "@expo/material-symbols/info.xml";
@@ -33,5 +34,6 @@ export const formIcons = {
   server: { ios: "server.rack", android: Dns },
   speaker: { ios: "hifispeaker.fill", android: Speaker },
   terminal: { ios: "terminal", android: Terminal },
+  update: { ios: "arrow.down.circle", android: Download },
   website: { ios: "globe", android: Language },
 } as const satisfies Record<string, FormIcon>;

@@ -18,6 +18,7 @@ import {
   useSpeakers,
 } from "@/features/speakers/registry/store";
 import type { BoseSpeaker } from "@/features/speakers/registry/types";
+import { useAppUpdate } from "@/features/updates/app-update";
 import { appVersion } from "@/lib/app-version";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
@@ -51,6 +52,7 @@ export default function AppSettings() {
   const { scan, listed } = useSpeakers();
   const isScanning = scan !== null;
   const serverUrl = useServerUrl();
+  const { data: update } = useAppUpdate();
 
   return (
     <Screen>
@@ -84,6 +86,16 @@ export default function AppSettings() {
             label="Revive ST"
             value={`Version ${appVersion}`}
           />
+          {update ? (
+            <FormLinkRow
+              icon={formIcons.update}
+              label="Update available"
+              description={`Version ${update.version}: download its APK on GitHub, then open it to install`}
+              onPress={() => {
+                void Linking.openURL(update.releaseUrl);
+              }}
+            />
+          ) : null}
           <FormLinkRow
             icon={formIcons.changelog}
             label="What's new"
