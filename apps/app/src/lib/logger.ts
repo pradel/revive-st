@@ -1,19 +1,22 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+import {
+  type LogEntry,
+  type LogLevel,
+  MAX_LOGS,
+  restoredLog,
+} from "./log-buffer";
+
+export type { LogEntry, LogLevel } from "./log-buffer";
+
 const STORAGE_KEY = "app_logs";
-const MAX_LOGS = 200;
 const PERSIST_DEBOUNCE_MS = 1000;
 
-export type LogLevel = "log" | "warn" | "error" | "debug" | "info";
-
-export interface LogEntry {
-  id: string;
-  timestamp: string;
-  level: LogLevel;
-  message: string;
-}
-
 let buffer: LogEntry[] = [];
+/** Whether the stored history is in `buffer`; until then, persisting would overwrite it. */
+let loaded = false;
+/** Bumped by each `clearLogs`, so a history read started before it is dropped. */
+let clears = 0;
 let cachedSnapshot: LogEntry[] = [];
 let persistTimer: ReturnType<typeof setTimeout> | null = null;
 const subscribers = new Set<(logs: LogEntry[]) => void>();
@@ -65,6 +68,9 @@ function addToBuffer(level: LogLevel, message: string): void {
 }
 
 function schedulePersist(): void {
+  if (!loaded) {
+    return;
+  }
   if (persistTimer) {
     clearTimeout(persistTimer);
   }
@@ -99,20 +105,22 @@ function interceptConsole(): void {
 }
 
 export async function initLogger(): Promise<void> {
+  const clearsAtStart = clears;
+  let stored: string | null = null;
   try {
-    const stored = await AsyncStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored) as unknown;
-      if (Array.isArray(parsed)) {
-        buffer = (parsed as LogEntry[]).slice(-MAX_LOGS);
-      }
-    }
+    stored = await AsyncStorage.getItem(STORAGE_KEY);
   } catch {
-    buffer = [];
+    // An unreadable history starts empty; the lines written meanwhile stay.
   }
+  // Cleared while it loaded: the history read is what the user deleted.
+  buffer = restoredLog(clears === clearsAtStart ? stored : null, buffer);
+  loaded = true;
   cachedSnapshot = [...buffer];
   notifySubscribers();
   interceptConsole();
+  if (buffer.length > 0) {
+    schedulePersist();
+  }
 }
 
 export function getLogs(): LogEntry[] {
@@ -120,6 +128,7 @@ export function getLogs(): LogEntry[] {
 }
 
 export async function clearLogs(): Promise<void> {
+  clears += 1;
   buffer = [];
   cachedSnapshot = [];
   try {
