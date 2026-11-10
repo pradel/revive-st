@@ -17,6 +17,8 @@ vp run release:app
 
 It checks out the release's tag, builds the APK on EAS (build profile `apk`: the production build, as an APK), checks its signing key and attaches it to the release. If it stops halfway, run it again: it reuses a finished build of the tag and does nothing once the release has its APK. `vp run release:store` builds the release for the stores instead (`vp run release:store --platform ios --auto-submit`; `--help` lists the options).
 
+Once the APK is attached, earlier GitHub APKs offer it in Settings as **Update available** (`src/features/updates/app-update.ts`): the APK build (`extra.distribution` set to `github` in `app.config.ts`) looks up the newest app release with its `revive-st-<version>.apk` on GitHub once per launch. Store builds don't look.
+
 The commands live in `packages/release` (Effect), whose tests (`vp run release#test`) cover these rules with fake tools.
 
 The APK only contains the 64-bit ARM native libraries (`ORG_GRADLE_PROJECT_reactNativeArchitectures` in the `apk` profile of `eas.json`): every phone that runs Android 11 except a few 32-bit-only ones. The store build keeps every architecture, since Google Play sends each phone only its own. Release builds are shrunk with R8 (`enableMinifyInReleaseBuilds` in `app.json`); a native module that's only reached through reflection can need a keep rule, so test a release build on a phone after adding one.
