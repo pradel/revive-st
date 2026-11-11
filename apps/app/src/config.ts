@@ -7,6 +7,8 @@ export const APP_CONFIG = {
   GITHUB_RELEASES_API_URL:
     "https://api.github.com/repos/pradel/revive-st/releases?per_page=100",
   FEEDBACK_URL: "https://github.com/pradel/revive-st/discussions",
+  /** GitHub Sponsors: linked from the GitHub APK only, the stores forbid it. */
+  SPONSOR_URL: "https://github.com/sponsors/pradel",
   WEBSITE_URL: "https://www.revivest.app",
   /** What changed in each release of the app. */
   CHANGELOG_URL: "https://www.revivest.app/changelog/app",

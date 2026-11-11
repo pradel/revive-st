@@ -5,6 +5,7 @@ import Code from "@expo/material-symbols/code.xml";
 import Description from "@expo/material-symbols/description.xml";
 import Dns from "@expo/material-symbols/dns.xml";
 import Download from "@expo/material-symbols/download.xml";
+import Favorite from "@expo/material-symbols/favorite.xml";
 import Forum from "@expo/material-symbols/forum.xml";
 import History from "@expo/material-symbols/history.xml";
 import Info from "@expo/material-symbols/info.xml";
@@ -27,6 +28,7 @@ export const formIcons = {
   changelog: { ios: "clock.arrow.circlepath", android: History },
   code: { ios: "chevron.left.forwardslash.chevron.right", android: Code },
   feedback: { ios: "bubble.left.and.bubble.right", android: Forum },
+  heart: { ios: "heart", android: Favorite },
   info: { ios: "info.circle", android: Info },
   music: { ios: "music.note", android: MusicNote },
   privacy: { ios: "hand.raised", android: PrivacyTip },

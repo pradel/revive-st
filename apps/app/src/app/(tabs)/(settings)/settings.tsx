@@ -18,7 +18,7 @@ import {
   useSpeakers,
 } from "@/features/speakers/registry/store";
 import type { BoseSpeaker } from "@/features/speakers/registry/types";
-import { useAppUpdate } from "@/features/updates/app-update";
+import { isGitHubApk, useAppUpdate } from "@/features/updates/app-update";
 import { appVersion } from "@/lib/app-version";
 import { useLogger } from "@/lib/useLogger";
 import { Screen } from "@/ui/ds/Screen";
@@ -124,6 +124,17 @@ export default function AppSettings() {
               void Linking.openURL(APP_CONFIG.FEEDBACK_URL);
             }}
           />
+          {/* GitHub APK only: the stores forbid asking for money outside their payments. */}
+          {isGitHubApk ? (
+            <FormLinkRow
+              icon={formIcons.heart}
+              label="Support Revive ST"
+              description="Sponsor the project on GitHub"
+              onPress={() => {
+                void Linking.openURL(APP_CONFIG.SPONSOR_URL);
+              }}
+            />
+          ) : null}
           <FormLinkRow
             icon={formIcons.privacy}
             label="Privacy policy"
