@@ -52,7 +52,8 @@ describe("favorites", () => {
     const storage = memoryStorage();
     const store = createFavoritesStore(storage);
     await Promise.all([store.setFavorite(a, true), store.setFavorite(a, true)]);
-    expect(uuids(storage.value)).toEqual(["a"]);
+    // The raw value: `parseFavorites` drops duplicates and would hide one.
+    expect(storage.value).toBe(JSON.stringify([a]));
   });
 
   it("removes a station starred then unstarred in a row", async () => {
