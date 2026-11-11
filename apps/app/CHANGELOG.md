@@ -1,5 +1,19 @@
 # @revive-st/app
 
+## 0.0.7
+
+### Patch Changes
+
+- Settings links to the terms of service. ([`3fce6d7`](https://github.com/pradel/revive-st/commit/3fce6d785313f20d3657684867c1f375b27ce0b5))
+
+- Internet radio setup stops waiting on a server that doesn't answer, and stays on the server it started with when you pick another one meanwhile. ([#133](https://github.com/pradel/revive-st/pull/133))
+
+- The app's logs keep problems that happen right at launch. ([#135](https://github.com/pradel/revive-st/pull/135))
+
+- Starring stations quickly keeps every favorite, and never lists a station twice. ([#137](https://github.com/pradel/revive-st/pull/137))
+
+- A speaker that drops off the network shows as offline, and online again when it's back. ([#134](https://github.com/pradel/revive-st/pull/134))
+
 ## 0.0.6
 
 ### Patch Changes
