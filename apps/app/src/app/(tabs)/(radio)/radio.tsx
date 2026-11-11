@@ -199,7 +199,7 @@ export default function RadioBrowser() {
   const toggleStationFavorite = (station: RadioStation) => {
     const isFav = isFavorite(station);
     haptics.toggle(!isFav);
-    toggleFavorite({ station, isFavorite: isFav });
+    toggleFavorite({ station, favorite: !isFav });
   };
 
   const stationMenu = (station: RadioStation): ContextMenuConfig => {

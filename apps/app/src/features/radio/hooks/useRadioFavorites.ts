@@ -1,27 +1,18 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { createFavoritesStore } from "../lib/favorites";
 import type { RadioStation } from "../lib/radio-browser";
 
-const FAVORITES_KEY = "radio_favorites";
+const QUERY_KEY = ["radio-favorites"];
 
-async function loadFavorites(): Promise<RadioStation[]> {
-  const stored = await AsyncStorage.getItem(FAVORITES_KEY);
-  if (!stored) {
-    return [];
-  }
-  return JSON.parse(stored) as RadioStation[];
-}
-
-async function saveFavorites(list: RadioStation[]): Promise<RadioStation[]> {
-  await AsyncStorage.setItem(FAVORITES_KEY, JSON.stringify(list));
-  return list;
-}
+// One store for the whole app, so every write waits in the same queue.
+const store = createFavoritesStore(AsyncStorage);
 
 export function useRadioFavorites() {
   return useQuery({
-    queryKey: ["radio-favorites"],
-    queryFn: loadFavorites,
+    queryKey: QUERY_KEY,
+    queryFn: async () => store.load(),
   });
 }
 
@@ -31,19 +22,13 @@ export function useRadioToggleFavorite() {
   return useMutation({
     mutationFn: async ({
       station,
-      isFavorite,
+      favorite,
     }: {
       station: RadioStation;
-      isFavorite: boolean;
-    }) => {
-      const current = await loadFavorites();
-      const updated = isFavorite
-        ? current.filter((fav) => fav.stationuuid !== station.stationuuid)
-        : [...current, station];
-      return saveFavorites(updated);
-    },
+      favorite: boolean;
+    }) => store.setFavorite(station, favorite),
     onSuccess: (data) => {
-      queryClient.setQueryData(["radio-favorites"], data);
+      queryClient.setQueryData(QUERY_KEY, data);
     },
   });
 }
