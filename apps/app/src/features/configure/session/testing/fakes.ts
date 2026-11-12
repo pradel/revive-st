@@ -1,5 +1,9 @@
 import { Result } from "better-result";
-import type { Preset } from "bose-api-speaker-client";
+import {
+  isSoundTouch10,
+  type Preset,
+  type SpeakerGroup,
+} from "bose-api-speaker-client";
 
 import { AbortedError } from "../../../onboarding/session/async";
 import type { DiscoveredService } from "../../../onboarding/session/ports";
@@ -26,6 +30,7 @@ import {
   type SpeakerInfo,
   type SpeakerPort,
 } from "../ports";
+import type { KnownSpeaker } from "../types";
 
 export const BOSE_URLS: ServerUrls = {
   bmxRegistryUrl: "https://content.api.bose.io/bmx/registry/v1/services",
@@ -63,6 +68,12 @@ export interface FakeSpeakerConfig {
   contactsServer?: boolean;
   /** Announces itself over mDNS while up. Default true. */
   announces?: boolean;
+  /** `/info`'s `type`. Default "SoundTouch 20", which never answers `/getGroup`. */
+  type?: string;
+  /** The stereo pair it's in (a SoundTouch 10). */
+  group?: SpeakerGroup;
+  /** Never answers `/getGroup`. */
+  groupHangs?: boolean;
 }
 
 export interface FakeServerConfig {
@@ -81,7 +92,7 @@ export interface FakeWorldConfig {
   speaker: FakeSpeakerConfig;
   server: FakeServerConfig;
   /** The household's other speakers. */
-  otherSpeakers?: SpeakerAccount[];
+  otherSpeakers?: KnownSpeaker[];
   /** Account the app makes for a new household. */
   newAccountId?: string;
 }
@@ -96,7 +107,9 @@ export interface WorldEvent {
     | "down"
     | "up"
     | "contact"
-    | "accountCreated";
+    | "accountCreated"
+    | "groupRead"
+    | "groupRemoved";
   detail?: string;
 }
 
@@ -122,6 +135,8 @@ export class FakeConfigureWorld {
   /** Account set over the console; applies at restart. */
   pendingAccount: string | undefined;
   restarts = 0;
+  /** The stereo pair the speaker is in. */
+  group: SpeakerGroup | null;
   /** Server side: presets per `account/device`. */
   readonly storedPresets = new Map<string, Preset[]>();
   /** Server side: last request per device. */
@@ -137,6 +152,7 @@ export class FakeConfigureWorld {
     this.saved = { ...this.running };
     this.margeAccountUUID = config.speaker.margeAccountUUID ?? "";
     this.appServer = config.server.origin;
+    this.group = config.speaker.group ?? null;
   }
 
   get openConsoles(): number {
@@ -180,6 +196,7 @@ export class FakeConfigureWorld {
       name: this.config.speaker.name,
       margeURL: this.running.margeServerUrl,
       margeAccountUUID: this.margeAccountUUID,
+      type: this.config.speaker.type ?? "SoundTouch 20",
     };
   }
 
@@ -325,6 +342,28 @@ class FakeSpeakerPort implements SpeakerPort {
 
   async info(host: string, signal: AbortSignal) {
     return this.#answer(host, signal, () => Result.ok(this.#world.info()));
+  }
+
+  async getGroup(host: string, signal: AbortSignal) {
+    this.#world.record("groupRead");
+    const speaker = this.#world.config.speaker;
+    if (!isSoundTouch10(speaker.type ?? "") || speaker.groupHangs) {
+      // Other models never answer `/getGroup`.
+      await new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          reject(new AbortedError());
+        });
+      });
+    }
+    return this.#answer(host, signal, () => Result.ok(this.#world.group));
+  }
+
+  async removeGroup(host: string, signal: AbortSignal) {
+    return this.#answer(host, signal, () => {
+      this.#world.group = null;
+      this.#world.record("groupRemoved");
+      return Result.ok({ peerUnreachable: false });
+    });
   }
 
   async presets(host: string, signal: AbortSignal) {

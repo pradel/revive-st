@@ -16,8 +16,17 @@ export interface ConfigureTarget {
   deviceID: string;
   name: string;
   host: string;
-  /** The household's other speakers: an unpaired speaker joins their account. */
-  otherSpeakers: readonly SpeakerAccount[];
+  /**
+   * The household's other speakers: an unpaired speaker joins their account,
+   * and a stereo pair's other speaker is named after them.
+   */
+  otherSpeakers: readonly KnownSpeaker[];
+}
+
+/** Another speaker of the household, as the speaker list knows it. */
+export interface KnownSpeaker extends SpeakerAccount {
+  deviceID: string;
+  speakerName?: string;
 }
 
 export type WorkingDetail =
@@ -36,8 +45,9 @@ export type WorkingDetail =
  * `retry` runs the whole setup again: every step is safe to repeat.
  * `checkAgain` waits for the restarted speaker and checks it again, without
  * changing anything.
+ * `unpair` dissolves the speaker's stereo pair, then runs the setup again.
  */
-export type RecoveryAction = "retry" | "checkAgain";
+export type RecoveryAction = "retry" | "checkAgain" | "unpair";
 
 export type ConfigureView =
   | {
@@ -62,6 +72,11 @@ export type ConfigureView =
        * false only with a server that can't tell.
        */
       serverConfirmed: boolean;
+      /**
+       * The other speaker of the stereo pair this setup dissolved, by name
+       * (or device id when unknown).
+       */
+      unpairedFrom?: string;
     };
 
 export interface ConfigureSession {

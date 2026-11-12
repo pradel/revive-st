@@ -72,6 +72,19 @@ export class NotPaired extends TaggedError("NotPaired") {}
 /** The speaker restarted with the new settings but hasn't made a request to our server. */
 export class ServerNotContacted extends TaggedError("ServerNotContacted") {}
 
+/**
+ * The speaker is in a stereo pair, and this setup moves it to another server
+ * or account, which drops the pair on its side only: its partner keeps
+ * waiting for it and won't play. Nothing was written yet.
+ */
+export class PairWouldBreak extends TaggedError("PairWouldBreak")<{
+  pairName: string;
+  /** This speaker's side; undefined when the pair doesn't list it. */
+  role: "left" | "right" | undefined;
+  /** The other speaker's name, or its device id when unknown. */
+  partner: string;
+}> {}
+
 /** A port threw something the session doesn't model. */
 export class UnexpectedError extends TaggedError("UnexpectedError")<{
   step: StepId;
@@ -92,6 +105,7 @@ export type ConfigureError =
   | NotApplied
   | NotPaired
   | ServerNotContacted
+  | PairWouldBreak
   | UnexpectedError;
 
 /** Buttons offered by the failed view, in display order. */
@@ -114,6 +128,8 @@ export function recoveryActions(error: ConfigureError): RecoveryAction[] {
     NotApplied: retry,
     NotPaired: retry,
     ServerNotContacted: checkAgain,
+    // Cancelling is the failed view's Close.
+    PairWouldBreak: () => ["unpair"],
     UnexpectedError: retry,
   });
 }
@@ -221,6 +237,14 @@ export function describeError(
       title: `${speakerName} isn't linked to your account`,
       message:
         "It uses Revive ST but isn't paired with your household's account, so its presets won't be kept. Try setting it up again.",
+    }),
+    PairWouldBreak: ({ pairName, role, partner }) => ({
+      title: `${speakerName} is in a stereo pair`,
+      message: `${
+        role === undefined
+          ? `${speakerName} is in the stereo pair ${pairName}.`
+          : `${speakerName} is the ${role} speaker of ${pairName}.`
+      } Setting it up for ${serverHost} breaks the pair: ${partner} would keep waiting for it and refuse to play. ${UNCHANGED}`,
     }),
     ServerNotContacted: () => ({
       title: `${speakerName} hasn't reached Revive ST`,

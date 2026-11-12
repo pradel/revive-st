@@ -83,6 +83,10 @@ function guardDeps(raw: ConfigureDeps, signal: AbortSignal): ConfigureDeps {
         ),
       sourcesUpdated: async (host, deviceID, requestSignal) =>
         call(async () => speaker.sourcesUpdated(host, deviceID, requestSignal)),
+      getGroup: async (host, requestSignal) =>
+        call(async () => speaker.getGroup(host, requestSignal)),
+      removeGroup: async (host, requestSignal) =>
+        call(async () => speaker.removeGroup(host, requestSignal)),
     },
     console: {
       open: async (host) => {
@@ -242,10 +246,23 @@ export function createConfigureSession(
     }
   };
 
-  const entryFor = (action: RecoveryAction): Entry =>
-    action === "retry"
-      ? { step: "prepare" }
-      : { step: "awaitRestart", skipShutdown: true };
+  const entryFor = (action: RecoveryAction): Entry => {
+    switch (action) {
+      case "retry": {
+        return { step: "prepare" };
+      }
+      case "unpair": {
+        ctx.unpair = true;
+        return { step: "prepare" };
+      }
+      case "checkAgain": {
+        return { step: "awaitRestart", skipShutdown: true };
+      }
+      default: {
+        return unreachable(action);
+      }
+    }
+  };
 
   /** Shows the failed view until the user picks one of its actions. */
   const recover = async (
@@ -306,6 +323,9 @@ export function createConfigureSession(
             kind: "done",
             host: ctx.host,
             serverConfirmed: outcome.serverConfirmed,
+            ...(ctx.unpairedFrom === undefined
+              ? {}
+              : { unpairedFrom: ctx.unpairedFrom }),
           });
           return;
         }
