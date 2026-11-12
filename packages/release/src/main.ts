@@ -10,7 +10,7 @@ import { CliError, Command, Flag } from "effect/cli";
 
 import { Shell } from "./process.ts";
 import { releaseApk, releaseStore } from "./release.ts";
-import { Apk, Eas, GitHub, Repo } from "./tools.ts";
+import { Apk, Eas, GitHub, Repo, Server } from "./tools.ts";
 
 const apk = Command.make("apk", {}, () => releaseApk).pipe(
   Command.withDescription(
@@ -42,6 +42,7 @@ const ToolsLayer = Layer.mergeAll(
   GitHub.layer,
   Eas.layer,
   Apk.layer,
+  Server.layer,
 ).pipe(Layer.provide(Shell.layer), Layer.provideMerge(NodeServices.layer));
 
 Command.make("release").pipe(
