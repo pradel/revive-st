@@ -27,6 +27,10 @@ const PARAMETERS: Record<
     description: "The preset button.",
     schema: { type: "integer", minimum: 1, maximum: 6 },
   },
+  groupId: {
+    description: "A stereo pair's id: 7 digits, e.g. `3271058`.",
+    schema: { type: "string", pattern: "^\\d{7}$" },
+  },
   stationId: { description: "A TuneIn guide id, e.g. `s24861`." },
   stationUuid: {
     description:

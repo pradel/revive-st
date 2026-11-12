@@ -8,6 +8,8 @@ import {
   vi,
 } from "vite-plus/test";
 
+import { NetworkError } from "./errors.ts";
+import type { BalanceResponse, SpeakerGroup } from "./index.ts";
 import { Speaker } from "./speaker.ts";
 
 const IP = "192.168.1.100";
@@ -23,10 +25,12 @@ function mockFetch(status: number, body: string) {
 
 function createMockWS() {
   return {
+    readyState: 1,
     onopen: null as (() => void) | null,
     onmessage: null as ((event: { data: string }) => void) | null,
     onerror: null as ((event: Event) => void) | null,
     onclose: null as ((event: { code: number }) => void) | null,
+    send: vi.fn(),
     close: vi.fn(),
   };
 }
@@ -39,6 +43,20 @@ function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
   vi.stubGlobal("WebSocket", ctor);
   return ctor;
 }
+
+// Captured from a pair of SoundTouch 10s (firmware 27.0.6).
+const PAIRED_GROUP_XML = `<?xml version="1.0" encoding="UTF-8" ?><group id="3271058"><name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles><senderIPAddress>192.168.1.195</senderIPAddress><status>GROUP_OK</status></group>`;
+const PAIRED_GROUP: SpeakerGroup = {
+  id: "3271058",
+  name: "Living room + Office",
+  masterDeviceId: "0CAE7D6298E9",
+  roles: [
+    { deviceId: "0CAE7D6298E9", role: "LEFT", ipAddress: "192.168.1.195" },
+    { deviceId: "EC1127C25A50", role: "RIGHT", ipAddress: "192.168.1.189" },
+  ],
+  senderIpAddress: "192.168.1.195",
+  status: "GROUP_OK",
+};
 
 describe("Speaker", () => {
   let speaker: Speaker;
@@ -390,6 +408,59 @@ describe("Speaker", () => {
     expect(onStateUpdate).toHaveBeenCalledTimes(1);
   });
 
+  describe("stereo pair", () => {
+    function mockSpeaker(type: string) {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = input as string;
+        let body = "<status>OK</status>";
+        if (url.endsWith("/info")) {
+          body = `<info deviceID="${DEVICE_ID}"><name>Living room</name><type>${type}</type></info>`;
+        } else if (url.endsWith("/getGroup") || url.endsWith("/addGroup")) {
+          body = PAIRED_GROUP_XML;
+        } else if (url.endsWith("/removeGroup")) {
+          body = '<?xml version="1.0" encoding="UTF-8" ?><group />';
+        }
+        return Promise.resolve(new Response(body, { status: 200 }));
+      });
+    }
+
+    it("initialize() reads the pair of a SoundTouch 10", async () => {
+      mockSpeaker("SoundTouch 10");
+      await speaker.initialize();
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+    });
+
+    it("initialize() never asks other models for a pair", async () => {
+      const fetchMock = mockSpeaker("SoundTouch 20");
+      await speaker.initialize();
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          (url as string).endsWith("/getGroup"),
+        ),
+      ).toBe(false);
+      expect(speaker.getState().group).toBeUndefined();
+    });
+
+    it("addGroup() and removeGroup() keep the state's pair current", async () => {
+      mockSpeaker("SoundTouch 10");
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+
+      await speaker.addGroup({
+        name: PAIRED_GROUP.name,
+        masterDeviceId: PAIRED_GROUP.masterDeviceId,
+        roles: PAIRED_GROUP.roles,
+      });
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+      expect(onStateUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ group: PAIRED_GROUP }),
+      );
+
+      await speaker.removeGroup();
+      expect(speaker.getState().group).toBeNull();
+    });
+  });
+
   it("handles 500 error correctly without throwing", async () => {
     mockFetch(500, "<error>Internal Server Error</error>");
     const result = await speaker.powerToggle();
@@ -453,6 +524,172 @@ describe("Speaker", () => {
       wsMock.onopen?.();
       expect(speaker.getState().connectionState).toBe("connected");
       expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it("follows the pair from groupUpdated notifications", () => {
+      // Once paired, it reads the pair's balance.
+      mockFetch(500, "");
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+      speaker.connect();
+      wsMock.onopen?.();
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated>${PAIRED_GROUP_XML.replace(/^<\?xml[^>]*\?>/, "")}</groupUpdated></updates>`,
+      });
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+      expect(onStateUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ group: PAIRED_GROUP }),
+      );
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated><group /></groupUpdated></updates>`,
+      });
+      expect(speaker.getState().group).toBeNull();
+    });
+  });
+
+  describe("balance", () => {
+    let wsMock: ReturnType<typeof createMockWS>;
+    let paired: boolean;
+    let target: number;
+    let fetchMock: ReturnType<typeof mockFetch>;
+
+    const balance = (targetBalance: number): BalanceResponse => ({
+      deviceID: DEVICE_ID,
+      balanceAvailable: true,
+      balanceMin: -7,
+      balanceMax: 7,
+      balanceDefault: 0,
+      targetBalance,
+      actualBalance: targetBalance,
+    });
+    const balanceRead = () =>
+      fetchMock.mock.calls.filter(([url]) =>
+        (url as string).endsWith("/balance"),
+      ).length;
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      wsMock = createMockWS();
+      stubWebSocket(wsMock);
+      paired = true;
+      target = 0;
+      fetchMock = vi
+        .spyOn(globalThis, "fetch")
+        .mockImplementation(async (input) => {
+          const url = input as string;
+          let body = "<status>OK</status>";
+          if (url.endsWith("/info")) {
+            body = `<info deviceID="${DEVICE_ID}"><name>Living room</name><type>SoundTouch 10</type></info>`;
+          } else if (url.endsWith("/getGroup")) {
+            body = paired ? PAIRED_GROUP_XML : "<group />";
+          } else if (url.endsWith("/balance")) {
+            body = `<balance deviceID="${DEVICE_ID}"><balanceAvailable>true</balanceAvailable><balanceMin>-7</balanceMin><balanceMax>7</balanceMax><balanceDefault>0</balanceDefault><targetBalance>${target}</targetBalance><actualBalance>${target}</actualBalance></balance>`;
+          }
+          return Promise.resolve(new Response(body, { status: 200 }));
+        });
+    });
+
+    afterEach(() => {
+      speaker.disconnect();
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    });
+
+    it("initialize() reads the balance of a paired SoundTouch 10", async () => {
+      await speaker.initialize();
+      expect(speaker.getState().balance).toEqual(balance(0));
+    });
+
+    it("initialize() reads no balance while unpaired", async () => {
+      paired = false;
+      await speaker.initialize();
+      expect(speaker.getState().balance).toBeNull();
+      expect(balanceRead()).toBe(0);
+    });
+
+    it("setBalance() writes over the WebSocket, within the speaker's range", async () => {
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+
+      void speaker.setBalance(12);
+      expect(wsMock.send).toHaveBeenCalledWith(
+        `<msg><header deviceID="${DEVICE_ID}" url="balance" method="POST"><request requestID="1"><info mainNode="balanceSet" type="new"/></request></header><body><balance><targetBalance>7</targetBalance></balance></body></msg>`,
+      );
+    });
+
+    it("setBalance() puts the balance the speaker replies with in the state, without reading it again", async () => {
+      // Captured from a SoundTouch 10 (firmware 27.0.6) answering a write of
+      // -2; a `/balance` read right then still reports the previous value.
+      const CAPTURED_REPLY = `<?xml version="1.0" encoding="UTF-8" ?><msg><header deviceID="0CAE7D6298E9" url="balance" method="POST"><request requestID="77" msgType="RESPONSE"><info mainNode="balanceSet" type="new" /></request></header><body><balance deviceID="0CAE7D6298E9"><balanceAvailable>true</balanceAvailable><balanceMin>-7</balanceMin><balanceMax>7</balanceMax><balanceDefault>0</balanceDefault><targetBalance>-2</targetBalance><actualBalance>-2</actualBalance></balance></body></msg>`;
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({
+        ip: IP,
+        deviceID: "0CAE7D6298E9",
+        onStateUpdate,
+      });
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      const readsBefore = balanceRead();
+
+      const pending = speaker.setBalance(-2);
+      wsMock.onmessage?.({
+        data: CAPTURED_REPLY.replace('requestID="77"', 'requestID="1"'),
+      });
+
+      expect((await pending).isOk()).toBe(true);
+      const applied = { ...balance(-2), deviceID: "0CAE7D6298E9" };
+      expect(speaker.getState().balance).toEqual(applied);
+      expect(onStateUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ balance: applied }),
+      );
+      expect(balanceRead()).toBe(readsBefore);
+    });
+
+    it("setBalance() fails while the WebSocket isn't connected", async () => {
+      await speaker.initialize();
+      const result = await speaker.setBalance(-2);
+      expect(result.isErr() && result.error).toBeInstanceOf(NetworkError);
+    });
+
+    it("reads the balance again when the speaker says it changed", async () => {
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+
+      target = -2;
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><balanceUpdated></balanceUpdated></updates>`,
+      });
+      await vi.waitFor(() => {
+        expect(onStateUpdate).toHaveBeenLastCalledWith(
+          expect.objectContaining({ balance: balance(-2) }),
+        );
+      });
+    });
+
+    it("reads the balance once paired, and has none once unpaired", async () => {
+      paired = false;
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated>${PAIRED_GROUP_XML.replace(/^<\?xml[^>]*\?>/, "")}</groupUpdated></updates>`,
+      });
+      await vi.waitFor(() => {
+        expect(speaker.getState().balance).toEqual(balance(0));
+      });
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated><group /></groupUpdated></updates>`,
+      });
+      expect(speaker.getState().balance).toBeNull();
     });
   });
 });

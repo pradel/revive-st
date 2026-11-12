@@ -13,6 +13,7 @@ import { TestClock } from "effect/testing";
 import { RADIO_BROWSER_BASE_PATH, TUNEIN_BASE_PATH } from "./api/bmx.ts";
 import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
+import { GroupsRepo } from "./devices/groups-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RateLimits } from "./rate-limit.ts";
@@ -41,6 +42,7 @@ const TestLayer = HttpAppLayer.pipe(
   Layer.provide([
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
+    GroupsRepo.layerTest,
     DeviceContactsRepo.layerTest,
     TuneInTest,
     RadioBrowserTest,

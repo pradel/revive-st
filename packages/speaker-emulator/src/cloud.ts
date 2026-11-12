@@ -9,18 +9,22 @@ import { DateTime, Effect, Option, Ref, Schema } from "effect";
 import { HttpClient, HttpClientRequest } from "effect/http";
 
 import { USER_AGENT } from "./config.ts";
-import type { NowPlaying, SpeakerState } from "./state.ts";
+import type { Group, NowPlaying, SpeakerState } from "./state.ts";
 import {
   type AccountSync,
   deviceXml,
   type Identity,
+  groupUpdated,
   infoUpdated,
+  margeGroupTouchXml,
+  margeGroupXml,
   nameUpdated,
   nowPlayingUpdated,
   powerOnXml,
   presetPutXml,
   presetsUpdated,
   readAccount,
+  readMargeGroupId,
   readSourceProviders,
   recentXml,
   serialNumber,
@@ -172,9 +176,17 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     }
   });
 
+  /** Joins, renames or (`undefined`) leaves a stereo pair. */
+  const setGroup = Effect.fnUntraced(function* (group: Group | undefined) {
+    yield* Ref.update(state, (current) => ({ ...current, group }));
+    yield* notify(groupUpdated(deviceId, group));
+  });
+
   /**
    * Syncs the account, then reads its provider settings and the speaker's
-   * group, as a speaker does at boot and right after it pairs.
+   * group, as a speaker does at boot and right after it pairs. Marge decides
+   * the group: `<group/>`, or any reply but a group, drops the speaker's
+   * pair (its partner drops its own half when it asks); no reply keeps it.
    */
   const fetchAccount = Effect.fnUntraced(function* (
     accountId: string,
@@ -185,11 +197,18 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     yield* send(
       HttpClientRequest.get(`${marge}/account/${accountId}/provider_settings`),
     );
-    yield* send(
+    const group = yield* send(
       HttpClientRequest.get(
         `${marge}/account/${accountId}/device/${deviceId}/group/`,
       ),
     );
+    if (
+      Option.isSome(group) &&
+      readMargeGroupId(group.value.body) === undefined &&
+      (yield* Ref.get(state)).group !== undefined
+    ) {
+      yield* setGroup(undefined);
+    }
   });
 
   /** What a speaker calls while it starts, in the order firmware 27 does. */
@@ -353,6 +372,45 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     yield* notify(nowPlayingUpdated(deviceId, nowPlaying));
   });
 
+  /** `/addGroup` on the master: the id Marge gives the pair, if it takes it. */
+  const createGroup = Effect.fnUntraced(function* (group: Omit<Group, "id">) {
+    const { margeAccountUUID } = yield* Ref.get(state);
+    const reply = yield* send(
+      xmlBody(
+        HttpClientRequest.post(
+          `${yield* margeUrl}/account/${margeAccountUUID}/group/`,
+        ),
+        margeGroupXml(group),
+      ),
+    );
+    return Option.isSome(reply)
+      ? readMargeGroupId(reply.value.body)
+      : undefined;
+  });
+
+  /** `/updateGroup`: tells Marge the pair's new name; the speaker renames it whatever the reply. */
+  const renameGroup = Effect.fnUntraced(function* (group: Group) {
+    const { margeAccountUUID } = yield* Ref.get(state);
+    yield* send(
+      xmlBody(
+        HttpClientRequest.put(
+          `${yield* margeUrl}/account/${margeAccountUUID}/group/${group.id}`,
+        ),
+        margeGroupTouchXml(deviceId, group.name),
+      ),
+    );
+  });
+
+  /** `/removeGroup`: deletes the pair on Marge; the speaker leaves it whatever the reply. */
+  const deleteGroup = Effect.fnUntraced(function* (group: Group) {
+    const { margeAccountUUID } = yield* Ref.get(state);
+    yield* send(
+      HttpClientRequest.delete(
+        `${yield* margeUrl}/account/${margeAccountUUID}/group/${group.id}`,
+      ),
+    );
+  });
+
   /**
    * Resolves a station through its source's BMX adapter, then plays it and
    * reports it to Marge as a recent. A station the adapter can't resolve, or
@@ -411,6 +469,10 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
     rename,
     storePreset,
     setNowPlaying,
+    setGroup,
+    createGroup,
+    renameGroup,
+    deleteGroup,
     resolveStation,
   };
 });

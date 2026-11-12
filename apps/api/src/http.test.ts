@@ -18,6 +18,7 @@ import {
   DevicesRepo,
   MAX_DEVICES_PER_ACCOUNT,
 } from "./devices/devices-repo.ts";
+import { GroupsRepo } from "./devices/groups-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import {
@@ -41,6 +42,7 @@ const TestLayer = HttpAppLayer.pipe(
     RateLimitsOff,
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
+    GroupsRepo.layerTest,
     DeviceContactsRepo.layerTest,
     TuneInTest,
     RadioBrowserTest,
@@ -1101,6 +1103,265 @@ layer(TestLayer, { excludeTestServices: true })("HTTP API", (it) => {
       assert.deepStrictEqual(listedDeviceIds(yield* getFullXml(accountId)), [
         booting,
       ]);
+    }),
+  );
+
+  /** The `<group>` the master POSTs, as captured from firmware 27.0.6. */
+  const speakerGroupXml = (
+    left: string,
+    right: string,
+    { master = left, name = "Living room + Office" } = {},
+  ) =>
+    `<?xml version="1.0" encoding="UTF-8" ?><group><masterDeviceId>${master}</masterDeviceId><name>${name}</name><roles><groupRole><deviceId>${left}</deviceId><role>LEFT</role></groupRole><groupRole><deviceId>${right}</deviceId><role>RIGHT</role></groupRole></roles></group>`;
+
+  const groupsPath = (accountId: string) =>
+    `/streaming/account/${accountId}/group`;
+
+  const createGroup = (accountId: string, body: string) =>
+    HttpClient.execute(
+      HttpClientRequest.post(`${groupsPath(accountId)}/`).pipe(
+        HttpClientRequest.bodyText(body, BOSE_XML_CONTENT_TYPE),
+      ),
+    );
+
+  const pollGroup = (deviceId: string, accountId: string) =>
+    HttpClient.get(`${devicePath(deviceId, accountId)}/group/`).pipe(
+      Effect.flatMap((response) => assertBoseXml(response)),
+    );
+
+  const groupXml = (
+    id: string,
+    left: string,
+    right: string,
+    { master = left, name = "Living room + Office" } = {},
+  ) =>
+    `<group id="${id}"><name>${name}</name><masterDeviceId>${master}</masterDeviceId><roles><groupRole><deviceId>${left}</deviceId><role>LEFT</role></groupRole><groupRole><deviceId>${right}</deviceId><role>RIGHT</role></groupRole></roles></group>`;
+
+  /** Creates a pair as the master does; its id. */
+  const createdGroupId = (accountId: string, body: string) =>
+    Effect.gen(function* () {
+      const response = yield* createGroup(accountId, body);
+      const xml = yield* assertBoseXml(response, 201);
+      const id = /<group id="(\d{7})">/.exec(xml)?.[1];
+      assert.isDefined(id);
+      assert.match(
+        response.headers.location ?? "",
+        new RegExp(`^http://.+${literal(`${groupsPath(accountId)}/${id}`)}$`),
+      );
+      return id ?? "";
+    });
+
+  it.effect("serves a created stereo pair to both of its speakers", () =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const left = speaker("pair-left");
+      const right = speaker("pair-right");
+      const response = yield* createGroup(
+        accountId,
+        speakerGroupXml(left, right),
+      );
+      const created = yield* assertBoseXml(response, 201);
+      const id = /<group id="(\d{7})">/.exec(created)?.[1] ?? "";
+      assert.include(created, groupXml(id, left, right));
+
+      assert.include(
+        yield* pollGroup(left, accountId),
+        groupXml(id, left, right),
+      );
+      assert.include(
+        yield* pollGroup(right, accountId),
+        groupXml(id, left, right),
+      );
+      assert.sameMembers(listedDeviceIds(yield* getFullXml(accountId)), [
+        left,
+        right,
+      ]);
+      assert.isNotNull(yield* getLastContactAt(left));
+    }),
+  );
+
+  it.effect(
+    "replaces a stale pair holding one of the new pair's speakers",
+    () =>
+      Effect.gen(function* () {
+        const accountId = randomUUID();
+        const left = speaker("stale-left");
+        const right = speaker("stale-right");
+        const other = speaker("stale-other");
+        const stale = yield* createdGroupId(
+          accountId,
+          speakerGroupXml(left, other),
+        );
+        const fresh = yield* createdGroupId(
+          accountId,
+          speakerGroupXml(left, right, { name: "New" }),
+        );
+        assert.notStrictEqual(fresh, stale);
+        assert.match(yield* pollGroup(other, accountId), /<group\/>$/);
+        assert.include(
+          yield* pollGroup(right, accountId),
+          groupXml(fresh, left, right, { name: "New" }),
+        );
+      }),
+  );
+
+  it.effect("only renames a pair when its partner PUTs it", () =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const left = speaker("rename-left");
+      const right = speaker("rename-right");
+      const id = yield* createdGroupId(accountId, speakerGroupXml(left, right));
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.put(`${groupsPath(accountId)}/${id}`).pipe(
+          HttpClientRequest.bodyText(
+            `<?xml version="1.0" encoding="UTF-8" ?><group><masterDeviceId>${right}</masterDeviceId><name>Renamed</name></group>`,
+            BOSE_XML_CONTENT_TYPE,
+          ),
+        ),
+      );
+      const renamed = groupXml(id, left, right, { name: "Renamed" });
+      assert.include(yield* assertBoseXml(response), renamed);
+      assert.include(yield* pollGroup(left, accountId), renamed);
+
+      const missing = yield* HttpClient.execute(
+        HttpClientRequest.put(`${groupsPath(randomUUID())}/${id}`).pipe(
+          HttpClientRequest.bodyText(
+            `<group><masterDeviceId>${right}</masterDeviceId><name>Taken</name></group>`,
+            BOSE_XML_CONTENT_TYPE,
+          ),
+        ),
+      );
+      assert.strictEqual(missing.status, 404);
+      assert.include(yield* pollGroup(left, accountId), renamed);
+    }),
+  );
+
+  it.effect("unpairs both speakers once their pair is deleted", () =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const left = speaker("delete-left");
+      const right = speaker("delete-right");
+      const id = yield* createdGroupId(accountId, speakerGroupXml(left, right));
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const response = yield* HttpClient.execute(
+          HttpClientRequest.delete(`${groupsPath(accountId)}/${id}`),
+        );
+        assert.match(
+          yield* assertBoseXml(response),
+          /<status>Group deleted successfully<\/status>$/,
+        );
+      }
+      assert.match(yield* pollGroup(left, accountId), /<group\/>$/);
+      assert.match(yield* pollGroup(right, accountId), /<group\/>$/);
+    }),
+  );
+
+  it.effect("keeps every pair when the account's groups are deleted", () =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const left = speaker("keep-left");
+      const right = speaker("keep-right");
+      const id = yield* createdGroupId(accountId, speakerGroupXml(left, right));
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.delete(`${groupsPath(accountId)}/`),
+      );
+      assert.strictEqual(response.status, 200);
+      assert.include(
+        yield* pollGroup(left, accountId),
+        groupXml(id, left, right),
+      );
+    }),
+  );
+
+  it.effect("keeps each account's pairs to itself", () =>
+    Effect.gen(function* () {
+      const household = randomUUID();
+      const stranger = randomUUID();
+      const left = speaker("scoped-left");
+      const right = speaker("scoped-right");
+      const ours = yield* createdGroupId(
+        household,
+        speakerGroupXml(left, right),
+      );
+      assert.match(yield* pollGroup(left, stranger), /<group\/>$/);
+
+      const theirs = yield* createdGroupId(
+        stranger,
+        speakerGroupXml(right, left, { name: "Theirs" }),
+      );
+      yield* HttpClient.execute(
+        HttpClientRequest.delete(`${groupsPath(stranger)}/${ours}`),
+      );
+      assert.include(
+        yield* pollGroup(left, household),
+        groupXml(ours, left, right),
+      );
+      assert.include(
+        yield* pollGroup(left, stranger),
+        groupXml(theirs, right, left, { master: right, name: "Theirs" }),
+      );
+    }),
+  );
+
+  it.effect.each([
+    ["a body that isn't XML", "not xml"],
+    [
+      "one role",
+      `<group><masterDeviceId>${speaker("bad-l")}</masterDeviceId><name>N</name><roles><groupRole><deviceId>${speaker("bad-l")}</deviceId><role>LEFT</role></groupRole></roles></group>`,
+    ],
+    [
+      "two LEFT roles",
+      speakerGroupXml(speaker("bad-l"), speaker("bad-r")).replace(
+        "RIGHT",
+        "LEFT",
+      ),
+    ],
+    [
+      "one speaker in both roles",
+      speakerGroupXml(speaker("bad-l"), speaker("bad-l")),
+    ],
+    [
+      "a master in neither role",
+      speakerGroupXml(speaker("bad-l"), speaker("bad-r"), {
+        master: speaker("bad-m"),
+      }),
+    ],
+    [
+      "a device id that isn't a MAC address",
+      speakerGroupXml("nope", speaker("bad-r"), { master: "nope" }),
+    ],
+    [
+      "a name over 512 characters",
+      speakerGroupXml(speaker("bad-l"), speaker("bad-r"), {
+        name: "x".repeat(513),
+      }),
+    ],
+  ] as const)("refuses a stereo pair with %s", ([, body]) =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const response = yield* createGroup(accountId, body);
+      assert.strictEqual(response.status, 400);
+      assert.match(yield* pollGroup(speaker("bad-l"), accountId), /<group\/>$/);
+    }),
+  );
+
+  it.effect("refuses a pair rename without a name", () =>
+    Effect.gen(function* () {
+      const accountId = randomUUID();
+      const left = speaker("noname-left");
+      const id = yield* createdGroupId(
+        accountId,
+        speakerGroupXml(left, speaker("noname-right")),
+      );
+      const response = yield* HttpClient.execute(
+        HttpClientRequest.put(`${groupsPath(accountId)}/${id}`).pipe(
+          HttpClientRequest.bodyText(
+            `<group><masterDeviceId>${left}</masterDeviceId></group>`,
+            BOSE_XML_CONTENT_TYPE,
+          ),
+        ),
+      );
+      assert.strictEqual(response.status, 400);
     }),
   );
 

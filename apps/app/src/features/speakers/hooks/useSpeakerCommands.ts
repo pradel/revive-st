@@ -10,7 +10,10 @@ import {
   type Speaker,
 } from "bose-api-speaker-client";
 
+import { logger } from "@/lib/logger";
+
 import { confirmStationPlaying } from "../lib/radio";
+import { type SpeakerPair, partnersOf } from "../lib/stereo-pair";
 import { speakerRegistry } from "../registry/store";
 
 /**
@@ -24,6 +27,9 @@ const READBACK_TIMEOUT_MS = 2000;
 
 /** How long `/select` may take to accept a station. */
 const SELECT_TIMEOUT_MS = 5000;
+
+/** How long renaming or unpairing a stereo pair may take: both wait on our server. */
+const PAIR_COMMAND_TIMEOUT_MS = 15_000;
 
 type PresetSlot = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -43,12 +49,12 @@ function client(deviceID: string): Speaker {
   return speaker;
 }
 
-/** Runs a command on a reached speaker; throws its error. */
-async function run(
+/** Runs a command on a reached speaker; its result, or throws its error. */
+async function run<Value>(
   deviceID: string,
-  command: (speaker: Speaker) => Promise<Result<void, BoseApiError>>,
+  command: (speaker: Speaker) => Promise<Result<Value, BoseApiError>>,
   { refreshAfterMs, refreshOnError = false }: AfterCommand = {},
-): Promise<void> {
+): Promise<Value> {
   const result = await command(client(deviceID));
   if (result.isErr()) {
     if (refreshOnError) {
@@ -60,6 +66,41 @@ async function run(
     setTimeout(() => {
       void speakerRegistry.refresh(deviceID);
     }, refreshAfterMs);
+  }
+  return result.value;
+}
+
+/**
+ * Dissolves `pair` through its master, or through its partner when the
+ * master isn't reached (one request clears both). `via`: the speaker it went
+ * through. `peerUnreachable`: the other speaker didn't answer, and leaves the
+ * pair once it's back.
+ */
+async function unpair(
+  pair: SpeakerPair,
+): Promise<{ peerUnreachable: boolean; via: string }> {
+  const via = [pair.masterDeviceID, ...partnersOf(pair)].find(
+    (deviceID) => speakerRegistry.client(deviceID) !== undefined,
+  );
+  if (via === undefined) {
+    throw new Error("Speaker not connected");
+  }
+  try {
+    const { peerUnreachable } = await run(via, async (speaker) =>
+      speaker.removeGroup({
+        signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS),
+      }),
+    );
+    logger.log("[StereoPair] unpaired", {
+      pair: pair.id,
+      via,
+      peerUnreachable,
+    });
+    return { peerUnreachable, via };
+  } finally {
+    for (const role of pair.roles) {
+      void speakerRegistry.refresh(role.deviceID);
+    }
   }
 }
 
@@ -253,6 +294,65 @@ export function useSpeakerCommands() {
         } finally {
           clearTimeout(timeoutId);
         }
+      },
+    }),
+    /** Renames the stereo pair `deviceID`, its master, leads; both speakers take the name. */
+    renamePairMutation: useMutation({
+      mutationFn: async ({
+        deviceID,
+        name,
+      }: {
+        deviceID: string;
+        name: string;
+      }) => {
+        const group = client(deviceID).getState().group;
+        if (!group) {
+          throw new Error("Speaker not in a stereo pair");
+        }
+        await run(deviceID, async (speaker) =>
+          speaker.updateGroup(
+            {
+              id: group.id,
+              name,
+              masterDeviceId: group.masterDeviceId,
+              roles: group.roles,
+            },
+            { signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS) },
+          ),
+        );
+      },
+    }),
+    unpairMutation: useMutation({
+      mutationFn: async ({ pair }: { pair: SpeakerPair }) => unpair(pair),
+    }),
+    /**
+     * Sets the balance of the stereo pair `deviceID`, its master, leads
+     * (negative: left); the speaker's state shows it once read back.
+     */
+    setBalanceMutation: useMutation({
+      mutationFn: async ({
+        deviceID,
+        value,
+      }: {
+        deviceID: string;
+        value: number;
+      }) => run(deviceID, async (speaker) => speaker.setBalance(value)),
+    }),
+    /**
+     * Takes `deviceID` out of a pair its master no longer reports: only this
+     * speaker still holds it.
+     */
+    leavePairMutation: useMutation({
+      mutationFn: async ({ deviceID }: { deviceID: string }) => {
+        await run(
+          deviceID,
+          async (speaker) =>
+            speaker.removeGroup({
+              signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS),
+            }),
+          { refreshAfterMs: 0, refreshOnError: true },
+        );
+        logger.log("[StereoPair] left a stale pair", { deviceID });
       },
     }),
     setAudioDspControlsMutation: useMutation({

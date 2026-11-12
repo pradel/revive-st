@@ -112,7 +112,7 @@ docker compose up -d
 
 The server updates its database when it starts. `latest` is the newest release; to pick a version, use its number as the image tag, like `ghcr.io/pradel/revive-st-api:0.1.0`. The server's address shows the version it runs.
 
-The app and the server are released separately, and each app release works with servers from a given release on. If your server is older than that, the app says so when you save its address or set up a speaker, and names the release it needs: update the server, then try again.
+The app and the server are released separately, and each app release works with servers from a given release on. If your server is older than that, the app says so when you save its address, set up a speaker or make a [stereo pair](/docs/supported-speakers#stereo-pairs), and names the release it needs: update the server, then try again. Stereo pairs need server 0.0.6 or newer: older servers don't store them, so a pair would break the next time its speakers restart.
 
 ## Tracing (optional)
 

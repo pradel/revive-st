@@ -1,3 +1,4 @@
+import type { StoredGroup } from "../devices/groups-repo.ts";
 import type { AccountId } from "../marge/account.ts";
 import {
   ACCOUNT_SOURCES,
@@ -218,4 +219,33 @@ export function createSoftwareUpdateXml(): string {
 <software_update>
   <softwareUpdateLocation></softwareUpdateLocation>
 </software_update>`;
+}
+
+/**
+ * A stereo pair in the shape the speaker POSTs it, plus its id. The firmware
+ * adopts the id, and drops its pair when a poll answers anything else.
+ */
+export function createGroupXml(group: StoredGroup): string {
+  const role = (deviceId: string, name: string) =>
+    `<groupRole>${element("deviceId", deviceId)}${element("role", name)}</groupRole>`;
+  return [
+    XML_HEADER,
+    `<group id="${escapeXml(group.id)}">`,
+    element("name", group.name),
+    element("masterDeviceId", group.masterDeviceId),
+    "<roles>",
+    role(group.leftDeviceId, "LEFT"),
+    role(group.rightDeviceId, "RIGHT"),
+    "</roles>",
+    "</group>",
+  ].join("");
+}
+
+/** No stereo pair: the speaker stands alone. */
+export function createNoGroupXml(): string {
+  return `${XML_HEADER}<group/>`;
+}
+
+export function createGroupDeletedXml(): string {
+  return `${XML_HEADER}<status>Group deleted successfully</status>`;
 }

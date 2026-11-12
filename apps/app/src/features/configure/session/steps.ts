@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { isSoundTouch10 } from "bose-api-speaker-client";
 
 import {
   raceCancel,
@@ -29,6 +30,7 @@ import {
   NotApplied,
   NotBack,
   NotPaired,
+  PairWouldBreak,
   RestartFailed,
   ServerNotContacted,
   ServerUnreachable,
@@ -78,6 +80,8 @@ export const RETURN_POLL_MS = 3000;
 /** The speaker calls the server (`power_on`) while it starts. */
 export const CONTACT_BUDGET_MS = 90_000;
 export const CONTACT_POLL_MS = 3000;
+/** How long a SoundTouch 10 gets to say which stereo pair it's in. */
+export const GROUP_READ_TIMEOUT_MS = 4000;
 
 /** Survives recovery actions. */
 export interface RunContext {
@@ -92,6 +96,95 @@ export interface RunContext {
   console?: ConsoleConnection;
   /** The speaker's last request to the server before the restart. */
   baseline?: LastContact;
+  /** The user chose to dissolve the speaker's stereo pair before setup. */
+  unpair?: boolean;
+  /** The other speaker of the pair this run dissolved (name or device id). */
+  unpairedFrom?: string;
+}
+
+/**
+ * Stops before anything is written when the speaker is in a stereo pair and
+ * the setup moves it to another server or account: it would drop the pair on
+ * its side only. Dissolves the pair instead once the user chose to
+ * (`ctx.unpair`). A pair read that fails counts as unknown: setup goes on.
+ */
+async function keepPairIntact(
+  deps: ConfigureDeps,
+  signal: AbortSignal,
+  ctx: RunContext,
+  info: SpeakerInfo,
+  origin: string,
+  accountId: string,
+): StepResult<PairWouldBreak | SpeakerOffline> {
+  // Only a SoundTouch 10 pairs, and other models never answer `/getGroup`.
+  if (!isSoundTouch10(info.type)) {
+    return ok();
+  }
+  const group = await withTimeout(
+    deps.clock,
+    GROUP_READ_TIMEOUT_MS,
+    signal,
+    async (call) => deps.speaker.getGroup(ctx.host, call),
+    () =>
+      new PortFailure({
+        message: `No answer within ${GROUP_READ_TIMEOUT_MS} ms`,
+      }),
+  );
+  if (group.isErr()) {
+    deps.log.event("pair.unknown", { message: group.error.message });
+    return ok();
+  }
+  if (group.value === null) {
+    return ok();
+  }
+  if (
+    isSameOrigin(info.margeURL, origin) &&
+    info.margeAccountUUID === accountId
+  ) {
+    // Same server and account: the server knows the pair and keeps it.
+    deps.log.event("pair.kept", { pair: group.value.id });
+    return ok();
+  }
+  const { roles, name } = group.value;
+  const own = roles.find((member) =>
+    sameDevice(member.deviceId, ctx.target.deviceID),
+  );
+  const other = roles.find(
+    (member) => !sameDevice(member.deviceId, ctx.target.deviceID),
+  );
+  const otherId = other?.deviceId ?? "the other speaker";
+  const partner =
+    ctx.target.otherSpeakers.find((speaker) =>
+      sameDevice(speaker.deviceID, otherId),
+    )?.speakerName ?? otherId;
+  if (!ctx.unpair) {
+    return Result.err(
+      new PairWouldBreak({
+        pairName: name,
+        role:
+          own === undefined
+            ? undefined
+            : own.role === "LEFT"
+              ? "left"
+              : "right",
+        partner,
+      }),
+    );
+  }
+  const removed = await request(deps, signal, async (call) =>
+    deps.speaker.removeGroup(ctx.host, call),
+  );
+  if (removed.isErr()) {
+    return Result.err(
+      new SpeakerOffline({ host: ctx.host, message: removed.error.message }),
+    );
+  }
+  // Unreachable, the other speaker drops its half once it's back.
+  deps.log.event("pair.removed", {
+    peerUnreachable: removed.value.peerUnreachable,
+  });
+  ctx.unpairedFrom = partner;
+  return ok();
 }
 
 export interface StepEnv {
@@ -212,6 +305,7 @@ export async function prepare(
   | InvalidServer
   | UnsupportedServer
   | ServerUnreachable
+  | PairWouldBreak
   | UnexpectedError
 > {
   const { deps } = env;
@@ -283,6 +377,18 @@ export async function prepare(
         message: "The household account id can't be sent to a speaker",
       }),
     );
+  }
+
+  const pair = await keepPairIntact(
+    deps,
+    signal,
+    ctx,
+    info.value,
+    origin,
+    accountId,
+  );
+  if (pair.isErr()) {
+    return Result.err(pair.error);
   }
 
   env.working("prepare", { kind: "savingPresets" });

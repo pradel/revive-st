@@ -29,6 +29,23 @@ export interface BmxService {
   readonly baseUrl: string;
 }
 
+/** A speaker's place in a stereo pair: LEFT is the master. */
+export interface GroupRole {
+  readonly deviceId: string;
+  readonly role: "LEFT" | "RIGHT";
+  /** Its address, as the request that made the pair gave it. */
+  readonly ipAddress: string;
+}
+
+/** A stereo pair of two SoundTouch 10s, which both speakers keep. */
+export interface Group {
+  /** The id Marge gave it. */
+  readonly id: string;
+  readonly name: string;
+  readonly masterDeviceId: string;
+  readonly roles: readonly GroupRole[];
+}
+
 export interface SpeakerState {
   readonly name: string;
   readonly margeAccountUUID: string;
@@ -51,6 +68,8 @@ export interface SpeakerState {
   readonly nowPlaying: NowPlaying;
   /** What POWER resumes. */
   readonly lastPlayed: ContentItem | undefined;
+  /** Its stereo pair, if any; kept across restarts until Marge says otherwise. */
+  readonly group: Group | undefined;
 }
 
 export const initialState = (config: SpeakerConfig): SpeakerState => {
@@ -73,6 +92,7 @@ export const initialState = (config: SpeakerConfig): SpeakerState => {
     bmxServices: [],
     nowPlaying: { kind: "standby" },
     lastPlayed: undefined,
+    group: undefined,
   };
 };
 

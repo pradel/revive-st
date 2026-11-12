@@ -13,15 +13,15 @@ Bose shut down the SoundTouch cloud in May 2026, leaving thousands of speakers w
 ## Features
 
 - **Full playback control** — play, pause, skip, volume, and more
-- **Volume & multi-room zones** — group speakers, control per-speaker volume
+- **Stereo pairs** — two SoundTouch 10s play as one speaker, one left and one right
 - **Hardware preset restoration** — physical buttons 1–6 work again
 - **Internet radio** — thousands of stations via Radio Browser
-- **Custom scenes** — trigger multi-speaker groups with a single tap
 - **EQ & audio modes** — bass, treble, Dialog/Night/Direct DSP modes
 - **Real-time sync** — WebSocket-based, instant state updates across devices
 - **Setup wizard** — easy onboarding with automatic speaker discovery
 - **No account required** — works entirely on your local network
 - **Works with other community servers** — speakers on soundcork, AfterTouch or STR play radio through them, with no migration
+- **Multi-room zones and scenes (coming soon)** — not in the app yet: group speakers, control per-speaker volume, start a group with a single tap
 
 ---
 

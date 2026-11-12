@@ -11,7 +11,8 @@ export function boseSpeakerClient(opts: {
 
 export { BoseHttpAdapter as BoseSpeakerClient } from "./http-adapter.ts";
 export { BoseHttpAdapter } from "./http-adapter.ts";
-export { contentItemXml, escapeXml } from "./http-adapter.ts";
+export { contentItemXml, escapeXml, parseBalanceNode } from "./http-adapter.ts";
+export { isSoundTouch10 } from "./models.ts";
 export { parseXml } from "./xml-parser.ts";
 export type { XmlNode } from "./xml-parser.ts";
 
@@ -23,6 +24,7 @@ export {
 } from "./telnet.ts";
 export type {
   BoseWebSocketClientOptions,
+  BoseWSRequest,
   BoseWSUpdate,
   BoseConnectionState,
 } from "./ws-adapter.ts";
@@ -43,6 +45,7 @@ export type {
   AudioProductLevelControlsResponse,
   AudioProductToneControlsResponse,
   ArtImageStatus,
+  BalanceResponse,
   BassCapabilitiesResponse,
   BassResponse,
   CapabilitiesResponse,
@@ -50,11 +53,14 @@ export type {
   ContentItem,
   DeviceComponent,
   DeviceNetworkInfo,
+  GroupMember,
+  GroupRole,
   InfoResponse,
   KeyPressRequest,
   KeyState,
   KeyValue,
   LevelControl,
+  NewGroup,
   NetworkInfoResponse,
   NetworkInterfaceInfo,
   NowPlayingResponse,
@@ -72,6 +78,7 @@ export type {
   SourceItem,
   SourceStatus,
   SourcesResponse,
+  SpeakerGroup,
   ToneControl,
   VolumeResponse,
   ZoneMember,

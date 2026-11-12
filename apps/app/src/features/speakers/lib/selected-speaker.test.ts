@@ -12,6 +12,7 @@ const speaker = (
   host: "192.168.1.30",
   port: 8090,
   name: deviceID,
+  speakerName: deviceID,
   type: "SoundTouch 10",
   radio: { kind: "checking" },
   playStatus: "STOP_STATE",
@@ -73,5 +74,25 @@ describe("resolveSelectedSpeaker", () => {
     expect(
       resolveSelectedSpeaker([speaker("Attic", { status: "offline" })], null),
     ).toBeUndefined();
+  });
+
+  it("takes a pair's partner, which isn't listed, for its pair's master", () => {
+    const pair = {
+      id: "3271058",
+      name: "Living room + Office",
+      masterDeviceID: "Living room",
+      roles: [
+        { deviceID: "Living room", role: "LEFT" as const },
+        { deviceID: "Office", role: "RIGHT" as const },
+      ],
+    };
+    const listed = [
+      speaker("Bedroom", playing),
+      speaker("Living room", { pair, status: "offline" }),
+    ];
+
+    expect(resolveSelectedSpeaker(listed, "Office")?.deviceID).toBe(
+      "Living room",
+    );
   });
 });

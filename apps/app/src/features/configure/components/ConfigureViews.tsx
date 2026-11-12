@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { View, type TextStyle, type ViewStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
@@ -10,6 +10,7 @@ import {
   Emphasis,
   SetupHeader,
 } from "@/features/onboarding/components/SetupLayout";
+import { formatElapsed, useElapsed } from "@/lib/useElapsed";
 import { Button } from "@/ui/ds/Button";
 import { Icon, type IconName, icons } from "@/ui/ds/Icon";
 import { StepList, type StepListItem } from "@/ui/ds/StepList";
@@ -127,25 +128,6 @@ function detailCopy(
       throw new Error(`Unhandled detail ${JSON.stringify(unhandled)}`);
     }
   }
-}
-
-function formatElapsed(ms: number): string {
-  const seconds = Math.max(0, Math.floor(ms / 1000));
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-/** Milliseconds since `startedAt`, updated once a second. */
-function useElapsed(startedAt: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNow(Date.now());
-    }, 1000);
-    return () => {
-      clearInterval(interval);
-    };
-  }, []);
-  return Math.max(0, now - startedAt);
 }
 
 function steps(
@@ -327,6 +309,7 @@ const ACTION_LABELS: Record<RecoveryAction, { label: string; icon: IconName }> =
   {
     checkAgain: { label: "Check again", icon: icons.search },
     retry: { label: "Try again", icon: icons.refresh },
+    unpair: { label: "Unpair and continue", icon: icons.speaker },
   };
 
 export function FailedView({
@@ -369,7 +352,11 @@ export function FailedView({
             }}
           />
         ))}
-        <Button label="Close" variant="secondary" onPress={onClose} />
+        <Button
+          label={view.error.name === "PairWouldBreak" ? "Cancel" : "Close"}
+          variant="secondary"
+          onPress={onClose}
+        />
         <Button label="Show logs" variant="ghost" onPress={onShowLogs} />
       </View>
     </>
@@ -394,11 +381,15 @@ export function DoneView({
         icon={SUCCESS_ICON}
         tone="success"
         title={`${speakerName} is ready`}
-        description={
+        description={`${
           view.serverConfirmed
             ? `It restarted and reached ${serverHost}. Internet radio and presets now go through Revive ST.`
             : `It restarted with Revive ST's settings. ${serverHost} can't confirm the speaker reached it: update the server to get that check.`
-        }
+        }${
+          view.unpairedFrom === undefined
+            ? ""
+            : ` Set up ${view.unpairedFrom} too, then pair them again from ${speakerName}'s settings.`
+        }`}
       />
       <Card style={$setupCard}>
         <StepList steps={steps("verify", "done")} />
