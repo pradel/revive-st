@@ -309,6 +309,7 @@ const ACTION_LABELS: Record<RecoveryAction, { label: string; icon: IconName }> =
   {
     checkAgain: { label: "Check again", icon: icons.search },
     retry: { label: "Try again", icon: icons.refresh },
+    unpair: { label: "Unpair and continue", icon: icons.speaker },
   };
 
 export function FailedView({
@@ -351,7 +352,11 @@ export function FailedView({
             }}
           />
         ))}
-        <Button label="Close" variant="secondary" onPress={onClose} />
+        <Button
+          label={view.error.name === "PairWouldBreak" ? "Cancel" : "Close"}
+          variant="secondary"
+          onPress={onClose}
+        />
         <Button label="Show logs" variant="ghost" onPress={onShowLogs} />
       </View>
     </>
@@ -376,11 +381,15 @@ export function DoneView({
         icon={SUCCESS_ICON}
         tone="success"
         title={`${speakerName} is ready`}
-        description={
+        description={`${
           view.serverConfirmed
             ? `It restarted and reached ${serverHost}. Internet radio and presets now go through Revive ST.`
             : `It restarted with Revive ST's settings. ${serverHost} can't confirm the speaker reached it: update the server to get that check.`
-        }
+        }${
+          view.unpairedFrom === undefined
+            ? ""
+            : ` Set up ${view.unpairedFrom} too, then pair them again from ${speakerName}'s settings.`
+        }`}
       />
       <Card style={$setupCard}>
         <StepList steps={steps("verify", "done")} />

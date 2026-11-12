@@ -1,5 +1,5 @@
 import { type Result, TaggedError } from "better-result";
-import type { Preset } from "bose-api-speaker-client";
+import type { Preset, SpeakerGroup } from "bose-api-speaker-client";
 
 import type { Clock, Discovery, Log } from "../../onboarding/session/ports";
 import type { ServerCheck } from "../../server/server-version";
@@ -17,6 +17,8 @@ export interface SpeakerInfo {
   margeURL: string;
   /** Empty when the speaker isn't paired with an account. */
   margeAccountUUID: string;
+  /** The model, as `/info`'s `type` reports it ("SoundTouch 10", …). */
+  type: string;
 }
 
 /** Speaker HTTP API on port 8090. Calls reject only when `signal` aborts. */
@@ -29,6 +31,22 @@ export interface SpeakerPort {
     host: string,
     signal: AbortSignal,
   ) => Promise<Result<Preset[], PortFailure>>;
+  /**
+   * `GET /getGroup`: the stereo pair the speaker is in, `null` when unpaired.
+   * Only a SoundTouch 10 answers; other models never reply.
+   */
+  getGroup: (
+    host: string,
+    signal: AbortSignal,
+  ) => Promise<Result<SpeakerGroup | null, PortFailure>>;
+  /**
+   * `GET /removeGroup`: dissolves the pair. `peerUnreachable`: the other
+   * speaker wasn't told, and drops its half at its next server poll.
+   */
+  removeGroup: (
+    host: string,
+    signal: AbortSignal,
+  ) => Promise<Result<{ peerUnreachable: boolean }, PortFailure>>;
   /** `POST /setMargeAccount`: pairs the speaker with `accountId`. */
   setMargeAccount: (
     host: string,

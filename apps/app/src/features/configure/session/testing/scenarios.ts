@@ -1,4 +1,4 @@
-import type { Preset } from "bose-api-speaker-client";
+import type { Preset, SpeakerGroup } from "bose-api-speaker-client";
 
 import {
   ManualClock,
@@ -18,6 +18,21 @@ export const TARGET_HOST = "192.168.1.20";
 export const NEW_HOST = "192.168.1.42";
 export const NEW_ACCOUNT = "4f0c6d1e-7c1a-4b8e-9f3a-2d5b6c7e8f90";
 export const HOUSEHOLD_ACCOUNT = "9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d";
+/** An account id from Bose's cloud. */
+export const BOSE_ACCOUNT = "3141592";
+export const PARTNER_ID = "112233445566";
+
+/** The target is the left speaker, `PARTNER_ID` the right one. */
+export const STEREO_PAIR: SpeakerGroup = {
+  id: "1115893",
+  name: "Kitchen + Living room",
+  masterDeviceId: TARGET_ID,
+  roles: [
+    { deviceId: TARGET_ID, role: "LEFT", ipAddress: TARGET_HOST },
+    { deviceId: PARTNER_ID, role: "RIGHT", ipAddress: "192.168.1.21" },
+  ],
+  status: "GROUP_OK",
+};
 
 export const PRESETS: Preset[] = [
   {
@@ -135,6 +150,43 @@ export const scenarios = {
     description: "Server takes the presets request and never answers",
     config: () =>
       worldConfig({ server: { origin: SERVER_ORIGIN, presetsHang: true } }),
+  },
+  stereoPairMoving: {
+    description:
+      "SoundTouch 10 in a stereo pair on Bose's servers, moving to this server",
+    config: () =>
+      worldConfig({
+        speaker: {
+          type: "SoundTouch 10",
+          margeAccountUUID: BOSE_ACCOUNT,
+          group: STEREO_PAIR,
+        },
+        otherSpeakers: [{ deviceID: PARTNER_ID, speakerName: "Living room" }],
+      }),
+  },
+  stereoPairAgain: {
+    description: "SoundTouch 10 in a stereo pair, set up again for this server",
+    config: () =>
+      worldConfig({
+        speaker: {
+          type: "SoundTouch 10",
+          urls: serverUrlsFor(SERVER_ORIGIN),
+          margeAccountUUID: HOUSEHOLD_ACCOUNT,
+          group: STEREO_PAIR,
+        },
+      }),
+  },
+  groupReadHangs: {
+    description: "SoundTouch 10 that never says whether it's in a stereo pair",
+    config: () =>
+      worldConfig({
+        speaker: {
+          type: "SoundTouch 10",
+          margeAccountUUID: BOSE_ACCOUNT,
+          group: STEREO_PAIR,
+          groupHangs: true,
+        },
+      }),
   },
 } satisfies Record<string, Scenario>;
 
