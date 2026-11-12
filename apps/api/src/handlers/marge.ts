@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { parseXml } from "bose-api-speaker-client";
-import { DateTime, Effect, Option, Schema } from "effect";
+import { DateTime, Effect, Schema } from "effect";
 import { HttpServerRequest } from "effect/http";
 import { HttpApiBuilder, HttpApiError, HttpApiSchema } from "effect/http-api";
 
@@ -315,15 +315,16 @@ export const MargeHandlers = HttpApiBuilder.group(
                 return yield* new HttpApiError.BadRequest();
               }
             }
+            // `Location` is the pair under the path the speaker posted to.
+            const url = yield* Effect.fromOption(
+              HttpServerRequest.toURL(request),
+            ).pipe(Effect.mapError(() => new HttpApiError.BadRequest()));
             const stored = yield* groupsRepo.create(params.accountId, group);
-            const path = `/streaming/account/${encodeURIComponent(params.accountId)}/group/${stored.id}`;
-            const origin = Option.match(HttpServerRequest.toURL(request), {
-              onNone: () => "",
-              onSome: (url) => url.origin,
-            });
             return HttpApiSchema.withHeaders({
               body: createGroupXml(stored),
-              headers: { Location: `${origin}${path}` },
+              headers: {
+                Location: `${url.origin}${url.pathname.replace(/\/+$/, "")}/${stored.id}`,
+              },
             });
           }),
         )

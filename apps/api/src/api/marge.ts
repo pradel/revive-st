@@ -215,14 +215,14 @@ export const SpeakerGroupXml = SpeakerXmlText({
             }
             const master = masterDeviceId?.toUpperCase();
             if (
-              master !== left.toUpperCase() &&
-              master !== right.toUpperCase()
+              masterDeviceId === undefined ||
+              (master !== left.toUpperCase() && master !== right.toUpperCase())
             ) {
               return Effect.fail(invalid("The master is in neither role"));
             }
             return Effect.succeed({
               name: text("name") ?? "",
-              masterDeviceId: masterDeviceId ?? "",
+              masterDeviceId,
               leftDeviceId: left,
               rightDeviceId: right,
             });

@@ -2,6 +2,7 @@ import { Err, Ok, type Result } from "better-result";
 
 import type { BoseApiError } from "./errors.ts";
 import { BoseHttpAdapter } from "./http-adapter.ts";
+import { isSoundTouch10 } from "./models.ts";
 import type {
   ZoneMember,
   AudioDspControlsResponse,
@@ -22,9 +23,6 @@ import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
 
 /** How long `initialize()` waits for `/getGroup`. */
 const GROUP_READ_TIMEOUT_MS = 3000;
-
-/** `/info` types of the SoundTouch 10, the only model that pairs in stereo. */
-const SOUNDTOUCH_10_TYPE = /soundtouch 10\b|\bst10\b/i;
 
 export interface SpeakerOptions {
   ip: string;
@@ -176,7 +174,7 @@ export class Speaker {
           .catch(() => null),
         // Only a SoundTouch 10 answers `/getGroup` (other models hang), and
         // even it is bounded so a stalled speaker can't hold this up.
-        SOUNDTOUCH_10_TYPE.test(this.state.type ?? "")
+        isSoundTouch10(this.state.type ?? "")
           ? this.http
               .getGroup({ signal: AbortSignal.timeout(GROUP_READ_TIMEOUT_MS) })
               .then((res) => (res.isOk() ? { group: res.value } : null))

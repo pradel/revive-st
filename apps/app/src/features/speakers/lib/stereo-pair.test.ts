@@ -3,7 +3,6 @@ import { describe, expect, it } from "vite-plus/test";
 import type { BoseSpeaker } from "../registry/types";
 import {
   defaultPairName,
-  isSoundTouch10,
   pairProblem,
   partnerProblem,
   validatePairName,
@@ -131,13 +130,7 @@ describe("partnerProblem", () => {
   });
 });
 
-describe("stereo pair names and models", () => {
-  it("tells a SoundTouch 10 from other models", () => {
-    expect(isSoundTouch10("SoundTouch 10")).toBe(true);
-    expect(isSoundTouch10("SoundTouch 20")).toBe(false);
-    expect(isSoundTouch10("SoundTouch Portable")).toBe(false);
-  });
-
+describe("stereo pair names", () => {
   it("names a new pair after its speakers, within 64 characters", () => {
     expect(defaultPairName("Living room", "Office")).toBe(
       "Living room + Office",

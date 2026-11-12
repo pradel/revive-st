@@ -2,10 +2,6 @@ import { View, type TextStyle } from "react-native";
 
 import { Card } from "@/components/ui/Card";
 import {
-  formatElapsed,
-  useElapsed,
-} from "@/features/configure/components/ConfigureViews";
-import {
   $setupButtons,
   $setupCard,
   $setupNote,
@@ -15,6 +11,7 @@ import {
   MIN_SERVER_VERSION,
   oldRelease,
 } from "@/features/server/server-version";
+import { formatElapsed, useElapsed } from "@/lib/useElapsed";
 import { Button } from "@/ui/ds/Button";
 import { type IconName, icons } from "@/ui/ds/Icon";
 import { StepList, type StepListItem } from "@/ui/ds/StepList";

@@ -38,7 +38,6 @@ import type {
   VolumeResponse,
   ZoneMember,
   ZoneResponse,
-  GroupRole,
   NewGroup,
   SpeakerGroup,
 } from "./types/index.ts";
@@ -864,11 +863,17 @@ export function parseGroupNode(root: XmlNode): SpeakerGroup | null {
     name: getChildText(group, "name") ?? "",
     masterDeviceId: getChildText(group, "masterDeviceId") ?? "",
     roles: getChildren(getChild(group, "roles") ?? group, "groupRole").map(
-      (role) => ({
-        deviceId: getChildText(role, "deviceId") ?? "",
-        role: (getChildText(role, "role") ?? "") as GroupRole,
-        ipAddress: getChildText(role, "ipAddress") ?? "",
-      }),
+      (role) => {
+        const side = getChildText(role, "role");
+        if (side !== "LEFT" && side !== "RIGHT") {
+          throw new Error(`Unknown group role: ${side ?? "none"}`);
+        }
+        return {
+          deviceId: getChildText(role, "deviceId") ?? "",
+          role: side,
+          ipAddress: getChildText(role, "ipAddress") ?? "",
+        };
+      },
     ),
     senderIpAddress: optionalString(getChildText(group, "senderIPAddress")),
     status: optionalString(getChildText(group, "status")),

@@ -81,7 +81,11 @@ export type PairError =
   /** 5510 again after the stale pair was removed. */
   | { kind: "alreadyPaired" }
   | { kind: "speakerFailed" }
-  /** The speakers didn't both report the pair in time; `undone` once what formed was removed. */
+  /**
+   * The speakers didn't both report the pair in time; `undone` once what
+   * formed was removed from both (a speaker that didn't answer the undo
+   * leaves the pair only at its next start).
+   */
   | { kind: "notConfirmed"; undone: boolean };
 
 export type PairView =
@@ -290,7 +294,8 @@ export function createPairSession(
     // master, which accepted the pair, when neither answered.
     const reporting =
       [left, right].find((_member, index) => reports[index] !== null) ?? left;
-    const undone = (await removeGroup(reporting)).isOk();
+    const removed = await removeGroup(reporting);
+    const undone = removed.isOk() && !removed.value.peerUnreachable;
     return failed("confirm", { kind: "notConfirmed", undone });
   };
 

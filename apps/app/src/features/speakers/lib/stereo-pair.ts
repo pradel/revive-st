@@ -22,12 +22,6 @@ export interface SpeakerPair {
 /** The longest pair name the app sends, as the firmware stores it. */
 export const PAIR_NAME_MAX_LENGTH = 64;
 
-/** Whether `/info`'s `type` is a SoundTouch 10, the only model that pairs. */
-export const isSoundTouch10 = (type: string): boolean => {
-  const model = type.toLowerCase();
-  return !model.includes("portable") && /\b10\b/.test(model);
-};
-
 export const pairFromGroup = (group: SpeakerGroup): SpeakerPair => ({
   id: group.id,
   name: group.name,

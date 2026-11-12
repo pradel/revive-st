@@ -73,6 +73,8 @@ class FakePairWorld {
   partnerJoins = true;
   /** What `/addGroup` answers instead of pairing, once per entry. */
   addFailures: BoseApiError[] = [];
+  /** `/removeGroup` reaches only the speaker it's sent to. */
+  peerUnreachable = false;
 
   async #answer<Value>(value: Value, signal: AbortSignal): Promise<Value> {
     await this.clock.sleep(100, signal);
@@ -108,7 +110,10 @@ class FakePairWorld {
           this.calls.push(`removeGroup ${member.name}`);
           this.groups.set(LEFT.deviceID, null);
           this.groups.set(RIGHT.deviceID, null);
-          return this.#answer(Result.ok({ peerUnreachable: false }), signal);
+          return this.#answer(
+            Result.ok({ peerUnreachable: this.peerUnreachable }),
+            signal,
+          );
         },
       },
       clock: this.clock,
@@ -235,6 +240,18 @@ describe("pairing session", () => {
     expect(world.clock.now() - startedAt).toBeLessThanOrEqual(
       PAIR_BUDGET_MS + 1000,
     );
+  });
+
+  it("doesn't call a pair undone when the other speaker didn't take the undo", async () => {
+    const world = new FakePairWorld();
+    world.partnerJoins = false;
+    world.peerUnreachable = true;
+
+    expect(await pair(world)).toEqual({
+      kind: "failed",
+      step: "confirm",
+      error: { kind: "notConfirmed", undone: false },
+    });
   });
 
   it("sends nothing to the speakers when our server is too old to store pairs", async () => {

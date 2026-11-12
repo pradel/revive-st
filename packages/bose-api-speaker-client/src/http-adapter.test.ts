@@ -1010,6 +1010,11 @@ describe("boseSpeakerClient", () => {
       expect(unwrapOk(await client.getGroup())).toBeNull();
     });
 
+    it("rejects a pair whose speaker has no LEFT or RIGHT role", async () => {
+      mockFetch(200, PAIRED_GROUP.replace("<role>RIGHT</role>", "<role />"));
+      expect(unwrapErr(await client.getGroup())).toBeInstanceOf(XmlParseError);
+    });
+
     it("creates a pair with /addGroup and returns the speaker's group", async () => {
       const fetchMock = mockFetch(200, PAIRED_GROUP);
       const result = await client.addGroup(NEW_GROUP);

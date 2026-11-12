@@ -1,7 +1,10 @@
 import { createServer } from "node:http";
 
 import { NodeHttpServer, NodeSocketServer } from "@effect/platform-node";
-import type { ContentItem } from "bose-api-speaker-client";
+import {
+  type ContentItem,
+  isSoundTouch10 as isSoundTouch10Type,
+} from "bose-api-speaker-client";
 import {
   Context,
   Deferred,
@@ -301,7 +304,7 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
 
   // Stereo pairs, which only SoundTouch 10s make
 
-  const isSoundTouch10 = identity.type === "SoundTouch 10";
+  const isSoundTouch10 = isSoundTouch10Type(identity.type);
   const sharedLan = yield* Effect.serviceOption(EmulatedLan);
   const lan = Option.isSome(sharedLan)
     ? sharedLan.value

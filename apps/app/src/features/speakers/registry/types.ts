@@ -44,6 +44,11 @@ export interface BoseSpeaker {
   pair?: SpeakerPair;
   /** The pair's status as the speaker reports it (`GROUP_ERROR`: its partner is gone); only while reached. */
   pairStatus?: string;
+  /**
+   * The speaker has reported its pair (or that it has none) since it was
+   * reached: renaming the pair needs what it reported.
+   */
+  pairRead?: boolean;
   // What it plays and its settings: only while reached.
   playStatus?: string;
   source?: string;
