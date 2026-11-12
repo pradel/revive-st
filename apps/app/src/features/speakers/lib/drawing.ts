@@ -2,8 +2,7 @@ import soundTouch10 from "@revive-st/design/speakers/soundtouch-10.svg";
 import soundTouch20 from "@revive-st/design/speakers/soundtouch-20.svg";
 import soundTouch30 from "@revive-st/design/speakers/soundtouch-30.svg";
 import soundTouchPortable from "@revive-st/design/speakers/soundtouch-portable.svg";
-
-import { isSoundTouch10 } from "./stereo-pair";
+import { isSoundTouch10 } from "bose-api-speaker-client";
 
 /**
  * The front drawing of a speaker's model (its `/info` `type`, such as

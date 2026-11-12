@@ -1,7 +1,12 @@
 import { FieldGroup, RNHostView } from "@expo/ui";
-import type { AudioMode, KeyValue } from "bose-api-speaker-client";
+import {
+  type AudioMode,
+  isSoundTouch10,
+  type KeyValue,
+} from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 
 import { useConfigureRun } from "@/features/configure/store";
 import { serverHost } from "@/features/server/server-url";
@@ -13,15 +18,17 @@ import {
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
-  isSoundTouch10,
+  pairLedBy,
   roleLabel,
   roleOf,
 } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeaker,
+  useSpeakers,
 } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
+import { logger } from "@/lib/logger";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -89,9 +96,11 @@ export default function SpeakerSettings() {
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
+    leavePairMutation,
   } = useSpeakerCommands();
 
   const speaker = useSpeaker(id);
+  const { all } = useSpeakers();
   const deviceID = speaker?.deviceID;
 
   useEffect(() => {
@@ -152,6 +161,47 @@ export default function SpeakerSettings() {
 
   const { pair } = speaker;
   const pairRole = pair && roleOf(pair, speaker.deviceID);
+  // The pair its master no longer leads (or that isn't listed any more):
+  // only this speaker still holds it, and only it can leave it.
+  const pairMaster =
+    pair && all.find((other) => other.deviceID === pair.masterDeviceID);
+  const stalePair =
+    pair !== undefined &&
+    pair.masterDeviceID !== speaker.deviceID &&
+    (pairMaster === undefined || pairLedBy(pairMaster)?.id !== pair.id);
+
+  const leavePair = () => {
+    Alert.alert(
+      `Leave ${pair?.name ?? "the pair"}?`,
+      `${speaker.speakerName} then plays on its own again.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave pair",
+          style: "destructive",
+          onPress: () => {
+            haptics.tap();
+            leavePairMutation.mutate(
+              { deviceID: speaker.deviceID },
+              {
+                onSuccess: () => {
+                  haptics.success();
+                },
+                onError: (error) => {
+                  logger.warn("[Pair] Failed to leave the pair:", error);
+                  haptics.error();
+                  Alert.alert(
+                    "Couldn't leave the pair",
+                    "Make sure the speaker is on and on the same Wi-Fi network as your phone, then try again.",
+                  );
+                },
+              },
+            );
+          },
+        },
+      ],
+    );
+  };
 
   const settingUp = configureRun.view?.kind === "working";
   const radioCheckFailed = speaker.radio.kind === "unreachable";
@@ -396,7 +446,13 @@ export default function SpeakerSettings() {
 
         {isSoundTouch10(speaker.type) ? (
           <FormSection title="Stereo pair">
-            {pair ? (
+            {pair && stalePair ? (
+              <FormButtonRow
+                label={leavePairMutation.isPending ? "Leaving…" : "Leave pair"}
+                disabled={leavePairMutation.isPending}
+                onPress={leavePair}
+              />
+            ) : pair ? (
               <FormLinkRow
                 icon={formIcons.speaker}
                 label={pair.name}
@@ -420,9 +476,11 @@ export default function SpeakerSettings() {
             )}
             <FieldGroup.SectionFooter>
               <FormFooterText>
-                {pair
-                  ? "Volume, power and source set on either speaker of the pair apply to both."
-                  : "Two SoundTouch 10s can play as one stereo pair: one plays the left channel, the other the right."}
+                {pair && stalePair
+                  ? `${speaker.speakerName} still holds ${pair.name}, which its other speaker no longer reports. Leave it to play on ${speaker.speakerName} alone.`
+                  : pair
+                    ? "Volume, power and source set on either speaker of the pair apply to both."
+                    : "Two SoundTouch 10s can play as one stereo pair: one plays the left channel, the other the right."}
               </FormFooterText>
             </FieldGroup.SectionFooter>
           </FormSection>

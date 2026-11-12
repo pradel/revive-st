@@ -48,6 +48,7 @@ function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
     radio: radioStatus(record.radio, record.radioFailed, ourServer),
     pair,
     pairStatus: pair && live?.group?.status,
+    pairRead: live?.group !== undefined,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
@@ -267,6 +268,17 @@ export function createSpeakerRegistry(
           : state.group
             ? pairFromGroup(state.group)
             : undefined;
+      // For diagnostics: the master went to `GROUP_ERROR` (its partner is
+      // gone; it goes to standby soon), or came back from it.
+      const wasError = record.live?.group?.status === "GROUP_ERROR";
+      const isError = state.group?.status === "GROUP_ERROR";
+      if (state.group !== undefined && wasError !== isError) {
+        deps.log.warn(
+          isError
+            ? `[speakers] ${deviceID} reports its stereo partner unreachable`
+            : `[speakers] ${deviceID} reaches its stereo partner again`,
+        );
+      }
       update(deviceID, {
         status: "online",
         live: state,

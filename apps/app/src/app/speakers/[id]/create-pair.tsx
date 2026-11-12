@@ -1,3 +1,4 @@
+import { isSoundTouch10 } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -21,7 +22,6 @@ import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
 import {
   defaultPairName,
-  isSoundTouch10,
   PAIR_NAME_MAX_LENGTH,
   PAIR_PROBLEM_LABELS,
   pairProblem,

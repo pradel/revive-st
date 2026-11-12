@@ -166,11 +166,26 @@ export default function PairSettings() {
           <FormLinkRow
             label="Name"
             value={pair.name}
-            disabled={master.status !== "online"}
+            disabled={master.status !== "online" || master.pairRead !== true}
             onPress={() => {
               router.push("./rename-pair");
             }}
           />
+          {master.status === "online" && master.pairRead !== true ? (
+            <>
+              <FormButtonRow
+                label="Check again"
+                onPress={() => {
+                  void speakerRegistry.refresh(master.deviceID);
+                }}
+              />
+              <FieldGroup.SectionFooter>
+                <FormFooterText>
+                  {`${master.speakerName} hasn't said which pair it's in yet, so the pair can't be renamed. Check again to ask it.`}
+                </FormFooterText>
+              </FieldGroup.SectionFooter>
+            </>
+          ) : null}
         </FormSection>
 
         <FormSection title="Speakers">
