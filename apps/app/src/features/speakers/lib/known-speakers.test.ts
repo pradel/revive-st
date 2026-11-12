@@ -58,6 +58,38 @@ describe("parseKnownSpeakers", () => {
     ]);
   });
 
+  it("keeps the speaker's stereo pair, and drops one it can't read", () => {
+    const pair = {
+      id: "3271058",
+      name: "Living room + Office",
+      masterDeviceID: "0CAE7D6298E9",
+      roles: [
+        { deviceID: "0CAE7D6298E9", role: "LEFT" },
+        { deviceID: "EC1127C25A50", role: "RIGHT" },
+      ],
+    };
+    expect(
+      parseKnownSpeakers(
+        JSON.stringify([
+          { ...OFFICE, pair },
+          {
+            ...OFFICE,
+            deviceID: "B",
+            pair: { ...pair, roles: [{ deviceID: "X", role: "CENTER" }] },
+          },
+          // Its master isn't one of its speakers.
+          { ...OFFICE, deviceID: "C", pair: { ...pair, masterDeviceID: "Z" } },
+          { ...OFFICE, deviceID: "D", pair: "Living room + Office" },
+        ]),
+      ),
+    ).toEqual([
+      { ...OFFICE, pair },
+      { ...OFFICE, deviceID: "B" },
+      { ...OFFICE, deviceID: "C" },
+      { ...OFFICE, deviceID: "D" },
+    ]);
+  });
+
   it("starts empty when nothing or something unreadable is stored", () => {
     expect(parseKnownSpeakers(null)).toEqual([]);
     expect(parseKnownSpeakers("{not json")).toEqual([]);

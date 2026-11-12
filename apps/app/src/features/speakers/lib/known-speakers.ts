@@ -1,4 +1,5 @@
 import { parseSpeakerRadio, type SpeakerRadio } from "./speaker-radio";
+import { parseSpeakerPair, type SpeakerPair } from "./stereo-pair";
 
 /**
  * A speaker the phone has reached before: shown on the next launch right
@@ -13,11 +14,16 @@ export interface KnownSpeaker {
   port: number;
   /** As last checked; absent until it has been. */
   radio?: SpeakerRadio;
+  /** The stereo pair it was last in, so the pair stays one card meanwhile. */
+  pair?: SpeakerPair;
 }
 
 const isKnownSpeaker = (
   value: unknown,
-): value is Omit<KnownSpeaker, "radio"> & { radio?: unknown } => {
+): value is Omit<KnownSpeaker, "radio" | "pair"> & {
+  radio?: unknown;
+  pair?: unknown;
+} => {
   if (typeof value !== "object" || value === null) {
     return false;
   }
@@ -35,8 +41,8 @@ const isKnownSpeaker = (
 
 /**
  * Reads the stored list, keeping only well-formed entries. A speaker radio
- * that can't be read is dropped and the speaker kept: it's read again once
- * the speaker answers.
+ * or a pair that can't be read is dropped and the speaker kept: it's read
+ * again once the speaker answers.
  */
 export function parseKnownSpeakers(stored: string | null): KnownSpeaker[] {
   if (stored === null) {
@@ -53,10 +59,17 @@ export function parseKnownSpeakers(stored: string | null): KnownSpeaker[] {
   }
   return parsed
     .filter(isKnownSpeaker)
-    .map(({ deviceID, name, type, host, port, radio }) => {
-      const known = parseSpeakerRadio(radio);
-      return known === undefined
-        ? { deviceID, name, type, host, port }
-        : { deviceID, name, type, host, port, radio: known };
+    .map(({ deviceID, name, type, host, port, radio, pair }) => {
+      const knownRadio = parseSpeakerRadio(radio);
+      const knownPair = parseSpeakerPair(pair);
+      return {
+        deviceID,
+        name,
+        type,
+        host,
+        port,
+        ...(knownRadio === undefined ? {} : { radio: knownRadio }),
+        ...(knownPair === undefined ? {} : { pair: knownPair }),
+      };
     });
 }

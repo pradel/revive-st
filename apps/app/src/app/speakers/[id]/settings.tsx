@@ -13,6 +13,11 @@ import {
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
+  isSoundTouch10,
+  roleLabel,
+  roleOf,
+} from "@/features/speakers/lib/stereo-pair";
+import {
   speakerRegistry,
   useSpeaker,
 } from "@/features/speakers/registry/store";
@@ -145,6 +150,9 @@ export default function SpeakerSettings() {
     Boolean(toneControls) ||
     Boolean(levelControls);
 
+  const { pair } = speaker;
+  const pairRole = pair && roleOf(pair, speaker.deviceID);
+
   const settingUp = configureRun.view?.kind === "working";
   const radioCheckFailed = speaker.radio.kind === "unreachable";
   const radio = ((): { value: string; status: SpeakerStatus } => {
@@ -206,12 +214,12 @@ export default function SpeakerSettings() {
 
   return (
     <Screen>
-      <Stack.Title>{speaker.name}</Stack.Title>
+      <Stack.Title>{speaker.speakerName}</Stack.Title>
       <Form onRefresh={refresh}>
         <FormSection>
           <RNHostView matchContents={{ vertical: true }}>
             <SpeakerSettingsHeader
-              name={speaker.name}
+              name={speaker.speakerName}
               model={speaker.type}
               host={speaker.host}
               drawing={speakerDrawing(speaker.type)}
@@ -223,7 +231,7 @@ export default function SpeakerSettings() {
         <FormSection title="General">
           <FormLinkRow
             label="Name"
-            value={speaker.name}
+            value={speaker.speakerName}
             onPress={() => {
               router.push("./rename");
             }}
@@ -385,6 +393,40 @@ export default function SpeakerSettings() {
             </FormFooterText>
           </FieldGroup.SectionFooter>
         </FormSection>
+
+        {isSoundTouch10(speaker.type) ? (
+          <FormSection title="Stereo pair">
+            {pair ? (
+              <FormLinkRow
+                icon={formIcons.speaker}
+                label={pair.name}
+                description={
+                  pairRole ? `${roleLabel(pairRole)} speaker` : undefined
+                }
+                onPress={() => {
+                  router.push(
+                    `/speakers/${encodeURIComponent(pair.masterDeviceID)}/pair`,
+                  );
+                }}
+              />
+            ) : (
+              <FormLinkRow
+                icon={formIcons.speaker}
+                label="Pair with another SoundTouch 10"
+                onPress={() => {
+                  router.push("./create-pair");
+                }}
+              />
+            )}
+            <FieldGroup.SectionFooter>
+              <FormFooterText>
+                {pair
+                  ? "Volume, power and source set on either speaker of the pair apply to both."
+                  : "Two SoundTouch 10s can play as one stereo pair: one plays the left channel, the other the right."}
+              </FormFooterText>
+            </FieldGroup.SectionFooter>
+          </FormSection>
+        ) : null}
 
         <FormSection title="Advanced">
           <FormLinkRow
