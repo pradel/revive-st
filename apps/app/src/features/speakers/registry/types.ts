@@ -9,6 +9,7 @@ import type {
 } from "bose-api-speaker-client";
 
 import type { RadioStatus } from "../lib/speaker-radio";
+import type { SpeakerPair } from "../lib/stereo-pair";
 
 /**
  * `connecting`: a remembered speaker shown from storage while the app tries
@@ -26,13 +27,23 @@ export interface BoseSpeaker {
   status: SpeakerStatus;
   host: string;
   port: number;
+  /** What the app calls it: a pair's name for the pair's master. */
   name: string;
+  /** The speaker's own name, which its settings rename. */
+  speakerName: string;
   type: string;
   /**
    * How it gets internet radio, judged against our server; the last result
    * is kept across launches and while it's checked again.
    */
   radio: RadioStatus;
+  /**
+   * The stereo pair it's in: as it last reported, remembered across
+   * launches. The master's card stands for the pair.
+   */
+  pair?: SpeakerPair;
+  /** The pair's status as the speaker reports it (`GROUP_ERROR`: its partner is gone); only while reached. */
+  pairStatus?: string;
   // What it plays and its settings: only while reached.
   playStatus?: string;
   source?: string;
@@ -59,10 +70,18 @@ export interface BoseSpeaker {
 
 /** What the speaker list holds at one moment. */
 export interface SpeakersSnapshot {
-  /** Reached speakers and remembered ones still connecting or offline. */
+  /**
+   * Reached speakers and remembered ones still connecting or offline; a
+   * pair is listed once, as its master.
+   */
   readonly listed: readonly BoseSpeaker[];
-  /** Reached speakers, the ones commands go to. */
+  /** The listed speakers that are reached. */
   readonly online: readonly BoseSpeaker[];
+  /**
+   * Every speaker, pairs' partners too: for a partner's own settings, its
+   * commands and the household's account.
+   */
+  readonly all: readonly BoseSpeaker[];
   /** The remembered speakers are listed (the first screen can show). */
   readonly restored: boolean;
   readonly scan: ScanKind | null;

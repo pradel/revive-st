@@ -22,6 +22,8 @@ import {
   type SourcesResponse,
   type VolumeResponse,
   type ZoneResponse,
+  type NewGroup,
+  type SpeakerGroup,
 } from "./index.ts";
 
 const IP = "192.168.1.100";
@@ -516,6 +518,29 @@ describe("boseSpeakerClient", () => {
       expect(val.capabilities[0].name).toBe("BASS");
       expect(val.capabilities[0].url).toBe("/bassCapabilities");
     });
+
+    it("reads lrStereoCapable from a SoundTouch 10", async () => {
+      mockFetch(
+        200,
+        `<?xml version="1.0" encoding="UTF-8" ?><capabilities deviceID="0CAE7D6298E9"><networkConfig><dualMode>true</dualMode><wsapiproxy>true</wsapiproxy><allInterfacesSupported /><wlanInterfaces /><security /></networkConfig><dspCapabilities><dspMonoStereo available="false" /></dspCapabilities><lightswitch>false</lightswitch><clockDisplay>false</clockDisplay><capability name="systemtimeout" url="/systemtimeout" info="" /><capability name="rebroadcastlatencymode" url="/rebroadcastlatencymode" info="" /><lrStereoCapable>true</lrStereoCapable><bcoresetCapable>false</bcoresetCapable><disablePowerSaving>true</disablePowerSaving></capabilities>`,
+      );
+      const val = unwrapOk<CapabilitiesResponse>(
+        await client.getCapabilities(),
+      );
+      expect(val.lrStereoCapable).toBe(true);
+      expect(val.capabilities.map((capability) => capability.name)).toEqual([
+        "systemtimeout",
+        "rebroadcastlatencymode",
+      ]);
+    });
+
+    it("leaves lrStereoCapable unset when the speaker doesn't report it", async () => {
+      mockFetch(200, `<capabilities deviceID="${DEVICE_ID}"></capabilities>`);
+      const val = unwrapOk<CapabilitiesResponse>(
+        await client.getCapabilities(),
+      );
+      expect(val.lrStereoCapable).toBeUndefined();
+    });
   });
 
   describe("/audiodspcontrols", () => {
@@ -932,6 +957,132 @@ describe("boseSpeakerClient", () => {
       controller.abort();
       const result = await pending;
       expect(unwrapErr(result)).toBeInstanceOf(NetworkError);
+    });
+  });
+
+  describe("stereo pair", () => {
+    // Captured from a pair of SoundTouch 10s (firmware 27.0.6).
+    const PAIRED_GROUP = `<?xml version="1.0" encoding="UTF-8" ?><group id="3271058"><name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles><senderIPAddress>192.168.1.195</senderIPAddress><status>GROUP_OK</status></group>`;
+    const PAIRED: SpeakerGroup = {
+      id: "3271058",
+      name: "Living room + Office",
+      masterDeviceId: "0CAE7D6298E9",
+      roles: [
+        {
+          deviceId: "0CAE7D6298E9",
+          role: "LEFT",
+          ipAddress: "192.168.1.195",
+        },
+        {
+          deviceId: "EC1127C25A50",
+          role: "RIGHT",
+          ipAddress: "192.168.1.189",
+        },
+      ],
+      senderIpAddress: "192.168.1.195",
+      status: "GROUP_OK",
+    };
+    const NEW_GROUP: NewGroup = {
+      name: "Living room + Office",
+      masterDeviceId: "0CAE7D6298E9",
+      roles: PAIRED.roles,
+    };
+    const NEW_GROUP_BODY =
+      "<name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles>";
+
+    it("reads the pair from /getGroup", async () => {
+      const fetchMock = mockFetch(200, PAIRED_GROUP);
+      const result = await client.getGroup();
+      expect(unwrapOk(result)).toEqual(PAIRED);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/getGroup`,
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("reads an unpaired speaker as null", async () => {
+      mockFetch(200, '<?xml version="1.0" encoding="UTF-8" ?><group />');
+      expect(unwrapOk(await client.getGroup())).toBeNull();
+    });
+
+    it("reads an empty /getGroup body as unpaired", async () => {
+      mockFetch(200, "");
+      expect(unwrapOk(await client.getGroup())).toBeNull();
+    });
+
+    it("creates a pair with /addGroup and returns the speaker's group", async () => {
+      const fetchMock = mockFetch(200, PAIRED_GROUP);
+      const result = await client.addGroup(NEW_GROUP);
+      expect(unwrapOk(result)).toEqual(PAIRED);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/addGroup`,
+        expect.objectContaining({
+          method: "POST",
+          body: `<group>${NEW_GROUP_BODY}</group>`,
+        }),
+      );
+    });
+
+    it("escapes the pair name", async () => {
+      const fetchMock = mockFetch(200, PAIRED_GROUP);
+      await client.addGroup({ ...NEW_GROUP, name: "Tom & Jerry <3" });
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/addGroup`,
+        expect.objectContaining({
+          body: expect.stringContaining(
+            "<name>Tom &amp; Jerry &lt;3</name>",
+          ) as unknown,
+        }),
+      );
+    });
+
+    it("reports an existing pair as ApiError 5510", async () => {
+      mockFetch(
+        500,
+        '<?xml version="1.0" encoding="UTF-8" ?><errors deviceID="0CAE7D6298E9"><error value="5510" name="GROUP_ALREADY_EXISTS_ERROR" severity="Unknown"> </error></errors>',
+      );
+      const error = unwrapErr(await client.addGroup(NEW_GROUP));
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).errors[0]).toMatchObject({
+        value: 5510,
+        name: "GROUP_ALREADY_EXISTS_ERROR",
+      });
+    });
+
+    it("renames a pair with /updateGroup, naming the group id", async () => {
+      const fetchMock = mockFetch(200, PAIRED_GROUP);
+      const result = await client.updateGroup({ ...NEW_GROUP, id: "3271058" });
+      expect(unwrapOk(result)).toEqual(PAIRED);
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/updateGroup`,
+        expect.objectContaining({
+          method: "POST",
+          body: `<group id="3271058">${NEW_GROUP_BODY}</group>`,
+        }),
+      );
+    });
+
+    it("dissolves a pair with /removeGroup", async () => {
+      const fetchMock = mockFetch(
+        200,
+        '<?xml version="1.0" encoding="UTF-8" ?><group />',
+      );
+      const result = await client.removeGroup();
+      expect(unwrapOk(result)).toEqual({ peerUnreachable: false });
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/removeGroup`,
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("reports an unreachable partner on /removeGroup", async () => {
+      mockFetch(
+        200,
+        '<?xml version="1.0" encoding="UTF-8" ?><group><status>GROUP_PEER_REQUEST_FAILED</status></group>',
+      );
+      expect(unwrapOk(await client.removeGroup())).toEqual({
+        peerUnreachable: true,
+      });
     });
   });
 });

@@ -281,6 +281,51 @@ describe("parseWebSocketMessage", () => {
       },
     });
   });
+
+  // Real frames from a SoundTouch 10 (firmware 27): `deviceID` in single quotes.
+  it("parses a groupUpdated frame for a pair", () => {
+    const xml = `<updates deviceID='0CAE7D6298E9'><groupUpdated><group id="3271058"><name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles><senderIPAddress>192.168.1.195</senderIPAddress><status>GROUP_OK</status></group></groupUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "group",
+      deviceID: "0CAE7D6298E9",
+      group: {
+        id: "3271058",
+        name: "Living room + Office",
+        masterDeviceId: "0CAE7D6298E9",
+        roles: [
+          {
+            deviceId: "0CAE7D6298E9",
+            role: "LEFT",
+            ipAddress: "192.168.1.195",
+          },
+          {
+            deviceId: "EC1127C25A50",
+            role: "RIGHT",
+            ipAddress: "192.168.1.189",
+          },
+        ],
+        senderIpAddress: "192.168.1.195",
+        status: "GROUP_OK",
+      },
+    });
+  });
+
+  it("parses the groupUpdated teardown frame as no group", () => {
+    const xml = `<updates deviceID='EC1127C25A50'><groupUpdated><group /></groupUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "group",
+      deviceID: "EC1127C25A50",
+      group: null,
+    });
+  });
+
+  it("keeps balanceUpdated frames, whose deviceID is single-quoted", () => {
+    const xml = `<updates deviceID='0CAE7D6298E9'><balanceUpdated></balanceUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "unknown",
+      deviceID: "0CAE7D6298E9",
+    });
+  });
 });
 
 describe("BoseWebSocketClient", () => {

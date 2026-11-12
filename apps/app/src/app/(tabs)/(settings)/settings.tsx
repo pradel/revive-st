@@ -13,6 +13,7 @@ import { useServerUrl } from "@/features/server/server";
 import { serverHost } from "@/features/server/server-url";
 import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-actions";
 import { speakerStateLabel } from "@/features/speakers/lib/playback";
+import { pairSummary, settingsPath } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeakers,
@@ -64,15 +65,16 @@ export default function AppSettings() {
                 key={speaker.deviceID}
                 icon={formIcons.speaker}
                 label={speaker.name}
-                description={`${speaker.type} · ${speakerStateLabel(speaker)}`}
+                description={[
+                  pairSummary(speaker) ?? speaker.type,
+                  speakerStateLabel(speaker),
+                ].join(" · ")}
                 disabled={speaker.status === "connecting"}
                 onPress={() => {
                   if (speaker.status === "offline") {
                     askAboutOffline(speaker);
                   } else {
-                    router.push(
-                      `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
-                    );
+                    router.push(settingsPath(speaker));
                   }
                 }}
               />

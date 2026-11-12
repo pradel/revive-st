@@ -1,3 +1,5 @@
+import { parseGroupNode } from "./http-adapter.ts";
+import type { SpeakerGroup } from "./types/index.ts";
 import {
   decodeXmlEntities,
   getChild,
@@ -91,6 +93,12 @@ export type BoseWSUpdate =
   | {
       type: "zone";
       deviceID: string;
+    }
+  | {
+      /** The stereo pair changed (`groupUpdated`); `null` once dissolved. */
+      type: "group";
+      deviceID: string;
+      group: SpeakerGroup | null;
     }
   | {
       type: "info";
@@ -241,12 +249,25 @@ function parseRecentsUpdated(xml: string): BoseRecents {
 }
 
 export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
-  const deviceIDMatch = /<updates[^>]+deviceID="([^"]+)"/.exec(xml);
+  // `groupUpdated` and `balanceUpdated` quote the attribute with `'`.
+  const deviceIDMatch = /<updates[^>]+deviceID=(?:"([^"]+)"|'([^']+)')/.exec(
+    xml,
+  );
   if (!deviceIDMatch) {
     return null;
   }
 
-  const deviceID = deviceIDMatch[1];
+  const deviceID = deviceIDMatch[1] ?? deviceIDMatch[2];
+
+  if (xml.includes("<groupUpdated")) {
+    // The teardown frame carries `<group />`, which this does not match.
+    const block = /<group(?:\s[^>]*)?>[\s\S]*?<\/group>/.exec(xml);
+    return {
+      type: "group",
+      deviceID,
+      group: block ? parseGroupNode(parseXml(block[0])) : null,
+    };
+  }
 
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
     const volumeBlock = /<volume[\s\S]*?<\/volume>/.exec(xml);

@@ -24,8 +24,10 @@ import { Socket } from "effect/socket";
 
 import { type Exchange, makeCloud } from "./cloud.ts";
 import { SERVER_URL_FIELDS, type SpeakerConfig } from "./config.ts";
+import { EmulatedLan } from "./lan.ts";
 import {
   AUX_CONTENT_ITEM,
+  type Group,
   initialState,
   LOCAL_SOURCES,
   type SpeakerState,
@@ -34,16 +36,19 @@ import {
   bassXml,
   configurationReply,
   errorsXml,
+  groupXml,
   type Identity,
   infoXml,
   isSourcesUpdated,
   networkInfoXml,
   nowPlayingXml,
   nowSelectionUpdated,
+  PEER_REQUEST_FAILED_XML,
   presetsXml,
   readAccountId,
   readBass,
   readContentItem,
+  readGroup,
   readKey,
   readName,
   readStoredPreset,
@@ -75,7 +80,8 @@ const portOf = (address: NetAddress.SocketAddress) =>
  * A SoundTouch speaker on 127.0.0.1: its API, its WebSocket notifications
  * and its TAP console on ports of their own, and the requests it makes to
  * the servers its configuration names when it restarts, is paired, renamed,
- * stores a preset or plays a station.
+ * stores a preset, plays a station or joins a stereo pair. SoundTouch 10s
+ * that share an `EmulatedLan` can pair with each other.
  */
 export class SpeakerEmulator extends Context.Service<
   SpeakerEmulator,
@@ -96,6 +102,9 @@ export class SpeakerEmulator extends Context.Service<
 >()("@revive-st/speaker-emulator/SpeakerEmulator") {
   static readonly layer = (config: SpeakerConfig) =>
     Layer.effect(SpeakerEmulator, make(config));
+
+  /** A speaker of its own, for tests that run several, e.g. a stereo pair. */
+  static readonly make = (config: SpeakerConfig) => make(config);
 }
 
 const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
@@ -104,7 +113,7 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
   const identity: Identity = {
     deviceId,
     type: config.type ?? "SoundTouch 10",
-    ipAddress: HOST,
+    ipAddress: config.ipAddress ?? HOST,
   };
   const state = yield* Ref.make(initialState(config));
   const exchanges = yield* Ref.make<readonly Exchange[]>([]);
@@ -290,6 +299,122 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
         ),
     );
 
+  // Stereo pairs, which only SoundTouch 10s make
+
+  const isSoundTouch10 = identity.type === "SoundTouch 10";
+  const sharedLan = yield* Effect.serviceOption(EmulatedLan);
+  const lan = Option.isSome(sharedLan)
+    ? sharedLan.value
+    : yield* EmulatedLan.make;
+  if (isSoundTouch10) {
+    yield* lan.register({
+      deviceId,
+      reachable: Effect.sync(() => Latch.isOpen(up)),
+      group: Effect.map(Ref.get(state), ({ group }) => group),
+      setGroup: cloud.setGroup,
+    });
+  }
+
+  /** The other speaker of a pair, if it answers. */
+  const reachPartner = (group: Pick<Group, "roles">) =>
+    lan.reach(
+      group.roles.find((role) => role.deviceId !== deviceId)?.deviceId ?? "",
+    );
+
+  /** Firmware 27 sends group errors with a blank message. */
+  const groupError = (value: number, name: string) =>
+    xml(errorsXml(deviceId, { value, name, message: " " }), 500);
+
+  /**
+   * `/addGroup`, to the master only: Marge makes the pair, then both
+   * speakers join it under the id Marge gave it.
+   */
+  const addGroup = Effect.fnUntraced(function* (request: Omit<Group, "id">) {
+    const { group: current } = yield* Ref.get(state);
+    if (current !== undefined) {
+      return groupError(5510, "GROUP_ALREADY_EXISTS_ERROR");
+    }
+    if (request.masterDeviceId !== deviceId) {
+      // Not captured.
+      return xml(
+        errorsXml(deviceId, {
+          value: 1019,
+          name: "CLIENT_XML_ERROR",
+          message: "Not the group's master",
+        }),
+        400,
+      );
+    }
+    const partner = yield* reachPartner(request);
+    if (partner === undefined) {
+      // Not captured: the reply `/removeGroup` gives when its partner is down.
+      return xml(PEER_REQUEST_FAILED_XML);
+    }
+    if ((yield* partner.group) !== undefined) {
+      return groupError(5510, "GROUP_ALREADY_EXISTS_ERROR");
+    }
+    const id = yield* cloud.createGroup(request);
+    if (id === undefined) {
+      return groupError(5580, "GROUP_CREATE_GROUP_ON_MARGE_ERROR");
+    }
+    const group: Group = {
+      id,
+      name: request.name,
+      masterDeviceId: request.masterDeviceId,
+      roles: request.roles,
+    };
+    yield* cloud.setGroup(group);
+    yield* partner.setGroup(group);
+    return xml(groupXml(group));
+  });
+
+  /** `/updateGroup`, to the master: renames the pair on both speakers, then on Marge. */
+  const updateGroup = Effect.fnUntraced(function* (name: string) {
+    const { group: current } = yield* Ref.get(state);
+    if (current === undefined) {
+      // Not captured.
+      return xml(groupXml(undefined));
+    }
+    const group = { ...current, name };
+    yield* cloud.setGroup(group);
+    const partner = yield* reachPartner(group);
+    if (partner !== undefined) {
+      yield* partner.setGroup(group);
+    }
+    yield* cloud.renameGroup(group);
+    return xml(groupXml(group));
+  });
+
+  /**
+   * `/removeGroup`, to either speaker: deletes the pair on Marge and both
+   * leave it. A partner that doesn't answer keeps its half until Marge tells
+   * it otherwise at its next start.
+   */
+  const removeGroup = Effect.gen(function* () {
+    const { group } = yield* Ref.get(state);
+    if (group === undefined) {
+      return xml(groupXml(undefined));
+    }
+    const partner = yield* reachPartner(group);
+    yield* cloud.deleteGroup(group);
+    yield* cloud.setGroup(undefined);
+    if (partner === undefined) {
+      return xml(PEER_REQUEST_FAILED_XML);
+    }
+    yield* partner.setGroup(undefined);
+    return xml(groupXml(undefined));
+  });
+
+  const groupRoutes = isSoundTouch10
+    ? [
+        read("/getGroup", (current) => groupXml(current.group)),
+        write("/addGroup", readGroup, addGroup),
+        write("/updateGroup", readGroup, ({ name }) => updateGroup(name)),
+        HttpRouter.route("GET", "/removeGroup", removeGroup),
+      ]
+    : // Other models never answer it (SoundTouch 20 and 30).
+      [HttpRouter.route("GET", "/getGroup", Effect.never)];
+
   const router = yield* HttpRouter.make;
   yield* router.addAll([
     read("/info", (current) => infoXml(identity, current)),
@@ -368,6 +493,7 @@ const make = Effect.fnUntraced(function* (config: SpeakerConfig) {
       () =>
         cloud.refreshSources.pipe(Effect.andThen(accepted("/notification"))),
     ),
+    ...groupRoutes,
   ]);
   const httpServer = yield* NodeHttpServer.make(() => createServer(), {
     port: 0,

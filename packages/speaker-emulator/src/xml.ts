@@ -19,7 +19,13 @@ import {
   SERVER_URL_FIELDS,
   type ServerUrls,
 } from "./config.ts";
-import { type NowPlaying, type SpeakerState, sourceItems } from "./state.ts";
+import {
+  type Group,
+  type GroupRole,
+  type NowPlaying,
+  type SpeakerState,
+  sourceItems,
+} from "./state.ts";
 
 export const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8" ?>';
 
@@ -169,6 +175,39 @@ export const errorsXml = (
 ) =>
   `${XML_DECLARATION}<errors deviceID="${escapeXml(deviceId)}"><error value="${error.value}" name="${escapeXml(error.name)}" severity="Unknown">${escapeXml(error.message)}</error></errors>`;
 
+/**
+ * A stereo pair as `/getGroup` and `groupUpdated` report it; `<group />`
+ * when the speaker isn't in one. Both speakers report the master's address
+ * as `senderIPAddress`.
+ */
+const groupBody = (group: Group | undefined) =>
+  group === undefined
+    ? "<group />"
+    : [
+        `<group id="${escapeXml(group.id)}">`,
+        element("name", group.name),
+        element("masterDeviceId", group.masterDeviceId),
+        "<roles>",
+        ...group.roles.map(
+          ({ deviceId, role, ipAddress }) =>
+            `<groupRole>${element("deviceId", deviceId)}${element("role", role)}${element("ipAddress", ipAddress)}</groupRole>`,
+        ),
+        "</roles>",
+        element(
+          "senderIPAddress",
+          group.roles.find(({ deviceId }) => deviceId === group.masterDeviceId)
+            ?.ipAddress ?? "",
+        ),
+        "<status>GROUP_OK</status>",
+        "</group>",
+      ].join("");
+
+export const groupXml = (group: Group | undefined) =>
+  `${XML_DECLARATION}${groupBody(group)}`;
+
+/** What a speaker answers when its partner didn't take a group request. */
+export const PEER_REQUEST_FAILED_XML = `${XML_DECLARATION}<group><status>GROUP_PEER_REQUEST_FAILED</status></group>`;
+
 // ---------------------------------------------------------------------------
 // WebSocket notifications on port 8080
 
@@ -213,6 +252,10 @@ export const sourcesUpdated = (deviceId: string) =>
 
 export const infoUpdated = (deviceId: string) =>
   updates(deviceId, "<infoUpdated />");
+
+/** Unlike the other updates, `deviceID` is single-quoted (captured, firmware 27.0.6). */
+export const groupUpdated = (deviceId: string, group: Group | undefined) =>
+  `<updates deviceID='${escapeXml(deviceId)}'><groupUpdated>${groupBody(group)}</groupUpdated></updates>`;
 
 // ---------------------------------------------------------------------------
 // Request bodies sent to port 8090
@@ -294,6 +337,51 @@ export const isSourcesUpdated = (xml: string) => {
   return (
     root?.name === "updates" && child(root, "sourcesUpdated") !== undefined
   );
+};
+
+/**
+ * The pair `/addGroup` and `/updateGroup` take: a name, its master and one
+ * LEFT and one RIGHT speaker, the master among them. `id` is set for
+ * `/updateGroup`.
+ */
+export const readGroup = (xml: string) => {
+  const root = parse(xml);
+  const masterDeviceId =
+    root?.name === "group"
+      ? childText(root, "masterDeviceId")?.trim()
+      : undefined;
+  if (root === undefined || !masterDeviceId) {
+    return undefined;
+  }
+  const roles = children(child(root, "roles"), "groupRole").flatMap(
+    (node): GroupRole[] => {
+      const deviceId = childText(node, "deviceId")?.trim();
+      const role = childText(node, "role")?.trim();
+      return deviceId && (role === "LEFT" || role === "RIGHT")
+        ? [
+            {
+              deviceId,
+              role,
+              ipAddress: childText(node, "ipAddress")?.trim() ?? "",
+            },
+          ]
+        : [];
+    },
+  );
+  const left = roles.find(({ role }) => role === "LEFT");
+  const right = roles.find(({ role }) => role === "RIGHT");
+  return roles.length === 2 &&
+    left !== undefined &&
+    right !== undefined &&
+    left.deviceId !== right.deviceId &&
+    (left.deviceId === masterDeviceId || right.deviceId === masterDeviceId)
+    ? {
+        id: root.attributes.id,
+        name: childText(root, "name") ?? "",
+        masterDeviceId,
+        roles: [left, right],
+      }
+    : undefined;
 };
 
 // ---------------------------------------------------------------------------
@@ -398,6 +486,33 @@ export const recentXml = (
     "</recent>",
   ].join("");
 
+/** The pair the master POSTs to Marge to create it: no id, no addresses. */
+export const margeGroupXml = ({
+  name,
+  masterDeviceId,
+  roles,
+}: Omit<Group, "id">) =>
+  [
+    XML_DECLARATION,
+    "<group>",
+    element("masterDeviceId", masterDeviceId),
+    element("name", name),
+    "<roles>",
+    ...roles.map(
+      ({ deviceId, role }) =>
+        `<groupRole>${element("deviceId", deviceId)}${element("role", role)}</groupRole>`,
+    ),
+    "</roles>",
+    "</group>",
+  ].join("");
+
+/**
+ * What a speaker PUTs to its pair on Marge when it renames it, naming itself
+ * as master whichever speaker it is.
+ */
+export const margeGroupTouchXml = (deviceId: string, name: string) =>
+  `${XML_DECLARATION}<group>${element("masterDeviceId", deviceId)}${element("name", name)}</group>`;
+
 // ---------------------------------------------------------------------------
 // Documents read from the servers
 
@@ -414,6 +529,13 @@ export const readSourceProviders = (
         : [[provider.attributes.id, name] as const];
     }),
   );
+};
+
+/** The id of a `<group id="…">` from Marge; `undefined` for `<group/>` or anything else. */
+export const readMargeGroupId = (xml: string) => {
+  const root = parse(xml);
+  const id = root?.name === "group" ? root.attributes.id?.trim() : undefined;
+  return id === "" ? undefined : id;
 };
 
 /** What a speaker takes from its account's `/full`. */

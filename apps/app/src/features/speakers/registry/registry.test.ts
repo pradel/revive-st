@@ -1,4 +1,9 @@
-import type { Preset, Speaker, SpeakerState } from "bose-api-speaker-client";
+import type {
+  Preset,
+  Speaker,
+  SpeakerGroup,
+  SpeakerState,
+} from "bose-api-speaker-client";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { KnownSpeaker } from "../lib/known-speakers";
@@ -54,6 +59,8 @@ interface FakeSpeaker {
   presets?: Preset[];
   /** Its live connection (port 8080) is down. */
   socketDown?: boolean;
+  /** What its `/getGroup` says; unread when absent. */
+  group?: SpeakerGroup | null;
   events?: SpeakerLinkEvents;
 }
 
@@ -83,6 +90,7 @@ function world({ stored = [] }: { stored?: KnownSpeaker[] } = {}) {
     presets: speaker.presets,
     margeURL: speaker.margeURL,
     margeAccountUUID: speaker.account,
+    group: speaker.group,
   });
 
   /** While set, radio checks wait here until a test lets them answer. */
@@ -643,5 +651,156 @@ describe("speaker registry", () => {
     await settle();
 
     expect(listed()[0]?.radio).toMatchObject(shownVia("AfterTouch"));
+  });
+});
+
+describe("speaker registry: stereo pairs", () => {
+  const LEFT = { deviceID: "0CAE7D6298E9", host: "192.168.1.195" };
+  const RIGHT = { deviceID: "EC1127C25A50", host: "192.168.1.189" };
+  const GROUP: SpeakerGroup = {
+    id: "3271058",
+    name: "Living room + Office",
+    masterDeviceId: LEFT.deviceID,
+    roles: [
+      { deviceId: LEFT.deviceID, role: "LEFT", ipAddress: LEFT.host },
+      { deviceId: RIGHT.deviceID, role: "RIGHT", ipAddress: RIGHT.host },
+    ],
+    status: "GROUP_OK",
+  };
+  const PAIR = {
+    id: GROUP.id,
+    name: GROUP.name,
+    masterDeviceID: LEFT.deviceID,
+    roles: [
+      { deviceID: LEFT.deviceID, role: "LEFT" as const },
+      { deviceID: RIGHT.deviceID, role: "RIGHT" as const },
+    ],
+  };
+  const LIVING_ROOM: KnownSpeaker = {
+    ...KITCHEN,
+    deviceID: LEFT.deviceID,
+    name: "Living room",
+    host: LEFT.host,
+    pair: PAIR,
+  };
+  const OFFICE: KnownSpeaker = {
+    ...KITCHEN,
+    deviceID: RIGHT.deviceID,
+    name: "Office",
+    host: RIGHT.host,
+    pair: PAIR,
+  };
+
+  /** Both speakers on the network, each reporting `group` from `/getGroup`. */
+  const putOnNetwork = (
+    network: Map<string, FakeSpeaker>,
+    group: SpeakerGroup | null | undefined,
+  ) => {
+    network.set(
+      LEFT.host,
+      onNetwork({ deviceID: LEFT.deviceID, name: "Living room", group }),
+    );
+    network.set(
+      RIGHT.host,
+      onNetwork({ deviceID: RIGHT.deviceID, name: "Office", group }),
+    );
+  };
+
+  it("lists a pair once, as its master named after the pair, and keeps the partner reachable", async () => {
+    const { registry, network, listed, find, saved, settle } = world();
+    putOnNetwork(network, GROUP);
+    await registry.restore();
+
+    registry.rescan();
+    find(RIGHT.host);
+    find(LEFT.host);
+    await settle();
+
+    expect(listed()).toMatchObject([
+      {
+        deviceID: LEFT.deviceID,
+        name: "Living room + Office",
+        speakerName: "Living room",
+        pair: PAIR,
+        pairStatus: "GROUP_OK",
+      },
+    ]);
+    expect(listed()).toHaveLength(1);
+    expect(registry.getSnapshot().online).toHaveLength(1);
+    expect(
+      registry
+        .getSnapshot()
+        .all.find(({ deviceID }) => deviceID === RIGHT.deviceID),
+    ).toMatchObject({ status: "online", speakerName: "Office", pair: PAIR });
+    expect(registry.client(RIGHT.deviceID)).toBeDefined();
+    expect(saved.at(-1)?.map((entry) => entry.pair)).toEqual([PAIR, PAIR]);
+  });
+
+  it("keeps a remembered pair one card while its speakers are offline", async () => {
+    const { registry, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    await registry.restore();
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, status: "connecting", name: PAIR.name },
+    ]);
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, status: "offline", name: PAIR.name },
+    ]);
+    expect(listed()).toHaveLength(1);
+  });
+
+  it("lists the partner on its own once the master reports no pair", async () => {
+    const { registry, network, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    putOnNetwork(network, null);
+    await registry.restore();
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, name: "Living room" },
+      { deviceID: RIGHT.deviceID, name: "Office" },
+    ]);
+    expect(listed().map((speaker) => speaker.pair)).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
+  it("keeps the remembered pair while the speaker's pair isn't read", async () => {
+    const { registry, network, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    putOnNetwork(network, undefined);
+    await registry.restore();
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, status: "online", pair: PAIR },
+    ]);
+    expect(listed()).toHaveLength(1);
+  });
+
+  it("forgets both speakers of a pair from its card", async () => {
+    const { registry, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    registry.forget(LEFT.deviceID);
+
+    expect(listed()).toEqual([]);
+    expect(registry.getSnapshot().all).toEqual([]);
   });
 });

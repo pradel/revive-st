@@ -35,6 +35,7 @@ import {
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
+import { pairSummary, settingsPath } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeakers,
@@ -135,7 +136,7 @@ export default function Index() {
   };
 
   const openSettings = (speaker: BoseSpeaker) => {
-    router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
+    router.push(settingsPath(speaker));
   };
 
   const openSpeakerPicker = () => {
@@ -289,7 +290,11 @@ export default function Index() {
         <SpeakerRow
           key={speaker.deviceID}
           name={speaker.name}
-          detail={[speakerStateLabel(speaker), radioSummary(speaker.radio)]
+          detail={[
+            pairSummary(speaker),
+            speakerStateLabel(speaker),
+            radioSummary(speaker.radio),
+          ]
             .filter(Boolean)
             .join(" · ")}
           modelDrawing={speakerDrawing(speaker.type)}
@@ -315,6 +320,7 @@ export default function Index() {
         nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
         detail={[
           speaker.artist,
+          pairSummary(speaker),
           speakerStateLabel(speaker),
           radioSummary(speaker.radio),
         ]
@@ -553,7 +559,13 @@ export default function Index() {
                       <SpeakerRow
                         key={speaker.deviceID}
                         name={speaker.name}
-                        detail={`${speakerStateLabel(speaker)} · Tap to try again`}
+                        detail={[
+                          speakerStateLabel(speaker),
+                          pairSummary(speaker),
+                          "Tap to try again",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                         modelDrawing={speakerDrawing(speaker.type)}
                         accessibilityHint="Tries to reach the speaker again"
                         onPress={() => {

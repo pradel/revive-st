@@ -8,6 +8,7 @@ import { randomUUID } from "node:crypto";
 import { NodeHttpServer } from "@effect/platform-node";
 import { assert, layer } from "@effect/vitest";
 import {
+  EmulatedLan,
   eventually,
   type Exchange,
   openConsole,
@@ -15,12 +16,17 @@ import {
   SpeakerEmulator,
   speakerHttp,
 } from "@revive-st/speaker-emulator";
-import { type ContentItem, escapeXml } from "bose-api-speaker-client";
+import {
+  BoseHttpAdapter,
+  type ContentItem,
+  escapeXml,
+} from "bose-api-speaker-client";
 import { Effect, Layer, Logger } from "effect";
 import { HttpClient, HttpServer } from "effect/http";
 
 import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
+import { GroupsRepo } from "./devices/groups-repo.ts";
 import { HttpAppLayer } from "./http.ts";
 import { PresetsRepo } from "./presets/presets-repo.ts";
 import { RateLimits } from "./rate-limit.ts";
@@ -33,6 +39,7 @@ import {
   syncPresets,
   TuneInTest,
 } from "./testing.ts";
+import { createNoGroupXml } from "./utils/marge-xml.ts";
 
 // The real rate limits: a household's speakers stay within them.
 const TestLayer = HttpAppLayer.pipe(
@@ -40,6 +47,7 @@ const TestLayer = HttpAppLayer.pipe(
   Layer.provide([
     PresetsRepo.layerTest,
     DevicesRepo.layerTest,
+    GroupsRepo.layerTest,
     DeviceContactsRepo.layerTest,
     TuneInTest,
     RadioBrowserTest,
@@ -91,14 +99,17 @@ const postToSpeaker = (path: string, body: string) =>
  * presets for it, writes the server's addresses and the account over the
  * TAP console, pairs it over HTTP, has it fetch its sources, then restarts
  * it. Resolves once the speaker has booted against the server, with its
- * last contact before the restart.
+ * last contact before the restart. A household's other speakers are set up
+ * with its existing `accountId`.
  */
-const setUp = (presets: readonly { id: number; contentItem: ContentItem }[]) =>
+const setUp = (
+  presets: readonly { id: number; contentItem: ContentItem }[],
+  // The app makes household account ids itself.
+  accountId: string = randomUUID(),
+) =>
   Effect.gen(function* () {
     const emulated = yield* SpeakerEmulator;
     const server = yield* origin;
-    // The app makes household account ids itself.
-    const accountId = randomUUID();
     const synced = yield* syncPresets(emulated.deviceId, presets, accountId);
     assert.strictEqual(synced.status, 200);
 
@@ -322,5 +333,92 @@ layer(TestLayer, { excludeTestServices: true })("an emulated speaker", (it) => {
         assert.deepStrictEqual(yield* failedSince(from), []);
       }),
     ),
+  );
+
+  it.effect(
+    "keeps a stereo pair made through the master across restarts, until it is undone",
+    () =>
+      Effect.gen(function* () {
+        const left = yield* SpeakerEmulator.make({
+          deviceId: speaker("emulated-pair-left"),
+          ipAddress: "192.168.1.195",
+        });
+        const right = yield* SpeakerEmulator.make({
+          deviceId: speaker("emulated-pair-right"),
+          ipAddress: "192.168.1.189",
+        });
+        const accountId = randomUUID();
+        for (const emulated of [left, right]) {
+          yield* setUp([], accountId).pipe(
+            Effect.provideService(SpeakerEmulator, emulated),
+          );
+        }
+        const leftApi = new BoseHttpAdapter({
+          ip: left.host,
+          port: left.ports.http,
+        });
+        const rightApi = new BoseHttpAdapter({
+          ip: right.host,
+          port: right.ports.http,
+        });
+        const groups = Effect.all(
+          [leftApi, rightApi].map((api) => orDie(async () => api.getGroup())),
+        );
+        /** What the server answers each speaker's boot poll. */
+        const polls = Effect.all(
+          [left, right].map(({ deviceId }) =>
+            HttpClient.get(
+              `/streaming/account/${accountId}/device/${deviceId}/group/`,
+            ).pipe(Effect.flatMap((response) => response.text)),
+          ),
+        );
+        const rebootBoth = Effect.andThen(right.reboot, left.reboot);
+
+        const group = yield* orDie(async () =>
+          leftApi.addGroup({
+            name: "Living room + Office",
+            masterDeviceId: left.deviceId,
+            roles: [
+              {
+                deviceId: left.deviceId,
+                role: "LEFT",
+                ipAddress: "192.168.1.195",
+              },
+              {
+                deviceId: right.deviceId,
+                role: "RIGHT",
+                ipAddress: "192.168.1.189",
+              },
+            ],
+          }),
+        );
+        assert.match(group?.id ?? "", /^\d{7}$/);
+        assert.strictEqual(group?.status, "GROUP_OK");
+        assert.strictEqual(group?.masterDeviceId, left.deviceId);
+        assert.deepStrictEqual(yield* groups, [group, group]);
+
+        // Both ask the server at boot; it answers with the pair it stored.
+        yield* rebootBoth;
+        assert.deepStrictEqual(yield* groups, [group, group]);
+
+        const removed = yield* orDie(async () => leftApi.removeGroup());
+        assert.deepStrictEqual(removed, { peerUnreachable: false });
+        assert.deepStrictEqual(yield* groups, [null, null]);
+        assert.deepStrictEqual(yield* polls, [
+          createNoGroupXml(),
+          createNoGroupXml(),
+        ]);
+
+        yield* rebootBoth;
+        assert.deepStrictEqual(yield* groups, [null, null]);
+        for (const emulated of [left, right]) {
+          const failed = (yield* emulated.exchanges).filter(
+            ({ url, status }) =>
+              url.includes("/group") &&
+              (status === undefined || status < 200 || status >= 300),
+          );
+          assert.deepStrictEqual(failed, []);
+        }
+      }).pipe(Effect.provide(EmulatedLan.layer)),
   );
 });

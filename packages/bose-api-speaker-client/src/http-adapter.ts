@@ -38,6 +38,9 @@ import type {
   VolumeResponse,
   ZoneMember,
   ZoneResponse,
+  GroupRole,
+  NewGroup,
+  SpeakerGroup,
 } from "./types/index.ts";
 import {
   getChild,
@@ -56,19 +59,22 @@ export class BoseHttpAdapter {
     this.baseUrl = `http://${opts.ip}:${opts.port ?? 8090}`;
   }
 
+  /**
+   * `ifEmpty` is the result for an empty reply body, for the endpoints where
+   * an empty body is meaningful; without it an empty body is an XmlParseError.
+   */
   private async get<TParsed>(
     path: string,
     parse: (root: XmlNode) => TParsed,
     options: RequestOptions | undefined,
+    ifEmpty?: { value: TParsed },
   ): Promise<Result<TParsed, BoseApiError>> {
-    const result = await this.fetchResult(path, {
-      method: "GET",
-      signal: options?.signal,
-    });
-    if (!result.isOk()) {
-      return new Err(result.error);
-    }
-    return BoseHttpAdapter.parseBody(result.value, parse);
+    return this.request(
+      path,
+      { method: "GET", signal: options?.signal },
+      parse,
+      ifEmpty,
+    );
   }
 
   private async post(
@@ -76,16 +82,58 @@ export class BoseHttpAdapter {
     body: string,
     options: RequestOptions | undefined,
   ): Promise<Result<void, BoseApiError>> {
-    const result = await this.fetchResult(path, {
-      method: "POST",
-      headers: { "Content-Type": "application/xml" },
-      body,
-      signal: options?.signal,
-    });
+    const result = await this.fetchResult(
+      path,
+      BoseHttpAdapter.postInit(body, options),
+    );
     if (!result.isOk()) {
       return new Err(result.error);
     }
     return new Ok(undefined);
+  }
+
+  /** A POST whose reply is a document to parse; `ifEmpty` as for `get`. */
+  private async postParsed<TParsed>(
+    path: string,
+    body: string,
+    parse: (root: XmlNode) => TParsed,
+    options: RequestOptions | undefined,
+    ifEmpty?: { value: TParsed },
+  ): Promise<Result<TParsed, BoseApiError>> {
+    return this.request(
+      path,
+      BoseHttpAdapter.postInit(body, options),
+      parse,
+      ifEmpty,
+    );
+  }
+
+  private static postInit(
+    body: string,
+    options: RequestOptions | undefined,
+  ): RequestInit {
+    return {
+      method: "POST",
+      headers: { "Content-Type": "application/xml" },
+      body,
+      signal: options?.signal,
+    };
+  }
+
+  private async request<TParsed>(
+    path: string,
+    init: RequestInit,
+    parse: (root: XmlNode) => TParsed,
+    ifEmpty: { value: TParsed } | undefined,
+  ): Promise<Result<TParsed, BoseApiError>> {
+    const result = await this.fetchResult(path, init);
+    if (!result.isOk()) {
+      return new Err(result.error);
+    }
+    if (ifEmpty && result.value.trim() === "") {
+      return new Ok(ifEmpty.value);
+    }
+    return BoseHttpAdapter.parseBody(result.value, parse);
   }
 
   private async fetchResult(
@@ -347,6 +395,78 @@ export class BoseHttpAdapter {
     return this.post("/removeZoneSlave", xml, options);
   }
 
+  /**
+   * The stereo pair this speaker is in, `null` when unpaired. Only call it on
+   * a SoundTouch 10: other models (ST20, ST30) never answer.
+   */
+  async getGroup(
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+    return this.get("/getGroup", parseGroupNode, options, { value: null });
+  }
+
+  /**
+   * Creates a stereo pair. Send it to the master only: the partner joins by
+   * itself. Replies with the created group, whose `id` the master got from
+   * its Marge server. An ApiError GROUP_ALREADY_EXISTS_ERROR (value 5510)
+   * means this speaker is already paired.
+   */
+  async addGroup(
+    group: NewGroup,
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+    return this.postParsed(
+      "/addGroup",
+      `<group>${groupContentXml(group)}</group>`,
+      parseGroupNode,
+      options,
+      { value: null },
+    );
+  }
+
+  /**
+   * Rewrites the pair (in practice: renames it). Send it to the master only;
+   * the partner follows. Replies with the updated group.
+   */
+  async updateGroup(
+    group: NewGroup & { id: string },
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+    return this.postParsed(
+      "/updateGroup",
+      `<group id="${escapeXml(group.id)}">${groupContentXml(group)}</group>`,
+      parseGroupNode,
+      options,
+      { value: null },
+    );
+  }
+
+  /**
+   * Dissolves the pair; sent to either speaker, it clears both.
+   * `peerUnreachable`: the other speaker could not be told
+   * (GROUP_PEER_REQUEST_FAILED); this one is unpaired anyway, and the other
+   * drops its half when it next polls its Marge server.
+   */
+  async removeGroup(
+    options?: RequestOptions,
+  ): Promise<Result<{ peerUnreachable: boolean }, BoseApiError>> {
+    return this.get(
+      "/removeGroup",
+      (root) => {
+        const group = root.name === "group" ? root : getChild(root, "group");
+        if (!group) {
+          throw new Error("Missing <group> element");
+        }
+        return {
+          peerUnreachable:
+            getChildText(group, "status") === "GROUP_PEER_REQUEST_FAILED",
+        };
+      },
+      options,
+      { value: { peerUnreachable: false } },
+    );
+  }
+
   // The reply is held back while the speaker tries to join the network
   // (`timeout="30"` is the join timeout in seconds): OK once it joined, or an
   // ApiError WIFI_PROFILE_SETUP_FAILED (value 1035) when it could not, e.g.
@@ -582,6 +702,7 @@ export class BoseHttpAdapter {
         if (!caps) {
           throw new Error("Missing <capabilities> element");
         }
+        const lrStereoCapable = getChildText(caps, "lrStereoCapable");
         return {
           deviceID: caps.attributes.deviceID ?? "",
           capabilities: getChildren(caps, "capability").map((capability) => ({
@@ -589,6 +710,10 @@ export class BoseHttpAdapter {
             url: capability.attributes.url ?? "",
             info: capability.attributes.info ?? "",
           })),
+          lrStereoCapable:
+            lrStereoCapable === undefined
+              ? undefined
+              : parseBool(lrStereoCapable),
         };
       },
       options,
@@ -718,6 +843,47 @@ export class BoseHttpAdapter {
     const xml = `<audioproductlevelcontrols>${parts.join("")}</audioproductlevelcontrols>`;
     return this.post("/audioproductlevelcontrols", xml, options);
   }
+}
+
+/**
+ * A `<group>` as `/getGroup`, `/addGroup`, `/updateGroup` and the
+ * `groupUpdated` notification carry it; `null` for `<group />` or any group
+ * without an `id` (not paired).
+ */
+export function parseGroupNode(root: XmlNode): SpeakerGroup | null {
+  const group = root.name === "group" ? root : getChild(root, "group");
+  if (!group) {
+    throw new Error("Missing <group> element");
+  }
+  const id = optionalString(group.attributes.id);
+  if (id === undefined) {
+    return null;
+  }
+  return {
+    id,
+    name: getChildText(group, "name") ?? "",
+    masterDeviceId: getChildText(group, "masterDeviceId") ?? "",
+    roles: getChildren(getChild(group, "roles") ?? group, "groupRole").map(
+      (role) => ({
+        deviceId: getChildText(role, "deviceId") ?? "",
+        role: (getChildText(role, "role") ?? "") as GroupRole,
+        ipAddress: getChildText(role, "ipAddress") ?? "",
+      }),
+    ),
+    senderIpAddress: optionalString(getChildText(group, "senderIPAddress")),
+    status: optionalString(getChildText(group, "status")),
+  };
+}
+
+/** The children of a `<group>` as `/addGroup` and `/updateGroup` take them. */
+function groupContentXml(group: NewGroup): string {
+  const roles = group.roles
+    .map(
+      (member) =>
+        `<groupRole><deviceId>${escapeXml(member.deviceId)}</deviceId><role>${escapeXml(member.role)}</role><ipAddress>${escapeXml(member.ipAddress)}</ipAddress></groupRole>`,
+    )
+    .join("");
+  return `<name>${escapeXml(group.name)}</name><masterDeviceId>${escapeXml(group.masterDeviceId)}</masterDeviceId><roles>${roles}</roles>`;
 }
 
 function parseNowPlaying(root: XmlNode): NowPlayingResponse {

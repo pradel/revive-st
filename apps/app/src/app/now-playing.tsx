@@ -17,6 +17,7 @@ import {
   useCanSwitchSpeaker,
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
+import { settingsPath } from "@/features/speakers/lib/stereo-pair";
 import { haptics } from "@/lib/haptics";
 import { useSliderDraft } from "@/lib/useSliderDraft";
 import { Artwork } from "@/ui/ds/Artwork";
@@ -204,9 +205,7 @@ export default function NowPlayingModal() {
           speakerName={speaker.name}
           onChooseSpeaker={chooseSpeaker}
           onOpenSettings={() => {
-            router.push(
-              `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
-            );
+            router.push(settingsPath(speaker));
           }}
           currentSource={speaker.source}
           onSelectSource={(source) => {

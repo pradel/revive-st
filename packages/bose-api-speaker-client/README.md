@@ -44,6 +44,10 @@ Each method returns `Promise<Result<T, BoseApiError>>` where `BoseApiError` is a
 | `setZone(params)`                      | `/setZone`                   | POST |
 | `addZoneSlave(params)`                 | `/addZoneSlave`              | POST |
 | `removeZoneSlave(params)`              | `/removeZoneSlave`           | POST |
+| `getGroup()`                           | `/getGroup`                  | GET  |
+| `addGroup(group)`                      | `/addGroup`                  | POST |
+| `updateGroup(group)`                   | `/updateGroup`               | POST |
+| `removeGroup()`                        | `/removeGroup`               | GET  |
 | `getNowPlaying()`                      | `/nowPlaying`                | GET  |
 | `getTrackInfo()`                       | `/trackInfo`                 | GET  |
 | `getVolume()`                          | `/volume`                    | GET  |
@@ -58,6 +62,8 @@ Each method returns `Promise<Result<T, BoseApiError>>` where `BoseApiError` is a
 | `setAudioProductToneControls(params)`  | `/audioproducttonecontrols`  | POST |
 | `getAudioProductLevelControls()`       | `/audioproductlevelcontrols` | GET  |
 | `setAudioProductLevelControls(params)` | `/audioproductlevelcontrols` | POST |
+
+The `*Group` methods manage a SoundTouch 10 stereo pair (a firmware group, distinct from a multiroom zone); only call them on a SoundTouch 10, other models never answer `/getGroup`. Send `addGroup` and `updateGroup` to the master (LEFT) only; the partner follows. `removeGroup` on either speaker dissolves the pair. `getGroup` resolves to `null` when the speaker is not paired; `addGroup` on a paired speaker fails with an `ApiError` GROUP_ALREADY_EXISTS_ERROR (5510).
 
 Default port is `8090`. Override with `boseSpeakerClient({ ip: "...", port: 8091 })`.
 
@@ -135,6 +141,7 @@ The `onUpdate` callback yields a `BoseWSUpdate` object representing the parsed e
 - `"recents"`: Fired when the list of recently played streams updates.
 - `"presets"`: Fired when preset definitions are changed.
 - `"zone"`: Multi-room zone updates.
+- `"group"`: Stereo pair changes (`groupUpdated`); `group` is `null` once the pair is dissolved.
 - `"nameUpdated"`: Speaker name change updates.
 - `"connectionState"`: Network state (Wi-Fi connectivity status and signal level).
 - `"info"`: Device info status changes.

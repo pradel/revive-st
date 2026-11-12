@@ -6,5 +6,6 @@ export {
   type SpeakerConfig,
 } from "./config.ts";
 export { SpeakerEmulator, type SpeakerPorts } from "./emulator.ts";
-export type { NowPlaying, SpeakerState } from "./state.ts";
+export { EmulatedLan } from "./lan.ts";
+export type { Group, GroupRole, NowPlaying, SpeakerState } from "./state.ts";
 export { eventually, openConsole, orDie, speakerHttp } from "./testing.ts";

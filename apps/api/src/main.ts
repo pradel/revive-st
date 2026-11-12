@@ -8,6 +8,7 @@ import { OtlpSerialization, OtlpTracer } from "effect/observability";
 import { ServerPort } from "./config.ts";
 import { DeviceContactsRepo } from "./devices/device-contacts-repo.ts";
 import { DevicesRepo } from "./devices/devices-repo.ts";
+import { GroupsRepo } from "./devices/groups-repo.ts";
 import { EtagCasingServerResponse } from "./etag-header.ts";
 import { HttpAppLayer } from "./http.ts";
 import { LoggingLayer } from "./logging.ts";
@@ -21,6 +22,7 @@ const MainLayer = HttpAppLayer.pipe(
   Layer.provide([
     PresetsRepo.layer,
     DevicesRepo.layer,
+    GroupsRepo.layer,
     DeviceContactsRepo.layer,
     TuneIn.layer,
     RadioBrowser.layer,

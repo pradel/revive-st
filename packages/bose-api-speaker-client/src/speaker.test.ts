@@ -8,6 +8,7 @@ import {
   vi,
 } from "vite-plus/test";
 
+import type { SpeakerGroup } from "./index.ts";
 import { Speaker } from "./speaker.ts";
 
 const IP = "192.168.1.100";
@@ -39,6 +40,20 @@ function stubWebSocket(ws: ReturnType<typeof createMockWS>) {
   vi.stubGlobal("WebSocket", ctor);
   return ctor;
 }
+
+// Captured from a pair of SoundTouch 10s (firmware 27.0.6).
+const PAIRED_GROUP_XML = `<?xml version="1.0" encoding="UTF-8" ?><group id="3271058"><name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles><senderIPAddress>192.168.1.195</senderIPAddress><status>GROUP_OK</status></group>`;
+const PAIRED_GROUP: SpeakerGroup = {
+  id: "3271058",
+  name: "Living room + Office",
+  masterDeviceId: "0CAE7D6298E9",
+  roles: [
+    { deviceId: "0CAE7D6298E9", role: "LEFT", ipAddress: "192.168.1.195" },
+    { deviceId: "EC1127C25A50", role: "RIGHT", ipAddress: "192.168.1.189" },
+  ],
+  senderIpAddress: "192.168.1.195",
+  status: "GROUP_OK",
+};
 
 describe("Speaker", () => {
   let speaker: Speaker;
@@ -390,6 +405,59 @@ describe("Speaker", () => {
     expect(onStateUpdate).toHaveBeenCalledTimes(1);
   });
 
+  describe("stereo pair", () => {
+    function mockSpeaker(type: string) {
+      return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+        const url = input as string;
+        let body = "<status>OK</status>";
+        if (url.endsWith("/info")) {
+          body = `<info deviceID="${DEVICE_ID}"><name>Living room</name><type>${type}</type></info>`;
+        } else if (url.endsWith("/getGroup") || url.endsWith("/addGroup")) {
+          body = PAIRED_GROUP_XML;
+        } else if (url.endsWith("/removeGroup")) {
+          body = '<?xml version="1.0" encoding="UTF-8" ?><group />';
+        }
+        return Promise.resolve(new Response(body, { status: 200 }));
+      });
+    }
+
+    it("initialize() reads the pair of a SoundTouch 10", async () => {
+      mockSpeaker("SoundTouch 10");
+      await speaker.initialize();
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+    });
+
+    it("initialize() never asks other models for a pair", async () => {
+      const fetchMock = mockSpeaker("SoundTouch 20");
+      await speaker.initialize();
+      expect(
+        fetchMock.mock.calls.some(([url]) =>
+          (url as string).endsWith("/getGroup"),
+        ),
+      ).toBe(false);
+      expect(speaker.getState().group).toBeUndefined();
+    });
+
+    it("addGroup() and removeGroup() keep the state's pair current", async () => {
+      mockSpeaker("SoundTouch 10");
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+
+      await speaker.addGroup({
+        name: PAIRED_GROUP.name,
+        masterDeviceId: PAIRED_GROUP.masterDeviceId,
+        roles: PAIRED_GROUP.roles,
+      });
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+      expect(onStateUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ group: PAIRED_GROUP }),
+      );
+
+      await speaker.removeGroup();
+      expect(speaker.getState().group).toBeNull();
+    });
+  });
+
   it("handles 500 error correctly without throwing", async () => {
     mockFetch(500, "<error>Internal Server Error</error>");
     const result = await speaker.powerToggle();
@@ -453,6 +521,26 @@ describe("Speaker", () => {
       wsMock.onopen?.();
       expect(speaker.getState().connectionState).toBe("connected");
       expect(fetchMock).toHaveBeenCalled();
+    });
+
+    it("follows the pair from groupUpdated notifications", () => {
+      const onStateUpdate = vi.fn();
+      speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });
+      speaker.connect();
+      wsMock.onopen?.();
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated>${PAIRED_GROUP_XML.replace(/^<\?xml[^>]*\?>/, "")}</groupUpdated></updates>`,
+      });
+      expect(speaker.getState().group).toEqual(PAIRED_GROUP);
+      expect(onStateUpdate).toHaveBeenLastCalledWith(
+        expect.objectContaining({ group: PAIRED_GROUP }),
+      );
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated><group /></groupUpdated></updates>`,
+      });
+      expect(speaker.getState().group).toBeNull();
     });
   });
 });

@@ -8,6 +8,7 @@ import {
   OpenApi,
 } from "effect/http-api";
 
+import { GroupId, GroupName } from "../devices/groups-repo.ts";
 import { AccountId } from "../marge/account.ts";
 import { PresetId, PresetText, SpeakerDeviceId } from "../presets/preset.ts";
 
@@ -164,7 +165,103 @@ export const SpeakerDeviceXml = SpeakerXmlText({
   ),
 );
 
+/** The `<group>` document the master speaker POSTs to create a pair. */
+export const SpeakerGroupXml = SpeakerXmlText({
+  description:
+    "The new stereo pair: its name, master and the LEFT and RIGHT speakers.",
+  example:
+    '<?xml version="1.0" encoding="UTF-8" ?><group><masterDeviceId>0CAE7D6298E9</masterDeviceId><name>Living room + Office</name><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role></groupRole></roles></group>',
+}).pipe(
+  Schema.decodeTo(
+    Schema.Struct({
+      name: GroupName,
+      masterDeviceId: SpeakerDeviceId,
+      leftDeviceId: SpeakerDeviceId,
+      rightDeviceId: SpeakerDeviceId,
+    }),
+    SchemaTransformation.transformEffect({
+      decode: (xml, options) => {
+        const invalid = (message: string) =>
+          new SchemaIssue.InvalidValue({ message }, xml, options);
+        return Effect.try({
+          try: () => parseXml(xml),
+          catch: () => invalid("Invalid XML payload"),
+        }).pipe(
+          Effect.flatMap((root) => {
+            const text = (name: string) =>
+              root.children.find((child) => child.name === name)?.text;
+            const roles = (
+              root.children.find((child) => child.name === "roles")?.children ??
+              []
+            ).map((groupRole) => ({
+              deviceId: groupRole.children.find(
+                (child) => child.name === "deviceId",
+              )?.text,
+              role: groupRole.children.find((child) => child.name === "role")
+                ?.text,
+            }));
+            const left = roles.find(({ role }) => role === "LEFT")?.deviceId;
+            const right = roles.find(({ role }) => role === "RIGHT")?.deviceId;
+            const masterDeviceId = text("masterDeviceId");
+            if (
+              roles.length !== 2 ||
+              left === undefined ||
+              right === undefined ||
+              left.toUpperCase() === right.toUpperCase()
+            ) {
+              return Effect.fail(
+                invalid("Expected a LEFT and a RIGHT role on two speakers"),
+              );
+            }
+            const master = masterDeviceId?.toUpperCase();
+            if (
+              master !== left.toUpperCase() &&
+              master !== right.toUpperCase()
+            ) {
+              return Effect.fail(invalid("The master is in neither role"));
+            }
+            return Effect.succeed({
+              name: text("name") ?? "",
+              masterDeviceId: masterDeviceId ?? "",
+              leftDeviceId: left,
+              rightDeviceId: right,
+            });
+          }),
+        );
+      },
+      encode: (group) =>
+        Effect.succeed(
+          [
+            "<group>",
+            `<masterDeviceId>${escapeXml(group.masterDeviceId)}</masterDeviceId>`,
+            `<name>${escapeXml(group.name)}</name>`,
+            "<roles>",
+            `<groupRole><deviceId>${escapeXml(group.leftDeviceId)}</deviceId><role>LEFT</role></groupRole>`,
+            `<groupRole><deviceId>${escapeXml(group.rightDeviceId)}</deviceId><role>RIGHT</role></groupRole>`,
+            "</roles></group>",
+          ].join(""),
+        ),
+    }),
+  ),
+);
+
+/**
+ * The `<group>` document a speaker PUTs to its pair: its own id as
+ * `masterDeviceId`, whichever speaker it is, and the pair's name.
+ */
+export const SpeakerGroupNameXml = speakerXml(
+  "group",
+  { masterDeviceId: OptionalText, name: GroupName },
+  {
+    description:
+      "The pair's name, and the id of the speaker sending it as `masterDeviceId`.",
+    example:
+      '<?xml version="1.0" encoding="UTF-8" ?><group><masterDeviceId>EC1127C25A50</masterDeviceId><name>Living room + Office</name></group>',
+  },
+);
+
 const AccountParams = { accountId: AccountId };
+const GroupParams = { accountId: AccountId, groupId: GroupId };
 const DeviceParams = { accountId: AccountId, deviceId: SpeakerDeviceId };
 
 /**
@@ -338,12 +435,76 @@ export class MargeApi extends HttpApiGroup.make("marge")
     HttpApiEndpoint.get(
       "deviceGroup",
       "/account/:accountId/device/:deviceId/group",
-      { params: DeviceParams, success: boseXml("An empty `<group/>`.") },
+      {
+        params: DeviceParams,
+        success: boseXml(
+          '`<group id="…">` with the stereo pair holding the speaker, or an empty `<group/>`.',
+        ),
+      },
     ).annotateMerge(
       OpenApi.annotations({
         summary: "Get a speaker's group",
         description:
-          "Called by the speaker at boot to look up its stereo pair group. Stereo pairs aren't supported, so every speaker stands alone. Pairs the speaker with the account.",
+          "Called by the speaker at boot to look up its stereo pair. Returns the account's pair holding the speaker (its id, `name`, `masterDeviceId` and LEFT and RIGHT `roles`), or an empty `<group/>`. The answer is authoritative: speakers told `<group/>` drop their pair. Pairs the speaker with the account.",
+      }),
+    ),
+    HttpApiEndpoint.post("createGroup", "/account/:accountId/group", {
+      params: AccountParams,
+      payload: SpeakerGroupXml.pipe(
+        HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
+      ),
+      success: HttpApiSchema.WithHeaders(
+        boseXml('`<group id="…">`: the stored stereo pair.'),
+        {
+          Location: Schema.String.annotate({
+            description: "The URL of the stored pair.",
+          }),
+        },
+      ).pipe(HttpApiSchema.status(201)),
+      error: HttpApiError.BadRequest,
+    }).annotateMerge(
+      OpenApi.annotations({
+        summary: "Create a stereo pair",
+        description:
+          "Called by the master speaker of a new stereo pair (`addGroup` on the speaker), which adopts the returned 7-digit id. Replaces the account's pairs holding either speaker, and pairs both speakers with the account. A body without a `masterDeviceId`, without exactly one LEFT and one RIGHT role on two different speakers, with a master that is neither, or with a `name` over 512 characters gets `400`.",
+      }),
+    ),
+    HttpApiEndpoint.put("updateGroup", "/account/:accountId/group/:groupId", {
+      params: GroupParams,
+      payload: SpeakerGroupNameXml.pipe(
+        HttpApiSchema.asText({ contentType: BOSE_XML_CONTENT_TYPE }),
+      ),
+      success: boseXml('`<group id="…">`: the renamed stereo pair.'),
+      error: [HttpApiError.BadRequest, HttpApiError.NotFound],
+    }).annotateMerge(
+      OpenApi.annotations({
+        summary: "Rename a stereo pair",
+        description:
+          "Called by a speaker of the pair when the pair is renamed, and after power or source changes, with its own id as `masterDeviceId`. Only `name` is taken from the body. A pair the account doesn't have gets `404`; a body without a `name` gets `400`.",
+      }),
+    ),
+    HttpApiEndpoint.delete(
+      "removeGroup",
+      "/account/:accountId/group/:groupId",
+      {
+        params: GroupParams,
+        success: boseXml("`<status>Group deleted successfully</status>`."),
+      },
+    ).annotateMerge(
+      OpenApi.annotations({
+        summary: "Remove a stereo pair",
+        description:
+          "Called by the speaker that was told to leave its pair (`removeGroup` on the speaker). Deletes the pair, if the account has it.",
+      }),
+    ),
+    HttpApiEndpoint.delete("removeGroups", "/account/:accountId/group", {
+      params: AccountParams,
+      success: boseXml("`<status>Group deleted successfully</status>`."),
+    }).annotateMerge(
+      OpenApi.annotations({
+        summary: "Acknowledge removing all stereo pairs",
+        description:
+          "Acknowledged without deleting anything: each speaker deletes its own pair by id.",
       }),
     ),
     HttpApiEndpoint.get(

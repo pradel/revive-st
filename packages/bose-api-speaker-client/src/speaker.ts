@@ -14,9 +14,17 @@ import type {
   Preset,
   AudioMode,
   KeyValue,
+  NewGroup,
   RequestOptions,
+  SpeakerGroup,
 } from "./types/index.ts";
 import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
+
+/** How long `initialize()` waits for `/getGroup`. */
+const GROUP_READ_TIMEOUT_MS = 3000;
+
+/** `/info` types of the SoundTouch 10, the only model that pairs in stereo. */
+const SOUNDTOUCH_10_TYPE = /soundtouch 10\b|\bst10\b/i;
 
 export interface SpeakerOptions {
   ip: string;
@@ -62,6 +70,11 @@ export interface SpeakerState {
   margeAccountUUID?: string;
   /** The Marge server the speaker calls. */
   margeURL?: string;
+  /**
+   * The stereo pair the speaker is in, `null` when unpaired; unset when not
+   * read (only SoundTouch 10s can pair) or the read failed.
+   */
+  group?: SpeakerGroup | null;
 }
 
 export class Speaker {
@@ -117,6 +130,7 @@ export class Speaker {
         dspControls,
         toneControls,
         levelControls,
+        groupRead,
       ] = await Promise.all([
         this.http
           .getNowPlaying()
@@ -154,6 +168,14 @@ export class Speaker {
           .getAudioProductLevelControls()
           .then((res) => (res.isOk() ? res.value : null))
           .catch(() => null),
+        // Only a SoundTouch 10 answers `/getGroup` (other models hang), and
+        // even it is bounded so a stalled speaker can't hold this up.
+        SOUNDTOUCH_10_TYPE.test(this.state.type ?? "")
+          ? this.http
+              .getGroup({ signal: AbortSignal.timeout(GROUP_READ_TIMEOUT_MS) })
+              .then((res) => (res.isOk() ? { group: res.value } : null))
+              .catch(() => null)
+          : null,
       ]);
 
       if (generation !== this.initializeGeneration) {
@@ -197,6 +219,9 @@ export class Speaker {
       }
       if (levelControls) {
         this.state.audioProductLevelControls = levelControls;
+      }
+      if (groupRead) {
+        this.state.group = groupRead.group;
       }
 
       this.emitState();
@@ -436,6 +461,52 @@ export class Speaker {
     return this.http.storePreset(id, contentItem);
   }
 
+  /**
+   * Pairs this speaker (the master, LEFT) with another SoundTouch 10. On
+   * success the created group is in the state.
+   */
+  async addGroup(
+    group: NewGroup,
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+    const result = await this.http.addGroup(group, options);
+    if (result.isOk()) {
+      this.applyGroup(result.value);
+    }
+    return result;
+  }
+
+  /** Rewrites (renames) the pair; send to the master. */
+  async updateGroup(
+    group: NewGroup & { id: string },
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+    const result = await this.http.updateGroup(group, options);
+    if (result.isOk()) {
+      this.applyGroup(result.value);
+    }
+    return result;
+  }
+
+  /** Dissolves the pair this speaker is in (both halves). */
+  async removeGroup(
+    options?: RequestOptions,
+  ): Promise<Result<{ peerUnreachable: boolean }, BoseApiError>> {
+    const result = await this.http.removeGroup(options);
+    if (result.isOk()) {
+      this.applyGroup(null);
+    }
+    return result;
+  }
+
+  /** Sets `state.group` and emits the state when it changed. */
+  private applyGroup(group: SpeakerGroup | null) {
+    if (JSON.stringify(this.state.group) !== JSON.stringify(group)) {
+      this.state.group = group;
+      this.emitState();
+    }
+  }
+
   private handleWSUpdate(update: BoseWSUpdate) {
     let stateChanged = false;
 
@@ -501,6 +572,11 @@ export class Speaker {
         artUrl: undefined,
       };
       stateChanged = true;
+    } else if (update.type === "group") {
+      if (JSON.stringify(this.state.group) !== JSON.stringify(update.group)) {
+        this.state.group = update.group;
+        stateChanged = true;
+      }
     } else if (update.type === "info" || update.type === "sources") {
       this.options.onSettingsChange?.();
     }
