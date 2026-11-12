@@ -49,6 +49,7 @@ function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
     pair,
     pairStatus: pair && live?.group?.status,
     pairRead: live?.group !== undefined,
+    balance: live?.balance,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
