@@ -80,6 +80,23 @@ describe("parseKnownSpeakers", () => {
           // Its master isn't one of its speakers.
           { ...OFFICE, deviceID: "C", pair: { ...pair, masterDeviceID: "Z" } },
           { ...OFFICE, deviceID: "D", pair: "Living room + Office" },
+          // Not one LEFT and one RIGHT speaker.
+          {
+            ...OFFICE,
+            deviceID: "E",
+            pair: { ...pair, roles: [pair.roles[0]] },
+          },
+          {
+            ...OFFICE,
+            deviceID: "F",
+            pair: {
+              ...pair,
+              roles: [
+                pair.roles[0],
+                { deviceID: pair.masterDeviceID, role: "RIGHT" },
+              ],
+            },
+          },
         ]),
       ),
     ).toEqual([
@@ -87,6 +104,8 @@ describe("parseKnownSpeakers", () => {
       { ...OFFICE, deviceID: "B" },
       { ...OFFICE, deviceID: "C" },
       { ...OFFICE, deviceID: "D" },
+      { ...OFFICE, deviceID: "E" },
+      { ...OFFICE, deviceID: "F" },
     ]);
   });
 

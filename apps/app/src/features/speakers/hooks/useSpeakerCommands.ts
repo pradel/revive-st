@@ -85,12 +85,13 @@ async function within<Value>(
 
 /**
  * Dissolves `pair` through its master, or through its partner when the
- * master isn't reached (one request clears both). `peerUnreachable`: the
- * other speaker didn't answer, and leaves the pair once it's back.
+ * master isn't reached (one request clears both). `via`: the speaker it went
+ * through. `peerUnreachable`: the other speaker didn't answer, and leaves the
+ * pair once it's back.
  */
 async function unpair(
   pair: SpeakerPair,
-): Promise<{ peerUnreachable: boolean }> {
+): Promise<{ peerUnreachable: boolean; via: string }> {
   const via = [pair.masterDeviceID, ...partnersOf(pair)].find(
     (deviceID) => speakerRegistry.client(deviceID) !== undefined,
   );
@@ -106,7 +107,7 @@ async function unpair(
   if (result.isErr()) {
     throw result.error;
   }
-  return result.value;
+  return { ...result.value, via };
 }
 
 /** Starts a station and resolves once the speaker plays it. */

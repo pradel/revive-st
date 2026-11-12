@@ -36,6 +36,7 @@ const st10 = (
   radio: ON_OUR_SERVER,
   capabilities: { deviceID, capabilities: [], lrStereoCapable: true },
   margeAccountUUID: ACCOUNT,
+  margeURL: "https://api.revivest.app",
   ...overrides,
 });
 
@@ -95,6 +96,10 @@ describe("pairProblem", () => {
     expect(pairProblem(st10("A", { radio: { kind: "checking" } }), false)).toBe(
       "checking",
     );
+    // The radio last checked for the server the speaker has since left.
+    expect(
+      pairProblem(st10("A", { margeURL: "http://192.168.1.10:3000" }), false),
+    ).toBe("checking");
   });
 });
 

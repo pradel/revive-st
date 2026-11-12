@@ -35,7 +35,11 @@ import {
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
-import { pairSummary, settingsPath } from "@/features/speakers/lib/stereo-pair";
+import {
+  pairSummary,
+  reachedThroughPartner,
+  settingsPath,
+} from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeakers,
@@ -91,7 +95,7 @@ const radioSummary = (radio: RadioStatus): string | undefined => {
 
 export default function Index() {
   const router = useRouter();
-  const { online: speakers, listed: listedSpeakers, scan } = useSpeakers();
+  const { online: speakers, listed: listedSpeakers, all, scan } = useSpeakers();
   const isScanning = scan !== null;
   const {
     volumeMutation,
@@ -555,27 +559,45 @@ export default function Index() {
                 />
                 {offlineExpanded ? (
                   <View style={$cards}>
-                    {offlineSpeakers.map((speaker) => (
-                      <SpeakerRow
-                        key={speaker.deviceID}
-                        name={speaker.name}
-                        detail={[
-                          speakerStateLabel(speaker),
-                          pairSummary(speaker),
-                          "Tap to try again",
-                        ]
-                          .filter(Boolean)
-                          .join(" · ")}
-                        modelDrawing={speakerDrawing(speaker.type)}
-                        accessibilityHint="Tries to reach the speaker again"
-                        onPress={() => {
-                          haptics.tap();
-                          speakerRegistry.retry(speaker.deviceID);
-                        }}
-                        menu={unreachableMenu(speaker)}
-                        selected={speaker.deviceID === highlightedID}
-                      />
-                    ))}
+                    {offlineSpeakers.map((speaker) => {
+                      // Its master is offline, but the pair answers through
+                      // its partner: its settings can still unpair it.
+                      const throughPartner = reachedThroughPartner(
+                        speaker,
+                        all,
+                      );
+                      return (
+                        <SpeakerRow
+                          key={speaker.deviceID}
+                          name={speaker.name}
+                          detail={[
+                            speakerStateLabel(speaker),
+                            pairSummary(speaker),
+                            throughPartner
+                              ? "Tap for its settings"
+                              : "Tap to try again",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          modelDrawing={speakerDrawing(speaker.type)}
+                          accessibilityHint={
+                            throughPartner
+                              ? "Opens the stereo pair's settings"
+                              : "Tries to reach the speaker again"
+                          }
+                          onPress={() => {
+                            haptics.tap();
+                            if (throughPartner) {
+                              router.push(settingsPath(speaker));
+                            } else {
+                              speakerRegistry.retry(speaker.deviceID);
+                            }
+                          }}
+                          menu={unreachableMenu(speaker)}
+                          selected={speaker.deviceID === highlightedID}
+                        />
+                      );
+                    })}
                   </View>
                 ) : null}
               </>

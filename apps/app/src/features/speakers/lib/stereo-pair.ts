@@ -1,7 +1,7 @@
 import type { SpeakerGroup, ZoneResponse } from "bose-api-speaker-client";
 
 import type { BoseSpeaker } from "../registry/types";
-import { isHouseholdAccountId } from "./account-id";
+import { isHouseholdAccountId, isSameOrigin } from "./account-id";
 
 /** A speaker's side in a stereo pair: the master plays the left channel. */
 export type PairRole = "LEFT" | "RIGHT";
@@ -67,7 +67,14 @@ export function parseSpeakerPair(value: unknown): SpeakerPair | undefined {
     }
     parsed.push({ deviceID, role });
   }
-  return parsed.some((role) => role.deviceID === masterDeviceID)
+  // One LEFT and one RIGHT speaker, distinct, the master one of them.
+  const [first, second] = parsed;
+  return parsed.length === 2 &&
+    first !== undefined &&
+    second !== undefined &&
+    first.deviceID !== second.deviceID &&
+    first.role !== second.role &&
+    parsed.some((role) => role.deviceID === masterDeviceID)
     ? { id, name, masterDeviceID, roles: parsed }
     : undefined;
 }
@@ -93,6 +100,24 @@ export const settingsPath = (speaker: {
   pairLedBy(speaker)
     ? (`/speakers/${encodeURIComponent(speaker.deviceID)}/pair` as const)
     : (`/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as const);
+
+/**
+ * Whether the pair `speaker` leads, while `speaker` itself doesn't answer,
+ * can still be reached through a partner (to unpair it, say).
+ */
+export const reachedThroughPartner = (
+  speaker: Pick<BoseSpeaker, "deviceID" | "pair" | "status">,
+  all: readonly Pick<BoseSpeaker, "deviceID" | "status">[],
+): boolean => {
+  const pair = pairLedBy(speaker);
+  return (
+    pair !== undefined &&
+    speaker.status !== "online" &&
+    partnersOf(pair).some((id) =>
+      all.some((other) => other.deviceID === id && other.status === "online"),
+    )
+  );
+};
 
 /**
  * A pair's card in a few words, for the line under its name; nothing for a
@@ -180,6 +205,11 @@ export function pairProblem(
     radio.through !== null
   ) {
     return "otherServer";
+  }
+  // A radio kept from before the speaker moved to another server: its new
+  // one is checked as soon as it reports it.
+  if (!isSameOrigin(speaker.margeURL, radio.margeURL)) {
+    return "checking";
   }
   if (!isHouseholdAccountId(speaker.margeAccountUUID)) {
     return "noAccount";

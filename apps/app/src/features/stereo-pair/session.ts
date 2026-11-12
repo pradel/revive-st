@@ -52,7 +52,7 @@ export interface PairDeps {
       member: PairMember,
       group: NewGroup,
       signal: AbortSignal,
-    ) => Promise<Result<SpeakerGroup | null, BoseApiError>>;
+    ) => Promise<Result<SpeakerGroup, BoseApiError>>;
     removeGroup: (
       member: PairMember,
       signal: AbortSignal,
@@ -217,17 +217,34 @@ export function createPairSession(
       : failed("check", { kind: "serverUnsupported", check });
   };
 
+  /** A pair of only these two speakers, which a new one may replace. */
+  const ofThesePair = (reported: SpeakerGroup) =>
+    reported.roles.every(
+      (role) =>
+        role.deviceId === left.deviceID || role.deviceId === right.deviceID,
+    );
+
   const pair = async (): Promise<PairFailure | undefined> => {
     let added = await addGroup();
     if (added.isErr() && hasErrorValue(added.error, GROUP_ALREADY_EXISTS)) {
-      // A pair our server doesn't know (dropped without telling it, a
-      // factory reset): removing it from either speaker clears both.
+      // A pair of these two our server doesn't know (dropped without telling
+      // it, a factory reset): removing it from either speaker clears both.
+      // A pair with another speaker is kept, and the run fails.
       log.event("pair.stale");
-      for (const member of [left, right]) {
-        const read = await readGroup(member);
-        if (read.isOk() && read.value !== null) {
-          await removeGroup(member);
-        }
+      const reads = await Promise.all([readGroup(left), readGroup(right)]);
+      const stale = [left, right].filter((_member, index) => {
+        const read = reads[index];
+        return read?.isOk() && read.value !== null && ofThesePair(read.value);
+      });
+      const other = reads.some(
+        (read) =>
+          read.isOk() && read.value !== null && !ofThesePair(read.value),
+      );
+      if (other || stale.length === 0) {
+        return failed("pair", { kind: "alreadyPaired" });
+      }
+      for (const member of stale) {
+        await removeGroup(member);
       }
       added = await addGroup();
     }
@@ -265,16 +282,15 @@ export function createPairSession(
         left: master?.status ?? "none",
         right: partner?.status ?? "none",
       });
-      if (formed(master) && formed(partner)) {
+      if (formed(master) && formed(partner) && master.id === partner.id) {
         return { kind: "done", group: master };
       }
     }
-    // What formed is undone, so neither speaker is left half paired.
-    const reporting = [left, right].find(
-      (_member, index) => reports[index] !== null,
-    );
-    const undone =
-      reporting !== undefined && (await removeGroup(reporting)).isOk();
+    // What formed is undone, so neither speaker is left half paired; the
+    // master, which accepted the pair, when neither answered.
+    const reporting =
+      [left, right].find((_member, index) => reports[index] !== null) ?? left;
+    const undone = (await removeGroup(reporting)).isOk();
     return failed("confirm", { kind: "notConfirmed", undone });
   };
 
