@@ -1,8 +1,8 @@
 /**
  * The tools a release drives: the repository's git checkout, its GitHub
- * Releases (`gh`), EAS builds (`eas-cli`) and APK files (`curl`,
- * `apksigner`). The release logic only sees these services, so its tests
- * swap in fakes.
+ * Releases (`gh`), EAS builds (`eas-cli`), APK files (`curl`, `apksigner`)
+ * and Revive ST servers (`fetch`). The release logic only sees these
+ * services, so its tests swap in fakes.
  */
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -10,6 +10,7 @@ import { env } from "node:process";
 
 import {
   Context,
+  Data,
   Effect,
   FileSystem,
   Layer,
@@ -22,7 +23,9 @@ import { CommandFailed, Shell } from "./process.ts";
 
 export const REPO_ROOT = join(import.meta.dirname, "../../..");
 const APP_DIR = join(REPO_ROOT, "apps/app");
+const SERVER_DIR = "src/features/server";
 const EAS_CLI = ["-s", "eas-cli@latest"];
+const SERVER_TIMEOUT = "10 seconds";
 
 export type Platform = "all" | "ios" | "android";
 
@@ -64,6 +67,15 @@ export class Repo extends Context.Service<
     readonly updateMain: Effect.Effect<void, CommandFailed>;
     /** The version in apps/app/package.json. */
     readonly appVersion: Effect.Effect<string>;
+    /**
+     * What the checked-out app needs of the server run for everyone: its
+     * address (`DEFAULT_SERVER_URL`) and the oldest server release the app
+     * works with (`MIN_SERVER_VERSION`).
+     */
+    readonly appServer: Effect.Effect<{
+      readonly url: string;
+      readonly minimum: string;
+    }>;
     /** The commit `tag` points to. */
     readonly tagCommit: (tag: string) => Effect.Effect<string, CommandFailed>;
     /** Checks out `main`, or a tag as a detached head. */
@@ -77,6 +89,24 @@ export class Repo extends Context.Service<
       const fs = yield* FileSystem.FileSystem;
       const git = (args: readonly string[]) =>
         shell.interactive("git", args, { cwd: REPO_ROOT });
+      // Read from the source rather than imported: it's the checked-out tag's.
+      const appConstant = (file: string, name: string) =>
+        fs.readFileString(join(APP_DIR, SERVER_DIR, file)).pipe(
+          Effect.orDie,
+          Effect.flatMap((source) => {
+            const value = new RegExp(
+              `^export const ${name} = "([^"]+)";$`,
+              "mu",
+            ).exec(source)?.[1];
+            return value === undefined
+              ? Effect.die(
+                  new Error(
+                    `No \`export const ${name} = "…";\` in apps/app/${SERVER_DIR}/${file}.`,
+                  ),
+                )
+              : Effect.succeed(value);
+          }),
+        );
       return Repo.of({
         isClean: shell
           .output("git", ["status", "--porcelain"], { cwd: REPO_ROOT })
@@ -92,6 +122,10 @@ export class Repo extends Context.Service<
           ),
           Effect.map(({ version }) => version),
         ),
+        appServer: Effect.all({
+          url: appConstant("server-url.ts", "DEFAULT_SERVER_URL"),
+          minimum: appConstant("server-version.ts", "MIN_SERVER_VERSION"),
+        }),
         tagCommit: (tag) =>
           shell.output("git", ["rev-list", "-n", "1", tag], { cwd: REPO_ROOT }),
         checkout: (ref) =>
@@ -315,6 +349,67 @@ export class Apk extends Context.Service<
           ].map((match) => match[1]);
         }),
       });
+    }),
+  );
+}
+
+/** A server didn't answer, or answered with an error. */
+export class ServerUnreachable extends Data.TaggedError("ServerUnreachable")<{
+  readonly url: string;
+  readonly reason: string;
+}> {
+  override get message() {
+    return `Can't reach ${this.url}: ${this.reason}.`;
+  }
+}
+
+/** Revive ST servers. */
+export class Server extends Context.Service<
+  Server,
+  {
+    /**
+     * The body of the server at `url`'s `GET /`, which a Revive ST server
+     * answers with its name and version; `null` when it isn't JSON.
+     */
+    readonly status: (url: string) => Effect.Effect<unknown, ServerUnreachable>;
+  }
+>()("@revive-st/release/Server") {
+  static readonly layer = Layer.succeed(
+    Server,
+    Server.of({
+      status: (url) =>
+        Effect.tryPromise({
+          try: async (signal) => {
+            const response = await fetch(new URL("/", url), {
+              headers: { accept: "application/json" },
+              signal,
+            });
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json().catch(() => null);
+          },
+          catch: (error) => {
+            // `fetch` hides a DNS or connection error in its cause.
+            const cause =
+              error instanceof Error ? (error.cause ?? error) : error;
+            return new ServerUnreachable({
+              url,
+              reason: cause instanceof Error ? cause.message : String(cause),
+            });
+          },
+        }).pipe(
+          Effect.timeoutOrElse({
+            duration: SERVER_TIMEOUT,
+            orElse: () =>
+              Effect.fail(
+                new ServerUnreachable({
+                  url,
+                  reason: `no answer in ${SERVER_TIMEOUT}`,
+                }),
+              ),
+          }),
+        ),
     }),
   );
 }

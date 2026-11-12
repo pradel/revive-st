@@ -15,6 +15,7 @@ import {
   type GitHubRelease,
   type Platform,
   Repo,
+  Server,
 } from "./tools.ts";
 
 /**
@@ -26,6 +27,8 @@ export const APP_SIGNING_CERT_SHA256 =
   "338f03c556575ca1dc01abd9d2852bed86cc1ec388c15bf097e378fdd3272212";
 export const APK_PROFILE = "apk";
 export const STORE_PROFILE = "production";
+/** What a Revive ST server's `GET /` names itself (`SERVER_NAME` in `apps/api`). */
+export const REVIVE_SERVER_NAME = "Revive ST API";
 
 export class DirtyWorkingTree extends Data.TaggedError("DirtyWorkingTree") {
   override readonly message =
@@ -72,6 +75,99 @@ export class StoreBuildExists extends Data.TaggedError("StoreBuildExists")<{
   }
 }
 
+/** What the hosted server turned out to be, when it's not one the app works with. */
+type HostedServer =
+  | { readonly kind: "unreachable"; readonly reason: string }
+  | { readonly kind: "notRevive" }
+  /** `version` is `null` when the server didn't report one. */
+  | { readonly kind: "tooOld"; readonly version: string | null };
+
+export class ServerNotReady extends Data.TaggedError("ServerNotReady")<{
+  readonly url: string;
+  readonly minimum: string;
+  readonly found: HostedServer;
+}> {
+  override get message() {
+    const { found } = this;
+    const what =
+      found.kind === "unreachable"
+        ? `can't be reached (${found.reason})`
+        : found.kind === "notRevive"
+          ? "isn't a Revive ST server"
+          : found.version === null
+            ? "runs a release that doesn't report its version"
+            : `runs ${found.version}`;
+    return (
+      `This app version needs Revive ST ${this.minimum} or newer on ${this.url}, which ${what}. ` +
+      "Shipping it would break setup for every user: deploy the API release first (merge its version PR and let Railway redeploy), then run this again."
+    );
+  }
+}
+
+const RELEASE = /^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
+
+/**
+ * Whether `version` is `minimum` or newer, by semver precedence: a prerelease
+ * comes before its release. The same rule as `isAtLeast` in apps/app's
+ * server-version.ts, which decides whether the app accepts a server.
+ */
+function isAtLeast(version: string, minimum: string): boolean {
+  const have = RELEASE.exec(version);
+  const need = RELEASE.exec(minimum);
+  if (!have || !need) {
+    return false;
+  }
+  for (let part = 1; part <= 3; part++) {
+    const difference = Number(have[part]) - Number(need[part]);
+    if (difference !== 0) {
+      return difference > 0;
+    }
+  }
+  return have[4] === undefined;
+}
+
+/**
+ * Fails unless the server the checked-out app defaults to runs the oldest
+ * release it works with, or newer: the app and its server are released
+ * separately, and the app refuses an older server.
+ */
+const requireHostedServer = Effect.gen(function* () {
+  const repo = yield* Repo;
+  const server = yield* Server;
+  const { url, minimum } = yield* repo.appServer;
+  yield* Console.log(`🌐 Checking that ${url} runs Revive ST ${minimum}+...`);
+  const status = yield* server.status(url).pipe(
+    Effect.catchTag("ServerUnreachable", ({ reason }) =>
+      Effect.fail(
+        new ServerNotReady({
+          url,
+          minimum,
+          found: { kind: "unreachable", reason },
+        }),
+      ),
+    ),
+  );
+  const { name, version }: Record<string, unknown> =
+    typeof status === "object" && status !== null ? { ...status } : {};
+  if (name !== REVIVE_SERVER_NAME) {
+    return yield* new ServerNotReady({
+      url,
+      minimum,
+      found: { kind: "notRevive" },
+    });
+  }
+  if (typeof version !== "string" || !isAtLeast(version, minimum)) {
+    return yield* new ServerNotReady({
+      url,
+      minimum,
+      found: {
+        kind: "tooOld",
+        version: typeof version === "string" ? version : null,
+      },
+    });
+  }
+});
+
 interface Released {
   readonly version: string;
   readonly tag: string;
@@ -110,8 +206,9 @@ const onReleasedTag = <Shipped, Failure, Requirements>(
 /**
  * Attaches the released version's APK to its GitHub Release, built on EAS
  * unless a finished build of the tag can still be downloaded. Does nothing if
- * the release already has an APK, and never attaches one signed with another
- * key than the app's.
+ * the release already has an APK, never attaches one signed with another key
+ * than the app's, and refuses to ship while the hosted server is older than
+ * the app needs.
  */
 export const releaseApk = onReleasedTag(
   Effect.fn("releaseApk")(function* ({ version, tag, commit, release }) {
@@ -128,6 +225,7 @@ export const releaseApk = onReleasedTag(
       );
       return;
     }
+    yield* requireHostedServer;
 
     const now = yield* Clock.currentTimeMillis;
     const reusable = (yield* eas.finishedBuilds({
@@ -175,7 +273,8 @@ export const releaseApk = onReleasedTag(
 
 /**
  * Builds the released version for the stores, unless it already has a
- * finished store build for `platform`.
+ * finished store build for `platform` or the hosted server is older than the
+ * app needs.
  */
 export const releaseStore = (options: {
   readonly platform: Platform;
@@ -195,6 +294,7 @@ export const releaseStore = (options: {
           platform: options.platform,
         });
       }
+      yield* requireHostedServer;
       yield* Console.log(`🚀 Building ${version} for the stores...`);
       yield* eas.storeBuild({ ...options, profile: STORE_PROFILE });
       yield* Console.log("🎉 Build finished.");
