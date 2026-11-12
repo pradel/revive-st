@@ -169,6 +169,11 @@ export default function SpeakerSettings() {
     pair !== undefined &&
     pair.masterDeviceID !== speaker.deviceID &&
     (pairMaster === undefined || pairLedBy(pairMaster)?.id !== pair.id);
+  /** The pair this speaker is the partner in, whose presets its buttons play. */
+  const partnerPair =
+    pair !== undefined && pair.masterDeviceID !== speaker.deviceID && !stalePair
+      ? pair
+      : undefined;
 
   const leavePair = () => {
     Alert.alert(
@@ -420,7 +425,20 @@ export default function SpeakerSettings() {
         ) : null}
 
         <FormSection title="Presets">
-          {speaker.presets ? (
+          {partnerPair ? (
+            // Its preset buttons play the master's presets (measured), so
+            // its own list doesn't matter while it's paired.
+            <FormLinkRow
+              icon={formIcons.speaker}
+              label={`${pairMaster?.speakerName ?? "The left speaker"}'s presets`}
+              description={`${speaker.speakerName}'s preset buttons play them`}
+              onPress={() => {
+                router.push(
+                  `/speakers/${encodeURIComponent(partnerPair.masterDeviceID)}/settings`,
+                );
+              }}
+            />
+          ) : speaker.presets ? (
             <RNHostView
               matchContents={{ vertical: true }}
               onLayout={(event) => {
@@ -438,8 +456,9 @@ export default function SpeakerSettings() {
           )}
           <FieldGroup.SectionFooter>
             <FormFooterText>
-              To save a preset, play something, then press and hold a preset
-              button on the speaker or remote until it beeps.
+              {partnerPair
+                ? `In ${partnerPair.name}, both speakers play the left speaker's presets.`
+                : "To save a preset, play something, then press and hold a preset button on the speaker or remote until it beeps."}
             </FormFooterText>
           </FieldGroup.SectionFooter>
         </FormSection>
