@@ -11,6 +11,7 @@ export type { KeyPressRequest } from "./key.ts";
 export type { SelectSourceRequest } from "./select.ts";
 export type { SourceItem, SourcesResponse } from "./sources.ts";
 export type { BassCapabilitiesResponse, BassResponse } from "./bass.ts";
+export type { BalanceResponse } from "./balance.ts";
 export type { SetZoneRequest, ZoneMember, ZoneResponse } from "./zone.ts";
 export type {
   GroupMember,

@@ -48,6 +48,7 @@ Each method returns `Promise<Result<T, BoseApiError>>` where `BoseApiError` is a
 | `addGroup(group)`                      | `/addGroup`                  | POST |
 | `updateGroup(group)`                   | `/updateGroup`               | POST |
 | `removeGroup()`                        | `/removeGroup`               | GET  |
+| `getBalance()`                         | `/balance`                   | GET  |
 | `getNowPlaying()`                      | `/nowPlaying`                | GET  |
 | `getTrackInfo()`                       | `/trackInfo`                 | GET  |
 | `getVolume()`                          | `/volume`                    | GET  |
@@ -64,6 +65,8 @@ Each method returns `Promise<Result<T, BoseApiError>>` where `BoseApiError` is a
 | `setAudioProductLevelControls(params)` | `/audioproductlevelcontrols` | POST |
 
 The `*Group` methods manage a SoundTouch 10 stereo pair (a firmware group, distinct from a multiroom zone); only call them on a SoundTouch 10, other models never answer `/getGroup`. Send `addGroup` and `updateGroup` to the master (LEFT) only; the partner follows. `removeGroup` on either speaker dissolves the pair. `getGroup` resolves to `null` when the speaker is not paired; `addGroup` on a paired speaker fails with an `ApiError` GROUP_ALREADY_EXISTS_ERROR (5510).
+
+`getBalance()` reads a stereo pair's left/right balance (negative is left) and the range the speaker allows (`balanceMin`..`balanceMax`, -7..7 on firmware 27); `balanceAvailable` is false on a speaker that isn't paired. Only call it on a SoundTouch 10, with a `signal` to bound it: the speaker doesn't answer while in deep standby. Setting it over HTTP (`POST /balance`) never answers; `Speaker.setBalance(value)` sends it over the WebSocket instead (see below).
 
 Default port is `8090`. Override with `boseSpeakerClient({ ip: "...", port: 8091 })`.
 
@@ -131,6 +134,26 @@ wsClient.connect();
 wsClient.close();
 ```
 
+### Requests
+
+The socket also carries requests, as the speaker's own app sends them; some settings can only be written this way. `request(request, parse)` sends one and resolves with `parse` applied to the `<body>` of the reply that echoes its requestID: an `ApiError` when the speaker refuses it, an `XmlParseError` when `parse` throws, a `NetworkError` when the socket isn't open, closes first, or no reply comes within `timeoutMs` (5 s by default).
+
+```ts
+import { parseBalanceNode } from "bose-api-speaker-client";
+
+// Centre a stereo pair's balance (send it to the master); the reply carries
+// the balance applied, which `/balance` only reports a moment later.
+const applied = await wsClient.request(
+  {
+    url: "balance",
+    method: "POST",
+    mainNode: "balanceSet",
+    body: "<balance><targetBalance>0</targetBalance></balance>",
+  },
+  parseBalanceNode,
+);
+```
+
 ### Event Types
 
 The `onUpdate` callback yields a `BoseWSUpdate` object representing the parsed event:
@@ -142,6 +165,7 @@ The `onUpdate` callback yields a `BoseWSUpdate` object representing the parsed e
 - `"presets"`: Fired when preset definitions are changed.
 - `"zone"`: Multi-room zone updates.
 - `"group"`: Stereo pair changes (`groupUpdated`); `group` is `null` once the pair is dissolved.
+- `"balance"`: A stereo pair's balance changed (`balanceUpdated`); read it again with `getBalance()`.
 - `"nameUpdated"`: Speaker name change updates.
 - `"connectionState"`: Network state (Wi-Fi connectivity status and signal level).
 - `"info"`: Device info status changes.

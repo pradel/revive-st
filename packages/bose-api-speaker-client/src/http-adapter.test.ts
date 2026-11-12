@@ -1106,5 +1106,35 @@ describe("boseSpeakerClient", () => {
         peerUnreachable: true,
       });
     });
+
+    it("reads the pair's balance from /balance", async () => {
+      const fetchMock = mockFetch(
+        200,
+        '<?xml version="1.0" encoding="UTF-8" ?><balance deviceID="0CAE7D6298E9"><balanceAvailable>true</balanceAvailable><balanceMin>-7</balanceMin><balanceMax>7</balanceMax><balanceDefault>0</balanceDefault><targetBalance>-3</targetBalance><actualBalance>-2</actualBalance></balance>',
+      );
+      expect(unwrapOk(await client.getBalance())).toEqual({
+        deviceID: "0CAE7D6298E9",
+        balanceAvailable: true,
+        balanceMin: -7,
+        balanceMax: 7,
+        balanceDefault: 0,
+        targetBalance: -3,
+        actualBalance: -2,
+      });
+      expect(fetchMock).toHaveBeenCalledWith(
+        `${BASE}/balance`,
+        expect.objectContaining({ method: "GET" }),
+      );
+    });
+
+    it("rejects a /balance reply without its range", async () => {
+      mockFetch(
+        200,
+        '<balance deviceID="0CAE7D6298E9"><balanceAvailable>false</balanceAvailable></balance>',
+      );
+      expect(unwrapErr(await client.getBalance())).toBeInstanceOf(
+        XmlParseError,
+      );
+    });
   });
 });

@@ -1,4 +1,11 @@
-import { parseGroupNode } from "./http-adapter.ts";
+import { Err, Ok, type Result } from "better-result";
+
+import { type BoseApiError, NetworkError, XmlParseError } from "./errors.ts";
+import {
+  escapeXml,
+  parseGroupNode,
+  tryParseApiErrorsFromNode,
+} from "./http-adapter.ts";
 import type { SpeakerGroup } from "./types/index.ts";
 import {
   decodeXmlEntities,
@@ -7,6 +14,7 @@ import {
   parseBool,
   parseIntSafe,
   parseXml,
+  type XmlNode,
 } from "./xml-parser.ts";
 
 export interface BoseNowPlaying {
@@ -99,6 +107,11 @@ export type BoseWSUpdate =
       type: "group";
       deviceID: string;
       group: SpeakerGroup | null;
+    }
+  | {
+      /** The pair's balance changed (`balanceUpdated`); read `/balance`. */
+      type: "balance";
+      deviceID: string;
     }
   | {
       type: "info";
@@ -269,6 +282,10 @@ export function parseWebSocketMessage(xml: string): BoseWSUpdate | null {
     };
   }
 
+  if (xml.includes("<balanceUpdated")) {
+    return { type: "balance", deviceID };
+  }
+
   if (xml.includes("<volumeUpdated") || xml.includes("<volume>")) {
     const volumeBlock = /<volume[\s\S]*?<\/volume>/.exec(xml);
     if (volumeBlock) {
@@ -368,6 +385,38 @@ export interface BoseWebSocketClientOptions {
   onError?: (error: unknown) => void;
 }
 
+/**
+ * A request sent over the socket, as the speaker's own app does; some
+ * settings can only be written this way (the balance: `POST /balance` never
+ * answers).
+ */
+export interface BoseWSRequest {
+  /** The endpoint, without its leading slash: `"balance"`. */
+  url: string;
+  method: "GET" | "POST";
+  /** `<info mainNode>`, which some writes need (`"balanceSet"`). */
+  mainNode?: string;
+  /** XML to put in `<body>`. */
+  body?: string;
+  /** How long to wait for the reply; default 5 s. */
+  timeoutMs?: number;
+}
+
+/** The speaker normally replies within 100 ms. */
+const REQUEST_TIMEOUT_MS = 5000;
+
+/** `WebSocket.OPEN`; the global's static isn't read, since it can be replaced. */
+const OPEN = 1;
+
+/** A `<msg>` frame: a reply to a request, or a request of the speaker's own. */
+const MSG_FRAME = /^\s*(?:<\?xml[^>]*\?>\s*)?<msg[\s>]/;
+
+/** A reply's `<body>`, and the frame it came in. */
+interface WSReply {
+  body: XmlNode;
+  raw: string;
+}
+
 export class BoseWebSocketClient {
   private ws: WebSocket | null = null;
   private readonly options: BoseWebSocketClientOptions;
@@ -376,6 +425,12 @@ export class BoseWebSocketClient {
   private reconnectAttempts = 0;
   // 22 attempts ~ 5 minutes total
   private readonly maxReconnectAttempts = 22;
+  private lastRequestID = 0;
+  /** Settles each request awaiting its reply, by requestID. */
+  private readonly pendingRequests = new Map<
+    string,
+    (result: Result<WSReply, BoseApiError>) => void
+  >();
 
   constructor(options: BoseWebSocketClientOptions) {
     this.options = options;
@@ -391,6 +446,132 @@ export class BoseWebSocketClient {
       this.reconnectAttempts = 0;
       // Force connection reset to connect to new host IP
       this.connect();
+    }
+  }
+
+  /**
+   * Sends `request` and resolves with `parse` applied to its reply's
+   * `<body>` (empty when the reply has none): an ApiError when the speaker
+   * refused it, an XmlParseError when `parse` throws, a NetworkError when the
+   * socket isn't open, closes first, or no reply comes in time.
+   * Notifications keep going to `onUpdate` meanwhile.
+   */
+  async request<TParsed>(
+    request: BoseWSRequest,
+    parse: (body: XmlNode) => TParsed,
+  ): Promise<Result<TParsed, BoseApiError>> {
+    const ws = this.ws;
+    if (ws === null || ws.readyState !== OPEN) {
+      return new Err(
+        new NetworkError({
+          message: `The WebSocket to ${this.options.deviceID} isn't open`,
+        }),
+      );
+    }
+
+    this.lastRequestID += 1;
+    const requestID = String(this.lastRequestID);
+    const info =
+      request.mainNode === undefined
+        ? `<info type="new"/>`
+        : `<info mainNode="${escapeXml(request.mainNode)}" type="new"/>`;
+    const frame = `<msg><header deviceID="${escapeXml(this.options.deviceID)}" url="${escapeXml(request.url)}" method="${request.method}"><request requestID="${requestID}">${info}</request></header><body>${request.body ?? ""}</body></msg>`;
+
+    const reply = await new Promise<Result<WSReply, BoseApiError>>(
+      (resolve) => {
+        const timeout = setTimeout(() => {
+          settle(
+            new Err(
+              new NetworkError({
+                message: `${this.options.deviceID} didn't reply to ${request.method} ${request.url}`,
+              }),
+            ),
+          );
+        }, request.timeoutMs ?? REQUEST_TIMEOUT_MS);
+        const settle = (result: Result<WSReply, BoseApiError>) => {
+          clearTimeout(timeout);
+          this.pendingRequests.delete(requestID);
+          resolve(result);
+        };
+        this.pendingRequests.set(requestID, settle);
+
+        try {
+          ws.send(frame);
+        } catch (error) {
+          settle(
+            new Err(
+              new NetworkError({
+                message: error instanceof Error ? error.message : String(error),
+                cause: error,
+              }),
+            ),
+          );
+        }
+      },
+    );
+    if (reply.isErr()) {
+      return new Err(reply.error);
+    }
+    try {
+      return new Ok(parse(reply.value.body));
+    } catch (shapeError) {
+      return new Err(
+        new XmlParseError({
+          message:
+            shapeError instanceof Error
+              ? shapeError.message
+              : String(shapeError),
+          rawXml: reply.value.raw,
+        }),
+      );
+    }
+  }
+
+  /**
+   * Settles the request `data` replies to; false for any other frame. A
+   * reply echoes its request's requestID with `msgType="RESPONSE"`.
+   */
+  private settleReply(data: string): boolean {
+    if (!MSG_FRAME.test(data)) {
+      return false;
+    }
+    let msg: XmlNode;
+    try {
+      msg = parseXml(data);
+    } catch {
+      return false;
+    }
+    const header = getChild(msg, "header");
+    const request = header && getChild(header, "request");
+    if (request?.attributes.msgType !== "RESPONSE") {
+      return false;
+    }
+    const settle = this.pendingRequests.get(request.attributes.requestID ?? "");
+    if (!settle) {
+      // A late reply, to a request that already timed out.
+      return true;
+    }
+    const body = getChild(msg, "body") ?? {
+      name: "body",
+      attributes: {},
+      children: [],
+      text: "",
+    };
+    const refused = tryParseApiErrorsFromNode(body, data);
+    settle(refused ? new Err(refused) : new Ok({ body, raw: data }));
+    return true;
+  }
+
+  /** The socket closed: no request on it can get its reply. */
+  private failPendingRequests() {
+    for (const settle of [...this.pendingRequests.values()]) {
+      settle(
+        new Err(
+          new NetworkError({
+            message: `The WebSocket to ${this.options.deviceID} closed`,
+          }),
+        ),
+      );
     }
   }
 
@@ -421,6 +602,9 @@ export class BoseWebSocketClient {
       this.ws.onmessage = (event) => {
         const data: unknown = event.data;
         if (typeof data === "string") {
+          if (this.settleReply(data)) {
+            return;
+          }
           try {
             const update = parseWebSocketMessage(data);
             if (update) {
@@ -455,6 +639,7 @@ export class BoseWebSocketClient {
         console.log(
           `[BoseWebSocketClient] Connection closed for ${this.options.deviceID} (code: ${event.code})`,
         );
+        this.failPendingRequests();
         if (!this.isClosedIntentional) {
           if (this.options.onDisconnect) {
             this.options.onDisconnect();
@@ -500,6 +685,7 @@ export class BoseWebSocketClient {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
     }
+    this.failPendingRequests();
     if (this.ws) {
       this.ws.onopen = null;
       this.ws.onmessage = null;

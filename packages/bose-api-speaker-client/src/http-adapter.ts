@@ -18,6 +18,7 @@ import type {
   AudioDspControlsResponse,
   AudioProductLevelControlsResponse,
   AudioProductToneControlsResponse,
+  BalanceResponse,
   BassCapabilitiesResponse,
   BassResponse,
   CapabilitiesResponse,
@@ -466,6 +467,18 @@ export class BoseHttpAdapter {
     );
   }
 
+  /**
+   * The stereo pair's balance; `balanceAvailable` is false while the speaker
+   * isn't paired. Only call it on a SoundTouch 10, and bound it with a
+   * `signal`: the speaker doesn't answer while in deep standby. It's set over
+   * the WebSocket (`Speaker.setBalance`): `POST /balance` never answers.
+   */
+  async getBalance(
+    options?: RequestOptions,
+  ): Promise<Result<BalanceResponse, BoseApiError>> {
+    return this.get("/balance", parseBalanceNode, options);
+  }
+
   // The reply is held back while the speaker tries to join the network
   // (`timeout="30"` is the join timeout in seconds): OK once it joined, or an
   // ApiError WIFI_PROFILE_SETUP_FAILED (value 1035) when it could not, e.g.
@@ -844,6 +857,31 @@ export class BoseHttpAdapter {
   }
 }
 
+/** A `<balance>` as `/balance` and the reply to a balance write carry it. */
+export function parseBalanceNode(root: XmlNode): BalanceResponse {
+  const node = root.name === "balance" ? root : getChild(root, "balance");
+  if (!node) {
+    throw new Error("Missing <balance> element");
+  }
+  const int = (name: string) => {
+    const value = getChildText(node, name);
+    if (value === undefined) {
+      throw new Error(`Missing <${name}> element`);
+    }
+    return parseIntSafe(value);
+  };
+  return {
+    deviceID: node.attributes.deviceID ?? "",
+    balanceAvailable: parseBool(
+      getChildText(node, "balanceAvailable") ?? "false",
+    ),
+    balanceMin: int("balanceMin"),
+    balanceMax: int("balanceMax"),
+    balanceDefault: int("balanceDefault"),
+    targetBalance: int("targetBalance"),
+    actualBalance: int("actualBalance"),
+  };
+}
 /**
  * A `<group>` as `/getGroup`, `/addGroup`, `/updateGroup` and the
  * `groupUpdated` notification carry it; `null` for `<group />` or any group
@@ -989,7 +1027,7 @@ function tryParseApiErrors(body: string, requestXml?: string): ApiError | null {
   }
 }
 
-function tryParseApiErrorsFromNode(
+export function tryParseApiErrorsFromNode(
   root: XmlNode,
   rawXml: string,
   requestXml?: string,
