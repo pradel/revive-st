@@ -108,12 +108,15 @@ export default function PairSettings() {
     unpairMutation.mutate(
       { pair },
       {
-        onSuccess: ({ peerUnreachable }) => {
+        onSuccess: ({ peerUnreachable, via }) => {
           haptics.success();
           if (peerUnreachable) {
+            // The speaker the request didn't go through: the partner, or the
+            // master when it went through the partner.
+            const missing = sides.find((side) => side.deviceID !== via);
             Alert.alert(
               "Unpaired",
-              `${partnerName} didn't answer. It leaves the pair once it's back online.`,
+              `${missing?.speaker?.speakerName ?? "The other speaker"} didn't answer. It leaves the pair once it's back online.`,
             );
           }
           router.back();

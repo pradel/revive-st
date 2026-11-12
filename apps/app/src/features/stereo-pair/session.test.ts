@@ -167,6 +167,31 @@ describe("pairing session", () => {
     ]);
   });
 
+  it("keeps a pair one speaker has with another speaker (5510), and fails", async () => {
+    const world = new FakePairWorld();
+    const other = reported(
+      {
+        name: "Office + Kitchen",
+        masterDeviceId: RIGHT.deviceID,
+        roles: [
+          { deviceId: RIGHT.deviceID, role: "LEFT", ipAddress: RIGHT.host },
+          { deviceId: "A0F6FD000001", role: "RIGHT", ipAddress: "192.0.2.3" },
+        ],
+      },
+      "2222222",
+    );
+    world.groups.set(RIGHT.deviceID, other);
+    world.addFailures = [apiError(GROUP_ALREADY_EXISTS)];
+
+    expect(await pair(world)).toEqual({
+      kind: "failed",
+      step: "pair",
+      error: { kind: "alreadyPaired" },
+    });
+    expect(world.calls).not.toContain("removeGroup Office");
+    expect(world.groups.get(RIGHT.deviceID)).toBe(other);
+  });
+
   it("gives up after one retry when the speakers still report a pair", async () => {
     const world = new FakePairWorld();
     world.addFailures = [

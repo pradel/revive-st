@@ -96,44 +96,50 @@ export class GroupsRepo extends Context.Service<
         const left = upper(group.leftDeviceId);
         const right = upper(group.rightDeviceId);
         const members = [left, right];
-        yield* db
-          .delete(groupsTable)
-          .where(
-            and(
-              eq(groupsTable.accountId, accountId),
-              or(
-                inArray(groupsTable.leftDeviceId, members),
-                inArray(groupsTable.rightDeviceId, members),
-              ),
-            ),
-          );
         const createdOn = DateTime.toEpochMillis(yield* DateTime.now);
-        // Ids are global; draw again on the rare collision.
-        while (true) {
-          const id = String(randomInt(1_000_000, 10_000_000)) as GroupId;
-          const inserted = yield* db
-            .insert(groupsTable)
-            .values({
-              id,
-              accountId,
-              name: group.name,
-              masterDeviceId: upper(group.masterDeviceId),
-              leftDeviceId: left,
-              rightDeviceId: right,
-              createdOn,
-            })
-            .onConflictDoNothing()
-            .returning({ id: groupsTable.id });
-          if (inserted.length > 0) {
-            return {
-              id,
-              name: group.name,
-              masterDeviceId: upper(group.masterDeviceId),
-              leftDeviceId: left,
-              rightDeviceId: right,
-            } satisfies StoredGroup;
-          }
-        }
+        // One transaction: a failed insert keeps the replaced pairs, and two
+        // pairs created at once for a shared speaker can't both stay.
+        return yield* db.transaction((tx) =>
+          Effect.gen(function* () {
+            yield* tx
+              .delete(groupsTable)
+              .where(
+                and(
+                  eq(groupsTable.accountId, accountId),
+                  or(
+                    inArray(groupsTable.leftDeviceId, members),
+                    inArray(groupsTable.rightDeviceId, members),
+                  ),
+                ),
+              );
+            // Ids are global; draw again on the rare collision.
+            while (true) {
+              const id = String(randomInt(1_000_000, 10_000_000)) as GroupId;
+              const inserted = yield* tx
+                .insert(groupsTable)
+                .values({
+                  id,
+                  accountId,
+                  name: group.name,
+                  masterDeviceId: upper(group.masterDeviceId),
+                  leftDeviceId: left,
+                  rightDeviceId: right,
+                  createdOn,
+                })
+                .onConflictDoNothing()
+                .returning({ id: groupsTable.id });
+              if (inserted.length > 0) {
+                return {
+                  id,
+                  name: group.name,
+                  masterDeviceId: upper(group.masterDeviceId),
+                  leftDeviceId: left,
+                  rightDeviceId: right,
+                } satisfies StoredGroup;
+              }
+            }
+          }),
+        );
       }, Effect.orDie);
 
       const findByDevice = Effect.fn("GroupsRepo.findByDevice")(function* (

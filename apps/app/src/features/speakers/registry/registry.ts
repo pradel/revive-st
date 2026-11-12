@@ -146,11 +146,20 @@ export function createSpeakerRegistry(
           a.name.localeCompare(b.name) || a.deviceID.localeCompare(b.deviceID),
       );
     // A pair is listed once, as its master, also while the master is
-    // connecting or offline.
+    // connecting or offline. A reached partner that reports no pair, or
+    // another one, is listed on its own.
+    const byID = new Map(all.map((speaker) => [speaker.deviceID, speaker]));
     const partners = new Set(
       all.flatMap((speaker) => {
         const pair = pairLedBy(speaker);
-        return pair ? partnersOf(pair) : [];
+        return pair
+          ? partnersOf(pair).filter((id) => {
+              const partner = byID.get(id);
+              return (
+                partner?.status !== "online" || partner.pair?.id === pair.id
+              );
+            })
+          : [];
       }),
     );
     const listed = all.filter((speaker) => !partners.has(speaker.deviceID));
@@ -250,17 +259,36 @@ export function createSpeakerRegistry(
     syncPresets(deviceID, state);
     const record = records.get(deviceID);
     if (record) {
+      // Unread (another model, or `/getGroup` didn't answer): the
+      // remembered pair stands.
+      const pair =
+        state.group === undefined
+          ? record.pair
+          : state.group
+            ? pairFromGroup(state.group)
+            : undefined;
       update(deviceID, {
         status: "online",
         live: state,
         name: filled(state.name, record.name),
         type: filled(state.type, record.type),
-        // Unread (another model, or `/getGroup` didn't answer): the
-        // remembered pair stands.
-        ...(state.group === undefined
-          ? {}
-          : { pair: state.group ? pairFromGroup(state.group) : undefined }),
+        pair,
       });
+      // It left the pair (or is in another): the other speaker, while it
+      // can't say so itself, no longer remembers that pair either.
+      const former = record.pair;
+      if (former !== undefined && pair?.id !== former.id) {
+        for (const { deviceID: other } of former.roles) {
+          const otherRecord = records.get(other);
+          if (
+            other !== deviceID &&
+            otherRecord?.status !== "online" &&
+            otherRecord?.pair?.id === former.id
+          ) {
+            update(other, { pair: undefined });
+          }
+        }
+      }
     }
     // A speaker set up for another server reports its new address; the
     // radio checked for the old one no longer holds.

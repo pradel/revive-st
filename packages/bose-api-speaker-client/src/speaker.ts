@@ -84,6 +84,11 @@ export class Speaker {
   public readonly options: SpeakerOptions;
   /** Bumped by each `initialize()`; only the latest call may apply its reads. */
   private initializeGeneration = 0;
+  /**
+   * Bumped whenever the group changes outside `initialize()`: a `/getGroup`
+   * read started before then is stale.
+   */
+  private groupChanges = 0;
 
   constructor(options: SpeakerOptions) {
     this.options = options;
@@ -119,6 +124,7 @@ export class Speaker {
       this.state.margeURL = info.margeURL;
     }
 
+    const groupChangesBefore = this.groupChanges;
     try {
       const [
         nowPlaying,
@@ -220,7 +226,9 @@ export class Speaker {
       if (levelControls) {
         this.state.audioProductLevelControls = levelControls;
       }
-      if (groupRead) {
+      // A group change seen while `/getGroup` ran (a `groupUpdated`, a pair
+      // made or undone here) is newer than what it read.
+      if (groupRead && this.groupChanges === groupChangesBefore) {
         this.state.group = groupRead.group;
       }
 
@@ -468,7 +476,7 @@ export class Speaker {
   async addGroup(
     group: NewGroup,
     options?: RequestOptions,
-  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
     const result = await this.http.addGroup(group, options);
     if (result.isOk()) {
       this.applyGroup(result.value);
@@ -480,7 +488,7 @@ export class Speaker {
   async updateGroup(
     group: NewGroup & { id: string },
     options?: RequestOptions,
-  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
     const result = await this.http.updateGroup(group, options);
     if (result.isOk()) {
       this.applyGroup(result.value);
@@ -501,6 +509,7 @@ export class Speaker {
 
   /** Sets `state.group` and emits the state when it changed. */
   private applyGroup(group: SpeakerGroup | null) {
+    this.groupChanges += 1;
     if (JSON.stringify(this.state.group) !== JSON.stringify(group)) {
       this.state.group = group;
       this.emitState();
@@ -573,6 +582,7 @@ export class Speaker {
       };
       stateChanged = true;
     } else if (update.type === "group") {
+      this.groupChanges += 1;
       if (JSON.stringify(this.state.group) !== JSON.stringify(update.group)) {
         this.state.group = update.group;
         stateChanged = true;

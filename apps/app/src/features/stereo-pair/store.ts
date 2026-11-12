@@ -37,13 +37,22 @@ function subscribe(listener: () => void): () => void {
 
 /**
  * Starts pairing `target` from `deviceID`'s screen, replacing a finished or
- * failed run there. A run still working is kept.
+ * failed run there. A run still working is kept, and so is any other working
+ * run either speaker is in: then nothing starts. Whether it started.
  */
-export function startPairing(deviceID: string, target: PairTarget): void {
-  const existing = runs.get(deviceID);
-  if (existing?.session.getView().kind === "working") {
-    return;
+export function startPairing(deviceID: string, target: PairTarget): boolean {
+  const members = [target.left.deviceID, target.right.deviceID];
+  const busy = [...runs.values()].some(
+    (run) =>
+      run.session.getView().kind === "working" &&
+      [run.target.left.deviceID, run.target.right.deviceID].some((id) =>
+        members.includes(id),
+      ),
+  );
+  if (busy) {
+    return false;
   }
+  const existing = runs.get(deviceID);
   void existing?.session.cancel();
   const session = createPairSession(createPairDeps(), target);
   runs.set(deviceID, { session, target });
@@ -57,6 +66,7 @@ export function startPairing(deviceID: string, target: PairTarget): void {
   });
   session.start();
   notify();
+  return true;
 }
 
 /** Stops and forgets the run started from `deviceID`'s screen. */

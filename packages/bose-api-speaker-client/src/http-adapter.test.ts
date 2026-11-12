@@ -1049,6 +1049,23 @@ describe("boseSpeakerClient", () => {
       });
     });
 
+    it.each([
+      ["an empty reply", ""],
+      ["<group />", '<?xml version="1.0" encoding="UTF-8" ?><group />'],
+    ])(
+      "doesn't take %s for a created or renamed pair",
+      async (_reply, body) => {
+        mockFetch(200, body);
+        expect(unwrapErr(await client.addGroup(NEW_GROUP))).toBeInstanceOf(
+          XmlParseError,
+        );
+        mockFetch(200, body);
+        expect(
+          unwrapErr(await client.updateGroup({ ...NEW_GROUP, id: "3271058" })),
+        ).toBeInstanceOf(XmlParseError);
+      },
+    );
+
     it("renames a pair with /updateGroup, naming the group id", async () => {
       const fetchMock = mockFetch(200, PAIRED_GROUP);
       const result = await client.updateGroup({ ...NEW_GROUP, id: "3271058" });

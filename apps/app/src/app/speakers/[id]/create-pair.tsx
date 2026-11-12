@@ -1,6 +1,12 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
-import { ScrollView, View, type TextStyle, type ViewStyle } from "react-native";
+import {
+  Alert,
+  ScrollView,
+  View,
+  type TextStyle,
+  type ViewStyle,
+} from "react-native";
 
 import { KeepAwake } from "@/components/KeepAwake";
 import { Card } from "@/components/ui/Card";
@@ -204,11 +210,17 @@ export default function CreatePair() {
         return;
       }
       haptics.tap();
-      startPairing(id, {
+      const started = startPairing(id, {
         name: name.trim(),
         left: member(left),
         right: member(right),
       });
+      if (!started) {
+        Alert.alert(
+          "Already pairing",
+          "One of these speakers is being paired. Wait until that's done, then try again.",
+        );
+      }
     };
 
     return (

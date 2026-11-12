@@ -86,6 +86,12 @@ const fakeMarge = Effect.gen(function* () {
       } else if (path === `/streaming/account/${ACCOUNT}/group/${GROUP_ID}`) {
         if (method === "DELETE") {
           marge.group = undefined;
+        } else if (method === "PUT") {
+          // A rename: only the name is taken from the speaker's body.
+          const name = /<name>[^<]*<\/name>/.exec(body)?.[0];
+          if (name !== undefined) {
+            marge.group = marge.group?.replace(/<name>[^<]*<\/name>/, name);
+          }
         }
         reply(200, marge.group);
       } else if (
@@ -320,6 +326,8 @@ describe("a stereo pair", () => {
             body: `${DECLARATION}<group><masterDeviceId>${LEFT.deviceId}</masterDeviceId><name>Office &amp; co</name></group>`,
           },
         ]);
+        // Marge keeps the new name: the speakers' next polls get it.
+        assert.include(marge.group, "<name>Office &amp; co</name>");
       }),
     ));
 

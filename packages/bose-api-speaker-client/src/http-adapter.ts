@@ -408,36 +408,36 @@ export class BoseHttpAdapter {
   /**
    * Creates a stereo pair. Send it to the master only: the partner joins by
    * itself. Replies with the created group, whose `id` the master got from
-   * its Marge server. An ApiError GROUP_ALREADY_EXISTS_ERROR (value 5510)
+   * its Marge server; a reply without one is an XmlParseError, as the pair
+   * isn't confirmed. An ApiError GROUP_ALREADY_EXISTS_ERROR (value 5510)
    * means this speaker is already paired.
    */
   async addGroup(
     group: NewGroup,
     options?: RequestOptions,
-  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
     return this.postParsed(
       "/addGroup",
       `<group>${groupContentXml(group)}</group>`,
-      parseGroupNode,
+      parseConfirmedGroup,
       options,
-      { value: null },
     );
   }
 
   /**
    * Rewrites the pair (in practice: renames it). Send it to the master only;
-   * the partner follows. Replies with the updated group.
+   * the partner follows. Replies with the updated group; a reply without
+   * one is an XmlParseError.
    */
   async updateGroup(
     group: NewGroup & { id: string },
     options?: RequestOptions,
-  ): Promise<Result<SpeakerGroup | null, BoseApiError>> {
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
     return this.postParsed(
       "/updateGroup",
       `<group id="${escapeXml(group.id)}">${groupContentXml(group)}</group>`,
-      parseGroupNode,
+      parseConfirmedGroup,
       options,
-      { value: null },
     );
   }
 
@@ -873,6 +873,15 @@ export function parseGroupNode(root: XmlNode): SpeakerGroup | null {
     senderIpAddress: optionalString(getChildText(group, "senderIPAddress")),
     status: optionalString(getChildText(group, "status")),
   };
+}
+
+/** The group a `/addGroup` or `/updateGroup` reply confirms; throws without one. */
+function parseConfirmedGroup(root: XmlNode): SpeakerGroup {
+  const group = parseGroupNode(root);
+  if (group === null) {
+    throw new Error("The reply confirms no group");
+  }
+  return group;
 }
 
 /** The children of a `<group>` as `/addGroup` and `/updateGroup` take them. */
