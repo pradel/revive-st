@@ -330,8 +330,12 @@ describe("configure session with a stereo pair", () => {
 
     expect(done.unpairedFrom).toBe("Living room");
     expect(world.group).toBeNull();
+    // Removed only once presets are saved and the console answers, right
+    // before the first setting is written.
+    const saved = world.firstEvent("presetsSaved")?.at ?? Infinity;
     const removed = world.firstEvent("groupRemoved")?.at ?? Infinity;
     const firstCommand = world.firstEvent("command")?.at ?? -Infinity;
+    expect(saved).toBeLessThan(removed);
     expect(removed).toBeLessThan(firstCommand);
     expect(world.running).toEqual(ourUrls);
   });
@@ -366,13 +370,14 @@ describe("configure session with a stereo pair", () => {
     expect(world.firstEvent("groupRead")).toBeUndefined();
   });
 
-  it("goes on with setup when the speaker doesn't say whether it's paired", async () => {
-    const { world, untilDone } = start("groupReadHangs");
+  it("stops a move to another server when the speaker doesn't say whether it's paired", async () => {
+    const { world, untilFailed } = start("groupReadHangs");
 
-    const done = await untilDone();
+    const failed = await untilFailed("SpeakerOffline");
 
-    expect(done.unpairedFrom).toBeUndefined();
-    expect(world.firstEvent("groupRemoved")).toBeUndefined();
-    expect(world.running).toEqual(ourUrls);
+    expect(failed.actions).toEqual(["retry"]);
+    expect(world.firstEvent("presetsSaved")).toBeUndefined();
+    expect(world.firstEvent("command")).toBeUndefined();
+    expect(world.group).not.toBeNull();
   });
 });

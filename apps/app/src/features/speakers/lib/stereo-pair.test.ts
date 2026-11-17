@@ -5,6 +5,7 @@ import {
   defaultPairName,
   pairProblem,
   partnerProblem,
+  reachedThroughPartner,
   validatePairName,
 } from "./stereo-pair";
 
@@ -142,5 +143,36 @@ describe("stereo pair names", () => {
     expect(validatePairName("  ")).toBeDefined();
     expect(validatePairName("x".repeat(65))).toBeDefined();
     expect(validatePairName(" Living room + Office ")).toBeUndefined();
+  });
+});
+
+describe("reachedThroughPartner", () => {
+  const pair = {
+    id: "3271058",
+    name: "Living room + Office",
+    masterDeviceID: "0CAE7D6298E9",
+    roles: [
+      { deviceID: "0CAE7D6298E9", role: "LEFT" },
+      { deviceID: "EC1127C25A50", role: "RIGHT" },
+    ],
+  } as const;
+  const master = { deviceID: "0CAE7D6298E9", status: "offline", pair } as const;
+
+  it("reaches an offline master's pair through a partner reporting it", () => {
+    expect(
+      reachedThroughPartner(master, [
+        { deviceID: "EC1127C25A50", status: "online", pair },
+      ]),
+    ).toBe(true);
+  });
+
+  it("doesn't through a partner reporting another pair, or none", () => {
+    for (const other of [{ ...pair, id: "2222222" }, undefined]) {
+      expect(
+        reachedThroughPartner(master, [
+          { deviceID: "EC1127C25A50", status: "online", pair: other },
+        ]),
+      ).toBe(false);
+    }
   });
 });

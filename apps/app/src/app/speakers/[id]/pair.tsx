@@ -116,9 +116,17 @@ export default function PairSettings() {
     return { label: "Online · Stereo pair", tone: "ok" };
   })();
 
+  // A reached speaker is read again; one that isn't is tried again, as its
+  // card's "Try again" does.
   const refresh = async () => {
     await Promise.allSettled(
-      sides.map(async (side) => speakerRegistry.refresh(side.deviceID)),
+      sides.map(async (side) => {
+        if (side.speaker?.status === "online") {
+          await speakerRegistry.refresh(side.deviceID);
+        } else {
+          speakerRegistry.retry(side.deviceID);
+        }
+      }),
     );
   };
 

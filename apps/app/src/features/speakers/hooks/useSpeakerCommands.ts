@@ -74,7 +74,9 @@ async function run<Value>(
  * Dissolves `pair` through its master, or through its partner when the
  * master isn't reached (one request clears both). `via`: the speaker it went
  * through. `peerUnreachable`: the other speaker didn't answer, and leaves the
- * pair once it's back.
+ * pair once it's back. A speaker reporting another pair, or none, has left
+ * this one: nothing is removed, and its state is read again so the stale
+ * pair goes.
  */
 async function unpair(
   pair: SpeakerPair,
@@ -86,6 +88,16 @@ async function unpair(
     throw new Error("Speaker not connected");
   }
   try {
+    const live = client(via).getState().group;
+    // Unread (`undefined`): it can't be told, and the request goes ahead.
+    if (live !== undefined && live?.id !== pair.id) {
+      logger.log("[StereoPair] already left", {
+        pair: pair.id,
+        via,
+        now: live?.id ?? null,
+      });
+      return { peerUnreachable: false, via };
+    }
     const { peerUnreachable } = await run(via, async (speaker) =>
       speaker.removeGroup({
         signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS),

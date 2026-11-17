@@ -221,14 +221,21 @@ export function createPairSession(
       : failed("check", { kind: "serverUnsupported", check });
   };
 
-  /** A pair of only these two speakers, which a new one may replace. */
-  const ofThesePair = (reported: SpeakerGroup) =>
-    reported.roles.every(
-      (role) =>
-        role.deviceId === left.deviceID || role.deviceId === right.deviceID,
+  /**
+   * A pair of exactly these two speakers (in either role), which a new one
+   * may replace; a pair with missing or other members is never removed.
+   */
+  const ofThesePair = (reported: SpeakerGroup) => {
+    const members = reported.roles.map((role) => role.deviceId);
+    return (
+      members.length === 2 &&
+      members.includes(left.deviceID) &&
+      members.includes(right.deviceID)
     );
+  };
 
-  const pair = async (): Promise<PairFailure | undefined> => {
+  /** The id of the pair `/addGroup` made, or the failure. */
+  const pair = async (): Promise<PairFailure | { id: string }> => {
     let added = await addGroup();
     if (added.isErr() && hasErrorValue(added.error, GROUP_ALREADY_EXISTS)) {
       // A pair of these two our server doesn't know (dropped without telling
@@ -253,7 +260,7 @@ export function createPairSession(
       added = await addGroup();
     }
     if (added.isOk()) {
-      return undefined;
+      return { id: added.value.id };
     }
     const { error } = added;
     log.event("pair.addFailed", { error: error.name });
@@ -266,7 +273,7 @@ export function createPairSession(
     return failed("pair", { kind: "speakerFailed" });
   };
 
-  const confirm = async (deadline: number): Promise<Outcome> => {
+  const confirm = async (deadline: number, id: string): Promise<Outcome> => {
     let reports: (SpeakerGroup | null)[] = [null, null];
     for (let round = 0; ; round += 1) {
       const wait = CONFIRM_WAITS_MS[round] ?? CONFIRM_WAITS_MS[2];
@@ -286,14 +293,26 @@ export function createPairSession(
         left: master?.status ?? "none",
         right: partner?.status ?? "none",
       });
-      if (formed(master) && formed(partner) && master.id === partner.id) {
+      if (
+        formed(master) &&
+        formed(partner) &&
+        master.id === id &&
+        partner.id === id
+      ) {
         return { kind: "done", group: master };
       }
     }
-    // What formed is undone, so neither speaker is left half paired; the
-    // master, which accepted the pair, when neither answered.
+    // What formed is undone, so neither speaker is left half paired: through
+    // a speaker reporting this attempt's pair, else the master, which
+    // accepted it, when it said nothing. A pair another attempt or app made
+    // is left alone.
     const reporting =
-      [left, right].find((_member, index) => reports[index] !== null) ?? left;
+      [left, right].find((_member, index) => reports[index]?.id === id) ??
+      (reports[0] === null ? left : undefined);
+    if (reporting === undefined) {
+      log.event("pair.undoSkipped");
+      return failed("confirm", { kind: "notConfirmed", undone: false });
+    }
     const removed = await removeGroup(reporting);
     const undone = removed.isOk() && !removed.value.peerUnreachable;
     return failed("confirm", { kind: "notConfirmed", undone });
@@ -308,12 +327,12 @@ export function createPairSession(
       return serverProblem;
     }
     publish({ kind: "working", step: "pair", startedAt });
-    const pairProblem = await pair();
-    if (pairProblem) {
-      return pairProblem;
+    const paired = await pair();
+    if ("kind" in paired) {
+      return paired;
     }
     publish({ kind: "working", step: "confirm", startedAt });
-    return confirm(deadline);
+    return confirm(deadline, paired.id);
   };
 
   const run = async () => {

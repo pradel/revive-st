@@ -98,15 +98,26 @@ export interface RunContext {
   baseline?: LastContact;
   /** The user chose to dissolve the speaker's stereo pair before setup. */
   unpair?: boolean;
-  /** The other speaker of the pair this run dissolved (name or device id). */
+  /**
+   * The speaker's pair is to be dissolved right before the first setting is
+   * written (`connect`), once every check that writes nothing has passed.
+   */
+  removePair?: boolean;
+  /**
+   * The other speaker of the pair this run dissolves (name or device id):
+   * kept once decided, so a retry that finds the pair already gone still
+   * says to set it up too.
+   */
   unpairedFrom?: string;
 }
 
 /**
  * Stops before anything is written when the speaker is in a stereo pair and
  * the setup moves it to another server or account: it would drop the pair on
- * its side only. Dissolves the pair instead once the user chose to
- * (`ctx.unpair`). A pair read that fails counts as unknown: setup goes on.
+ * its side only. Once the user chose to dissolve the pair (`ctx.unpair`), it
+ * marks it for removal in `connect` instead. A pair read that fails stops a
+ * setup that moves the speaker (Try again reads it again); one that keeps it
+ * on its server and account goes on.
  */
 async function keepPairIntact(
   deps: ConfigureDeps,
@@ -116,10 +127,15 @@ async function keepPairIntact(
   origin: string,
   accountId: string,
 ): StepResult<PairWouldBreak | SpeakerOffline> {
+  ctx.removePair = false;
   // Only a SoundTouch 10 pairs, and other models never answer `/getGroup`.
   if (!isSoundTouch10(info.type)) {
     return ok();
   }
+  // Same server and account: the server knows the pair and keeps it.
+  const moving = !(
+    isSameOrigin(info.margeURL, origin) && info.margeAccountUUID === accountId
+  );
   const group = await withTimeout(
     deps.clock,
     GROUP_READ_TIMEOUT_MS,
@@ -131,17 +147,20 @@ async function keepPairIntact(
       }),
   );
   if (group.isErr()) {
-    deps.log.event("pair.unknown", { message: group.error.message });
-    return ok();
+    deps.log.event("pair.unknown", { message: group.error.message, moving });
+    return moving
+      ? Result.err(
+          new SpeakerOffline({
+            host: ctx.host,
+            message: `Couldn't tell whether it's in a stereo pair: ${group.error.message}`,
+          }),
+        )
+      : ok();
   }
   if (group.value === null) {
     return ok();
   }
-  if (
-    isSameOrigin(info.margeURL, origin) &&
-    info.margeAccountUUID === accountId
-  ) {
-    // Same server and account: the server knows the pair and keeps it.
+  if (!moving) {
     deps.log.event("pair.kept", { pair: group.value.id });
     return ok();
   }
@@ -171,18 +190,7 @@ async function keepPairIntact(
       }),
     );
   }
-  const removed = await request(deps, signal, async (call) =>
-    deps.speaker.removeGroup(ctx.host, call),
-  );
-  if (removed.isErr()) {
-    return Result.err(
-      new SpeakerOffline({ host: ctx.host, message: removed.error.message }),
-    );
-  }
-  // Unreachable, the other speaker drops its half once it's back.
-  deps.log.event("pair.removed", {
-    peerUnreachable: removed.value.peerUnreachable,
-  });
+  ctx.removePair = true;
   ctx.unpairedFrom = partner;
   return ok();
 }
@@ -439,7 +447,11 @@ export async function connect(
   signal: AbortSignal,
   ctx: RunContext,
 ): StepResult<
-  ConsoleUnavailable | CommandFailed | SettingsNotSaved | UnexpectedError
+  | ConsoleUnavailable
+  | CommandFailed
+  | SettingsNotSaved
+  | SpeakerOffline
+  | UnexpectedError
 > {
   const { deps } = env;
   const { urls, accountId } = ctx;
@@ -461,6 +473,24 @@ export async function connect(
   }
   const connection = opened.value;
   ctx.console = connection;
+
+  if (ctx.removePair) {
+    // The first change to the speaker, once nothing else can stop setup
+    // before the settings are written.
+    const removed = await request(deps, signal, async (call) =>
+      deps.speaker.removeGroup(ctx.host, call),
+    );
+    if (removed.isErr()) {
+      return Result.err(
+        new SpeakerOffline({ host: ctx.host, message: removed.error.message }),
+      );
+    }
+    // Unreachable, the other speaker drops its half once it's back.
+    deps.log.event("pair.removed", {
+      peerUnreachable: removed.value.peerUnreachable,
+    });
+    ctx.removePair = false;
+  }
 
   for (const command of writeUrlCommands(urls)) {
     const written = await runCommand(deps, connection, command);

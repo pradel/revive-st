@@ -101,14 +101,20 @@ export const settingsPath = (speaker: {
  */
 export const reachedThroughPartner = (
   speaker: Pick<BoseSpeaker, "deviceID" | "pair" | "status">,
-  all: readonly Pick<BoseSpeaker, "deviceID" | "status">[],
+  all: readonly Pick<BoseSpeaker, "deviceID" | "pair" | "status">[],
 ): boolean => {
   const pair = pairLedBy(speaker);
   return (
     pair !== undefined &&
     speaker.status !== "online" &&
+    // A partner reporting another pair (or none) would unpair that instead.
     partnersOf(pair).some((id) =>
-      all.some((other) => other.deviceID === id && other.status === "online"),
+      all.some(
+        (other) =>
+          other.deviceID === id &&
+          other.status === "online" &&
+          other.pair?.id === pair.id,
+      ),
     )
   );
 };
