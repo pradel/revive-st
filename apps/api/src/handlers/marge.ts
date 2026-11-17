@@ -2,16 +2,20 @@ import { createHash } from "node:crypto";
 
 import { parseXml } from "bose-api-speaker-client";
 import { DateTime, Effect, Schema } from "effect";
+import { HttpServerRequest } from "effect/http";
 import { HttpApiBuilder, HttpApiError, HttpApiSchema } from "effect/http-api";
 
 import { ReviveApi } from "../api/api.ts";
 import {
   SpeakerDeviceXml,
+  SpeakerGroupNameXml,
+  SpeakerGroupXml,
   SpeakerPresetXml,
   SpeakerRecentXml,
 } from "../api/marge.ts";
 import { DeviceContactsRepo } from "../devices/device-contacts-repo.ts";
 import { DevicesRepo } from "../devices/devices-repo.ts";
+import { GroupsRepo } from "../devices/groups-repo.ts";
 import { sourceWithId } from "../marge/sources.ts";
 import { ContentItem, Preset, SpeakerDeviceId } from "../presets/preset.ts";
 import { PresetsRepo } from "../presets/presets-repo.ts";
@@ -26,13 +30,17 @@ import {
   createSoftwareUpdateXml,
   createSourceProvidersXml,
   createStatusOkXml,
-  XML_HEADER,
+  createGroupDeletedXml,
+  createGroupXml,
+  createNoGroupXml,
 } from "../utils/marge-xml.ts";
 
 const decodeSpeakerDevice = Schema.decodeEffect(SpeakerDeviceXml);
 
 const decodeSpeakerPreset = Schema.decodeEffect(SpeakerPresetXml);
 const decodeSpeakerRecent = Schema.decodeEffect(SpeakerRecentXml);
+const decodeSpeakerGroup = Schema.decodeEffect(SpeakerGroupXml);
+const decodeSpeakerGroupName = Schema.decodeEffect(SpeakerGroupNameXml);
 
 /**
  * A body with an `ETag` derived from it, so a speaker that sends the tag back
@@ -69,6 +77,7 @@ export const MargeHandlers = HttpApiBuilder.group(
     const presetsRepo = yield* PresetsRepo;
     const devicesRepo = yield* DevicesRepo;
     const contactsRepo = yield* DeviceContactsRepo;
+    const groupsRepo = yield* GroupsRepo;
 
     return (
       handlers
@@ -272,16 +281,84 @@ export const MargeHandlers = HttpApiBuilder.group(
           }),
         )
         // Speakers look their group up at every boot, so this also pairs
-        // speakers that paired before devices were recorded. No stereo pairs
-        // yet: every speaker stands alone.
+        // speakers that paired before devices were recorded. The answer is
+        // authoritative: speakers told `<group/>` drop their pair.
         .handle(
           "deviceGroup",
           Effect.fn(function* ({ params }) {
             yield* contactsRepo.record(params.deviceId);
             yield* devicesRepo.pair(params.accountId, params.deviceId);
-            return `${XML_HEADER}<group/>`;
+            const group = yield* groupsRepo.findByDevice(
+              params.accountId,
+              params.deviceId,
+            );
+            return group === undefined
+              ? createNoGroupXml()
+              : createGroupXml(group);
           }),
         )
+        // Raw for the same reason as `savePreset`.
+        .handleRaw(
+          "createGroup",
+          Effect.fn(function* ({ params, request }) {
+            const group = yield* request.text.pipe(
+              Effect.flatMap(decodeSpeakerGroup),
+              Effect.tapError((error) =>
+                Effect.logWarning("Rejected speaker group", error),
+              ),
+              Effect.mapError(() => new HttpApiError.BadRequest()),
+            );
+            yield* contactsRepo.record(group.masterDeviceId);
+            // Pairing both first bounds the pairs an account can hold.
+            for (const deviceId of [group.leftDeviceId, group.rightDeviceId]) {
+              if (!(yield* devicesRepo.pair(params.accountId, deviceId))) {
+                return yield* new HttpApiError.BadRequest();
+              }
+            }
+            // `Location` is the pair under the path the speaker posted to.
+            const url = yield* Effect.fromOption(
+              HttpServerRequest.toURL(request),
+            ).pipe(Effect.mapError(() => new HttpApiError.BadRequest()));
+            const stored = yield* groupsRepo.create(params.accountId, group);
+            return HttpApiSchema.withHeaders({
+              body: createGroupXml(stored),
+              headers: {
+                Location: `${url.origin}${url.pathname.replace(/\/+$/, "")}/${stored.id}`,
+              },
+            });
+          }),
+        )
+        // Raw for the same reason as `savePreset`. Any speaker of the pair
+        // sends its own id as `masterDeviceId`, so only the name is taken.
+        .handleRaw(
+          "updateGroup",
+          Effect.fn(function* ({ params, request }) {
+            const { name } = yield* request.text.pipe(
+              Effect.flatMap(decodeSpeakerGroupName),
+              Effect.tapError((error) =>
+                Effect.logWarning("Rejected speaker group", error),
+              ),
+              Effect.mapError(() => new HttpApiError.BadRequest()),
+            );
+            const group = yield* groupsRepo.rename(
+              params.accountId,
+              params.groupId,
+              name,
+            );
+            if (group === undefined) {
+              return yield* new HttpApiError.NotFound();
+            }
+            return createGroupXml(group);
+          }),
+        )
+        .handle("removeGroup", ({ params }) =>
+          groupsRepo
+            .remove(params.accountId, params.groupId)
+            .pipe(Effect.as(createGroupDeletedXml())),
+        )
+        // Each speaker deletes its own pair by id; deleting every pair of an
+        // account on one request would unpair other speakers.
+        .handle("removeGroups", () => Effect.succeed(createGroupDeletedXml()))
         .handle("providerSettings", ({ params }) =>
           Effect.succeed(createProviderSettingsXml(params.accountId)),
         )

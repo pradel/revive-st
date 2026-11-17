@@ -11,7 +11,14 @@ export type { KeyPressRequest } from "./key.ts";
 export type { SelectSourceRequest } from "./select.ts";
 export type { SourceItem, SourcesResponse } from "./sources.ts";
 export type { BassCapabilitiesResponse, BassResponse } from "./bass.ts";
+export type { BalanceResponse } from "./balance.ts";
 export type { SetZoneRequest, ZoneMember, ZoneResponse } from "./zone.ts";
+export type {
+  GroupMember,
+  GroupRole,
+  NewGroup,
+  SpeakerGroup,
+} from "./group.ts";
 export type { ContentItem, NowPlayingResponse } from "./nowPlaying.ts";
 export type { SetVolumeRequest, VolumeResponse } from "./volume.ts";
 export type { Preset, PresetsResponse } from "./presets.ts";

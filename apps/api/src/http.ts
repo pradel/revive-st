@@ -242,8 +242,8 @@ const MAX_BODY_SIZE = ByteSize.kibibytes(32);
 
 /**
  * The HTTP application, served on whichever `HttpServer` is provided.
- * Requires `PresetsRepo`, `DevicesRepo`, `DeviceContactsRepo`, `TuneIn`,
- * `RadioBrowser`, `RateLimits` and the platform services of the server layer.
+ * Requires `PresetsRepo`, `DevicesRepo`, `GroupsRepo`, `DeviceContactsRepo`,
+ * `TuneIn`, `RadioBrowser`, `RateLimits` and the platform services of the server layer.
  */
 export const HttpAppLayer = HttpRouter.serve(
   Layer.mergeAll(ApiLayer, DocsLayer, MediaLayer, NotModifiedLayer),

@@ -9,14 +9,22 @@ import {
   afterEach,
 } from "vite-plus/test";
 
-import { BoseWebSocketClient, parseWebSocketMessage } from "./ws-adapter.ts";
+import { ApiError, NetworkError, XmlParseError } from "./errors.ts";
+import { parseBalanceNode } from "./http-adapter.ts";
+import {
+  BoseWebSocketClient,
+  type BoseWSRequest,
+  parseWebSocketMessage,
+} from "./ws-adapter.ts";
 
 function createMockWS() {
   return {
+    readyState: 1,
     onopen: null as (() => void) | null,
     onmessage: null as ((event: { data: string }) => void) | null,
     onerror: null as ((event: Event) => void) | null,
     onclose: null as ((event: { code: number }) => void) | null,
+    send: vi.fn(),
     close: vi.fn(),
   };
 }
@@ -281,6 +289,51 @@ describe("parseWebSocketMessage", () => {
       },
     });
   });
+
+  // Real frames from a SoundTouch 10 (firmware 27): `deviceID` in single quotes.
+  it("parses a groupUpdated frame for a pair", () => {
+    const xml = `<updates deviceID='0CAE7D6298E9'><groupUpdated><group id="3271058"><name>Living room + Office</name><masterDeviceId>0CAE7D6298E9</masterDeviceId><roles><groupRole><deviceId>0CAE7D6298E9</deviceId><role>LEFT</role><ipAddress>192.168.1.195</ipAddress></groupRole><groupRole><deviceId>EC1127C25A50</deviceId><role>RIGHT</role><ipAddress>192.168.1.189</ipAddress></groupRole></roles><senderIPAddress>192.168.1.195</senderIPAddress><status>GROUP_OK</status></group></groupUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "group",
+      deviceID: "0CAE7D6298E9",
+      group: {
+        id: "3271058",
+        name: "Living room + Office",
+        masterDeviceId: "0CAE7D6298E9",
+        roles: [
+          {
+            deviceId: "0CAE7D6298E9",
+            role: "LEFT",
+            ipAddress: "192.168.1.195",
+          },
+          {
+            deviceId: "EC1127C25A50",
+            role: "RIGHT",
+            ipAddress: "192.168.1.189",
+          },
+        ],
+        senderIpAddress: "192.168.1.195",
+        status: "GROUP_OK",
+      },
+    });
+  });
+
+  it("parses the groupUpdated teardown frame as no group", () => {
+    const xml = `<updates deviceID='EC1127C25A50'><groupUpdated><group /></groupUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "group",
+      deviceID: "EC1127C25A50",
+      group: null,
+    });
+  });
+
+  it("parses balanceUpdated, whose deviceID is single-quoted", () => {
+    const xml = `<updates deviceID='0CAE7D6298E9'><balanceUpdated></balanceUpdated></updates>`;
+    expect(parseWebSocketMessage(xml)).toEqual({
+      type: "balance",
+      deviceID: "0CAE7D6298E9",
+    });
+  });
 });
 
 describe("BoseWebSocketClient", () => {
@@ -437,6 +490,108 @@ describe("BoseWebSocketClient", () => {
       expect(wsMock.onmessage).toBeNull();
       expect(wsMock.onerror).toBeNull();
       expect(wsMock.onclose).toBeNull();
+    });
+  });
+
+  describe("request", () => {
+    const BALANCE_REQUEST = {
+      url: "balance",
+      method: "POST",
+      mainNode: "balanceSet",
+      body: "<balance><targetBalance>-3</targetBalance></balance>",
+    } as const;
+
+    // Captured from a SoundTouch 10 answering a balance write (FW 27.0.6).
+    const reply = (requestID: string, targetBalance = -3) =>
+      `<?xml version="1.0" encoding="UTF-8" ?><msg><header deviceID="DEV001" url="balance" method="POST"><request requestID="${requestID}" msgType="RESPONSE"><info mainNode="balanceSet" type="new" /></request></header><body><balance deviceID="DEV001"><balanceAvailable>true</balanceAvailable><balanceMin>-7</balanceMin><balanceMax>7</balanceMax><balanceDefault>0</balanceDefault><targetBalance>${targetBalance}</targetBalance><actualBalance>${targetBalance}</actualBalance></balance></body></msg>`;
+
+    const send = async (request: BoseWSRequest = BALANCE_REQUEST) =>
+      client.request(request, parseBalanceNode);
+
+    beforeEach(() => {
+      client.connect();
+      wsMock.onopen!();
+    });
+
+    it("sends the request as the speaker's own app does", () => {
+      void send();
+      expect(wsMock.send).toHaveBeenCalledWith(
+        `<msg><header deviceID="DEV001" url="balance" method="POST"><request requestID="1"><info mainNode="balanceSet" type="new"/></request></header><body><balance><targetBalance>-3</targetBalance></balance></body></msg>`,
+      );
+    });
+
+    it("resolves with the parsed body of the reply echoing its requestID", async () => {
+      const first = send();
+      const second = send();
+
+      wsMock.onmessage!({ data: reply("2", 4) });
+      wsMock.onmessage!({ data: reply("1", -3) });
+
+      expect((await first).unwrap().targetBalance).toBe(-3);
+      expect((await second).unwrap().targetBalance).toBe(4);
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it("keeps notifications apart from the reply", async () => {
+      const pending = send();
+
+      wsMock.onmessage!({
+        data: `<updates deviceID='DEV001'><balanceUpdated></balanceUpdated></updates>`,
+      });
+      // The speaker's own request, not a reply.
+      wsMock.onmessage!({
+        data: `<msg><header deviceID="DEV001" url="balance" method="GET"><request requestID="1"><info type="new"/></request></header></msg>`,
+      });
+      expect(onUpdate).toHaveBeenCalledWith({
+        type: "balance",
+        deviceID: "DEV001",
+      });
+
+      wsMock.onmessage!({ data: reply("1") });
+      expect((await pending).isOk()).toBe(true);
+    });
+
+    it("fails with an ApiError when the speaker refuses the request", async () => {
+      const pending = send();
+      wsMock.onmessage!({
+        data: `<msg><header deviceID="DEV001" url="balance" method="POST"><request requestID="1" msgType="RESPONSE"><info type="new" /></request></header><body><errors deviceID="DEV001"><error value="1019" name="CLIENT_XML_ERROR" severity="Unknown">Error parsing request</error></errors></body></msg>`,
+      });
+      const result = await pending;
+      expect(result.isErr() && result.error).toBeInstanceOf(ApiError);
+    });
+
+    it("fails with an XmlParseError when the reply's body doesn't parse", async () => {
+      const pending = send();
+      wsMock.onmessage!({
+        data: `<msg><header deviceID="DEV001" url="balance" method="POST"><request requestID="1" msgType="RESPONSE"><info type="new" /></request></header><body /></msg>`,
+      });
+      const result = await pending;
+      expect(result.isErr() && result.error).toBeInstanceOf(XmlParseError);
+    });
+
+    it("fails with a NetworkError when the socket isn't open", async () => {
+      wsMock.readyState = 0;
+      const result = await send();
+      expect(result.isErr() && result.error).toBeInstanceOf(NetworkError);
+      expect(wsMock.send).not.toHaveBeenCalled();
+    });
+
+    it("fails with a NetworkError when no reply comes in time", async () => {
+      const pending = send({ ...BALANCE_REQUEST, timeoutMs: 1000 });
+      vi.advanceTimersByTime(1000);
+      const result = await pending;
+      expect(result.isErr() && result.error).toBeInstanceOf(NetworkError);
+
+      // A late reply is dropped, not taken for a notification.
+      wsMock.onmessage!({ data: reply("1") });
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it("fails with a NetworkError when the socket closes first", async () => {
+      const pending = send();
+      wsMock.onclose!({ code: 1006 });
+      const result = await pending;
+      expect(result.isErr() && result.error).toBeInstanceOf(NetworkError);
     });
   });
 });
