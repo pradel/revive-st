@@ -98,10 +98,12 @@ export class Speaker {
    */
   private groupChanges = 0;
   /**
-   * Bumped by each balance read and each balance change outside
-   * `initialize()`: a `/balance` read started before then is stale.
+   * Bumped by each balance read and each balance change, including the one
+   * `initialize()` commits: a `/balance` read started before then is stale.
    */
   private balanceChanges = 0;
+  /** Bumped by each balance write: an earlier write's reply is stale. */
+  private balanceWrites = 0;
 
   constructor(options: SpeakerOptions) {
     this.options = options;
@@ -241,11 +243,15 @@ export class Speaker {
       if (groupRead && this.groupChanges === groupChangesBefore) {
         this.state.group = groupRead.group;
         if (this.balanceChanges === balanceChangesBefore) {
-          // A failed read keeps the pair's balance as last read.
-          this.state.balance =
-            groupRead.balance === undefined
-              ? (this.state.balance ?? undefined)
-              : groupRead.balance;
+          if (groupRead.balance === undefined) {
+            // A failed read keeps the pair's balance as last read.
+            this.state.balance ??= undefined;
+          } else {
+            this.state.balance = groupRead.balance;
+            // A read still running started before this one, maybe for a
+            // pair that is gone since.
+            this.balanceChanges += 1;
+          }
         }
       }
 
@@ -498,8 +504,11 @@ export class Speaker {
     group: NewGroup,
     options?: RequestOptions,
   ): Promise<Result<SpeakerGroup, BoseApiError>> {
+    // A group change while it ran (a `groupUpdated`, another operation) is
+    // newer than the reply; so in `updateGroup` and `removeGroup`.
+    const groupChangesBefore = this.groupChanges;
     const result = await this.http.addGroup(group, options);
-    if (result.isOk()) {
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
       this.applyGroup(result.value);
     }
     return result;
@@ -510,8 +519,9 @@ export class Speaker {
     group: NewGroup & { id: string },
     options?: RequestOptions,
   ): Promise<Result<SpeakerGroup, BoseApiError>> {
+    const groupChangesBefore = this.groupChanges;
     const result = await this.http.updateGroup(group, options);
-    if (result.isOk()) {
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
       this.applyGroup(result.value);
     }
     return result;
@@ -521,8 +531,9 @@ export class Speaker {
   async removeGroup(
     options?: RequestOptions,
   ): Promise<Result<{ peerUnreachable: boolean }, BoseApiError>> {
+    const groupChangesBefore = this.groupChanges;
     const result = await this.http.removeGroup(options);
-    if (result.isOk()) {
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
       this.applyGroup(null);
     }
     return result;
@@ -580,8 +591,9 @@ export class Speaker {
       );
     }
     // The pair the balance is for; a reply landing after it changed (left
-    // or dissolved meanwhile) is stale.
+    // or dissolved meanwhile), or after a later write, is stale.
     const pairBefore = this.state.group?.id;
+    const write = ++this.balanceWrites;
     const sent = await this.ws.request(
       {
         url: "balance",
@@ -594,7 +606,7 @@ export class Speaker {
     if (sent.isErr()) {
       return new Err(sent.error);
     }
-    if (this.state.group?.id !== pairBefore) {
+    if (this.state.group?.id !== pairBefore || write !== this.balanceWrites) {
       return new Ok(undefined);
     }
     // A read started before the write is stale.

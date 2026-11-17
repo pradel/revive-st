@@ -459,6 +459,23 @@ describe("Speaker", () => {
       await speaker.removeGroup();
       expect(speaker.getState().group).toBeNull();
     });
+
+    it("addGroup() keeps a change made while it ran", async () => {
+      const fetchMock = mockSpeaker("SoundTouch 10");
+      const addReply = Promise.withResolvers<Response>();
+      fetchMock.mockImplementationOnce(async () => addReply.promise);
+
+      const adding = speaker.addGroup({
+        name: PAIRED_GROUP.name,
+        masterDeviceId: PAIRED_GROUP.masterDeviceId,
+        roles: PAIRED_GROUP.roles,
+      });
+      await speaker.removeGroup();
+      addReply.resolve(new Response(PAIRED_GROUP_XML, { status: 200 }));
+      await adding;
+
+      expect(speaker.getState().group).toBeNull();
+    });
   });
 
   it("handles 500 error correctly without throwing", async () => {
@@ -665,6 +682,25 @@ describe("Speaker", () => {
       expect(balanceRead()).toBe(readsBefore);
     });
 
+    it("setBalance() keeps the balance of the latest write when an earlier reply lands last", async () => {
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      const reply = (requestID: number, value: number) =>
+        wsMock.onmessage?.({
+          data: `<msg><header deviceID="${DEVICE_ID}" url="balance" method="POST"><request requestID="${requestID}" msgType="RESPONSE"><info mainNode="balanceSet" type="new" /></request></header><body><balance deviceID="${DEVICE_ID}"><balanceAvailable>true</balanceAvailable><balanceMin>-7</balanceMin><balanceMax>7</balanceMax><balanceDefault>0</balanceDefault><targetBalance>${value}</targetBalance><actualBalance>${value}</actualBalance></balance></body></msg>`,
+        });
+
+      const first = speaker.setBalance(-3);
+      const second = speaker.setBalance(4);
+      reply(2, 4);
+      await second;
+      reply(1, -3);
+
+      expect((await first).isOk()).toBe(true);
+      expect(speaker.getState().balance).toEqual(balance(4));
+    });
+
     it("setBalance() fails while the WebSocket isn't connected", async () => {
       await speaker.initialize();
       const result = await speaker.setBalance(-2);
@@ -705,6 +741,35 @@ describe("Speaker", () => {
       wsMock.onmessage?.({
         data: `<updates deviceID='${DEVICE_ID}'><groupUpdated><group /></groupUpdated></updates>`,
       });
+      expect(speaker.getState().balance).toBeNull();
+    });
+
+    it("drops a balance read from before the socket dropped once the pair is gone", async () => {
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      const answer = fetchMock.getMockImplementation()!;
+      const readReply = Promise.withResolvers<undefined>();
+      fetchMock.mockImplementationOnce(async (input) => {
+        await readReply.promise;
+        return answer(input);
+      });
+      target = -2;
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><balanceUpdated></balanceUpdated></updates>`,
+      });
+
+      // Unpaired while the socket was down.
+      paired = false;
+      wsMock.onclose?.({ code: 1006 });
+      vi.advanceTimersByTime(2000);
+      wsMock.onopen?.();
+      await vi.waitFor(() => {
+        expect(speaker.getState().group).toBeNull();
+      });
+      readReply.resolve(undefined);
+      await vi.advanceTimersByTimeAsync(0);
+
       expect(speaker.getState().balance).toBeNull();
     });
   });
