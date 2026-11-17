@@ -540,22 +540,23 @@ export class Speaker {
   }
 
   /**
-   * Sets `state.group` and emits the state when it changed. Once paired, the
-   * pair's balance is read; once unpaired, there is none.
+   * Sets `state.group` and emits the state when it changed. Once paired, or
+   * paired anew, the pair's balance is read; once unpaired, there is none.
    */
   private applyGroup(group: SpeakerGroup | null) {
     this.groupChanges += 1;
     if (JSON.stringify(this.state.group) === JSON.stringify(group)) {
       return;
     }
-    const wasPaired = Boolean(this.state.group);
+    const pairBefore = this.state.group?.id;
     this.state.group = group;
     if (group === null) {
       this.balanceChanges += 1;
       this.state.balance = null;
     }
     this.emitState();
-    if (group && !wasPaired) {
+    // A rename keeps the pair, and its balance.
+    if (group && group.id !== pairBefore) {
       void this.refreshBalance();
     }
   }
@@ -568,6 +569,8 @@ export class Speaker {
    * (a `/balance` read right away would still report the previous one).
    */
   async setBalance(value: number): Promise<Result<void, BoseApiError>> {
+    // A later call supersedes this one, even while this one reads the range.
+    const write = ++this.balanceWrites;
     let range = this.state.balance;
     if (!range) {
       const read = await this.http.getBalance({
@@ -592,8 +595,10 @@ export class Speaker {
     }
     // The pair the balance is for; a reply landing after it changed (left
     // or dissolved meanwhile), or after a later write, is stale.
+    if (write !== this.balanceWrites) {
+      return new Ok(undefined);
+    }
     const pairBefore = this.state.group?.id;
-    const write = ++this.balanceWrites;
     const sent = await this.ws.request(
       {
         url: "balance",

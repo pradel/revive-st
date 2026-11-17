@@ -187,6 +187,8 @@ export const makeCloud = Effect.fnUntraced(function* (context: CloudContext) {
    * group, as a speaker does at boot and right after it pairs. Marge decides
    * the group: `<group/>`, or any reply but a group, drops the speaker's
    * pair (its partner drops its own half when it asks); no reply keeps it.
+   * A reply naming another pair also keeps it: never seen on hardware, as
+   * Marge only stores the pair the master posted.
    */
   const fetchAccount = Effect.fnUntraced(function* (
     accountId: string,

@@ -701,6 +701,31 @@ describe("Speaker", () => {
       expect(speaker.getState().balance).toEqual(balance(4));
     });
 
+    it("setBalance() keeps the latest call's balance when an earlier call's range read lands last", async () => {
+      // Unpaired, so no range is known: each call reads it first.
+      paired = false;
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      const answer = fetchMock.getMockImplementation()!;
+      const firstRange = Promise.withResolvers<undefined>();
+      fetchMock.mockImplementationOnce(async (input) => {
+        await firstRange.promise;
+        return answer(input);
+      });
+
+      void speaker.setBalance(-3);
+      void speaker.setBalance(4);
+      await vi.advanceTimersByTimeAsync(0);
+      firstRange.resolve(undefined);
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(wsMock.send).toHaveBeenCalledTimes(1);
+      expect(wsMock.send).toHaveBeenLastCalledWith(
+        expect.stringContaining("<targetBalance>4</targetBalance>"),
+      );
+    });
+
     it("setBalance() fails while the WebSocket isn't connected", async () => {
       await speaker.initialize();
       const result = await speaker.setBalance(-2);
@@ -742,6 +767,30 @@ describe("Speaker", () => {
         data: `<updates deviceID='${DEVICE_ID}'><groupUpdated><group /></groupUpdated></updates>`,
       });
       expect(speaker.getState().balance).toBeNull();
+    });
+
+    it("reads the balance again when the speaker moves to another pair, not when its pair is renamed", async () => {
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      const pairXml = (id: string, name: string) =>
+        PAIRED_GROUP_XML.replace(/^<\?xml[^>]*\?>/, "")
+          .replace('id="3271058"', `id="${id}"`)
+          .replace("Living room + Office", name);
+      const readsBefore = balanceRead();
+
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated>${pairXml("3271058", "Lounge")}</groupUpdated></updates>`,
+      });
+      expect(balanceRead()).toBe(readsBefore);
+
+      target = 3;
+      wsMock.onmessage?.({
+        data: `<updates deviceID='${DEVICE_ID}'><groupUpdated>${pairXml("4182069", "Lounge")}</groupUpdated></updates>`,
+      });
+      await vi.waitFor(() => {
+        expect(speaker.getState().balance).toEqual(balance(3));
+      });
     });
 
     it("drops a balance read from before the socket dropped once the pair is gone", async () => {
