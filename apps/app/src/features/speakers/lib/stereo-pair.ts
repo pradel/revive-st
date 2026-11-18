@@ -83,6 +83,28 @@ export const pairLedBy = (speaker: {
   speaker.pair?.masterDeviceID === speaker.deviceID ? speaker.pair : undefined;
 
 /**
+ * For a pair's master that isn't reached, a partner still in its pair that
+ * is: its own settings still answer.
+ */
+export const reachedPartner = (
+  speaker: Pick<BoseSpeaker, "deviceID" | "pair" | "status">,
+  all: readonly Pick<BoseSpeaker, "deviceID" | "pair" | "status">[],
+): string | undefined => {
+  const pair = pairLedBy(speaker);
+  if (pair === undefined || speaker.status === "online") {
+    return undefined;
+  }
+  return partnersOf(pair).find((id) =>
+    all.some(
+      (other) =>
+        other.deviceID === id &&
+        other.status === "online" &&
+        other.pair?.id === pair.id,
+    ),
+  );
+};
+
+/**
  * A pair's card in a few words, for the line under its name; nothing for a
  * speaker on its own.
  */

@@ -839,6 +839,37 @@ describe("speaker registry: stereo pairs", () => {
     expect(listed()).toHaveLength(1);
   });
 
+  it("keeps the remembered pair when a speaker reports a pair without its two speakers", async () => {
+    const { registry, network, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    putOnNetwork(network, { ...GROUP, roles: [GROUP.roles[1]] });
+    await registry.restore();
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, status: "online", pair: PAIR },
+    ]);
+    expect(listed()).toHaveLength(1);
+  });
+
+  it("names a pair reported without a name after its master", async () => {
+    const { registry, network, listed, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    putOnNetwork(network, { ...GROUP, name: "" });
+    await registry.restore();
+
+    registry.reconnectAll();
+    await settle();
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, name: "Living room" },
+    ]);
+  });
+
   it("forgets both speakers of a pair from its card", async () => {
     const { registry, listed, settle } = world({
       stored: [LIVING_ROOM, OFFICE],

@@ -165,6 +165,20 @@ export default function SpeakerSettings() {
 
   /** The pair this speaker leads or is the partner in, as listed. */
   const listedPair = pairLedBy(speaker) ?? partnerPair;
+  /**
+   * Its other speakers, as last reported: not one that reported leaving it,
+   * even while it's offline; one not found yet is shown as such.
+   */
+  const pairMembers = (listedPair?.roles ?? [])
+    .filter((member) => member.deviceID !== speaker.deviceID)
+    .map((member) => ({
+      ...member,
+      record: all.find((other) => other.deviceID === member.deviceID),
+    }))
+    .filter(
+      ({ record }) =>
+        record === undefined || record.pair?.id === listedPair?.id,
+    );
 
   const settingUp = configureRun.view?.kind === "working";
   const radioCheckFailed = speaker.radio.kind === "unreachable";
@@ -389,7 +403,12 @@ export default function SpeakerSettings() {
             <FormLinkRow
               icon={formIcons.speaker}
               label={`${pairMaster?.speakerName ?? "The left speaker"}'s presets`}
-              description={`${speaker.speakerName}'s preset buttons play them`}
+              description={
+                pairMaster?.status === "online"
+                  ? `${speaker.speakerName}'s preset buttons play them`
+                  : `Shown once ${pairMaster?.speakerName ?? "the left speaker"} is reached`
+              }
+              disabled={pairMaster?.status !== "online"}
               onPress={() => {
                 router.push(
                   `/speakers/${encodeURIComponent(partnerPair.masterDeviceID)}/settings`,
@@ -421,26 +440,34 @@ export default function SpeakerSettings() {
           </FieldGroup.SectionFooter>
         </FormSection>
 
-        {listedPair ? (
+        {listedPair && pairMembers.length > 0 ? (
           <FormSection title="Stereo pair">
-            {listedPair.roles
-              .filter((member) => member.deviceID !== speaker.deviceID)
-              .map((member) => (
-                <FormLinkRow
-                  key={member.deviceID}
-                  icon={formIcons.speaker}
-                  label={
-                    all.find((other) => other.deviceID === member.deviceID)
-                      ?.speakerName ?? member.deviceID
-                  }
-                  description={`${roleLabel(member.role)} speaker of ${listedPair.name}`}
-                  onPress={() => {
-                    router.push(
-                      `/speakers/${encodeURIComponent(member.deviceID)}/settings`,
-                    );
-                  }}
-                />
-              ))}
+            {pairMembers.map((member) => (
+              <FormLinkRow
+                key={member.deviceID}
+                icon={formIcons.speaker}
+                label={member.record?.speakerName ?? member.deviceID}
+                description={[
+                  `${roleLabel(member.role)} speaker of ${listedPair.name}`,
+                  member.record === undefined
+                    ? "Not found yet"
+                    : member.record.status === "online"
+                      ? undefined
+                      : member.record.status === "connecting"
+                        ? "Connecting…"
+                        : "Offline",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+                // Its settings need it reached.
+                disabled={member.record?.status !== "online"}
+                onPress={() => {
+                  router.push(
+                    `/speakers/${encodeURIComponent(member.deviceID)}/settings`,
+                  );
+                }}
+              />
+            ))}
             <FieldGroup.SectionFooter>
               <FormFooterText>
                 Volume, power and source set on either speaker of the pair apply
