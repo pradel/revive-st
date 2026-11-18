@@ -50,6 +50,7 @@ function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
     radio: radioStatus(record.radio, record.radioFailed, ourServer),
     pair,
     pairStatus: pair && live?.group?.status,
+    pairRead: live?.group !== undefined,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,

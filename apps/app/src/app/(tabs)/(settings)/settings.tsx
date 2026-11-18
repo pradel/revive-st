@@ -16,6 +16,7 @@ import { speakerStateLabel } from "@/features/speakers/lib/playback";
 import {
   pairSummary,
   reachedPartner,
+  settingsPath,
 } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
@@ -74,15 +75,15 @@ export default function AppSettings() {
                 ].join(" · ")}
                 disabled={speaker.status === "connecting"}
                 onPress={() => {
-                  // A pair whose master is offline opens its partner's
-                  // settings, as long as the partner answers.
-                  const partner = reachedPartner(speaker, all);
-                  if (speaker.status === "offline" && partner === undefined) {
+                  // A pair whose master is offline is still unpaired
+                  // through its partner, from the pair's settings.
+                  if (
+                    speaker.status === "offline" &&
+                    reachedPartner(speaker, all) === undefined
+                  ) {
                     askAboutOffline(speaker);
                   } else {
-                    router.push(
-                      `/speakers/${encodeURIComponent(partner ?? speaker.deviceID)}/settings`,
-                    );
+                    router.push(settingsPath(speaker));
                   }
                 }}
               />
