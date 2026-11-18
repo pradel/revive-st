@@ -6,8 +6,10 @@ import {
   childController,
   throwIfAborted,
 } from "../../onboarding/session/async";
+import { isHouseholdAccountId } from "../../speakers/lib/account-id";
 import {
   type ConfigureError,
+  PairWouldBreak,
   recoveryActions,
   UnexpectedError,
 } from "./errors";
@@ -83,6 +85,10 @@ function guardDeps(raw: ConfigureDeps, signal: AbortSignal): ConfigureDeps {
         ),
       sourcesUpdated: async (host, deviceID, requestSignal) =>
         call(async () => speaker.sourcesUpdated(host, deviceID, requestSignal)),
+      getGroup: async (host, requestSignal) =>
+        call(async () => speaker.getGroup(host, requestSignal)),
+      removeGroup: async (host, requestSignal) =>
+        call(async () => speaker.removeGroup(host, requestSignal)),
     },
     console: {
       open: async (host) => {
@@ -242,10 +248,24 @@ export function createConfigureSession(
     }
   };
 
-  const entryFor = (action: RecoveryAction): Entry =>
-    action === "retry"
-      ? { step: "prepare" }
-      : { step: "awaitRestart", skipShutdown: true };
+  const entryFor = (action: RecoveryAction, error: ConfigureError): Entry => {
+    switch (action) {
+      case "retry": {
+        return { step: "prepare" };
+      }
+      case "unpair": {
+        // Only the pair the user was warned about.
+        ctx.unpair = PairWouldBreak.is(error) ? error.pairId : undefined;
+        return { step: "prepare" };
+      }
+      case "checkAgain": {
+        return { step: "awaitRestart", skipShutdown: true };
+      }
+      default: {
+        return unreachable(action);
+      }
+    }
+  };
 
   /** Shows the failed view until the user picks one of its actions. */
   const recover = async (
@@ -260,6 +280,11 @@ export function createConfigureSession(
       step: STEP_OF_ENTRY[failedEntry.step],
       error,
       actions,
+      ...(ctx.unpairedFrom === undefined
+        ? ctx.unpairUnconfirmed === undefined
+          ? {}
+          : { unpairUnconfirmed: ctx.unpairUnconfirmed }
+        : { unpairedFrom: ctx.unpairedFrom }),
     });
     const action = await new Promise<RecoveryAction>((resolve, reject) => {
       const waiting = childController(signal);
@@ -277,7 +302,7 @@ export function createConfigureSession(
       };
     });
     log.event("action", { action });
-    return entryFor(action);
+    return entryFor(action, error);
   };
 
   const run = async () => {
@@ -306,6 +331,12 @@ export function createConfigureSession(
             kind: "done",
             host: ctx.host,
             serverConfirmed: outcome.serverConfirmed,
+            ...(ctx.unpairedFrom === undefined
+              ? {}
+              : {
+                  unpairedFrom: ctx.unpairedFrom,
+                  canPairAgain: isHouseholdAccountId(ctx.accountId),
+                }),
           });
           return;
         }

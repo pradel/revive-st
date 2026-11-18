@@ -63,7 +63,7 @@ export default function ConfigureSpeaker() {
     __DEV__ && simulate !== undefined && isConfigureScenarioName(simulate)
       ? simulate
       : undefined;
-  const { online: speakers } = useSpeakers();
+  const { online: speakers, listed } = useSpeakers();
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const serverUrl = useServerUrl();
@@ -162,6 +162,10 @@ export default function ConfigureSpeaker() {
                 name: speaker?.name ?? "",
                 host: speaker?.host ?? "",
                 otherSpeakers: speakers.filter((other) => other !== speaker),
+                // Offline ones too: a stereo pair's other speaker is named.
+                knownSpeakers: listed
+                  .filter((other) => other.deviceID !== id)
+                  .map((other) => ({ ...other, speakerName: other.name })),
               },
               scenario,
             );
