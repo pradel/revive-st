@@ -352,6 +352,23 @@ export function useSpeakerCommands() {
       mutationFn: async ({ pair }: { pair: SpeakerPair }) => unpair(pair),
     }),
     /**
+     * Sets the balance of the stereo pair `deviceID`, its master, leads
+     * (negative: left); the speaker's state shows it once read back.
+     */
+    setBalanceMutation: useMutation({
+      mutationFn: async ({
+        deviceID,
+        value,
+      }: {
+        deviceID: string;
+        value: number;
+      }) =>
+        // Read again when it fails: a write that timed out may have landed.
+        run(deviceID, async (speaker) => speaker.setBalance(value), {
+          refreshOnError: true,
+        }),
+    }),
+    /**
      * Takes `deviceID` out of `pairID`, a pair its master no longer reports:
      * only this speaker still holds it. `/removeGroup` names no pair, so a
      * speaker reporting another one, or not saying yet, is only read again.
