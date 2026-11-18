@@ -177,22 +177,44 @@ const SERVER_UNREACHABLE_COPY: Record<
 /**
  * User-facing copy for the failed view. Never contains the account id.
  * `unpairedFrom` names the other speaker of the stereo pair this setup
- * already dissolved: the speaker doesn't work as before anymore.
+ * already dissolved, `unpairUnconfirmed` the one of a pair it may have:
+ * every message then says so, and none that the speaker is unchanged.
  */
 export function describeError(
   error: ConfigureError,
   speakerName: string,
   serverHost: string,
-  unpairedFrom?: string,
+  pair: { unpairedFrom?: string; unpairUnconfirmed?: string } = {},
 ): ErrorCopy {
-  const unchanged =
+  const { unpairedFrom, unpairUnconfirmed } = pair;
+  const pairNotice =
     unpairedFrom === undefined
-      ? UNCHANGED
-      : `Its stereo pair with ${unpairedFrom} was already undone; nothing else was changed on the speaker.`;
+      ? unpairUnconfirmed === undefined
+        ? undefined
+        : `Setup couldn't tell whether its stereo pair with ${unpairUnconfirmed} was undone: try again to find out.`
+      : `Its stereo pair with ${unpairedFrom} was already undone.`;
+  const unchanged = pairNotice === undefined ? UNCHANGED : "";
   const notRestarted =
-    unpairedFrom === undefined
-      ? NOT_RESTARTED
-      : `The speaker wasn't restarted, but its stereo pair with ${unpairedFrom} was already undone.`;
+    pairNotice === undefined ? NOT_RESTARTED : "The speaker wasn't restarted.";
+  const copy = describeErrorCopy(
+    error,
+    speakerName,
+    serverHost,
+    unchanged,
+    notRestarted,
+  );
+  return pairNotice === undefined
+    ? copy
+    : { ...copy, message: `${copy.message.trimEnd()} ${pairNotice}` };
+}
+
+function describeErrorCopy(
+  error: ConfigureError,
+  speakerName: string,
+  serverHost: string,
+  unchanged: string,
+  notRestarted: string,
+): ErrorCopy {
   return matchError<ConfigureError, ErrorCopy>(error, {
     SpeakerOffline: () => ({
       title: `Can't reach ${speakerName}`,

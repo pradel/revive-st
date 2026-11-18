@@ -341,7 +341,13 @@ describe("configure session with a stereo pair", () => {
     // before the first setting is written.
     const saved = world.firstEvent("presetsSaved")?.at ?? Infinity;
     const removed = world.firstEvent("groupRemoved")?.at ?? Infinity;
-    const firstCommand = world.firstEvent("command")?.at ?? -Infinity;
+    // The read that checks the console answers changes nothing.
+    const firstCommand =
+      world.events.find(
+        (event) =>
+          event.kind === "command" &&
+          event.detail !== "getpdo CurrentSystemConfiguration",
+      )?.at ?? -Infinity;
     expect(saved).toBeLessThan(removed);
     expect(removed).toBeLessThan(firstCommand);
     expect(world.running).toEqual(ourUrls);
@@ -370,15 +376,55 @@ describe("configure session with a stereo pair", () => {
     expect(world.group).toBeNull();
     expect(failed.unpairedFrom).toBe("Living room");
     expect(
-      describeError(
-        failed.error,
-        "Kitchen",
-        "api.revivest.app",
-        failed.unpairedFrom,
-      ).message,
-    ).toContain(
-      "The speaker wasn't restarted, but its stereo pair with Living room was already undone.",
+      describeError(failed.error, "Kitchen", "api.revivest.app", failed)
+        .message,
+    ).toBe(
+      "Kitchen didn't accept one of the new settings. The speaker wasn't restarted. Its firmware may not support this: try again, and share the logs if it keeps failing. Its stereo pair with Living room was already undone.",
     );
+  });
+
+  it("doesn't remove the pair through a console that hangs up", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.consoleHangsUp = true;
+
+    await act("unpair");
+    const failed = await untilFailed("ConsoleUnavailable");
+
+    expect(world.group).not.toBeNull();
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(failed.unpairedFrom).toBeUndefined();
+  });
+
+  it("says it can't tell whether the pair is undone when the removal gets no answer, and finds out on Try again", async () => {
+    const { world, untilFailed, untilDone, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.removeGroupReplyLost = true;
+
+    await act("unpair");
+    const failed = await untilFailed("SpeakerOffline");
+
+    expect(failed.unpairedFrom).toBeUndefined();
+    expect(failed.unpairUnconfirmed).toBe("Living room");
+    const { message } = describeError(
+      failed.error,
+      "Kitchen",
+      "api.revivest.app",
+      failed,
+    );
+    expect(message).toContain(
+      "Setup couldn't tell whether its stereo pair with Living room was undone",
+    );
+    expect(message).not.toContain("Nothing was changed");
+
+    world.config.speaker.removeGroupReplyLost = false;
+    await act("retry");
+    const done = await untilDone();
+
+    expect(done.unpairedFrom).toBe("Living room");
+    expect(
+      world.events.filter((event) => event.kind === "groupRemoved"),
+    ).toHaveLength(1);
   });
 
   it("asks again when the speaker is in another pair than the one the user chose to undo", async () => {

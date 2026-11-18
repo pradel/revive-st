@@ -76,6 +76,10 @@ export interface FakeSpeakerConfig {
   groupHangs?: boolean;
   /** `/removeGroup` answers this much later than other requests: it waits on its server. */
   removeGroupMs?: number;
+  /** `/removeGroup` removes the pair, but its reply never arrives. */
+  removeGroupReplyLost?: boolean;
+  /** Accepts a console connection, then hangs up before answering. */
+  consoleHangsUp?: boolean;
 }
 
 export interface FakeServerConfig {
@@ -367,9 +371,18 @@ class FakeSpeakerPort implements SpeakerPort {
   }
 
   async removeGroup(host: string, signal: AbortSignal) {
-    const { removeGroupMs } = this.#world.config.speaker;
+    const { removeGroupMs, removeGroupReplyLost } = this.#world.config.speaker;
     if (removeGroupMs !== undefined) {
       await delay(this.#world, removeGroupMs, signal);
+    }
+    if (removeGroupReplyLost) {
+      this.#world.group = null;
+      this.#world.record("groupRemoved");
+      await new Promise<never>((_resolve, reject) => {
+        signal.addEventListener("abort", () => {
+          reject(new AbortedError());
+        });
+      });
     }
     return this.#answer(host, signal, () => {
       this.#world.group = null;
@@ -466,7 +479,11 @@ class FakeConsolePort implements ConsolePort {
     ) {
       return Result.err(new PortFailure({ message: "Connection refused" }));
     }
-    return Result.ok(new FakeConsoleConnection(world));
+    const connection = new FakeConsoleConnection(world);
+    if (world.config.speaker.consoleHangsUp) {
+      connection.dropped();
+    }
+    return Result.ok(connection);
   }
 }
 

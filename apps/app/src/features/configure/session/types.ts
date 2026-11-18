@@ -69,6 +69,11 @@ export type ConfigureView =
        * name (or device id when unknown): the speaker no longer works as before.
        */
       unpairedFrom?: string;
+      /**
+       * The other speaker of the stereo pair whose removal got no answer: it
+       * may be undone.
+       */
+      unpairUnconfirmed?: string;
     }
   | {
       kind: "done";

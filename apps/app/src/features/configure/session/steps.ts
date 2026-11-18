@@ -111,14 +111,19 @@ export interface RunContext {
    * written (`connect`), once every check that writes nothing has passed.
    */
   removePair?: boolean;
+  /** The other speaker (name or device id) of the pair `removePair` dissolves. */
+  unpairing?: string;
   /**
-   * The other speaker of the pair this run dissolves (name or device id):
-   * kept once decided, so a retry that finds the pair already gone still
-   * says to set it up too.
+   * The other speaker of the pair this run dissolved, once the speaker
+   * confirmed it: it no longer works as before, and the other one is to be
+   * set up too.
    */
   unpairedFrom?: string;
-  /** The speaker confirmed it dissolved its pair: it no longer works as before. */
-  pairRemoved?: boolean;
+  /**
+   * The other speaker of the pair whose `/removeGroup` got no answer: it may
+   * be undone. The next pair read tells.
+   */
+  unpairUnconfirmed?: string;
 }
 
 /**
@@ -168,8 +173,15 @@ async function keepPairIntact(
       : ok();
   }
   if (group.value === null) {
+    if (ctx.unpairUnconfirmed !== undefined) {
+      // The removal that got no answer went through.
+      ctx.unpairedFrom = ctx.unpairUnconfirmed;
+      ctx.unpairUnconfirmed = undefined;
+    }
     return ok();
   }
+  // Still paired: a removal that got no answer didn't go through.
+  ctx.unpairUnconfirmed = undefined;
   if (!moving) {
     deps.log.event("pair.kept", { pair: group.value.id });
     return ok();
@@ -202,7 +214,7 @@ async function keepPairIntact(
     );
   }
   ctx.removePair = true;
-  ctx.unpairedFrom = partner;
+  ctx.unpairing = partner;
   return ok();
 }
 
@@ -486,6 +498,14 @@ export async function connect(
   ctx.console = connection;
 
   if (ctx.removePair) {
+    // The console opens even when the speaker hangs up on its greeting: a
+    // command must answer before the pair goes.
+    const answered = await connection.run(READ_CONFIGURATION);
+    if (answered.isErr()) {
+      return Result.err(
+        new ConsoleUnavailable({ message: answered.error.message }),
+      );
+    }
     // The first change to the speaker, once nothing else can stop setup
     // before the settings are written. A lost reply fails the step; Try
     // again reads the pair before removing it again.
@@ -500,6 +520,7 @@ export async function connect(
         }),
     );
     if (removed.isErr()) {
+      ctx.unpairUnconfirmed = ctx.unpairing;
       return Result.err(
         new SpeakerOffline({ host: ctx.host, message: removed.error.message }),
       );
@@ -509,7 +530,8 @@ export async function connect(
       peerUnreachable: removed.value.peerUnreachable,
     });
     ctx.removePair = false;
-    ctx.pairRemoved = true;
+    ctx.unpairedFrom = ctx.unpairing;
+    ctx.unpairUnconfirmed = undefined;
   }
 
   for (const command of writeUrlCommands(urls)) {
