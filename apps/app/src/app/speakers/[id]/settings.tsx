@@ -434,7 +434,12 @@ export default function SpeakerSettings() {
             <FormLinkRow
               icon={formIcons.speaker}
               label={`${pairMaster?.speakerName ?? "The left speaker"}'s presets`}
-              description={`${speaker.speakerName}'s preset buttons play them`}
+              description={
+                pairMaster?.status === "online"
+                  ? `${speaker.speakerName}'s preset buttons play them`
+                  : `Shown once ${pairMaster?.speakerName ?? "the left speaker"} is reached`
+              }
+              disabled={pairMaster?.status !== "online"}
               onPress={() => {
                 router.push(
                   `/speakers/${encodeURIComponent(partnerPair.masterDeviceID)}/settings`,

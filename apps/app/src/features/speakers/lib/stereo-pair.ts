@@ -96,26 +96,25 @@ export const settingsPath = (speaker: {
     : (`/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as const);
 
 /**
- * Whether the pair `speaker` leads, while `speaker` itself doesn't answer,
- * can still be reached through a partner (to unpair it, say).
+ * For a pair's master that isn't reached, a partner still in its pair that
+ * is: the pair's settings still answer through it (to unpair it, say).
  */
-export const reachedThroughPartner = (
+export const reachedPartner = (
   speaker: Pick<BoseSpeaker, "deviceID" | "pair" | "status">,
   all: readonly Pick<BoseSpeaker, "deviceID" | "pair" | "status">[],
-): boolean => {
+): string | undefined => {
   const pair = pairLedBy(speaker);
-  return (
-    pair !== undefined &&
-    speaker.status !== "online" &&
-    // A partner reporting another pair (or none) would unpair that instead.
-    partnersOf(pair).some((id) =>
-      all.some(
-        (other) =>
-          other.deviceID === id &&
-          other.status === "online" &&
-          other.pair?.id === pair.id,
-      ),
-    )
+  if (pair === undefined || speaker.status === "online") {
+    return undefined;
+  }
+  // A partner reporting another pair (or none) would unpair that instead.
+  return partnersOf(pair).find((id) =>
+    all.some(
+      (other) =>
+        other.deviceID === id &&
+        other.status === "online" &&
+        other.pair?.id === pair.id,
+    ),
   );
 };
 

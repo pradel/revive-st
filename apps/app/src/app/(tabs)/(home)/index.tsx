@@ -37,7 +37,7 @@ import {
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
 import {
   pairSummary,
-  reachedThroughPartner,
+  reachedPartner,
   settingsPath,
 } from "@/features/speakers/lib/stereo-pair";
 import {
@@ -564,10 +564,8 @@ export default function Index() {
                     {offlineSpeakers.map((speaker) => {
                       // Its master is offline, but the pair answers through
                       // its partner: its settings can still unpair it.
-                      const throughPartner = reachedThroughPartner(
-                        speaker,
-                        all,
-                      );
+                      const throughPartner =
+                        reachedPartner(speaker, all) !== undefined;
                       return (
                         <SpeakerRow
                           key={speaker.deviceID}

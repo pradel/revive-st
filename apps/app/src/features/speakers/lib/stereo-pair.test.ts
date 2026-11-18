@@ -5,7 +5,7 @@ import {
   defaultPairName,
   pairProblem,
   partnerProblem,
-  reachedThroughPartner,
+  reachedPartner,
   validatePairName,
 } from "./stereo-pair";
 
@@ -152,7 +152,7 @@ describe("stereo pair names", () => {
   });
 });
 
-describe("reachedThroughPartner", () => {
+describe("reachedPartner", () => {
   const pair = {
     id: "3271058",
     name: "Living room + Office",
@@ -163,22 +163,22 @@ describe("reachedThroughPartner", () => {
     ],
   } as const;
   const master = { deviceID: "0CAE7D6298E9", status: "offline", pair } as const;
+  const partner = { deviceID: "EC1127C25A50", status: "online", pair } as const;
 
-  it("reaches an offline master's pair through a partner reporting it", () => {
-    expect(
-      reachedThroughPartner(master, [
-        { deviceID: "EC1127C25A50", status: "online", pair },
-      ]),
-    ).toBe(true);
+  it("finds the reached partner of an offline master's pair", () => {
+    expect(reachedPartner(master, [master, partner])).toBe(partner.deviceID);
   });
 
-  it("doesn't through a partner reporting another pair, or none", () => {
-    for (const other of [{ ...pair, id: "2222222" }, undefined]) {
-      expect(
-        reachedThroughPartner(master, [
-          { deviceID: "EC1127C25A50", status: "online", pair: other },
-        ]),
-      ).toBe(false);
+  it("finds none for a master that answers, or a partner offline, in another pair or in none", () => {
+    expect(
+      reachedPartner({ ...master, status: "online" }, [master, partner]),
+    ).toBeUndefined();
+    for (const other of [
+      { ...partner, status: "offline" as const },
+      { ...partner, pair: { ...pair, id: "2222222" } },
+      { ...partner, pair: undefined },
+    ]) {
+      expect(reachedPartner(master, [master, other])).toBeUndefined();
     }
   });
 });

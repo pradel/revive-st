@@ -15,7 +15,7 @@ import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-
 import { speakerStateLabel } from "@/features/speakers/lib/playback";
 import {
   pairSummary,
-  reachedThroughPartner,
+  reachedPartner,
   settingsPath,
 } from "@/features/speakers/lib/stereo-pair";
 import {
@@ -79,7 +79,7 @@ export default function AppSettings() {
                   // through its partner, from the pair's settings.
                   if (
                     speaker.status === "offline" &&
-                    !reachedThroughPartner(speaker, all)
+                    reachedPartner(speaker, all) === undefined
                   ) {
                     askAboutOffline(speaker);
                   } else {

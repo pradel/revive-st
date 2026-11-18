@@ -327,12 +327,7 @@ export function FailedView({
   onClose: () => void;
   onShowLogs: () => void;
 }) {
-  const copy = describeError(
-    view.error,
-    speakerName,
-    serverHost,
-    view.unpairedFrom,
-  );
+  const copy = describeError(view.error, speakerName, serverHost, view);
   return (
     <>
       <SetupHeader

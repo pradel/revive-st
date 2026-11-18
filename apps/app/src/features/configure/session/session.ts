@@ -280,9 +280,11 @@ export function createConfigureSession(
       step: STEP_OF_ENTRY[failedEntry.step],
       error,
       actions,
-      ...(ctx.pairRemoved && ctx.unpairedFrom !== undefined
-        ? { unpairedFrom: ctx.unpairedFrom }
-        : {}),
+      ...(ctx.unpairedFrom === undefined
+        ? ctx.unpairUnconfirmed === undefined
+          ? {}
+          : { unpairUnconfirmed: ctx.unpairUnconfirmed }
+        : { unpairedFrom: ctx.unpairedFrom }),
     });
     const action = await new Promise<RecoveryAction>((resolve, reject) => {
       const waiting = childController(signal);

@@ -6,6 +6,7 @@ import { radioStatus, type SpeakerRadio } from "../lib/speaker-radio";
 import {
   pairFromGroup,
   pairLedBy,
+  parseSpeakerPair,
   partnersOf,
   type SpeakerPair,
 } from "../lib/stereo-pair";
@@ -42,7 +43,8 @@ function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
     status: record.status,
     host: record.host,
     port: record.port,
-    name: pairLedBy(record)?.name ?? record.name,
+    // A pair reported without a name goes by its master's.
+    name: filled(pairLedBy(record)?.name, record.name),
     speakerName: record.name,
     type: record.type,
     radio: radioStatus(record.radio, record.radioFailed, ourServer),
@@ -261,23 +263,30 @@ export function createSpeakerRegistry(
     syncPresets(deviceID, state);
     const record = records.get(deviceID);
     if (record) {
-      // Unread (another model, or `/getGroup` didn't answer): the
+      // Unread (another model, `/getGroup` didn't answer, or a pair
+      // without its two speakers, as stored pairs are checked): the
       // remembered pair stands.
       const pair =
         state.group === undefined
           ? record.pair
           : state.group
-            ? pairFromGroup(state.group)
+            ? (parseSpeakerPair(pairFromGroup(state.group)) ?? record.pair)
             : undefined;
       // For diagnostics: the master went to `GROUP_ERROR` (its partner is
-      // gone; it goes to standby soon), or came back from it.
-      const wasError = record.live?.group?.status === "GROUP_ERROR";
-      const isError = state.group?.status === "GROUP_ERROR";
-      if (state.group !== undefined && wasError !== isError) {
+      // gone; it goes to standby soon), or its pair is `GROUP_OK` again.
+      const before = record.live?.group;
+      const wasError = before?.status === "GROUP_ERROR";
+      if (state.group?.status === "GROUP_ERROR" && !wasError) {
         deps.log.warn(
-          isError
-            ? `[speakers] ${deviceID} reports its stereo partner unreachable`
-            : `[speakers] ${deviceID} reaches its stereo partner again`,
+          `[speakers] ${deviceID} reports its stereo partner unreachable`,
+        );
+      } else if (
+        wasError &&
+        state.group?.status === "GROUP_OK" &&
+        state.group.id === before.id
+      ) {
+        deps.log.warn(
+          `[speakers] ${deviceID} reaches its stereo partner again`,
         );
       }
       records.set(deviceID, {

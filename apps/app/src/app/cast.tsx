@@ -439,8 +439,9 @@ function SpeakerCastItem({
   const { radio } = speaker;
   const isLoading = radio.kind === "checking";
   const isError = radio.kind === "unreachable";
-  // The master of a pair whose partner is gone refuses to play.
-  const partnerUnreachable = isPartnerUnreachable(speaker);
+  // The master of a pair whose partner is gone refuses to play; a station
+  // still goes in its presets.
+  const partnerUnreachable = mode === "play" && isPartnerUnreachable(speaker);
   const fit = stationFit(radio, station);
   const isUnplayable = fit.kind === "noSource";
   const canAddSource = fit.kind === "noSource" && fit.setupAdds;
