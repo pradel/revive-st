@@ -73,7 +73,7 @@ const FAQS = [
   {
     question: "What features are supported?",
     answer:
-      "Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), and real-time sync across devices. Multi-room zone control is coming soon.",
+      "Playback control (play, pause, skip, volume), hardware presets, internet radio with favorites, bass and treble EQ, speaker renaming, source switching (Bluetooth, AUX, Wi‑Fi Audio), stereo pairs of two SoundTouch 10s, and real-time sync across devices. Multi-room zone control is coming soon.",
   },
   {
     question: "What if Revive ST shuts down one day?",
@@ -102,6 +102,7 @@ const AFTER: { text: string; soon?: boolean }[] = [
   { text: "Presets work again, set from your phone" },
   { text: "Thousands of internet radio stations" },
   { text: "Playback, volume, sources and EQ in one app" },
+  { text: "Two SoundTouch 10s paired as one stereo speaker" },
   { text: "Multi-room zones", soon: true },
 ];
 
@@ -406,6 +407,10 @@ export default function HomePage() {
                 <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-fg-secondary">
                   {[
                     { text: "Rename speakers" },
+                    {
+                      text: "Stereo pairs of two SoundTouch 10s",
+                      href: "/docs/supported-speakers#stereo-pairs",
+                    },
                     { text: "Real-time sync across phones" },
                     { text: "Bluetooth & AUX switching" },
                     { text: "No account to create" },

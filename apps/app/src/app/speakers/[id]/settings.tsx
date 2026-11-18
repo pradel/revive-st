@@ -1,5 +1,9 @@
 import { FieldGroup, RNHostView } from "@expo/ui";
-import type { AudioMode, KeyValue } from "bose-api-speaker-client";
+import {
+  type AudioMode,
+  isSoundTouch10,
+  type KeyValue,
+} from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 
@@ -472,6 +476,24 @@ export default function SpeakerSettings() {
               <FormFooterText>
                 Volume, power and source set on either speaker of the pair apply
                 to both.
+              </FormFooterText>
+            </FieldGroup.SectionFooter>
+          </FormSection>
+        ) : null}
+
+        {pair === undefined && isSoundTouch10(speaker.type) ? (
+          <FormSection title="Stereo pair">
+            <FormLinkRow
+              icon={formIcons.speaker}
+              label="Pair with another SoundTouch 10"
+              onPress={() => {
+                router.push("./create-pair");
+              }}
+            />
+            <FieldGroup.SectionFooter>
+              <FormFooterText>
+                Two SoundTouch 10s can play as one stereo pair: one plays the
+                left channel, the other the right.
               </FormFooterText>
             </FieldGroup.SectionFooter>
           </FormSection>
