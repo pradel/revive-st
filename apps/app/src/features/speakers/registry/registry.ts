@@ -3,6 +3,13 @@ import type { Speaker, SpeakerState } from "bose-api-speaker-client";
 import { isSameOrigin } from "../lib/account-id";
 import type { KnownSpeaker } from "../lib/known-speakers";
 import { radioStatus, type SpeakerRadio } from "../lib/speaker-radio";
+import {
+  pairFromGroup,
+  pairLedBy,
+  parseSpeakerPair,
+  partnersOf,
+  type SpeakerPair,
+} from "../lib/stereo-pair";
 import type { SpeakerInfo, SpeakerLink, SpeakerRegistryDeps } from "./ports";
 import type {
   BoseSpeaker,
@@ -25,18 +32,24 @@ interface SpeakerRecord {
   readonly radioFailed: boolean;
   /** Only while reached. */
   readonly live?: SpeakerState;
+  /** The stereo pair it's in, as it last reported; remembered. */
+  readonly pair?: SpeakerPair;
 }
 
 function toView(record: SpeakerRecord, ourServer: string): BoseSpeaker {
-  const { live } = record;
+  const { live, pair } = record;
   return {
     deviceID: record.deviceID,
     status: record.status,
     host: record.host,
     port: record.port,
-    name: record.name,
+    // A pair reported without a name goes by its master's.
+    name: filled(pairLedBy(record)?.name, record.name),
+    speakerName: record.name,
     type: record.type,
     radio: radioStatus(record.radio, record.radioFailed, ourServer),
+    pair,
+    pairStatus: pair && live?.group?.status,
     playStatus: live?.nowPlaying?.playStatus,
     source: live?.nowPlaying?.source,
     track: live?.nowPlaying?.track,
@@ -70,6 +83,7 @@ const known = ({
   host,
   port,
   radio,
+  pair,
 }: SpeakerRecord | KnownSpeaker): KnownSpeaker => ({
   deviceID,
   name,
@@ -77,6 +91,7 @@ const known = ({
   host,
   port,
   radio,
+  pair,
 });
 
 export type SpeakerRegistry = ReturnType<typeof createSpeakerRegistry>;
@@ -126,19 +141,48 @@ export function createSpeakerRegistry(
     // By name, so the list doesn't depend on which speaker answered first.
     // `map` makes a new array, so it's sorted in place (Hermes lacks
     // `toSorted`).
-    const listed = [...records.values()]
+    const all = [...records.values()]
       .map((record) => toView(record, ourServer))
       .sort(
         (a, b) =>
           a.name.localeCompare(b.name) || a.deviceID.localeCompare(b.deviceID),
       );
+    // A pair is listed once, as its master, also while the master is
+    // connecting or offline. A partner that reported no pair, or another
+    // one, is listed on its own, also once it's offline.
+    const byID = new Map(all.map((speaker) => [speaker.deviceID, speaker]));
+    const partners = new Set(
+      all.flatMap((speaker) => {
+        const pair = pairLedBy(speaker);
+        return pair
+          ? partnersOf(pair).filter((id) => byID.get(id)?.pair?.id === pair.id)
+          : [];
+      }),
+    );
+    const listed = all.filter((speaker) => !partners.has(speaker.deviceID));
     return {
       listed,
       online: listed.filter((speaker) => speaker.status === "online"),
+      all,
       restored,
       scan,
       error,
     };
+  }
+
+  /**
+   * `deviceID` and, for a pair's master, the partners its card stands for:
+   * those still in the pair, as they last reported.
+   */
+  function withPartners(deviceID: string): string[] {
+    const record = records.get(deviceID);
+    const pair = record && pairLedBy(record);
+    return [
+      deviceID,
+      ...(pair ? partnersOf(pair) : []).filter(
+        (id) => records.get(id)?.pair?.id === pair?.id,
+      ),
+    ];
   }
 
   function persist(): void {
@@ -217,12 +261,57 @@ export function createSpeakerRegistry(
     syncPresets(deviceID, state);
     const record = records.get(deviceID);
     if (record) {
-      update(deviceID, {
+      // Unread (another model, `/getGroup` didn't answer, or a pair
+      // without its two speakers, as stored pairs are checked): the
+      // remembered pair stands.
+      const pair =
+        state.group === undefined
+          ? record.pair
+          : state.group
+            ? (parseSpeakerPair(pairFromGroup(state.group)) ?? record.pair)
+            : undefined;
+      // For diagnostics: the master went to `GROUP_ERROR` (its partner is
+      // gone; it goes to standby soon), or its pair is `GROUP_OK` again.
+      const before = record.live?.group;
+      const wasError = before?.status === "GROUP_ERROR";
+      if (state.group?.status === "GROUP_ERROR" && !wasError) {
+        deps.log.warn(
+          `[speakers] ${deviceID} reports its stereo partner unreachable`,
+        );
+      } else if (
+        wasError &&
+        state.group?.status === "GROUP_OK" &&
+        state.group.id === before.id
+      ) {
+        deps.log.warn(
+          `[speakers] ${deviceID} reaches its stereo partner again`,
+        );
+      }
+      records.set(deviceID, {
+        ...record,
         status: "online",
         live: state,
         name: filled(state.name, record.name),
         type: filled(state.type, record.type),
+        pair,
       });
+      // It left the pair (or is in another): the other speaker, while it
+      // can't say so itself, no longer remembers that pair either.
+      const former = record.pair;
+      if (former !== undefined && pair?.id !== former.id) {
+        for (const { deviceID: other } of former.roles) {
+          const otherRecord = records.get(other);
+          if (
+            other !== deviceID &&
+            otherRecord !== undefined &&
+            otherRecord.status !== "online" &&
+            otherRecord.pair?.id === former.id
+          ) {
+            records.set(other, { ...otherRecord, pair: undefined });
+          }
+        }
+      }
+      changed();
     }
     // A speaker set up for another server reports its new address; the
     // radio checked for the old one no longer holds.
@@ -331,6 +420,7 @@ export function createSpeakerRegistry(
       radio: record?.radio,
       radioFailed: record?.radioFailed ?? false,
       live: record?.live,
+      pair: record?.pair,
     });
     changed();
 
@@ -502,29 +592,44 @@ export function createSpeakerRegistry(
       checkReachedRadio();
     },
 
-    /** An offline speaker, tried again: at its last address and by scanning. */
+    /**
+     * An offline speaker, tried again: at its last address and by scanning.
+     * A pair's card tries both of its speakers.
+     */
     retry: (deviceID: string): void => {
-      const record = records.get(deviceID);
-      if (!record || record.status === "online") {
-        return;
+      let tried = false;
+      for (const id of withPartners(deviceID)) {
+        const record = records.get(id);
+        if (record && record.status !== "online") {
+          tried = true;
+          update(id, { status: "connecting" });
+          void reachRemembered(id);
+        }
       }
-      update(deviceID, { status: "connecting" });
-      void reachRemembered(deviceID);
-      startScan("auto");
+      if (tried) {
+        startScan("auto");
+      }
     },
 
-    /** Stops listing a speaker and remembering it, until a scan finds it again. */
+    /**
+     * Stops listing a speaker and remembering it, until a scan finds it
+     * again; a pair's card forgets both of its speakers.
+     */
     forget: (deviceID: string): void => {
-      forgetCount += 1;
-      forgottenAt.set(deviceID, forgetCount);
-      const link = links.get(deviceID);
-      links.delete(deviceID);
-      link?.close();
-      // Bumped, not reset, so a check still running can't pass for a later one.
-      radioChecks.set(deviceID, (radioChecks.get(deviceID) ?? 0) + 1);
-      radioCheckedFor.delete(deviceID);
-      syncedPresets.delete(deviceID);
-      if (records.delete(deviceID)) {
+      let forgot = false;
+      for (const id of withPartners(deviceID)) {
+        forgetCount += 1;
+        forgottenAt.set(id, forgetCount);
+        const link = links.get(id);
+        links.delete(id);
+        link?.close();
+        // Bumped, not reset, so a check still running can't pass for a later one.
+        radioChecks.set(id, (radioChecks.get(id) ?? 0) + 1);
+        radioCheckedFor.delete(id);
+        syncedPresets.delete(id);
+        forgot = records.delete(id) || forgot;
+      }
+      if (forgot) {
         changed();
       }
     },

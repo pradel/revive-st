@@ -14,6 +14,10 @@ import { serverHost } from "@/features/server/server-url";
 import { OFFLINE_SPEAKER_ACTIONS } from "@/features/speakers/components/offline-actions";
 import { speakerStateLabel } from "@/features/speakers/lib/playback";
 import {
+  pairSummary,
+  reachedPartner,
+} from "@/features/speakers/lib/stereo-pair";
+import {
   speakerRegistry,
   useSpeakers,
 } from "@/features/speakers/registry/store";
@@ -49,7 +53,7 @@ const askAboutOffline = (speaker: BoseSpeaker) => {
 export default function AppSettings() {
   const router = useRouter();
   const { logs } = useLogger();
-  const { scan, listed } = useSpeakers();
+  const { scan, listed, all } = useSpeakers();
   const isScanning = scan !== null;
   const serverUrl = useServerUrl();
   const { data: update } = useAppUpdate();
@@ -64,14 +68,20 @@ export default function AppSettings() {
                 key={speaker.deviceID}
                 icon={formIcons.speaker}
                 label={speaker.name}
-                description={`${speaker.type} · ${speakerStateLabel(speaker)}`}
+                description={[
+                  pairSummary(speaker) ?? speaker.type,
+                  speakerStateLabel(speaker),
+                ].join(" · ")}
                 disabled={speaker.status === "connecting"}
                 onPress={() => {
-                  if (speaker.status === "offline") {
+                  // A pair whose master is offline opens its partner's
+                  // settings, as long as the partner answers.
+                  const partner = reachedPartner(speaker, all);
+                  if (speaker.status === "offline" && partner === undefined) {
                     askAboutOffline(speaker);
                   } else {
                     router.push(
-                      `/speakers/${encodeURIComponent(speaker.deviceID)}/settings`,
+                      `/speakers/${encodeURIComponent(partner ?? speaker.deviceID)}/settings`,
                     );
                   }
                 }}

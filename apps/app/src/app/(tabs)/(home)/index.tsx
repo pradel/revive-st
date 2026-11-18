@@ -36,6 +36,10 @@ import {
 } from "@/features/speakers/lib/selection";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
 import {
+  pairSummary,
+  reachedPartner,
+} from "@/features/speakers/lib/stereo-pair";
+import {
   speakerRegistry,
   useSpeakers,
 } from "@/features/speakers/registry/store";
@@ -90,7 +94,7 @@ const radioSummary = (radio: RadioStatus): string | undefined => {
 
 export default function Index() {
   const router = useRouter();
-  const { online: speakers, listed: listedSpeakers, scan } = useSpeakers();
+  const { online: speakers, listed: listedSpeakers, all, scan } = useSpeakers();
   const isScanning = scan !== null;
   const {
     volumeMutation,
@@ -231,10 +235,11 @@ export default function Index() {
     },
   });
 
+  // A pair's partner counts: reached, it's not the household's Wi-Fi.
   const allOffline =
     !isScanning &&
     listedSpeakers.length > 0 &&
-    listedSpeakers.every((speaker) => speaker.status === "offline");
+    all.every((speaker) => speaker.status === "offline");
 
   const savePreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     savePresetMutation.mutate(
@@ -289,7 +294,11 @@ export default function Index() {
         <SpeakerRow
           key={speaker.deviceID}
           name={speaker.name}
-          detail={[speakerStateLabel(speaker), radioSummary(speaker.radio)]
+          detail={[
+            pairSummary(speaker),
+            speakerStateLabel(speaker),
+            radioSummary(speaker.radio),
+          ]
             .filter(Boolean)
             .join(" · ")}
           modelDrawing={speakerDrawing(speaker.type)}
@@ -315,6 +324,7 @@ export default function Index() {
         nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
         detail={[
           speaker.artist,
+          pairSummary(speaker),
           speakerStateLabel(speaker),
           radioSummary(speaker.radio),
         ]
@@ -549,21 +559,44 @@ export default function Index() {
                 />
                 {offlineExpanded ? (
                   <View style={$cards}>
-                    {offlineSpeakers.map((speaker) => (
-                      <SpeakerRow
-                        key={speaker.deviceID}
-                        name={speaker.name}
-                        detail={`${speakerStateLabel(speaker)} · Tap to try again`}
-                        modelDrawing={speakerDrawing(speaker.type)}
-                        accessibilityHint="Tries to reach the speaker again"
-                        onPress={() => {
-                          haptics.tap();
-                          speakerRegistry.retry(speaker.deviceID);
-                        }}
-                        menu={unreachableMenu(speaker)}
-                        selected={speaker.deviceID === highlightedID}
-                      />
-                    ))}
+                    {offlineSpeakers.map((speaker) => {
+                      // Its master is offline, but its partner answers: the
+                      // partner's settings still open.
+                      const partner = reachedPartner(speaker, all);
+                      return (
+                        <SpeakerRow
+                          key={speaker.deviceID}
+                          name={speaker.name}
+                          detail={[
+                            speakerStateLabel(speaker),
+                            pairSummary(speaker),
+                            partner === undefined
+                              ? "Tap to try again"
+                              : "Tap for its other speaker",
+                          ]
+                            .filter(Boolean)
+                            .join(" · ")}
+                          modelDrawing={speakerDrawing(speaker.type)}
+                          accessibilityHint={
+                            partner === undefined
+                              ? "Tries to reach the speaker again"
+                              : "Opens the settings of the pair's other speaker"
+                          }
+                          onPress={() => {
+                            haptics.tap();
+                            if (partner === undefined) {
+                              speakerRegistry.retry(speaker.deviceID);
+                            } else {
+                              router.push(
+                                `/speakers/${encodeURIComponent(partner)}/settings`,
+                              );
+                            }
+                          }}
+                          menu={unreachableMenu(speaker)}
+                          selected={speaker.deviceID === highlightedID}
+                        />
+                      );
+                    })}
                   </View>
                 ) : null}
               </>

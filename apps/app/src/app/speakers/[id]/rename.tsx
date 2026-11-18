@@ -21,7 +21,7 @@ export default function RenameSpeaker() {
   const { setNameMutation } = useSpeakerCommands();
   const speaker = useSpeaker(id);
 
-  const [draft, setDraft] = useState(speaker?.name ?? "");
+  const [draft, setDraft] = useState(speaker?.speakerName ?? "");
   const [error, setError] = useState<string | null>(null);
 
   if (!speaker) {
@@ -52,7 +52,7 @@ export default function RenameSpeaker() {
       return;
     }
     const trimmed = name.trim();
-    if (trimmed === speaker.name) {
+    if (trimmed === speaker.speakerName) {
       router.back();
       return;
     }
@@ -77,7 +77,7 @@ export default function RenameSpeaker() {
       <Form>
         <FormSection>
           <TextInput
-            defaultValue={speaker.name}
+            defaultValue={speaker.speakerName}
             placeholder="Speaker name"
             autoFocus
             autoCapitalize="words"

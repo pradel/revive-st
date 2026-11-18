@@ -19,9 +19,11 @@ export function useSpeakers(): SpeakersSnapshot {
   );
 }
 
-/** A reached speaker, by device id. */
+/** A reached speaker, by device id; a pair's partner too. */
 export function useSpeaker(deviceID: string): BoseSpeaker | undefined {
-  return useSpeakers().online.find((speaker) => speaker.deviceID === deviceID);
+  return useSpeakers().all.find(
+    (speaker) => speaker.deviceID === deviceID && speaker.status === "online",
+  );
 }
 
 /**

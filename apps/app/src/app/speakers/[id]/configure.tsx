@@ -63,7 +63,9 @@ export default function ConfigureSpeaker() {
     __DEV__ && simulate !== undefined && isConfigureScenarioName(simulate)
       ? simulate
       : undefined;
-  const { online: speakers, listed } = useSpeakers();
+  // A pair's partner is set up on its own, and joins the household's account.
+  const known = useSpeakers().all;
+  const speakers = known.filter((item) => item.status === "online");
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const serverUrl = useServerUrl();
@@ -86,7 +88,7 @@ export default function ConfigureSpeaker() {
 
   const speakerName =
     run?.target.name ??
-    speaker?.name ??
+    speaker?.speakerName ??
     (scenario === undefined ? "" : simulatedSpeakerName(scenario));
 
   const renderBody = () => {
@@ -159,13 +161,10 @@ export default function ConfigureSpeaker() {
             startConfigure(
               {
                 deviceID: id,
-                name: speaker?.name ?? "",
+                name: speaker?.speakerName ?? "",
                 host: speaker?.host ?? "",
                 otherSpeakers: speakers.filter((other) => other !== speaker),
-                // Offline ones too: a stereo pair's other speaker is named.
-                knownSpeakers: listed
-                  .filter((other) => other.deviceID !== id)
-                  .map((other) => ({ ...other, speakerName: other.name })),
+                knownSpeakers: known.filter((other) => other.deviceID !== id),
               },
               scenario,
             );
