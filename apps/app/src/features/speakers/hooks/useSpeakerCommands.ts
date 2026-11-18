@@ -335,16 +335,20 @@ export function useSpeakerCommands() {
           void speakerRegistry.refresh(deviceID);
           throw new Error("Speaker not in that stereo pair");
         }
-        await run(deviceID, async (speaker) =>
-          speaker.updateGroup(
-            {
-              id: group.id,
-              name,
-              masterDeviceId: group.masterDeviceId,
-              roles: group.roles,
-            },
-            { signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS) },
-          ),
+        await run(
+          deviceID,
+          async (speaker) =>
+            speaker.updateGroup(
+              {
+                id: group.id,
+                name,
+                masterDeviceId: group.masterDeviceId,
+                roles: group.roles,
+              },
+              { signal: AbortSignal.timeout(PAIR_COMMAND_TIMEOUT_MS) },
+            ),
+          // A rename that timed out may have landed.
+          { refreshOnError: true },
         );
       },
     }),
@@ -376,6 +380,17 @@ export function useSpeakerCommands() {
             now: group?.id ?? null,
           });
           return;
+        }
+        // The confirmation may have stayed open while its master came back:
+        // a master still leading the pair, or not saying yet, means it may
+        // not be stale, and leaving it would break the pair.
+        const master = group.masterDeviceId;
+        if (master !== deviceID && speakerRegistry.client(master)) {
+          const masterGroup = client(master).getState().group;
+          if (masterGroup === undefined || masterGroup?.id === pairID) {
+            void speakerRegistry.refresh(master);
+            throw new Error("Its master hasn't left the stereo pair");
+          }
         }
         await run(
           deviceID,

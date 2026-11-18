@@ -18,7 +18,7 @@ import {
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
 import {
-  pairLedBy,
+  isStalePair,
   roleLabel,
   roleOf,
 } from "@/features/speakers/lib/stereo-pair";
@@ -161,14 +161,10 @@ export default function SpeakerSettings() {
 
   const { pair } = speaker;
   const pairRole = pair && roleOf(pair, speaker.deviceID);
-  // The pair its master no longer leads (or that isn't listed any more):
-  // only this speaker still holds it, and only it can leave it.
   const pairMaster =
     pair && all.find((other) => other.deviceID === pair.masterDeviceID);
-  const stalePair =
-    pair !== undefined &&
-    pair.masterDeviceID !== speaker.deviceID &&
-    (pairMaster === undefined || pairLedBy(pairMaster)?.id !== pair.id);
+  // Only this speaker still holds it, and only it can leave it.
+  const stalePair = isStalePair(speaker, all);
   /** The pair this speaker is the partner in, whose presets its buttons play. */
   const partnerPair =
     pair !== undefined && pair.masterDeviceID !== speaker.deviceID && !stalePair

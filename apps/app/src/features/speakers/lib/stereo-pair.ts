@@ -96,6 +96,27 @@ export const settingsPath = (speaker: {
     : (`/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as const);
 
 /**
+ * Whether `speaker` holds a pair as its partner that only it still holds:
+ * its master has reported since it was reached and leads no such pair, or
+ * isn't listed any more. A master that hasn't said yet, and only remembers
+ * no pair (as one just found), doesn't make it stale.
+ */
+export const isStalePair = (
+  speaker: Pick<BoseSpeaker, "deviceID" | "pair">,
+  all: readonly Pick<BoseSpeaker, "deviceID" | "pair" | "pairRead">[],
+): boolean => {
+  const { pair } = speaker;
+  if (pair === undefined || pair.masterDeviceID === speaker.deviceID) {
+    return false;
+  }
+  const master = all.find((other) => other.deviceID === pair.masterDeviceID);
+  return (
+    master === undefined ||
+    (master.pairRead === true && pairLedBy(master)?.id !== pair.id)
+  );
+};
+
+/**
  * For a pair's master that isn't reached, a partner still in its pair that
  * is: the pair's settings still answer through it (to unpair it, say).
  */
