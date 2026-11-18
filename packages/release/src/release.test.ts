@@ -53,6 +53,8 @@ interface World {
   readonly server: unknown;
   /** The hosted server's `GET /` body once a new EAS build ran, if it changed. */
   readonly serverAfterBuild?: unknown;
+  /** The minimum the worktree's app declares once a new EAS build ran. */
+  readonly minimumAfterBuild?: string;
 }
 
 /** Fake tools over `world`; `events` records what they were asked to do. */
@@ -69,6 +71,7 @@ const tools = (overrides: Partial<World> = {}) => {
   };
   const events: string[] = [];
   let { server } = world;
+  let minimum = MIN_SERVER_VERSION;
   const record = (event: string) =>
     Effect.sync(() => {
       events.push(event);
@@ -78,10 +81,7 @@ const tools = (overrides: Partial<World> = {}) => {
       isClean: Effect.succeed(world.clean),
       updateMain: record("update main"),
       appVersion: Effect.succeed(VERSION),
-      appServer: Effect.succeed({
-        url: SERVER_URL,
-        minimum: MIN_SERVER_VERSION,
-      }),
+      appServer: Effect.sync(() => ({ url: SERVER_URL, minimum })),
       tagCommit: () => Effect.succeed("c0ffee0"),
       checkout: (ref) => record(`checkout ${ref}`),
     }),
@@ -97,6 +97,9 @@ const tools = (overrides: Partial<World> = {}) => {
           Effect.andThen(
             record(`eas build ${profile}`),
             Effect.sync(() => {
+              if (world.minimumAfterBuild !== undefined) {
+                minimum = world.minimumAfterBuild;
+              }
               if ("serverAfterBuild" in world) {
                 server = world.serverAfterBuild;
               }
@@ -265,6 +268,23 @@ describe("releaseApk", () => {
       }),
   );
 
+  it.effect(
+    "checks the server before the upload against the tag's minimum, not the worktree's",
+    () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          // Another command restored main, with an older minimum, meanwhile.
+          minimumAfterBuild: "0.0.3",
+          serverAfterBuild: { name: "Revive ST API", version: "0.0.5" },
+        });
+        const error = yield* Effect.flip(
+          releaseApk.pipe(Effect.provide(layer)),
+        );
+        assert.instanceOf(error, ServerNotReady);
+        assert.isFalse(events.some((event) => event.startsWith("upload")));
+      }),
+  );
+
   it("tells to retry, not to deploy, when the hosted server can't be reached", () => {
     const unreachable = new ServerNotReady({
       url: SERVER_URL,
@@ -291,6 +311,16 @@ describe("releaseApk", () => {
       "a version with leading zeros",
       { name: "Revive ST API", version: "0.0.06" },
       { kind: "tooOld", version: "0.0.06" },
+    ],
+    [
+      "a newer prerelease with a leading zero",
+      { name: "Revive ST API", version: "0.0.7-rc.01" },
+      { kind: "tooOld", version: "0.0.7-rc.01" },
+    ],
+    [
+      "an empty build identifier",
+      { name: "Revive ST API", version: "0.0.6+." },
+      { kind: "tooOld", version: "0.0.6+." },
     ],
     [
       "a prerelease of the version",

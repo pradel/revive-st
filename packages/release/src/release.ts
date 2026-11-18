@@ -105,8 +105,9 @@ export class ServerNotReady extends Data.TaggedError("ServerNotReady")<{
   }
 }
 
+/** A SemVer 2.0.0 version, in full: its fourth group is the prerelease. */
 const RELEASE =
-  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/;
 
 /**
  * Whether `version` is `minimum` or newer, by semver precedence: a prerelease
@@ -133,10 +134,14 @@ function isAtLeast(version: string, minimum: string): boolean {
  * release it works with, or newer: the app and its server are released
  * separately, and the app refuses an older server.
  */
-const requireHostedServer = Effect.gen(function* () {
-  const repo = yield* Repo;
+const requireHostedServer = Effect.fnUntraced(function* ({
+  url,
+  minimum,
+}: {
+  readonly url: string;
+  readonly minimum: string;
+}) {
   const server = yield* Server;
-  const { url, minimum } = yield* repo.appServer;
   yield* Console.log(`🌐 Checking that ${url} runs Revive ST ${minimum}+...`);
   const status = yield* server.status(url).pipe(
     Effect.catchTag("ServerUnreachable", ({ reason }) =>
@@ -227,7 +232,10 @@ export const releaseApk = onReleasedTag(
       );
       return;
     }
-    yield* requireHostedServer;
+    // Read once, while the tag is checked out: the check before the upload
+    // uses the same settings.
+    const appServer = yield* (yield* Repo).appServer;
+    yield* requireHostedServer(appServer);
 
     const now = yield* Clock.currentTimeMillis;
     const reusable = (yield* eas.finishedBuilds({
@@ -266,7 +274,7 @@ export const releaseApk = onReleasedTag(
           return yield* new WrongSigningKey({ digests });
         }
         // Again, in case the server went back to an older release meanwhile.
-        yield* requireHostedServer;
+        yield* requireHostedServer(appServer);
         yield* Console.log(`📦 Attaching it to ${tag}...`);
         yield* github.upload(tag, file);
       }),
@@ -298,7 +306,7 @@ export const releaseStore = (options: {
           platform: options.platform,
         });
       }
-      yield* requireHostedServer;
+      yield* requireHostedServer(yield* (yield* Repo).appServer);
       yield* Console.log(`🚀 Building ${version} for the stores...`);
       yield* eas.storeBuild({ ...options, profile: STORE_PROFILE });
       yield* Console.log("🎉 Build finished.");
