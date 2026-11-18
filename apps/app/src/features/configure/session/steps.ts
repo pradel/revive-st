@@ -1,4 +1,5 @@
 import { Result } from "better-result";
+import { isSoundTouch10 } from "bose-api-speaker-client";
 
 import {
   raceCancel,
@@ -29,6 +30,7 @@ import {
   NotApplied,
   NotBack,
   NotPaired,
+  PairWouldBreak,
   RestartFailed,
   ServerNotContacted,
   ServerUnreachable,
@@ -78,6 +80,13 @@ export const RETURN_POLL_MS = 3000;
 /** The speaker calls the server (`power_on`) while it starts. */
 export const CONTACT_BUDGET_MS = 90_000;
 export const CONTACT_POLL_MS = 3000;
+/** How long a SoundTouch 10 gets to say which stereo pair it's in. */
+export const GROUP_READ_TIMEOUT_MS = 4000;
+/**
+ * How long `/removeGroup` may take: the speaker answers once its server
+ * deleted the pair. The same as unpairing from the pair's settings.
+ */
+export const REMOVE_GROUP_TIMEOUT_MS = 15_000;
 
 /** Survives recovery actions. */
 export interface RunContext {
@@ -92,6 +101,109 @@ export interface RunContext {
   console?: ConsoleConnection;
   /** The speaker's last request to the server before the restart. */
   baseline?: LastContact;
+  /**
+   * The stereo pair (its id) the user chose to dissolve before setup; another
+   * pair found later is asked about again.
+   */
+  unpair?: string;
+  /**
+   * The speaker's pair is to be dissolved right before the first setting is
+   * written (`connect`), once every check that writes nothing has passed.
+   */
+  removePair?: boolean;
+  /**
+   * The other speaker of the pair this run dissolves (name or device id):
+   * kept once decided, so a retry that finds the pair already gone still
+   * says to set it up too.
+   */
+  unpairedFrom?: string;
+  /** The speaker confirmed it dissolved its pair: it no longer works as before. */
+  pairRemoved?: boolean;
+}
+
+/**
+ * Stops before anything is written when the speaker is in a stereo pair and
+ * the setup moves it to another server or account: it would drop the pair on
+ * its side only. Once the user chose to dissolve this pair (`ctx.unpair`), it
+ * marks it for removal in `connect` instead. A pair read that fails stops a
+ * setup that moves the speaker (Try again reads it again); one that keeps it
+ * on its server and account goes on.
+ */
+async function keepPairIntact(
+  deps: ConfigureDeps,
+  signal: AbortSignal,
+  ctx: RunContext,
+  info: SpeakerInfo,
+  origin: string,
+  accountId: string,
+): StepResult<PairWouldBreak | SpeakerOffline> {
+  ctx.removePair = false;
+  // Only a SoundTouch 10 pairs, and other models never answer `/getGroup`.
+  if (!isSoundTouch10(info.type)) {
+    return ok();
+  }
+  // Same server and account: the server knows the pair and keeps it.
+  const moving = !(
+    isSameOrigin(info.margeURL, origin) && info.margeAccountUUID === accountId
+  );
+  const group = await withTimeout(
+    deps.clock,
+    GROUP_READ_TIMEOUT_MS,
+    signal,
+    async (call) => deps.speaker.getGroup(ctx.host, call),
+    () =>
+      new PortFailure({
+        message: `No answer within ${GROUP_READ_TIMEOUT_MS} ms`,
+      }),
+  );
+  if (group.isErr()) {
+    deps.log.event("pair.unknown", { message: group.error.message, moving });
+    return moving
+      ? Result.err(
+          new SpeakerOffline({
+            host: ctx.host,
+            message: `Couldn't tell whether it's in a stereo pair: ${group.error.message}`,
+          }),
+        )
+      : ok();
+  }
+  if (group.value === null) {
+    return ok();
+  }
+  if (!moving) {
+    deps.log.event("pair.kept", { pair: group.value.id });
+    return ok();
+  }
+  const { id, roles, name } = group.value;
+  const own = roles.find((member) =>
+    sameDevice(member.deviceId, ctx.target.deviceID),
+  );
+  const other = roles.find(
+    (member) => !sameDevice(member.deviceId, ctx.target.deviceID),
+  );
+  const otherId = other?.deviceId ?? "the other speaker";
+  const partner =
+    ctx.target.knownSpeakers.find((speaker) =>
+      sameDevice(speaker.deviceID, otherId),
+    )?.speakerName ?? otherId;
+  if (ctx.unpair !== id) {
+    return Result.err(
+      new PairWouldBreak({
+        pairId: id,
+        pairName: name,
+        role:
+          own === undefined
+            ? undefined
+            : own.role === "LEFT"
+              ? "left"
+              : "right",
+        partner,
+      }),
+    );
+  }
+  ctx.removePair = true;
+  ctx.unpairedFrom = partner;
+  return ok();
 }
 
 export interface StepEnv {
@@ -212,6 +324,7 @@ export async function prepare(
   | InvalidServer
   | UnsupportedServer
   | ServerUnreachable
+  | PairWouldBreak
   | UnexpectedError
 > {
   const { deps } = env;
@@ -285,6 +398,18 @@ export async function prepare(
     );
   }
 
+  const pair = await keepPairIntact(
+    deps,
+    signal,
+    ctx,
+    info.value,
+    origin,
+    accountId,
+  );
+  if (pair.isErr()) {
+    return Result.err(pair.error);
+  }
+
   env.working("prepare", { kind: "savingPresets" });
   const presets = await request(deps, signal, async (call) =>
     deps.speaker.presets(ctx.host, call),
@@ -333,7 +458,11 @@ export async function connect(
   signal: AbortSignal,
   ctx: RunContext,
 ): StepResult<
-  ConsoleUnavailable | CommandFailed | SettingsNotSaved | UnexpectedError
+  | ConsoleUnavailable
+  | CommandFailed
+  | SettingsNotSaved
+  | SpeakerOffline
+  | UnexpectedError
 > {
   const { deps } = env;
   const { urls, accountId } = ctx;
@@ -355,6 +484,33 @@ export async function connect(
   }
   const connection = opened.value;
   ctx.console = connection;
+
+  if (ctx.removePair) {
+    // The first change to the speaker, once nothing else can stop setup
+    // before the settings are written. A lost reply fails the step; Try
+    // again reads the pair before removing it again.
+    const removed = await withTimeout(
+      deps.clock,
+      REMOVE_GROUP_TIMEOUT_MS,
+      signal,
+      async (call) => deps.speaker.removeGroup(ctx.host, call),
+      () =>
+        new PortFailure({
+          message: `No answer within ${REMOVE_GROUP_TIMEOUT_MS} ms`,
+        }),
+    );
+    if (removed.isErr()) {
+      return Result.err(
+        new SpeakerOffline({ host: ctx.host, message: removed.error.message }),
+      );
+    }
+    // Unreachable, the other speaker drops its half once it's back.
+    deps.log.event("pair.removed", {
+      peerUnreachable: removed.value.peerUnreachable,
+    });
+    ctx.removePair = false;
+    ctx.pairRemoved = true;
+  }
 
   for (const command of writeUrlCommands(urls)) {
     const written = await runCommand(deps, connection, command);

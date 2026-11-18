@@ -72,6 +72,21 @@ export class NotPaired extends TaggedError("NotPaired") {}
 /** The speaker restarted with the new settings but hasn't made a request to our server. */
 export class ServerNotContacted extends TaggedError("ServerNotContacted") {}
 
+/**
+ * The speaker is in a stereo pair, and this setup moves it to another server
+ * or account, which drops the pair on its side only: its partner keeps
+ * waiting for it and won't play. Nothing was written yet.
+ */
+export class PairWouldBreak extends TaggedError("PairWouldBreak")<{
+  /** The pair "Unpair and continue" dissolves, and only that one. */
+  pairId: string;
+  pairName: string;
+  /** This speaker's side; undefined when the pair doesn't list it. */
+  role: "left" | "right" | undefined;
+  /** The other speaker's name, or its device id when unknown. */
+  partner: string;
+}> {}
+
 /** A port threw something the session doesn't model. */
 export class UnexpectedError extends TaggedError("UnexpectedError")<{
   step: StepId;
@@ -92,6 +107,7 @@ export type ConfigureError =
   | NotApplied
   | NotPaired
   | ServerNotContacted
+  | PairWouldBreak
   | UnexpectedError;
 
 /** Buttons offered by the failed view, in display order. */
@@ -114,6 +130,8 @@ export function recoveryActions(error: ConfigureError): RecoveryAction[] {
     NotApplied: retry,
     NotPaired: retry,
     ServerNotContacted: checkAgain,
+    // Cancelling is the failed view's Close.
+    PairWouldBreak: () => ["unpair"],
     UnexpectedError: retry,
   });
 }
@@ -140,15 +158,15 @@ const NOT_RESTARTED = "The speaker wasn't restarted, so it works as before.";
 
 const SERVER_UNREACHABLE_COPY: Record<
   ServerUnreachable["need"],
-  (speakerName: string, serverHost: string) => ErrorCopy
+  (speakerName: string, serverHost: string, unchanged: string) => ErrorCopy
 > = {
-  status: (_speakerName, serverHost) => ({
+  status: (_speakerName, serverHost, unchanged) => ({
     title: "Can't reach Revive ST",
-    message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${UNCHANGED}`,
+    message: `The Revive ST server (${serverHost}) didn't answer. Check this phone's internet connection. ${unchanged}`,
   }),
-  presets: (speakerName, serverHost) => ({
+  presets: (speakerName, serverHost, unchanged) => ({
     title: "Couldn't save your presets",
-    message: `The Revive ST server (${serverHost}) didn't accept ${speakerName}'s presets, so setup stopped before they could be lost. Check this phone's internet connection. ${UNCHANGED}`,
+    message: `The Revive ST server (${serverHost}) didn't accept ${speakerName}'s presets, so setup stopped before they could be lost. Check this phone's internet connection. ${unchanged}`,
   }),
   contact: (speakerName, serverHost) => ({
     title: "Can't reach Revive ST",
@@ -156,44 +174,61 @@ const SERVER_UNREACHABLE_COPY: Record<
   }),
 };
 
-/** User-facing copy for the failed view. Never contains the account id. */
+/**
+ * User-facing copy for the failed view. Never contains the account id.
+ * `unpairedFrom` names the other speaker of the stereo pair this setup
+ * already dissolved: the speaker doesn't work as before anymore.
+ */
 export function describeError(
   error: ConfigureError,
   speakerName: string,
   serverHost: string,
+  unpairedFrom?: string,
 ): ErrorCopy {
+  const unchanged =
+    unpairedFrom === undefined
+      ? UNCHANGED
+      : `Its stereo pair with ${unpairedFrom} was already undone; nothing else was changed on the speaker.`;
+  const notRestarted =
+    unpairedFrom === undefined
+      ? NOT_RESTARTED
+      : `The speaker wasn't restarted, but its stereo pair with ${unpairedFrom} was already undone.`;
   return matchError<ConfigureError, ErrorCopy>(error, {
     SpeakerOffline: () => ({
       title: `Can't reach ${speakerName}`,
-      message: `Check that ${speakerName} is on and that this phone is on the same Wi-Fi network. ${UNCHANGED}`,
+      message: `Check that ${speakerName} is on and that this phone is on the same Wi-Fi network. ${unchanged}`,
     }),
     InvalidServer: () => ({
       title: "Server address not usable",
-      message: `${serverHost} can't be given to a speaker. Pick another server in Settings. ${UNCHANGED}`,
+      message: `${serverHost} can't be given to a speaker. Pick another server in Settings. ${unchanged}`,
     }),
     UnsupportedServer: ({ check }) =>
       check.kind === "notRevive"
         ? {
             title: "Not a Revive ST server",
-            message: `${serverHost} doesn't answer like a Revive ST server. Check the server in Settings. ${UNCHANGED}`,
+            message: `${serverHost} doesn't answer like a Revive ST server. Check the server in Settings. ${unchanged}`,
           }
         : {
             title: "Update your Revive ST server",
-            message: `${serverHost} runs ${oldRelease(check.version)}, and this app needs ${MIN_SERVER_VERSION} or newer. Update the server, then try again. ${UNCHANGED}`,
+            message: `${serverHost} runs ${oldRelease(check.version)}, and this app needs ${MIN_SERVER_VERSION} or newer. Update the server, then try again. ${unchanged}`,
           },
     ServerUnreachable: (unreachable) =>
-      SERVER_UNREACHABLE_COPY[unreachable.need](speakerName, serverHost),
+      SERVER_UNREACHABLE_COPY[unreachable.need](
+        speakerName,
+        serverHost,
+        unchanged,
+      ),
     ConsoleUnavailable: () => ({
       title: `${speakerName} isn't accepting setup`,
-      message: `Revive ST sets up speakers through a service on port 17000, and ${speakerName} didn't answer there. Unplug the speaker for 10 seconds, plug it back in and try again. ${UNCHANGED}`,
+      message: `Revive ST sets up speakers through a service on port 17000, and ${speakerName} didn't answer there. Unplug the speaker for 10 seconds, plug it back in and try again. ${unchanged}`,
     }),
     CommandFailed: () => ({
       title: `${speakerName} refused a setting`,
-      message: `${speakerName} didn't accept one of the new settings. ${NOT_RESTARTED} Its firmware may not support this: try again, and share the logs if it keeps failing.`,
+      message: `${speakerName} didn't accept one of the new settings. ${notRestarted} Its firmware may not support this: try again, and share the logs if it keeps failing.`,
     }),
     SettingsNotSaved: (notSaved) => ({
       title: `${speakerName} didn't keep the new settings`,
-      message: `Read back from the speaker, these still point elsewhere: ${fieldList(notSaved.fields)}. ${NOT_RESTARTED}`,
+      message: `Read back from the speaker, these still point elsewhere: ${fieldList(notSaved.fields)}. ${notRestarted}`,
     }),
     RestartFailed: () => ({
       title: `Couldn't restart ${speakerName}`,
@@ -221,6 +256,14 @@ export function describeError(
       title: `${speakerName} isn't linked to your account`,
       message:
         "It uses Revive ST but isn't paired with your household's account, so its presets won't be kept. Try setting it up again.",
+    }),
+    PairWouldBreak: ({ pairName, role, partner }) => ({
+      title: `${speakerName} is in a stereo pair`,
+      message: `${
+        role === undefined
+          ? `${speakerName} is in the stereo pair ${pairName}.`
+          : `${speakerName} is the ${role} speaker of ${pairName}.`
+      } Setting it up for ${serverHost} breaks the pair: ${partner} would keep waiting for it and refuse to play. ${unchanged}`,
     }),
     ServerNotContacted: () => ({
       title: `${speakerName} hasn't reached Revive ST`,

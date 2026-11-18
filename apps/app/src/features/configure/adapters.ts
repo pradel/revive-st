@@ -68,8 +68,23 @@ const speaker: SpeakerPort = {
           name: info.value.name,
           margeURL: info.value.margeURL,
           margeAccountUUID: info.value.margeAccountUUID,
+          type: info.value.type,
         })
       : Result.err(failure(info.error));
+  },
+  getGroup: async (host, signal) => {
+    const group = await new BoseHttpAdapter({ ip: host }).getGroup({ signal });
+    return group.isOk()
+      ? Result.ok(group.value)
+      : Result.err(failure(group.error));
+  },
+  removeGroup: async (host, signal) => {
+    const removed = await new BoseHttpAdapter({ ip: host }).removeGroup({
+      signal,
+    });
+    return removed.isOk()
+      ? Result.ok(removed.value)
+      : Result.err(failure(removed.error));
   },
   presets: async (host, signal) => {
     const presets = await new BoseHttpAdapter({ ip: host }).getPresets({

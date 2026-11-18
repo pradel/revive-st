@@ -2,8 +2,13 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { ManualClock } from "../../onboarding/session/testing/fakes";
 import { serverUrlsFor } from "./console";
+import { describeError } from "./errors";
 import { createConfigureSession } from "./session";
-import { RETURN_BUDGET_MS, SAVE_PRESETS_TIMEOUT_MS } from "./steps";
+import {
+  REQUEST_TIMEOUT_MS,
+  RETURN_BUDGET_MS,
+  SAVE_PRESETS_TIMEOUT_MS,
+} from "./steps";
 import { BOSE_URLS, type FakeConfigureWorld } from "./testing/fakes";
 import {
   createScenario,
@@ -13,6 +18,7 @@ import {
   PRESETS,
   type ScenarioName,
   SERVER_ORIGIN,
+  STEREO_PAIR,
   TARGET_ID,
   targetOf,
 } from "./testing/scenarios";
@@ -298,5 +304,148 @@ describe("configure session", () => {
 
     expect(world.log.events.length).toBe(eventsAtCancel);
     expect(world.openConsoles).toBe(0);
+  });
+});
+
+describe("configure session with a stereo pair", () => {
+  it("asks before moving a paired speaker to another server, naming its offline partner, with nothing written yet", async () => {
+    const { world, untilFailed } = start("stereoPairMoving");
+
+    const failed = await untilFailed("PairWouldBreak");
+
+    expect(failed.step).toBe("prepare");
+    expect(failed.actions).toEqual(["unpair"]);
+    expect(describeError(failed.error, "Kitchen", "api.revivest.app")).toEqual({
+      title: "Kitchen is in a stereo pair",
+      message:
+        "Kitchen is the left speaker of Kitchen + Living room. Setting it up for api.revivest.app breaks the pair: Living room would keep waiting for it and refuse to play. Nothing was changed on the speaker.",
+    });
+    expect(world.firstEvent("presetsSaved")).toBeUndefined();
+    expect(world.firstEvent("command")).toBeUndefined();
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+  });
+
+  it("unpairs the speaker, then sets it up, when the user chooses to", async () => {
+    const { world, untilFailed, untilDone, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+
+    await act("unpair");
+    const done = await untilDone();
+
+    expect(done.unpairedFrom).toBe("Living room");
+    // Its Bose cloud account isn't a household account a pair can use.
+    expect(done.canPairAgain).toBe(false);
+    expect(world.group).toBeNull();
+    // Removed only once presets are saved and the console answers, right
+    // before the first setting is written.
+    const saved = world.firstEvent("presetsSaved")?.at ?? Infinity;
+    const removed = world.firstEvent("groupRemoved")?.at ?? Infinity;
+    const firstCommand = world.firstEvent("command")?.at ?? -Infinity;
+    expect(saved).toBeLessThan(removed);
+    expect(removed).toBeLessThan(firstCommand);
+    expect(world.running).toEqual(ourUrls);
+  });
+
+  it("waits for a speaker that is slow to remove the pair, as its server deletes it", async () => {
+    const { world, untilFailed, untilDone, act } = start("stereoPairMoving");
+    world.config.speaker.removeGroupMs = REQUEST_TIMEOUT_MS + 2000;
+    await untilFailed("PairWouldBreak");
+
+    await act("unpair");
+    await untilDone();
+
+    expect(world.group).toBeNull();
+    expect(world.running).toEqual(ourUrls);
+  });
+
+  it("says the pair is gone when setup fails after removing it", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.refuses = "envswitch";
+
+    await act("unpair");
+    const failed = await untilFailed("CommandFailed");
+
+    expect(world.group).toBeNull();
+    expect(failed.unpairedFrom).toBe("Living room");
+    expect(
+      describeError(
+        failed.error,
+        "Kitchen",
+        "api.revivest.app",
+        failed.unpairedFrom,
+      ).message,
+    ).toContain(
+      "The speaker wasn't restarted, but its stereo pair with Living room was already undone.",
+    );
+  });
+
+  it("asks again when the speaker is in another pair than the one the user chose to undo", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.group = { ...STEREO_PAIR, id: "2718281", name: "Kitchen + Office" };
+
+    await act("unpair");
+    const failed = await untilFailed("PairWouldBreak");
+
+    expect(failed.error).toMatchObject({ pairName: "Kitchen + Office" });
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+  });
+
+  it("keeps the pair when the user chose to undo it but the console doesn't answer", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.consoleClosed = true;
+
+    await act("unpair");
+    const failed = await untilFailed("ConsoleUnavailable");
+
+    expect(failed.unpairedFrom).toBeUndefined();
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+    expect(world.saved).toEqual(BOSE_URLS);
+  });
+
+  it("writes nothing when the user cancels instead", async () => {
+    const { world, session, untilFailed } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+
+    await session.cancel();
+
+    expect(world.events.map((event) => event.kind)).toEqual(["groupRead"]);
+    expect(world.group).not.toBeNull();
+    expect(world.running).toEqual(BOSE_URLS);
+  });
+
+  it("keeps the pair when the speaker is set up again for its server and account", async () => {
+    const { world, untilDone } = start("stereoPairAgain");
+
+    const done = await untilDone();
+
+    expect(done.unpairedFrom).toBeUndefined();
+    expect(world.firstEvent("groupRead")).toBeDefined();
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+  });
+
+  it("never asks a speaker other than a SoundTouch 10 for its pair", async () => {
+    const { world, untilDone } = start("happyPath");
+
+    await untilDone();
+
+    expect(world.firstEvent("groupRead")).toBeUndefined();
+  });
+
+  it("stops a move to another server when the speaker doesn't say whether it's paired", async () => {
+    const { world, untilFailed } = start("groupReadHangs");
+
+    const failed = await untilFailed("SpeakerOffline");
+
+    expect(failed.actions).toEqual(["retry"]);
+    expect(world.firstEvent("presetsSaved")).toBeUndefined();
+    expect(world.firstEvent("command")).toBeUndefined();
+    expect(world.group).not.toBeNull();
   });
 });
