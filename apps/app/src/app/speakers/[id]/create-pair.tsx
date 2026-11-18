@@ -183,7 +183,7 @@ export default function CreatePair() {
         <EmptyState
           icon={icons.speaker}
           title={`${speaker.speakerName} can't be paired`}
-          description={`${PAIR_PROBLEM_LABELS[ownProblem]}. Both speakers of a stereo pair must be SoundTouch 10s set up for Revive ST on the same account, and not playing in a multiroom zone.`}
+          description={`${PAIR_PROBLEM_LABELS[ownProblem]}. Both speakers of a stereo pair must be SoundTouch 10s set up for Revive ST on the same account, and not in a multiroom zone.`}
           actions={
             <Button label="Go back" variant="secondary" onPress={close} />
           }

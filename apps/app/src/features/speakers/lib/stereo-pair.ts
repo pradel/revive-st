@@ -243,6 +243,6 @@ export const PAIR_PROBLEM_LABELS: Record<PairProblem, string> = {
   otherServer: "Uses another server",
   noAccount: "Not set up for Revive ST",
   otherAccount: "On another account",
-  inZone: "Playing in a multiroom zone",
+  inZone: "In a multiroom zone",
   zoneUnread: "Didn't say if it's in a multiroom zone",
 };

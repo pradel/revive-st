@@ -130,7 +130,7 @@ export function describePairError(
         title: "The pair didn't form",
         message: error.undone
           ? `${left.name} and ${right.name} didn't both join the pair within ${BUDGET_SECONDS} seconds, so it was undone. Make sure both speakers are on, then try again.`
-          : `${left.name} and ${right.name} didn't both join the pair within ${BUDGET_SECONDS} seconds. Make sure both speakers are on, then try again.`,
+          : `${left.name} and ${right.name} didn't both join the pair within ${BUDGET_SECONDS} seconds, and the app couldn't undo it on both, so one of them may still show the pair. Make sure both speakers are on, then try again.`,
       };
     }
     default: {
