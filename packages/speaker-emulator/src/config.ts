@@ -44,6 +44,11 @@ export interface SpeakerConfig {
   readonly name?: string;
   /** Default `SoundTouch 10`. */
   readonly type?: string;
+  /**
+   * The address it reports (`/info`, `/networkInfo`, `power_on`). It listens
+   * on 127.0.0.1 whatever this says. Default `127.0.0.1`.
+   */
+  readonly ipAddress?: string;
   /** Default `BOSE_URLS`. */
   readonly urls?: ServerUrls;
   /** Default "": paired with no account. */

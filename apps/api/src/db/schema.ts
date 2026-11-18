@@ -57,3 +57,21 @@ export const deviceContactsTable = sqliteTable("device_contacts", {
   /** Epoch milliseconds. */
   lastContactAt: integer("last_contact_at").notNull(),
 });
+
+/**
+ * Stereo pairs: two SoundTouch 10s the firmware groups as LEFT and RIGHT,
+ * one row per pair. Speakers poll their pair at boot and drop it unless it is
+ * stored here. Device ids are upper-case; a speaker is in at most one pair
+ * per account.
+ */
+export const groupsTable = sqliteTable("groups", {
+  /** Seven decimal digits, generated here; the firmware adopts it. */
+  id: text("id").primaryKey(),
+  accountId: text("account_id").notNull(),
+  name: text("name").notNull(),
+  masterDeviceId: text("master_device_id").notNull(),
+  leftDeviceId: text("left_device_id").notNull(),
+  rightDeviceId: text("right_device_id").notNull(),
+  /** Epoch milliseconds. */
+  createdOn: integer("created_on").notNull(),
+});

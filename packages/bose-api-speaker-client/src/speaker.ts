@@ -1,10 +1,12 @@
 import { Err, Ok, type Result } from "better-result";
 
-import type { BoseApiError } from "./errors.ts";
-import { BoseHttpAdapter } from "./http-adapter.ts";
+import { type BoseApiError, NetworkError } from "./errors.ts";
+import { BoseHttpAdapter, parseBalanceNode } from "./http-adapter.ts";
+import { isSoundTouch10 } from "./models.ts";
 import type {
   ZoneMember,
   AudioDspControlsResponse,
+  BalanceResponse,
   AudioProductLevelControlsResponse,
   AudioProductToneControlsResponse,
   BassCapabilitiesResponse,
@@ -14,9 +16,17 @@ import type {
   Preset,
   AudioMode,
   KeyValue,
+  NewGroup,
   RequestOptions,
+  SpeakerGroup,
 } from "./types/index.ts";
 import { BoseWebSocketClient, type BoseWSUpdate } from "./ws-adapter.ts";
+
+/** How long `initialize()` waits for `/getGroup`. */
+const GROUP_READ_TIMEOUT_MS = 3000;
+
+/** How long a `/balance` read may take: it hangs while the speaker is in deep standby. */
+const BALANCE_READ_TIMEOUT_MS = 3000;
 
 export interface SpeakerOptions {
   ip: string;
@@ -62,6 +72,17 @@ export interface SpeakerState {
   margeAccountUUID?: string;
   /** The Marge server the speaker calls. */
   margeURL?: string;
+  /**
+   * The stereo pair the speaker is in, `null` when unpaired; unset when not
+   * read (only SoundTouch 10s can pair) or the read failed.
+   */
+  group?: SpeakerGroup | null;
+  /**
+   * The stereo pair's balance, read from a paired SoundTouch 10 (bounded:
+   * the speaker doesn't answer in deep standby); `null` when unpaired; unset
+   * until a read succeeds. A failed read keeps the last one.
+   */
+  balance?: BalanceResponse | null;
 }
 
 export class Speaker {
@@ -71,6 +92,18 @@ export class Speaker {
   public readonly options: SpeakerOptions;
   /** Bumped by each `initialize()`; only the latest call may apply its reads. */
   private initializeGeneration = 0;
+  /**
+   * Bumped whenever the group changes outside `initialize()`: a `/getGroup`
+   * read started before then is stale.
+   */
+  private groupChanges = 0;
+  /**
+   * Bumped by each balance read and each balance change, including the one
+   * `initialize()` commits: a `/balance` read started before then is stale.
+   */
+  private balanceChanges = 0;
+  /** Bumped by each balance write: an earlier write's reply is stale. */
+  private balanceWrites = 0;
 
   constructor(options: SpeakerOptions) {
     this.options = options;
@@ -106,6 +139,8 @@ export class Speaker {
       this.state.margeURL = info.margeURL;
     }
 
+    const groupChangesBefore = this.groupChanges;
+    const balanceChangesBefore = this.balanceChanges;
     try {
       const [
         nowPlaying,
@@ -117,6 +152,7 @@ export class Speaker {
         dspControls,
         toneControls,
         levelControls,
+        groupRead,
       ] = await Promise.all([
         this.http
           .getNowPlaying()
@@ -154,6 +190,9 @@ export class Speaker {
           .getAudioProductLevelControls()
           .then((res) => (res.isOk() ? res.value : null))
           .catch(() => null),
+        // Only a SoundTouch 10 answers `/getGroup` (other models hang), and
+        // even it is bounded so a stalled speaker can't hold this up.
+        isSoundTouch10(this.state.type ?? "") ? this.readPair() : null,
       ]);
 
       if (generation !== this.initializeGeneration) {
@@ -198,6 +237,23 @@ export class Speaker {
       if (levelControls) {
         this.state.audioProductLevelControls = levelControls;
       }
+      // A group change seen while `/getGroup` ran (a `groupUpdated`, a pair
+      // made or undone here) is newer than what it read; so is a balance
+      // read or set meanwhile.
+      if (groupRead && this.groupChanges === groupChangesBefore) {
+        this.state.group = groupRead.group;
+        if (this.balanceChanges === balanceChangesBefore) {
+          if (groupRead.balance === undefined) {
+            // A failed read keeps the pair's balance as last read.
+            this.state.balance ??= undefined;
+          } else {
+            this.state.balance = groupRead.balance;
+            // A read still running started before this one, maybe for a
+            // pair that is gone since.
+            this.balanceChanges += 1;
+          }
+        }
+      }
 
       this.emitState();
       return new Ok(undefined);
@@ -235,6 +291,10 @@ export class Speaker {
       },
       onDisconnect: () => {
         this.state.connectionState = "disconnected";
+        // Notifications are missed from now on: the pair is known again only
+        // once read on the next connection.
+        this.groupChanges += 1;
+        this.state.group = undefined;
         this.emitState();
         if (this.options.onDisconnect) {
           this.options.onDisconnect();
@@ -436,6 +496,173 @@ export class Speaker {
     return this.http.storePreset(id, contentItem);
   }
 
+  /**
+   * Pairs this speaker (the master, LEFT) with another SoundTouch 10. On
+   * success the created group is in the state.
+   */
+  async addGroup(
+    group: NewGroup,
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
+    // A group change while it ran (a `groupUpdated`, another operation) is
+    // newer than the reply; so in `updateGroup` and `removeGroup`.
+    const groupChangesBefore = this.groupChanges;
+    const result = await this.http.addGroup(group, options);
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
+      this.applyGroup(result.value);
+    }
+    return result;
+  }
+
+  /** Rewrites (renames) the pair; send to the master. */
+  async updateGroup(
+    group: NewGroup & { id: string },
+    options?: RequestOptions,
+  ): Promise<Result<SpeakerGroup, BoseApiError>> {
+    const groupChangesBefore = this.groupChanges;
+    const result = await this.http.updateGroup(group, options);
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
+      this.applyGroup(result.value);
+    }
+    return result;
+  }
+
+  /** Dissolves the pair this speaker is in (both halves). */
+  async removeGroup(
+    options?: RequestOptions,
+  ): Promise<Result<{ peerUnreachable: boolean }, BoseApiError>> {
+    const groupChangesBefore = this.groupChanges;
+    const result = await this.http.removeGroup(options);
+    if (result.isOk() && this.groupChanges === groupChangesBefore) {
+      this.applyGroup(null);
+    }
+    return result;
+  }
+
+  /**
+   * Sets `state.group` and emits the state when it changed. Once paired, or
+   * paired anew, the pair's balance is read; once unpaired, there is none.
+   */
+  private applyGroup(group: SpeakerGroup | null) {
+    this.groupChanges += 1;
+    if (JSON.stringify(this.state.group) === JSON.stringify(group)) {
+      return;
+    }
+    const pairBefore = this.state.group?.id;
+    this.state.group = group;
+    if (group === null) {
+      this.balanceChanges += 1;
+      this.state.balance = null;
+    }
+    this.emitState();
+    // A rename keeps the pair, and its balance.
+    if (group && group.id !== pairBefore) {
+      void this.refreshBalance();
+    }
+  }
+
+  /**
+   * Sets the stereo pair's balance (negative: left), rounded and kept within
+   * the range the speaker reports; send it to the master. It goes over the
+   * WebSocket, so `connect()` first: `POST /balance` never answers. The
+   * speaker's reply carries the balance it applied, which goes in the state
+   * (a `/balance` read right away would still report the previous one).
+   */
+  async setBalance(value: number): Promise<Result<void, BoseApiError>> {
+    // A later call supersedes this one, even while this one reads the range.
+    const write = ++this.balanceWrites;
+    let range = this.state.balance;
+    if (!range) {
+      const read = await this.http.getBalance({
+        signal: AbortSignal.timeout(BALANCE_READ_TIMEOUT_MS),
+      });
+      if (read.isErr()) {
+        return new Err(read.error);
+      }
+      range = read.value;
+    }
+    const target = Math.min(
+      range.balanceMax,
+      Math.max(range.balanceMin, Math.round(value)),
+    );
+
+    if (!this.ws) {
+      return new Err(
+        new NetworkError({
+          message: `${this.options.deviceID} isn't connected`,
+        }),
+      );
+    }
+    // The pair the balance is for; a reply landing after it changed (left
+    // or dissolved meanwhile), or after a later write, is stale.
+    if (write !== this.balanceWrites) {
+      return new Ok(undefined);
+    }
+    const pairBefore = this.state.group?.id;
+    const sent = await this.ws.request(
+      {
+        url: "balance",
+        method: "POST",
+        mainNode: "balanceSet",
+        body: `<balance><targetBalance>${target}</targetBalance></balance>`,
+      },
+      parseBalanceNode,
+    );
+    if (sent.isErr()) {
+      return new Err(sent.error);
+    }
+    if (this.state.group?.id !== pairBefore || write !== this.balanceWrites) {
+      return new Ok(undefined);
+    }
+    // A read started before the write is stale.
+    this.balanceChanges += 1;
+    if (JSON.stringify(this.state.balance) !== JSON.stringify(sent.value)) {
+      this.state.balance = sent.value;
+      this.emitState();
+    }
+    return new Ok(undefined);
+  }
+
+  /**
+   * `/getGroup`, then the balance when paired: `null` when the group read
+   * failed, `balance` unset when its read failed.
+   */
+  private async readPair(): Promise<{
+    group: SpeakerGroup | null;
+    balance?: BalanceResponse | null;
+  } | null> {
+    const groupRead = await this.http
+      .getGroup({ signal: AbortSignal.timeout(GROUP_READ_TIMEOUT_MS) })
+      .catch(() => null);
+    if (!groupRead?.isOk()) {
+      return null;
+    }
+    const group = groupRead.value;
+    return { group, balance: group ? await this.readBalance() : null };
+  }
+
+  /** `/balance`, bounded; `undefined` when it failed. */
+  private async readBalance(): Promise<BalanceResponse | undefined> {
+    const result = await this.http
+      .getBalance({ signal: AbortSignal.timeout(BALANCE_READ_TIMEOUT_MS) })
+      .catch(() => null);
+    return result?.isOk() ? result.value : undefined;
+  }
+
+  /** Reads the balance again; a later read or change supersedes it. */
+  private async refreshBalance() {
+    const change = ++this.balanceChanges;
+    const balance = await this.readBalance();
+    if (
+      balance &&
+      change === this.balanceChanges &&
+      JSON.stringify(this.state.balance) !== JSON.stringify(balance)
+    ) {
+      this.state.balance = balance;
+      this.emitState();
+    }
+  }
+
   private handleWSUpdate(update: BoseWSUpdate) {
     let stateChanged = false;
 
@@ -501,6 +728,12 @@ export class Speaker {
         artUrl: undefined,
       };
       stateChanged = true;
+    } else if (update.type === "group") {
+      this.applyGroup(update.group);
+    } else if (update.type === "balance") {
+      if (this.state.group) {
+        void this.refreshBalance();
+      }
     } else if (update.type === "info" || update.type === "sources") {
       this.options.onSettingsChange?.();
     }

@@ -87,7 +87,25 @@ A body without a `deviceid`, or with another device's, gets `400 Bad Request`.
 
 ### `GET /streaming/account/:accountId/device/:deviceId/group/`
 
-Called by the speaker at boot to look up its stereo pair group. Stereo pairs are not supported, so this always returns an empty `<group/>`.
+Called by the speaker at boot to look up its stereo pair. Returns the account's pair holding the speaker as `<group id="…">` with its `<name>`, `<masterDeviceId>` and `<roles>` (one `LEFT` and one `RIGHT` `<groupRole>`), or an empty `<group/>`. The answer is authoritative: speakers told `<group/>` drop their pair. Pairs the device with the account.
+
+### `POST /streaming/account/:accountId/group/`
+
+Called by the master SoundTouch 10 of a new stereo pair. Stores the pair under a new 7-digit id, which the speakers adopt, replacing the account's pairs that held either speaker, and pairs both speakers with the account. Returns `201 Created` with a `Location` header and the `<group id="…">`.
+
+A body without a `masterDeviceId`, without exactly one `LEFT` and one `RIGHT` role on two different speakers, with a master in neither role, or with a `name` over 512 characters gets `400 Bad Request`.
+
+### `PUT /streaming/account/:accountId/group/:groupId`
+
+Called by a speaker of the pair when the pair is renamed, and after power or source changes, naming itself as `masterDeviceId`. Only the `name` is stored. Returns `200 OK` with the `<group>`, or `404 Not Found` for a pair the account doesn't have.
+
+### `DELETE /streaming/account/:accountId/group/:groupId`
+
+Called by the speaker that left the pair. Deletes the pair if the account has it, and returns `<status>Group deleted successfully</status>`.
+
+### `DELETE /streaming/account/:accountId/group/`
+
+Acknowledged with the same `<status>` without deleting anything: speakers delete their pair by id.
 
 ### `GET /streaming/account/:accountId/provider_settings`
 
