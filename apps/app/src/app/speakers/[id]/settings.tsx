@@ -1,5 +1,9 @@
 import { FieldGroup, RNHostView } from "@expo/ui";
-import type { AudioMode, KeyValue } from "bose-api-speaker-client";
+import {
+  type AudioMode,
+  isSoundTouch10,
+  type KeyValue,
+} from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import { Alert } from "react-native";
@@ -467,15 +471,15 @@ export default function SpeakerSettings() {
           </FieldGroup.SectionFooter>
         </FormSection>
 
-        {pair ? (
+        {isSoundTouch10(speaker.type) ? (
           <FormSection title="Stereo pair">
-            {stalePair ? (
+            {pair && stalePair ? (
               <FormButtonRow
                 label={leavePairMutation.isPending ? "Leaving…" : "Leave pair"}
                 disabled={leavePairMutation.isPending}
                 onPress={leavePair}
               />
-            ) : (
+            ) : pair ? (
               <FormLinkRow
                 icon={formIcons.speaker}
                 label={pair.name}
@@ -488,12 +492,22 @@ export default function SpeakerSettings() {
                   );
                 }}
               />
+            ) : (
+              <FormLinkRow
+                icon={formIcons.speaker}
+                label="Pair with another SoundTouch 10"
+                onPress={() => {
+                  router.push("./create-pair");
+                }}
+              />
             )}
             <FieldGroup.SectionFooter>
               <FormFooterText>
-                {stalePair
+                {pair && stalePair
                   ? `${speaker.speakerName} still holds ${pair.name}, which its other speaker no longer reports. Leave it to play on ${speaker.speakerName} alone.`
-                  : "Volume, power and source set on either speaker of the pair apply to both."}
+                  : pair
+                    ? "Volume, power and source set on either speaker of the pair apply to both."
+                    : "Two SoundTouch 10s can play as one stereo pair: one plays the left channel, the other the right."}
               </FormFooterText>
             </FieldGroup.SectionFooter>
           </FormSection>

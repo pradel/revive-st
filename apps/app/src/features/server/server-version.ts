@@ -8,7 +8,7 @@ export const REVIVE_SERVER_NAME = "Revive ST API";
  * this when the app starts relying on something a server release added (an
  * internal endpoint, or a Marge or BMX answer).
  */
-export const MIN_SERVER_VERSION = "0.0.3";
+export const MIN_SERVER_VERSION = "0.0.6";
 
 /** What a server's `GET /` tells the app about it. */
 export type ServerCheck =
