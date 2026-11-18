@@ -139,6 +139,11 @@ export default function RootLayout() {
                   options={{ headerLargeTitleEnabled: false }}
                 />
                 <Stack.Screen
+                  name="speakers/[id]/create-pair"
+                  // Its views show their own large title.
+                  options={{ headerLargeTitleEnabled: false }}
+                />
+                <Stack.Screen
                   name="now-playing"
                   options={{
                     presentation: "formSheet",
