@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import { TestClock } from "effect/testing";
+import { vi } from "vite-plus/test";
 
 import {
   APP_SIGNING_CERT_SHA256,
@@ -9,6 +10,7 @@ import {
   ReleaseNotFound,
   releaseApk,
   releaseStore,
+  ServerNotReady,
   StoreBuildExists,
   WrongSigningKey,
 } from "./release.ts";
@@ -19,11 +21,15 @@ import {
   GitHub,
   type GitHubRelease,
   Repo,
+  Server,
+  ServerUnreachable,
 } from "./tools.ts";
 
 const VERSION = "1.2.3";
 const TAG = `@revive-st/app@${VERSION}`;
 const NOW = Date.parse("2026-11-08T12:00:00Z");
+const SERVER_URL = "https://api.revivest.app";
+const MIN_SERVER_VERSION = "0.0.6";
 
 const build = (id: string, overrides: Partial<EasBuild> = {}): EasBuild => ({
   id,
@@ -43,6 +49,12 @@ interface World {
   readonly newBuild: EasBuild;
   readonly digests: readonly string[];
   readonly storeBuilds: readonly EasBuild[];
+  /** The hosted server's `GET /` body; `undefined` when it's unreachable. */
+  readonly server: unknown;
+  /** The hosted server's `GET /` body once a new EAS build ran, if it changed. */
+  readonly serverAfterBuild?: unknown;
+  /** The minimum the worktree's app declares once a new EAS build ran. */
+  readonly minimumAfterBuild?: string;
 }
 
 /** Fake tools over `world`; `events` records what they were asked to do. */
@@ -54,9 +66,12 @@ const tools = (overrides: Partial<World> = {}) => {
     newBuild: build("new"),
     digests: [APP_SIGNING_CERT_SHA256],
     storeBuilds: [],
+    server: { name: "Revive ST API", version: MIN_SERVER_VERSION },
     ...overrides,
   };
   const events: string[] = [];
+  let { server } = world;
+  let minimum = MIN_SERVER_VERSION;
   const record = (event: string) =>
     Effect.sync(() => {
       events.push(event);
@@ -66,6 +81,7 @@ const tools = (overrides: Partial<World> = {}) => {
       isClean: Effect.succeed(world.clean),
       updateMain: record("update main"),
       appVersion: Effect.succeed(VERSION),
+      appServer: Effect.sync(() => ({ url: SERVER_URL, minimum })),
       tagCommit: () => Effect.succeed("c0ffee0"),
       checkout: (ref) => record(`checkout ${ref}`),
     }),
@@ -77,7 +93,20 @@ const tools = (overrides: Partial<World> = {}) => {
       finishedBuilds: ({ profile }) =>
         Effect.succeed(profile === "apk" ? world.apkBuilds : world.storeBuilds),
       buildAndroid: (profile) =>
-        Effect.as(record(`eas build ${profile}`), world.newBuild),
+        Effect.as(
+          Effect.andThen(
+            record(`eas build ${profile}`),
+            Effect.sync(() => {
+              if (world.minimumAfterBuild !== undefined) {
+                minimum = world.minimumAfterBuild;
+              }
+              if ("serverAfterBuild" in world) {
+                server = world.serverAfterBuild;
+              }
+            }),
+          ),
+          world.newBuild,
+        ),
       storeBuild: ({ platform, autoSubmit }) =>
         record(`store build ${platform}${autoSubmit ? " and submit" : ""}`),
     }),
@@ -85,6 +114,17 @@ const tools = (overrides: Partial<World> = {}) => {
       download: (url, fileName) =>
         Effect.as(record(`download ${url}`), `/tmp/${fileName}`),
       signingCertificates: () => Effect.succeed(world.digests),
+    }),
+    Layer.succeed(Server, {
+      status: (url) =>
+        Effect.andThen(
+          record(`check ${url}`),
+          server === undefined
+            ? Effect.fail(
+                new ServerUnreachable({ url, reason: "connection refused" }),
+              )
+            : Effect.succeed(server),
+        ),
     }),
   );
   return { events, layer };
@@ -100,8 +140,10 @@ describe("releaseApk", () => {
         assert.deepStrictEqual(events, [
           "update main",
           `checkout ${TAG}`,
+          `check ${SERVER_URL}`,
           "eas build apk",
           "download https://expo.dev/new.apk",
+          `check ${SERVER_URL}`,
           `upload /tmp/revive-st-${VERSION}.apk to ${TAG}`,
           "checkout main",
         ]);
@@ -184,6 +226,148 @@ describe("releaseApk", () => {
       assert.deepStrictEqual(events, []);
     }),
   );
+
+  for (const [situation, version] of [
+    ["newer than the app needs", "0.1.0"],
+    ["the version with build metadata", "0.0.6+build.1"],
+  ] as const) {
+    it.effect(`ships when the hosted server is ${situation}`, () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          server: { name: "Revive ST API", version },
+        });
+        yield* releaseApk.pipe(Effect.provide(layer));
+        assert.include(
+          events,
+          `upload /tmp/revive-st-${VERSION}.apk to ${TAG}`,
+        );
+      }),
+    );
+  }
+
+  it.effect(
+    "doesn't attach the APK when the hosted server went back to an older release during the build",
+    () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          serverAfterBuild: { name: "Revive ST API", version: "0.0.5" },
+        });
+        const error = yield* Effect.flip(
+          releaseApk.pipe(Effect.provide(layer)),
+        );
+        assert.deepStrictEqual(
+          error,
+          new ServerNotReady({
+            url: SERVER_URL,
+            minimum: MIN_SERVER_VERSION,
+            found: { kind: "tooOld", version: "0.0.5" },
+          }),
+        );
+        assert.isFalse(events.some((event) => event.startsWith("upload")));
+        assert.strictEqual(events.at(-1), "checkout main");
+      }),
+  );
+
+  it.effect(
+    "checks the server before the upload against the tag's minimum, not the worktree's",
+    () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          // Another command restored main, with an older minimum, meanwhile.
+          minimumAfterBuild: "0.0.3",
+          serverAfterBuild: { name: "Revive ST API", version: "0.0.5" },
+        });
+        const error = yield* Effect.flip(
+          releaseApk.pipe(Effect.provide(layer)),
+        );
+        assert.instanceOf(error, ServerNotReady);
+        assert.isFalse(events.some((event) => event.startsWith("upload")));
+      }),
+  );
+
+  it("tells to retry, not to deploy, when the hosted server can't be reached", () => {
+    const unreachable = new ServerNotReady({
+      url: SERVER_URL,
+      minimum: MIN_SERVER_VERSION,
+      found: { kind: "unreachable", reason: "getaddrinfo ENOTFOUND" },
+    });
+    assert.include(unreachable.message, "Check your connection");
+    assert.notInclude(unreachable.message, "deploy");
+    const tooOld = new ServerNotReady({
+      url: SERVER_URL,
+      minimum: MIN_SERVER_VERSION,
+      found: { kind: "tooOld", version: "0.0.5" },
+    });
+    assert.include(tooOld.message, "deploy the API release first");
+  });
+
+  for (const [situation, server, found] of [
+    [
+      "older",
+      { name: "Revive ST API", version: "0.0.5" },
+      { kind: "tooOld", version: "0.0.5" },
+    ],
+    [
+      "a version with leading zeros",
+      { name: "Revive ST API", version: "0.0.06" },
+      { kind: "tooOld", version: "0.0.06" },
+    ],
+    [
+      "a newer prerelease with a leading zero",
+      { name: "Revive ST API", version: "0.0.7-rc.01" },
+      { kind: "tooOld", version: "0.0.7-rc.01" },
+    ],
+    [
+      "an empty build identifier",
+      { name: "Revive ST API", version: "0.0.6+." },
+      { kind: "tooOld", version: "0.0.6+." },
+    ],
+    [
+      "a prerelease of the version",
+      { name: "Revive ST API", version: "0.0.6-rc.1" },
+      { kind: "tooOld", version: "0.0.6-rc.1" },
+    ],
+    [
+      "without a version",
+      { name: "Revive ST API" },
+      { kind: "tooOld", version: null },
+    ],
+    [
+      "unreachable",
+      undefined,
+      { kind: "unreachable", reason: "connection refused" },
+    ],
+    [
+      "not a Revive ST server",
+      { name: "Something else", version: "1.0.0" },
+      { kind: "notRevive" },
+    ],
+  ] as const) {
+    it.effect(
+      `refuses to build when the hosted server is ${situation}, and goes back to main`,
+      () =>
+        Effect.gen(function* () {
+          const { events, layer } = tools({ server });
+          const error = yield* Effect.flip(
+            releaseApk.pipe(Effect.provide(layer)),
+          );
+          assert.deepStrictEqual(
+            error,
+            new ServerNotReady({
+              url: SERVER_URL,
+              minimum: MIN_SERVER_VERSION,
+              found,
+            }),
+          );
+          assert.deepStrictEqual(events, [
+            "update main",
+            `checkout ${TAG}`,
+            `check ${SERVER_URL}`,
+            "checkout main",
+          ]);
+        }),
+    );
+  }
 });
 
 describe("releaseStore", () => {
@@ -196,6 +380,7 @@ describe("releaseStore", () => {
       assert.deepStrictEqual(events, [
         "update main",
         `checkout ${TAG}`,
+        `check ${SERVER_URL}`,
         "store build ios and submit",
         "checkout main",
       ]);
@@ -212,6 +397,55 @@ describe("releaseStore", () => {
       );
       assert.instanceOf(error, StoreBuildExists);
       assert.isFalse(events.some((event) => event.startsWith("store build")));
+    }),
+  );
+
+  it.effect("refuses to build when the hosted server is older", () =>
+    Effect.gen(function* () {
+      const { events, layer } = tools({
+        server: { name: "Revive ST API", version: "0.0.5" },
+      });
+      const error = yield* Effect.flip(
+        releaseStore({ platform: "all", autoSubmit: false }).pipe(
+          Effect.provide(layer),
+        ),
+      );
+      assert.instanceOf(error, ServerNotReady);
+      assert.isFalse(events.some((event) => event.startsWith("store build")));
+      assert.strictEqual(events.at(-1), "checkout main");
+    }),
+  );
+});
+
+describe("Server", () => {
+  const status = (body: string | ReadableStream) =>
+    Effect.gen(function* () {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+      const server = yield* Server;
+      return yield* server.status(SERVER_URL);
+    }).pipe(
+      Effect.provide(Server.layer),
+      Effect.ensuring(Effect.sync(() => vi.unstubAllGlobals())),
+    );
+
+  it.effect("reads a body that isn't JSON as null", () =>
+    Effect.gen(function* () {
+      assert.isNull(yield* status("<html>Not found</html>"));
+    }),
+  );
+
+  it.effect("is unreachable when the body is cut short", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        status(
+          new ReadableStream({
+            pull: (controller) => {
+              controller.error(new Error("connection reset"));
+            },
+          }),
+        ),
+      );
+      assert.instanceOf(error, ServerUnreachable);
     }),
   );
 });
