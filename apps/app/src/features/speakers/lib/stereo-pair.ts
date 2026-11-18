@@ -1,6 +1,7 @@
-import type { SpeakerGroup } from "bose-api-speaker-client";
+import type { SpeakerGroup, ZoneResponse } from "bose-api-speaker-client";
 
 import type { BoseSpeaker } from "../registry/types";
+import { isHouseholdAccountId, isSameOrigin } from "./account-id";
 
 /** A speaker's side in a stereo pair: the master plays the left channel. */
 export type PairRole = "LEFT" | "RIGHT";
@@ -17,6 +18,9 @@ export interface SpeakerPair {
   masterDeviceID: string;
   roles: readonly { deviceID: string; role: PairRole }[];
 }
+
+/** The longest pair name the app sends, as the firmware stores it. */
+export const PAIR_NAME_MAX_LENGTH = 64;
 
 export const pairFromGroup = (group: SpeakerGroup): SpeakerPair => ({
   id: group.id,
@@ -124,3 +128,121 @@ export const roleLabel = (role: PairRole): string =>
 export const isPartnerUnreachable = (
   speaker: Pick<BoseSpeaker, "pairStatus">,
 ): boolean => speaker.pairStatus === "GROUP_ERROR";
+
+/** A new pair's suggested name: "<left> + <right>", within the cap. */
+export const defaultPairName = (left: string, right: string): string => {
+  // Whole characters only: an emoji takes two of the 64.
+  let name = "";
+  for (const character of `${left} + ${right}`) {
+    if (name.length + character.length > PAIR_NAME_MAX_LENGTH) {
+      break;
+    }
+    name += character;
+  }
+  return name.trim();
+};
+
+/** Why `name` can't name a pair, if it can't. */
+export function validatePairName(name: string): string | undefined {
+  const trimmed = name.trim();
+  if (trimmed === "") {
+    return "Enter a name for the pair.";
+  }
+  if (trimmed.length > PAIR_NAME_MAX_LENGTH) {
+    return `Use at most ${PAIR_NAME_MAX_LENGTH} characters.`;
+  }
+  return undefined;
+}
+
+/** Whether `/getZone` says the speaker plays in a multiroom zone. */
+export const isInZone = (zone: ZoneResponse): boolean =>
+  zone.master !== "" || zone.members.length > 0;
+
+/** Why a speaker can't join a new pair. */
+export type PairProblem =
+  | "offline"
+  | "noStereo"
+  | "paired"
+  | "checking"
+  | "otherServer"
+  | "noAccount"
+  | "otherAccount"
+  | "inZone"
+  | "zoneUnread";
+
+/**
+ * Why `speaker`, a SoundTouch 10, can't be in a new pair, if it can't:
+ * it must be reached, able to play in stereo, in no pair, on our server with
+ * a household account, and in no multiroom zone. `inZone` is what its
+ * `/getZone` said; `undefined` while that's unknown, `null` when it didn't
+ * answer.
+ */
+export function pairProblem(
+  speaker: BoseSpeaker,
+  inZone: boolean | null | undefined,
+): PairProblem | undefined {
+  if (speaker.status !== "online") {
+    return "offline";
+  }
+  if (speaker.capabilities?.lrStereoCapable !== true) {
+    return "noStereo";
+  }
+  if (speaker.pair !== undefined) {
+    return "paired";
+  }
+  const { radio } = speaker;
+  if (radio.kind === "checking") {
+    return "checking";
+  }
+  if (
+    (radio.kind !== "ready" && radio.kind !== "needsSetup") ||
+    radio.through !== null
+  ) {
+    return "otherServer";
+  }
+  // A radio kept from before the speaker moved to another server: its new
+  // one is checked as soon as it reports it.
+  if (!isSameOrigin(speaker.margeURL, radio.margeURL)) {
+    return "checking";
+  }
+  if (!isHouseholdAccountId(speaker.margeAccountUUID)) {
+    return "noAccount";
+  }
+  if (inZone === undefined) {
+    return "checking";
+  }
+  if (inZone === null) {
+    return "zoneUnread";
+  }
+  return inZone ? "inZone" : undefined;
+}
+
+/**
+ * Why `candidate` can't pair with `speaker`, if it can't: its own problem,
+ * or another household account than `speaker`'s.
+ */
+export function partnerProblem(
+  speaker: BoseSpeaker,
+  candidate: BoseSpeaker,
+  inZone: boolean | null | undefined,
+): PairProblem | undefined {
+  return (
+    pairProblem(candidate, inZone) ??
+    (candidate.margeAccountUUID === speaker.margeAccountUUID
+      ? undefined
+      : "otherAccount")
+  );
+}
+
+/** A pair problem in a few words, under the speaker's name. */
+export const PAIR_PROBLEM_LABELS: Record<PairProblem, string> = {
+  offline: "Offline",
+  noStereo: "Can't play in stereo",
+  paired: "Already in a stereo pair",
+  checking: "Checking…",
+  otherServer: "Uses another server",
+  noAccount: "Not set up for Revive ST",
+  otherAccount: "On another account",
+  inZone: "Playing in a multiroom zone",
+  zoneUnread: "Didn't say if it's in a multiroom zone",
+};
