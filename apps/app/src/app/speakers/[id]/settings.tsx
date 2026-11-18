@@ -12,9 +12,11 @@ import {
 } from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
+import { pairLedBy, roleLabel } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeaker,
+  useSpeakers,
 } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
 import { Button } from "@/ui/ds/Button";
@@ -87,6 +89,7 @@ export default function SpeakerSettings() {
   } = useSpeakerCommands();
 
   const speaker = useSpeaker(id);
+  const { all } = useSpeakers();
   const deviceID = speaker?.deviceID;
 
   useEffect(() => {
@@ -144,6 +147,24 @@ export default function SpeakerSettings() {
     Boolean(bassCaps?.bassAvailable) ||
     Boolean(toneControls) ||
     Boolean(levelControls);
+
+  const { pair } = speaker;
+  const pairMaster =
+    pair && all.find((other) => other.deviceID === pair.masterDeviceID);
+  /**
+   * The pair this speaker is the partner in, whose presets its buttons play;
+   * not one its master no longer leads (or that isn't listed any more).
+   */
+  const partnerPair =
+    pair !== undefined &&
+    pair.masterDeviceID !== speaker.deviceID &&
+    pairMaster !== undefined &&
+    pairLedBy(pairMaster)?.id === pair.id
+      ? pair
+      : undefined;
+
+  /** The pair this speaker leads or is the partner in, as listed. */
+  const listedPair = pairLedBy(speaker) ?? partnerPair;
 
   const settingUp = configureRun.view?.kind === "working";
   const radioCheckFailed = speaker.radio.kind === "unreachable";
@@ -206,12 +227,12 @@ export default function SpeakerSettings() {
 
   return (
     <Screen>
-      <Stack.Title>{speaker.name}</Stack.Title>
+      <Stack.Title>{speaker.speakerName}</Stack.Title>
       <Form onRefresh={refresh}>
         <FormSection>
           <RNHostView matchContents={{ vertical: true }}>
             <SpeakerSettingsHeader
-              name={speaker.name}
+              name={speaker.speakerName}
               model={speaker.type}
               host={speaker.host}
               drawing={speakerDrawing(speaker.type)}
@@ -223,7 +244,7 @@ export default function SpeakerSettings() {
         <FormSection title="General">
           <FormLinkRow
             label="Name"
-            value={speaker.name}
+            value={speaker.speakerName}
             onPress={() => {
               router.push("./rename");
             }}
@@ -362,7 +383,20 @@ export default function SpeakerSettings() {
         ) : null}
 
         <FormSection title="Presets">
-          {speaker.presets ? (
+          {partnerPair ? (
+            // Its preset buttons play the master's presets (measured), so
+            // its own list doesn't matter while it's paired.
+            <FormLinkRow
+              icon={formIcons.speaker}
+              label={`${pairMaster?.speakerName ?? "The left speaker"}'s presets`}
+              description={`${speaker.speakerName}'s preset buttons play them`}
+              onPress={() => {
+                router.push(
+                  `/speakers/${encodeURIComponent(partnerPair.masterDeviceID)}/settings`,
+                );
+              }}
+            />
+          ) : speaker.presets ? (
             <RNHostView
               matchContents={{ vertical: true }}
               onLayout={(event) => {
@@ -380,11 +414,41 @@ export default function SpeakerSettings() {
           )}
           <FieldGroup.SectionFooter>
             <FormFooterText>
-              To save a preset, play something, then press and hold a preset
-              button on the speaker or remote until it beeps.
+              {partnerPair
+                ? `In ${partnerPair.name}, both speakers play the left speaker's presets.`
+                : "To save a preset, play something, then press and hold a preset button on the speaker or remote until it beeps."}
             </FormFooterText>
           </FieldGroup.SectionFooter>
         </FormSection>
+
+        {listedPair ? (
+          <FormSection title="Stereo pair">
+            {listedPair.roles
+              .filter((member) => member.deviceID !== speaker.deviceID)
+              .map((member) => (
+                <FormLinkRow
+                  key={member.deviceID}
+                  icon={formIcons.speaker}
+                  label={
+                    all.find((other) => other.deviceID === member.deviceID)
+                      ?.speakerName ?? member.deviceID
+                  }
+                  description={`${roleLabel(member.role)} speaker of ${listedPair.name}`}
+                  onPress={() => {
+                    router.push(
+                      `/speakers/${encodeURIComponent(member.deviceID)}/settings`,
+                    );
+                  }}
+                />
+              ))}
+            <FieldGroup.SectionFooter>
+              <FormFooterText>
+                Volume, power and source set on either speaker of the pair apply
+                to both.
+              </FormFooterText>
+            </FieldGroup.SectionFooter>
+          </FormSection>
+        ) : null}
 
         <FormSection title="Advanced">
           <FormLinkRow

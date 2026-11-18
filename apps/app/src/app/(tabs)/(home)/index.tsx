@@ -35,6 +35,7 @@ import {
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
 import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
+import { pairSummary } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeakers,
@@ -90,7 +91,7 @@ const radioSummary = (radio: RadioStatus): string | undefined => {
 
 export default function Index() {
   const router = useRouter();
-  const { online: speakers, listed: listedSpeakers, scan } = useSpeakers();
+  const { online: speakers, listed: listedSpeakers, all, scan } = useSpeakers();
   const isScanning = scan !== null;
   const {
     volumeMutation,
@@ -231,10 +232,11 @@ export default function Index() {
     },
   });
 
+  // A pair's partner counts: reached, it's not the household's Wi-Fi.
   const allOffline =
     !isScanning &&
     listedSpeakers.length > 0 &&
-    listedSpeakers.every((speaker) => speaker.status === "offline");
+    all.every((speaker) => speaker.status === "offline");
 
   const savePreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     savePresetMutation.mutate(
@@ -289,7 +291,11 @@ export default function Index() {
         <SpeakerRow
           key={speaker.deviceID}
           name={speaker.name}
-          detail={[speakerStateLabel(speaker), radioSummary(speaker.radio)]
+          detail={[
+            pairSummary(speaker),
+            speakerStateLabel(speaker),
+            radioSummary(speaker.radio),
+          ]
             .filter(Boolean)
             .join(" · ")}
           modelDrawing={speakerDrawing(speaker.type)}
@@ -315,6 +321,7 @@ export default function Index() {
         nowPlaying={hasMedia ? trackTitle(speaker) : undefined}
         detail={[
           speaker.artist,
+          pairSummary(speaker),
           speakerStateLabel(speaker),
           radioSummary(speaker.radio),
         ]
@@ -553,7 +560,13 @@ export default function Index() {
                       <SpeakerRow
                         key={speaker.deviceID}
                         name={speaker.name}
-                        detail={`${speakerStateLabel(speaker)} · Tap to try again`}
+                        detail={[
+                          speakerStateLabel(speaker),
+                          pairSummary(speaker),
+                          "Tap to try again",
+                        ]
+                          .filter(Boolean)
+                          .join(" · ")}
                         modelDrawing={speakerDrawing(speaker.type)}
                         accessibilityHint="Tries to reach the speaker again"
                         onPress={() => {

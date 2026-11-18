@@ -12,6 +12,7 @@ import {
   selectSpeaker,
   useSelectedSpeaker,
 } from "@/features/speakers/lib/selection";
+import { isPartnerUnreachable } from "@/features/speakers/lib/stereo-pair";
 import { useSpeakers } from "@/features/speakers/registry/store";
 import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { haptics } from "@/lib/haptics";
@@ -62,7 +63,11 @@ export default function SpeakerPicker() {
             <ListRow
               key={speaker.deviceID}
               title={speaker.name}
-              subtitle={speakerSummary(speaker)}
+              subtitle={
+                isPartnerUnreachable(speaker)
+                  ? "Partner unreachable"
+                  : speakerSummary(speaker)
+              }
               artworkUri={hasLoadedMedia(speaker) ? speaker.artUrl : null}
               fallbackIcon={icons.speaker}
               selected={speaker.deviceID === selected?.deviceID}
