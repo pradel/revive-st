@@ -16,11 +16,13 @@ export interface ConfigureTarget {
   deviceID: string;
   name: string;
   host: string;
-  /**
-   * The household's other speakers: an unpaired speaker joins their account,
-   * and a stereo pair's other speaker is named after them.
-   */
+  /** The household's other speakers: an unpaired speaker joins their account. */
   otherSpeakers: readonly KnownSpeaker[];
+  /**
+   * Every other speaker the phone knows, offline ones too: a stereo pair's
+   * other speaker is named after them.
+   */
+  knownSpeakers: readonly KnownSpeaker[];
 }
 
 /** Another speaker of the household, as the speaker list knows it. */
@@ -62,6 +64,11 @@ export type ConfigureView =
       step: StepId;
       error: ConfigureError;
       actions: RecoveryAction[];
+      /**
+       * The other speaker of the stereo pair this setup already dissolved, by
+       * name (or device id when unknown): the speaker no longer works as before.
+       */
+      unpairedFrom?: string;
     }
   | {
       kind: "done";
@@ -77,6 +84,11 @@ export type ConfigureView =
        * (or device id when unknown).
        */
       unpairedFrom?: string;
+      /**
+       * With `unpairedFrom`: whether the speaker's account lets it be paired
+       * again (a household account, not one kept from Bose's cloud).
+       */
+      canPairAgain?: boolean;
     };
 
 export interface ConfigureSession {

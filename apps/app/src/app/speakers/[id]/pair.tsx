@@ -117,17 +117,20 @@ export default function PairSettings() {
   })();
 
   // A reached speaker is read again; one that isn't is tried again, as its
-  // card's "Try again" does.
+  // card's "Try again" does; one never reached, with nothing to try again,
+  // is looked for by a scan.
   const refresh = async () => {
-    await Promise.allSettled(
-      sides.map(async (side) => {
-        if (side.speaker?.status === "online") {
-          await speakerRegistry.refresh(side.deviceID);
-        } else {
-          speakerRegistry.retry(side.deviceID);
-        }
-      }),
-    );
+    const reads = sides.map(async (side) => {
+      if (side.speaker?.status === "online") {
+        await speakerRegistry.refresh(side.deviceID);
+      } else {
+        speakerRegistry.retry(side.deviceID);
+      }
+    });
+    if (sides.some((side) => side.speaker === undefined)) {
+      speakerRegistry.rescan();
+    }
+    await Promise.allSettled(reads);
   };
 
   const unpair = () => {

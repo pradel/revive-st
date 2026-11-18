@@ -64,7 +64,8 @@ export default function ConfigureSpeaker() {
       ? simulate
       : undefined;
   // A pair's partner is set up on its own, and joins the household's account.
-  const speakers = useSpeakers().all.filter((item) => item.status === "online");
+  const known = useSpeakers().all;
+  const speakers = known.filter((item) => item.status === "online");
   const speaker = speakers.find((item) => item.deviceID === id);
   const { run, view } = useConfigureRun(id);
   const serverUrl = useServerUrl();
@@ -163,6 +164,7 @@ export default function ConfigureSpeaker() {
                 name: speaker?.speakerName ?? "",
                 host: speaker?.host ?? "",
                 otherSpeakers: speakers.filter((other) => other !== speaker),
+                knownSpeakers: known.filter((other) => other.deviceID !== id),
               },
               scenario,
             );

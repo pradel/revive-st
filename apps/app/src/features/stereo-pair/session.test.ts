@@ -2,6 +2,7 @@ import { Result } from "better-result";
 import {
   ApiError,
   type BoseApiError,
+  NetworkError,
   type NewGroup,
   type SpeakerGroup,
 } from "bose-api-speaker-client";
@@ -58,7 +59,8 @@ const reported = (group: NewGroup, id: string): SpeakerGroup => ({
 /**
  * Two SoundTouch 10s and our server, answering after 100 ms of `clock`
  * time. Like the firmware, `/addGroup` to the master pairs both (unless
- * `partnerJoins` is false), and `/removeGroup` to either clears both.
+ * `partnerJoins` is false), and `/removeGroup` to either clears its pair
+ * from both.
  */
 class FakePairWorld {
   readonly clock = new ManualClock();
@@ -75,6 +77,8 @@ class FakePairWorld {
   addFailures: BoseApiError[] = [];
   /** `/removeGroup` reaches only the speaker it's sent to. */
   peerUnreachable = false;
+  /** Speakers whose `/getGroup` doesn't answer. */
+  readonly unreachable = new Set<string>();
 
   async #answer<Value>(value: Value, signal: AbortSignal): Promise<Value> {
     await this.clock.sleep(100, signal);
@@ -88,6 +92,12 @@ class FakePairWorld {
       speaker: {
         getGroup: async (member, signal) => {
           this.calls.push(`getGroup ${member.name}`);
+          if (this.unreachable.has(member.deviceID)) {
+            return this.#answer(
+              Result.err(new NetworkError({ message: "Unreachable" })),
+              signal,
+            );
+          }
           return this.#answer(
             Result.ok(this.groups.get(member.deviceID) ?? null),
             signal,
@@ -108,11 +118,18 @@ class FakePairWorld {
         },
         removeGroup: async (member, signal) => {
           this.calls.push(`removeGroup ${member.name}`);
-          // The other speaker keeps its half when it doesn't take the request.
-          for (const speaker of this.peerUnreachable
-            ? [member]
-            : [LEFT, RIGHT]) {
-            this.groups.set(speaker.deviceID, null);
+          // The other speaker keeps its half when it doesn't take the request,
+          // and a pair of its own in any case.
+          const id = this.groups.get(member.deviceID)?.id;
+          for (const speaker of [LEFT, RIGHT]) {
+            if (
+              speaker.deviceID === member.deviceID ||
+              (!this.peerUnreachable &&
+                id !== undefined &&
+                this.groups.get(speaker.deviceID)?.id === id)
+            ) {
+              this.groups.set(speaker.deviceID, null);
+            }
           }
           return this.#answer(
             Result.ok({ peerUnreachable: this.peerUnreachable }),
@@ -183,6 +200,33 @@ describe("pairing session", () => {
     ]);
   });
 
+  it("removes a stale pair both speakers report through one of them", async () => {
+    const world = new FakePairWorld();
+    const stale = reported(
+      {
+        name: "Old pair",
+        masterDeviceId: LEFT.deviceID,
+        roles: [
+          { deviceId: LEFT.deviceID, role: "LEFT", ipAddress: LEFT.host },
+          { deviceId: RIGHT.deviceID, role: "RIGHT", ipAddress: RIGHT.host },
+        ],
+      },
+      "1111111",
+    );
+    world.groups.set(LEFT.deviceID, stale);
+    world.groups.set(RIGHT.deviceID, stale);
+    world.addFailures = [apiError(GROUP_ALREADY_EXISTS)];
+
+    expect((await pair(world)).kind).toBe("done");
+    expect(world.calls.slice(0, 5)).toEqual([
+      "addGroup Living room",
+      "getGroup Living room",
+      "getGroup Office",
+      "removeGroup Living room",
+      "addGroup Living room",
+    ]);
+  });
+
   it("keeps a pair whose speakers it can't tell (5510), and fails", async () => {
     const world = new FakePairWorld();
     const unknown = reported(
@@ -227,6 +271,20 @@ describe("pairing session", () => {
 
   it("gives up after one retry when the speakers still report a pair", async () => {
     const world = new FakePairWorld();
+    world.groups.set(
+      RIGHT.deviceID,
+      reported(
+        {
+          name: "Old pair",
+          masterDeviceId: RIGHT.deviceID,
+          roles: [
+            { deviceId: RIGHT.deviceID, role: "LEFT", ipAddress: RIGHT.host },
+            { deviceId: LEFT.deviceID, role: "RIGHT", ipAddress: LEFT.host },
+          ],
+        },
+        "1111111",
+      ),
+    );
     world.addFailures = [
       apiError(GROUP_ALREADY_EXISTS),
       apiError(GROUP_ALREADY_EXISTS),
@@ -237,6 +295,10 @@ describe("pairing session", () => {
       step: "pair",
       error: { kind: "alreadyPaired" },
     });
+    expect(world.calls.filter((call) => call.startsWith("addGroup"))).toEqual([
+      "addGroup Living room",
+      "addGroup Living room",
+    ]);
   });
 
   it("tells our server couldn't store the pair (5580)", async () => {
@@ -308,6 +370,50 @@ describe("pairing session", () => {
     // Undone through the master, which reports this attempt's pair.
     expect(world.calls.at(-1)).toBe("removeGroup Living room");
     expect(world.calls).not.toContain("removeGroup Office");
+    expect(world.groups.get(RIGHT.deviceID)).toBe(other);
+  });
+
+  it("needs both speakers to report the pair in the same check", async () => {
+    const world = new FakePairWorld();
+    world.partnerJoins = false;
+    const session = createPairSession(world.deps(), TARGET);
+    session.start();
+    // The master reports the pair at the first check, then stops answering
+    // just as the partner reports it.
+    await world.clock.runUntil(() =>
+      world.log.events.some((event) => event.name === "pair.confirm"),
+    );
+    world.unreachable.add(LEFT.deviceID);
+    world.groups.set(RIGHT.deviceID, world.groups.get(LEFT.deviceID) ?? null);
+    await world.clock.runUntil(() => session.getView().kind !== "working");
+
+    expect(session.getView()).toEqual({
+      kind: "failed",
+      step: "confirm",
+      error: { kind: "notConfirmed", undone: true },
+    });
+    expect(world.calls.at(-1)).toBe("removeGroup Office");
+  });
+
+  it("doesn't undo through a master that reports no pair by then", async () => {
+    const world = new FakePairWorld();
+    world.partnerJoins = false;
+    const session = createPairSession(world.deps(), TARGET);
+    session.start();
+    await world.clock.runUntil(() =>
+      world.log.events.some((event) => event.name === "pair.confirm"),
+    );
+    world.groups.set(LEFT.deviceID, null);
+    await world.clock.runUntil(() => session.getView().kind !== "working");
+
+    expect(session.getView()).toEqual({
+      kind: "failed",
+      step: "confirm",
+      error: { kind: "notConfirmed", undone: false },
+    });
+    expect(
+      world.calls.filter((call) => call.startsWith("removeGroup")),
+    ).toEqual([]);
   });
 
   it("sends nothing to the speakers when our server is too old to store pairs", async () => {

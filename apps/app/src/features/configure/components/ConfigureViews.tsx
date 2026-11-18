@@ -327,7 +327,12 @@ export function FailedView({
   onClose: () => void;
   onShowLogs: () => void;
 }) {
-  const copy = describeError(view.error, speakerName, serverHost);
+  const copy = describeError(
+    view.error,
+    speakerName,
+    serverHost,
+    view.unpairedFrom,
+  );
   return (
     <>
       <SetupHeader
@@ -388,7 +393,10 @@ export function DoneView({
         }${
           view.unpairedFrom === undefined
             ? ""
-            : ` Set up ${view.unpairedFrom} too, then pair them again from ${speakerName}'s settings.`
+            : view.canPairAgain === true
+              ? ` Set up ${view.unpairedFrom} too, then pair them again from ${speakerName}'s settings.`
+              : // A pair needs a household account, which a Bose cloud one isn't.
+                ` Set up ${view.unpairedFrom} too: they now play as separate speakers.`
         }`}
       />
       <Card style={$setupCard}>

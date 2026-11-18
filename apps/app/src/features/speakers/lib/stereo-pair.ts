@@ -147,8 +147,17 @@ export const isPartnerUnreachable = (
 ): boolean => speaker.pairStatus === "GROUP_ERROR";
 
 /** A new pair's suggested name: "<left> + <right>", within the cap. */
-export const defaultPairName = (left: string, right: string): string =>
-  `${left} + ${right}`.slice(0, PAIR_NAME_MAX_LENGTH).trim();
+export const defaultPairName = (left: string, right: string): string => {
+  // Whole characters only: an emoji takes two of the 64.
+  let name = "";
+  for (const character of `${left} + ${right}`) {
+    if (name.length + character.length > PAIR_NAME_MAX_LENGTH) {
+      break;
+    }
+    name += character;
+  }
+  return name.trim();
+};
 
 /** Why `name` can't name a pair, if it can't. */
 export function validatePairName(name: string): string | undefined {
@@ -175,17 +184,19 @@ export type PairProblem =
   | "otherServer"
   | "noAccount"
   | "otherAccount"
-  | "inZone";
+  | "inZone"
+  | "zoneUnread";
 
 /**
  * Why `speaker`, a SoundTouch 10, can't be in a new pair, if it can't:
  * it must be reached, able to play in stereo, in no pair, on our server with
  * a household account, and in no multiroom zone. `inZone` is what its
- * `/getZone` said; `undefined` while that's unknown.
+ * `/getZone` said; `undefined` while that's unknown, `null` when it didn't
+ * answer.
  */
 export function pairProblem(
   speaker: BoseSpeaker,
-  inZone: boolean | undefined,
+  inZone: boolean | null | undefined,
 ): PairProblem | undefined {
   if (speaker.status !== "online") {
     return "offline";
@@ -217,6 +228,9 @@ export function pairProblem(
   if (inZone === undefined) {
     return "checking";
   }
+  if (inZone === null) {
+    return "zoneUnread";
+  }
   return inZone ? "inZone" : undefined;
 }
 
@@ -227,7 +241,7 @@ export function pairProblem(
 export function partnerProblem(
   speaker: BoseSpeaker,
   candidate: BoseSpeaker,
-  inZone: boolean | undefined,
+  inZone: boolean | null | undefined,
 ): PairProblem | undefined {
   return (
     pairProblem(candidate, inZone) ??
@@ -247,4 +261,5 @@ export const PAIR_PROBLEM_LABELS: Record<PairProblem, string> = {
   noAccount: "Not set up for Revive ST",
   otherAccount: "On another account",
   inZone: "Playing in a multiroom zone",
+  zoneUnread: "Didn't say if it's in a multiroom zone",
 };

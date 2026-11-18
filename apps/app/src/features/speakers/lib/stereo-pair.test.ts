@@ -93,6 +93,8 @@ describe("pairProblem", () => {
   it("needs a speaker in no multiroom zone, and waits for its zone and radio", () => {
     expect(pairProblem(LIVING_ROOM, true)).toBe("inZone");
     expect(pairProblem(LIVING_ROOM, undefined)).toBe("checking");
+    // A `/getZone` that failed doesn't count as no zone.
+    expect(pairProblem(LIVING_ROOM, null)).toBe("zoneUnread");
     expect(pairProblem(st10("A", { radio: { kind: "checking" } }), false)).toBe(
       "checking",
     );
@@ -137,6 +139,10 @@ describe("stereo pair names", () => {
       "Living room + Office",
     );
     expect(defaultPairName("L".repeat(40), "R".repeat(40))).toHaveLength(64);
+    // The emoji would take the 64th and 65th: it's left out whole.
+    expect(defaultPairName("L".repeat(60), "🔊 Office")).toBe(
+      `${"L".repeat(60)} +`,
+    );
   });
 
   it("takes a name of 1 to 64 characters", () => {

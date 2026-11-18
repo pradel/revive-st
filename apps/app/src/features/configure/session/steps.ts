@@ -82,6 +82,11 @@ export const CONTACT_BUDGET_MS = 90_000;
 export const CONTACT_POLL_MS = 3000;
 /** How long a SoundTouch 10 gets to say which stereo pair it's in. */
 export const GROUP_READ_TIMEOUT_MS = 4000;
+/**
+ * How long `/removeGroup` may take: the speaker answers once its server
+ * deleted the pair. The same as unpairing from the pair's settings.
+ */
+export const REMOVE_GROUP_TIMEOUT_MS = 15_000;
 
 /** Survives recovery actions. */
 export interface RunContext {
@@ -96,8 +101,11 @@ export interface RunContext {
   console?: ConsoleConnection;
   /** The speaker's last request to the server before the restart. */
   baseline?: LastContact;
-  /** The user chose to dissolve the speaker's stereo pair before setup. */
-  unpair?: boolean;
+  /**
+   * The stereo pair (its id) the user chose to dissolve before setup; another
+   * pair found later is asked about again.
+   */
+  unpair?: string;
   /**
    * The speaker's pair is to be dissolved right before the first setting is
    * written (`connect`), once every check that writes nothing has passed.
@@ -109,12 +117,14 @@ export interface RunContext {
    * says to set it up too.
    */
   unpairedFrom?: string;
+  /** The speaker confirmed it dissolved its pair: it no longer works as before. */
+  pairRemoved?: boolean;
 }
 
 /**
  * Stops before anything is written when the speaker is in a stereo pair and
  * the setup moves it to another server or account: it would drop the pair on
- * its side only. Once the user chose to dissolve the pair (`ctx.unpair`), it
+ * its side only. Once the user chose to dissolve this pair (`ctx.unpair`), it
  * marks it for removal in `connect` instead. A pair read that fails stops a
  * setup that moves the speaker (Try again reads it again); one that keeps it
  * on its server and account goes on.
@@ -164,7 +174,7 @@ async function keepPairIntact(
     deps.log.event("pair.kept", { pair: group.value.id });
     return ok();
   }
-  const { roles, name } = group.value;
+  const { id, roles, name } = group.value;
   const own = roles.find((member) =>
     sameDevice(member.deviceId, ctx.target.deviceID),
   );
@@ -173,12 +183,13 @@ async function keepPairIntact(
   );
   const otherId = other?.deviceId ?? "the other speaker";
   const partner =
-    ctx.target.otherSpeakers.find((speaker) =>
+    ctx.target.knownSpeakers.find((speaker) =>
       sameDevice(speaker.deviceID, otherId),
     )?.speakerName ?? otherId;
-  if (!ctx.unpair) {
+  if (ctx.unpair !== id) {
     return Result.err(
       new PairWouldBreak({
+        pairId: id,
         pairName: name,
         role:
           own === undefined
@@ -476,9 +487,17 @@ export async function connect(
 
   if (ctx.removePair) {
     // The first change to the speaker, once nothing else can stop setup
-    // before the settings are written.
-    const removed = await request(deps, signal, async (call) =>
-      deps.speaker.removeGroup(ctx.host, call),
+    // before the settings are written. A lost reply fails the step; Try
+    // again reads the pair before removing it again.
+    const removed = await withTimeout(
+      deps.clock,
+      REMOVE_GROUP_TIMEOUT_MS,
+      signal,
+      async (call) => deps.speaker.removeGroup(ctx.host, call),
+      () =>
+        new PortFailure({
+          message: `No answer within ${REMOVE_GROUP_TIMEOUT_MS} ms`,
+        }),
     );
     if (removed.isErr()) {
       return Result.err(
@@ -490,6 +509,7 @@ export async function connect(
       peerUnreachable: removed.value.peerUnreachable,
     });
     ctx.removePair = false;
+    ctx.pairRemoved = true;
   }
 
   for (const command of writeUrlCommands(urls)) {

@@ -153,7 +153,7 @@ export const scenarios = {
   },
   stereoPairMoving: {
     description:
-      "SoundTouch 10 in a stereo pair on Bose's servers, moving to this server",
+      "SoundTouch 10 in a stereo pair on Bose's servers, moving to this server, its partner offline",
     config: () =>
       worldConfig({
         speaker: {
@@ -161,7 +161,7 @@ export const scenarios = {
           margeAccountUUID: BOSE_ACCOUNT,
           group: STEREO_PAIR,
         },
-        otherSpeakers: [{ deviceID: PARTNER_ID, speakerName: "Living room" }],
+        knownSpeakers: [{ deviceID: PARTNER_ID, speakerName: "Living room" }],
       }),
   },
   stereoPairAgain: {
@@ -201,11 +201,12 @@ export function createScenario(
 
 /** The target the speaker list would pass for `world`'s speaker. */
 export function targetOf(world: FakeConfigureWorld): ConfigureTarget {
-  const { speaker, otherSpeakers } = world.config;
+  const { speaker, otherSpeakers, knownSpeakers } = world.config;
   return {
     deviceID: speaker.deviceID,
     name: speaker.name,
     host: speaker.host,
     otherSpeakers: otherSpeakers ?? [],
+    knownSpeakers: knownSpeakers ?? otherSpeakers ?? [],
   };
 }

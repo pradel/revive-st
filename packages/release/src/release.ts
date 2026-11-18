@@ -97,14 +97,16 @@ export class ServerNotReady extends Data.TaggedError("ServerNotReady")<{
           : found.version === null
             ? "runs a release that doesn't report its version"
             : `runs ${found.version}`;
-    return (
-      `This app version needs Revive ST ${this.minimum} or newer on ${this.url}, which ${what}. ` +
-      "Shipping it would break setup for every user: deploy the API release first (merge its version PR and let Railway redeploy), then run this again."
-    );
+    const next =
+      found.kind === "unreachable"
+        ? "Check your connection and that the server is up, then run this again."
+        : "Shipping it would break setup for every user: deploy the API release first (merge its version PR and let Railway redeploy), then run this again.";
+    return `This app version needs Revive ST ${this.minimum} or newer on ${this.url}, which ${what}. ${next}`;
   }
 }
 
-const RELEASE = /^(\d+)\.(\d+)\.(\d+)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
+const RELEASE =
+  /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$/;
 
 /**
  * Whether `version` is `minimum` or newer, by semver precedence: a prerelease
@@ -263,6 +265,8 @@ export const releaseApk = onReleasedTag(
         ) {
           return yield* new WrongSigningKey({ digests });
         }
+        // Again, in case the server went back to an older release meanwhile.
+        yield* requireHostedServer;
         yield* Console.log(`📦 Attaching it to ${tag}...`);
         yield* github.upload(tag, file);
       }),

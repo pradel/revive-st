@@ -387,7 +387,13 @@ export class Server extends Context.Service<
             if (!response.ok) {
               throw new Error(`HTTP ${response.status}`);
             }
-            return response.json().catch(() => null);
+            // A body cut short is unreachable; a whole one that isn't JSON, `null`.
+            const body = await response.text();
+            try {
+              return JSON.parse(body) as unknown;
+            } catch {
+              return null;
+            }
           },
           catch: (error) => {
             // `fetch` hides a DNS or connection error in its cause.

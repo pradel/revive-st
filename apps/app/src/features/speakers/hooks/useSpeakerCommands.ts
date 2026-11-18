@@ -72,31 +72,38 @@ async function run<Value>(
 
 /**
  * Dissolves `pair` through its master, or through its partner when the
- * master isn't reached (one request clears both). `via`: the speaker it went
- * through. `peerUnreachable`: the other speaker didn't answer, and leaves the
- * pair once it's back. A speaker reporting another pair, or none, has left
- * this one: nothing is removed, and its state is read again so the stale
- * pair goes.
+ * master isn't reached or no longer reports it (one request clears both).
+ * `via`: the speaker it went through. `peerUnreachable`: the other speaker
+ * didn't answer, and leaves the pair once it's back. Only a speaker that
+ * reports this pair is asked, as `/removeGroup` names none: when every
+ * reached one reports another pair, or none, nothing is removed, and their
+ * state is read again so the stale pair goes. One that hasn't said yet is
+ * read again, and the unpair fails.
  */
 async function unpair(
   pair: SpeakerPair,
 ): Promise<{ peerUnreachable: boolean; via: string }> {
-  const via = [pair.masterDeviceID, ...partnersOf(pair)].find(
+  const reached = [pair.masterDeviceID, ...partnersOf(pair)].filter(
     (deviceID) => speakerRegistry.client(deviceID) !== undefined,
   );
-  if (via === undefined) {
+  if (reached.length === 0) {
     throw new Error("Speaker not connected");
   }
   try {
-    const live = client(via).getState().group;
-    // Unread (`undefined`): it can't be told, and the request goes ahead.
-    if (live !== undefined && live?.id !== pair.id) {
+    const groups = reached.map((deviceID) => ({
+      deviceID,
+      group: client(deviceID).getState().group,
+    }));
+    const via = groups.find(({ group }) => group?.id === pair.id)?.deviceID;
+    if (via === undefined) {
+      if (groups.some(({ group }) => group === undefined)) {
+        throw new Error("Stereo pair not read yet");
+      }
       logger.log("[StereoPair] already left", {
         pair: pair.id,
-        via,
-        now: live?.id ?? null,
+        now: groups.map(({ group }) => group?.id ?? null),
       });
-      return { peerUnreachable: false, via };
+      return { peerUnreachable: false, via: pair.masterDeviceID };
     }
     const { peerUnreachable } = await run(via, async (speaker) =>
       speaker.removeGroup({
@@ -308,18 +315,25 @@ export function useSpeakerCommands() {
         }
       },
     }),
-    /** Renames the stereo pair `deviceID`, its master, leads; both speakers take the name. */
+    /**
+     * Renames the stereo pair `pairID` that `deviceID`, its master, leads;
+     * both speakers take the name. Fails, and reads the master again, when
+     * it no longer reports that pair.
+     */
     renamePairMutation: useMutation({
       mutationFn: async ({
         deviceID,
+        pairID,
         name,
       }: {
         deviceID: string;
+        pairID: string;
         name: string;
       }) => {
         const group = client(deviceID).getState().group;
-        if (!group) {
-          throw new Error("Speaker not in a stereo pair");
+        if (group?.id !== pairID) {
+          void speakerRegistry.refresh(deviceID);
+          throw new Error("Speaker not in that stereo pair");
         }
         await run(deviceID, async (speaker) =>
           speaker.updateGroup(
@@ -348,14 +362,38 @@ export function useSpeakerCommands() {
       }: {
         deviceID: string;
         value: number;
-      }) => run(deviceID, async (speaker) => speaker.setBalance(value)),
+      }) =>
+        // Read again when it fails: a write that timed out may have landed.
+        run(deviceID, async (speaker) => speaker.setBalance(value), {
+          refreshOnError: true,
+        }),
     }),
     /**
-     * Takes `deviceID` out of a pair its master no longer reports: only this
-     * speaker still holds it.
+     * Takes `deviceID` out of `pairID`, a pair its master no longer reports:
+     * only this speaker still holds it. `/removeGroup` names no pair, so a
+     * speaker reporting another one, or not saying yet, is only read again.
      */
     leavePairMutation: useMutation({
-      mutationFn: async ({ deviceID }: { deviceID: string }) => {
+      mutationFn: async ({
+        deviceID,
+        pairID,
+      }: {
+        deviceID: string;
+        pairID: string;
+      }) => {
+        const group = client(deviceID).getState().group;
+        if (group?.id !== pairID) {
+          void speakerRegistry.refresh(deviceID);
+          if (group === undefined) {
+            throw new Error("Stereo pair not read yet");
+          }
+          logger.log("[StereoPair] already left", {
+            pair: pairID,
+            deviceID,
+            now: group?.id ?? null,
+          });
+          return;
+        }
         await run(
           deviceID,
           async (speaker) =>

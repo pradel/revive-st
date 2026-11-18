@@ -4,7 +4,11 @@ import { ManualClock } from "../../onboarding/session/testing/fakes";
 import { serverUrlsFor } from "./console";
 import { describeError } from "./errors";
 import { createConfigureSession } from "./session";
-import { RETURN_BUDGET_MS, SAVE_PRESETS_TIMEOUT_MS } from "./steps";
+import {
+  REQUEST_TIMEOUT_MS,
+  RETURN_BUDGET_MS,
+  SAVE_PRESETS_TIMEOUT_MS,
+} from "./steps";
 import { BOSE_URLS, type FakeConfigureWorld } from "./testing/fakes";
 import {
   createScenario,
@@ -14,6 +18,7 @@ import {
   PRESETS,
   type ScenarioName,
   SERVER_ORIGIN,
+  STEREO_PAIR,
   TARGET_ID,
   targetOf,
 } from "./testing/scenarios";
@@ -303,7 +308,7 @@ describe("configure session", () => {
 });
 
 describe("configure session with a stereo pair", () => {
-  it("asks before moving a paired speaker to another server, with nothing written yet", async () => {
+  it("asks before moving a paired speaker to another server, naming its offline partner, with nothing written yet", async () => {
     const { world, untilFailed } = start("stereoPairMoving");
 
     const failed = await untilFailed("PairWouldBreak");
@@ -329,6 +334,8 @@ describe("configure session with a stereo pair", () => {
     const done = await untilDone();
 
     expect(done.unpairedFrom).toBe("Living room");
+    // Its Bose cloud account isn't a household account a pair can use.
+    expect(done.canPairAgain).toBe(false);
     expect(world.group).toBeNull();
     // Removed only once presets are saved and the console answers, right
     // before the first setting is written.
@@ -338,6 +345,67 @@ describe("configure session with a stereo pair", () => {
     expect(saved).toBeLessThan(removed);
     expect(removed).toBeLessThan(firstCommand);
     expect(world.running).toEqual(ourUrls);
+  });
+
+  it("waits for a speaker that is slow to remove the pair, as its server deletes it", async () => {
+    const { world, untilFailed, untilDone, act } = start("stereoPairMoving");
+    world.config.speaker.removeGroupMs = REQUEST_TIMEOUT_MS + 2000;
+    await untilFailed("PairWouldBreak");
+
+    await act("unpair");
+    await untilDone();
+
+    expect(world.group).toBeNull();
+    expect(world.running).toEqual(ourUrls);
+  });
+
+  it("says the pair is gone when setup fails after removing it", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.refuses = "envswitch";
+
+    await act("unpair");
+    const failed = await untilFailed("CommandFailed");
+
+    expect(world.group).toBeNull();
+    expect(failed.unpairedFrom).toBe("Living room");
+    expect(
+      describeError(
+        failed.error,
+        "Kitchen",
+        "api.revivest.app",
+        failed.unpairedFrom,
+      ).message,
+    ).toContain(
+      "The speaker wasn't restarted, but its stereo pair with Living room was already undone.",
+    );
+  });
+
+  it("asks again when the speaker is in another pair than the one the user chose to undo", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.group = { ...STEREO_PAIR, id: "2718281", name: "Kitchen + Office" };
+
+    await act("unpair");
+    const failed = await untilFailed("PairWouldBreak");
+
+    expect(failed.error).toMatchObject({ pairName: "Kitchen + Office" });
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+  });
+
+  it("keeps the pair when the user chose to undo it but the console doesn't answer", async () => {
+    const { world, untilFailed, act } = start("stereoPairMoving");
+    await untilFailed("PairWouldBreak");
+    world.config.speaker.consoleClosed = true;
+
+    await act("unpair");
+    const failed = await untilFailed("ConsoleUnavailable");
+
+    expect(failed.unpairedFrom).toBeUndefined();
+    expect(world.firstEvent("groupRemoved")).toBeUndefined();
+    expect(world.group).not.toBeNull();
+    expect(world.saved).toEqual(BOSE_URLS);
   });
 
   it("writes nothing when the user cancels instead", async () => {

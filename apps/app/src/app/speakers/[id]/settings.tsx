@@ -176,8 +176,11 @@ export default function SpeakerSettings() {
       : undefined;
 
   const leavePair = () => {
+    if (pair === undefined) {
+      return;
+    }
     Alert.alert(
-      `Leave ${pair?.name ?? "the pair"}?`,
+      `Leave ${pair.name}?`,
       `${speaker.speakerName} then plays on its own again.`,
       [
         { text: "Cancel", style: "cancel" },
@@ -187,7 +190,7 @@ export default function SpeakerSettings() {
           onPress: () => {
             haptics.tap();
             leavePairMutation.mutate(
-              { deviceID: speaker.deviceID },
+              { deviceID: speaker.deviceID, pairID: pair.id },
               {
                 onSuccess: () => {
                   haptics.success();

@@ -255,7 +255,10 @@ export function createPairSession(
         return failed("pair", { kind: "alreadyPaired" });
       }
       for (const member of stale) {
-        await removeGroup(member);
+        const removed = await removeGroup(member);
+        if (removed.isOk() && !removed.value.peerUnreachable) {
+          break;
+        }
       }
       added = await addGroup();
     }
@@ -274,41 +277,40 @@ export function createPairSession(
   };
 
   const confirm = async (deadline: number, id: string): Promise<Outcome> => {
-    let reports: (SpeakerGroup | null)[] = [null, null];
     for (let round = 0; ; round += 1) {
       const wait = CONFIRM_WAITS_MS[round] ?? CONFIRM_WAITS_MS[2];
       if (clock.now() + wait > deadline) {
         break;
       }
       await sleep(clock, wait, signal);
-      const reads = await Promise.all([readGroup(left), readGroup(right)]);
-      // A speaker that didn't answer keeps what it said before.
-      const previous = reports;
-      reports = reads.map((read, index) =>
-        read.isOk() ? read.value : (previous[index] ?? null),
-      );
-      const [master = null, partner = null] = reports;
+      // Both in the same check: a speaker that didn't answer confirms nothing.
+      const [master, partner] = (
+        await Promise.all([readGroup(left), readGroup(right)])
+      ).map((read) => (read.isOk() ? read.value : undefined));
       log.event("pair.confirm", {
         round,
-        left: master?.status ?? "none",
-        right: partner?.status ?? "none",
+        left: master === undefined ? "unread" : (master?.status ?? "none"),
+        right: partner === undefined ? "unread" : (partner?.status ?? "none"),
       });
       if (
-        formed(master) &&
-        formed(partner) &&
-        master.id === id &&
-        partner.id === id
+        formed(master ?? null) &&
+        formed(partner ?? null) &&
+        master?.id === id &&
+        partner?.id === id
       ) {
         return { kind: "done", group: master };
       }
     }
     // What formed is undone, so neither speaker is left half paired: through
-    // a speaker reporting this attempt's pair, else the master, which
-    // accepted it, when it said nothing. A pair another attempt or app made
-    // is left alone.
+    // a speaker reporting this attempt's pair, read again right before, else
+    // the master, which accepted it, when it doesn't answer. A speaker in no
+    // pair, or in one another attempt or app made, is left alone.
+    const reads = await Promise.all([readGroup(left), readGroup(right)]);
     const reporting =
-      [left, right].find((_member, index) => reports[index]?.id === id) ??
-      (reports[0] === null ? left : undefined);
+      [left, right].find((_member, index) => {
+        const read = reads[index];
+        return read?.isOk() && read.value?.id === id;
+      }) ?? (reads[0].isErr() ? left : undefined);
     if (reporting === undefined) {
       log.event("pair.undoSkipped");
       return failed("confirm", { kind: "notConfirmed", undone: false });

@@ -236,10 +236,12 @@ export default function Index() {
     },
   });
 
+  // A pair's partner counts: reached, the pair's settings still answer
+  // through it while its master is offline.
   const allOffline =
     !isScanning &&
     listedSpeakers.length > 0 &&
-    listedSpeakers.every((speaker) => speaker.status === "offline");
+    all.every((speaker) => speaker.status === "offline");
 
   const savePreset = (speaker: BoseSpeaker, slot: PresetSlot) => {
     savePresetMutation.mutate(

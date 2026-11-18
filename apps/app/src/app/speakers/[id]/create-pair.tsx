@@ -38,6 +38,7 @@ import {
 import type { PairMember, PairView } from "@/features/stereo-pair/session";
 import {
   endPairing,
+  retryPairing,
   startPairing,
   usePairRun,
 } from "@/features/stereo-pair/store";
@@ -132,7 +133,12 @@ export default function CreatePair() {
             target={run.target}
             serverHost={host}
             onRetry={() => {
-              run.session.retry();
+              if (!retryPairing(id)) {
+                Alert.alert(
+                  "Already pairing",
+                  "One of these speakers is being paired. Wait until that's done, then try again.",
+                );
+              }
             }}
             onClose={() => {
               endPairing(id);

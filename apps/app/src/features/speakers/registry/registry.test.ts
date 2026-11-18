@@ -797,6 +797,32 @@ describe("speaker registry: stereo pairs", () => {
     ]);
   });
 
+  it("keeps listing a partner that left the pair, and keeps it when the master's card is forgotten, once it's offline", async () => {
+    const { registry, network, listed, report, settle } = world({
+      stored: [LIVING_ROOM, OFFICE],
+    });
+    putOnNetwork(network, GROUP);
+    network.set(
+      RIGHT.host,
+      onNetwork({ deviceID: RIGHT.deviceID, name: "Office", group: null }),
+    );
+    await registry.restore();
+    registry.reconnectAll();
+    await settle();
+
+    network.get(RIGHT.host)!.socketDown = true;
+    report(RIGHT.host);
+
+    expect(listed()).toMatchObject([
+      { deviceID: LEFT.deviceID, status: "online", pair: PAIR },
+      { deviceID: RIGHT.deviceID, status: "offline", name: "Office" },
+    ]);
+
+    registry.forget(LEFT.deviceID);
+
+    expect(listed()).toMatchObject([{ deviceID: RIGHT.deviceID }]);
+  });
+
   it("keeps the remembered pair while the speaker's pair isn't read", async () => {
     const { registry, network, listed, settle } = world({
       stored: [LIVING_ROOM, OFFICE],

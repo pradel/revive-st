@@ -74,6 +74,8 @@ export interface FakeSpeakerConfig {
   group?: SpeakerGroup;
   /** Never answers `/getGroup`. */
   groupHangs?: boolean;
+  /** `/removeGroup` answers this much later than other requests: it waits on its server. */
+  removeGroupMs?: number;
 }
 
 export interface FakeServerConfig {
@@ -93,6 +95,8 @@ export interface FakeWorldConfig {
   server: FakeServerConfig;
   /** The household's other speakers. */
   otherSpeakers?: KnownSpeaker[];
+  /** Every other speaker the phone knows, offline ones too. Default `otherSpeakers`. */
+  knownSpeakers?: KnownSpeaker[];
   /** Account the app makes for a new household. */
   newAccountId?: string;
 }
@@ -350,6 +354,10 @@ class FakeSpeakerPort implements SpeakerPort {
     if (!isSoundTouch10(speaker.type ?? "") || speaker.groupHangs) {
       // Other models never answer `/getGroup`.
       await new Promise<never>((_resolve, reject) => {
+        if (signal.aborted) {
+          reject(new AbortedError());
+          return;
+        }
         signal.addEventListener("abort", () => {
           reject(new AbortedError());
         });
@@ -359,6 +367,10 @@ class FakeSpeakerPort implements SpeakerPort {
   }
 
   async removeGroup(host: string, signal: AbortSignal) {
+    const { removeGroupMs } = this.#world.config.speaker;
+    if (removeGroupMs !== undefined) {
+      await delay(this.#world, removeGroupMs, signal);
+    }
     return this.#answer(host, signal, () => {
       this.#world.group = null;
       this.#world.record("groupRemoved");

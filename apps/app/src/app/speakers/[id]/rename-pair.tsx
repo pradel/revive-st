@@ -5,9 +5,11 @@ import { useState } from "react";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import {
   pairLedBy,
+  type SpeakerPair,
   validatePairName,
 } from "@/features/speakers/lib/stereo-pair";
 import { useSpeaker } from "@/features/speakers/registry/store";
+import type { BoseSpeaker } from "@/features/speakers/registry/types";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -24,12 +26,8 @@ import { color } from "@/ui/tokens";
 export default function RenamePair() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { renamePairMutation } = useSpeakerCommands();
   const master = useSpeaker(id);
   const pair = master && pairLedBy(master);
-
-  const [draft, setDraft] = useState(pair?.name ?? "");
-  const [error, setError] = useState<string | null>(null);
 
   if (!master || !pair) {
     return (
@@ -52,7 +50,28 @@ export default function RenamePair() {
     );
   }
 
+  // Mounted once the pair is known, so the draft starts from its name.
+  return <RenamePairForm master={master} pair={pair} />;
+}
+
+function RenamePairForm({
+  master,
+  pair,
+}: {
+  master: BoseSpeaker;
+  pair: SpeakerPair;
+}) {
+  const router = useRouter();
+  const { renamePairMutation } = useSpeakerCommands();
+  const [draft, setDraft] = useState(pair.name);
+  const [error, setError] = useState<string | null>(null);
+  // Until the master says which pair it's in, there's no pair to rename.
+  const pairRead = master.pairRead === true;
+
   const save = (name: string) => {
+    if (!pairRead) {
+      return;
+    }
     const problem = validatePairName(name);
     if (problem !== undefined) {
       setError(problem);
@@ -64,7 +83,7 @@ export default function RenamePair() {
       return;
     }
     renamePairMutation.mutate(
-      { deviceID: master.deviceID, name: trimmed },
+      { deviceID: master.deviceID, pairID: pair.id, name: trimmed },
       {
         onSuccess: () => {
           router.back();
@@ -106,7 +125,7 @@ export default function RenamePair() {
         <FormSection>
           <FormButtonRow
             label={saving ? "Saving…" : "Save"}
-            disabled={saving}
+            disabled={saving || !pairRead}
             onPress={() => {
               save(draft);
             }}

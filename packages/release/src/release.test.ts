@@ -1,6 +1,7 @@
 import { assert, describe, it } from "@effect/vitest";
 import { Effect, Layer, Option } from "effect";
 import { TestClock } from "effect/testing";
+import { vi } from "vite-plus/test";
 
 import {
   APP_SIGNING_CERT_SHA256,
@@ -50,6 +51,8 @@ interface World {
   readonly storeBuilds: readonly EasBuild[];
   /** The hosted server's `GET /` body; `undefined` when it's unreachable. */
   readonly server: unknown;
+  /** The hosted server's `GET /` body once a new EAS build ran, if it changed. */
+  readonly serverAfterBuild?: unknown;
 }
 
 /** Fake tools over `world`; `events` records what they were asked to do. */
@@ -65,6 +68,7 @@ const tools = (overrides: Partial<World> = {}) => {
     ...overrides,
   };
   const events: string[] = [];
+  let { server } = world;
   const record = (event: string) =>
     Effect.sync(() => {
       events.push(event);
@@ -89,7 +93,17 @@ const tools = (overrides: Partial<World> = {}) => {
       finishedBuilds: ({ profile }) =>
         Effect.succeed(profile === "apk" ? world.apkBuilds : world.storeBuilds),
       buildAndroid: (profile) =>
-        Effect.as(record(`eas build ${profile}`), world.newBuild),
+        Effect.as(
+          Effect.andThen(
+            record(`eas build ${profile}`),
+            Effect.sync(() => {
+              if ("serverAfterBuild" in world) {
+                server = world.serverAfterBuild;
+              }
+            }),
+          ),
+          world.newBuild,
+        ),
       storeBuild: ({ platform, autoSubmit }) =>
         record(`store build ${platform}${autoSubmit ? " and submit" : ""}`),
     }),
@@ -102,11 +116,11 @@ const tools = (overrides: Partial<World> = {}) => {
       status: (url) =>
         Effect.andThen(
           record(`check ${url}`),
-          world.server === undefined
+          server === undefined
             ? Effect.fail(
                 new ServerUnreachable({ url, reason: "connection refused" }),
               )
-            : Effect.succeed(world.server),
+            : Effect.succeed(server),
         ),
     }),
   );
@@ -126,6 +140,7 @@ describe("releaseApk", () => {
           `check ${SERVER_URL}`,
           "eas build apk",
           "download https://expo.dev/new.apk",
+          `check ${SERVER_URL}`,
           `upload /tmp/revive-st-${VERSION}.apk to ${TAG}`,
           "checkout main",
         ]);
@@ -209,21 +224,73 @@ describe("releaseApk", () => {
     }),
   );
 
-  it.effect("ships when the hosted server is newer than the app needs", () =>
-    Effect.gen(function* () {
-      const { events, layer } = tools({
-        server: { name: "Revive ST API", version: "0.1.0" },
-      });
-      yield* releaseApk.pipe(Effect.provide(layer));
-      assert.include(events, `upload /tmp/revive-st-${VERSION}.apk to ${TAG}`);
-    }),
+  for (const [situation, version] of [
+    ["newer than the app needs", "0.1.0"],
+    ["the version with build metadata", "0.0.6+build.1"],
+  ] as const) {
+    it.effect(`ships when the hosted server is ${situation}`, () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          server: { name: "Revive ST API", version },
+        });
+        yield* releaseApk.pipe(Effect.provide(layer));
+        assert.include(
+          events,
+          `upload /tmp/revive-st-${VERSION}.apk to ${TAG}`,
+        );
+      }),
+    );
+  }
+
+  it.effect(
+    "doesn't attach the APK when the hosted server went back to an older release during the build",
+    () =>
+      Effect.gen(function* () {
+        const { events, layer } = tools({
+          serverAfterBuild: { name: "Revive ST API", version: "0.0.5" },
+        });
+        const error = yield* Effect.flip(
+          releaseApk.pipe(Effect.provide(layer)),
+        );
+        assert.deepStrictEqual(
+          error,
+          new ServerNotReady({
+            url: SERVER_URL,
+            minimum: MIN_SERVER_VERSION,
+            found: { kind: "tooOld", version: "0.0.5" },
+          }),
+        );
+        assert.isFalse(events.some((event) => event.startsWith("upload")));
+        assert.strictEqual(events.at(-1), "checkout main");
+      }),
   );
+
+  it("tells to retry, not to deploy, when the hosted server can't be reached", () => {
+    const unreachable = new ServerNotReady({
+      url: SERVER_URL,
+      minimum: MIN_SERVER_VERSION,
+      found: { kind: "unreachable", reason: "getaddrinfo ENOTFOUND" },
+    });
+    assert.include(unreachable.message, "Check your connection");
+    assert.notInclude(unreachable.message, "deploy");
+    const tooOld = new ServerNotReady({
+      url: SERVER_URL,
+      minimum: MIN_SERVER_VERSION,
+      found: { kind: "tooOld", version: "0.0.5" },
+    });
+    assert.include(tooOld.message, "deploy the API release first");
+  });
 
   for (const [situation, server, found] of [
     [
       "older",
       { name: "Revive ST API", version: "0.0.5" },
       { kind: "tooOld", version: "0.0.5" },
+    ],
+    [
+      "a version with leading zeros",
+      { name: "Revive ST API", version: "0.0.06" },
+      { kind: "tooOld", version: "0.0.06" },
     ],
     [
       "a prerelease of the version",
@@ -316,6 +383,39 @@ describe("releaseStore", () => {
       assert.instanceOf(error, ServerNotReady);
       assert.isFalse(events.some((event) => event.startsWith("store build")));
       assert.strictEqual(events.at(-1), "checkout main");
+    }),
+  );
+});
+
+describe("Server", () => {
+  const status = (body: string | ReadableStream) =>
+    Effect.gen(function* () {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(body)));
+      const server = yield* Server;
+      return yield* server.status(SERVER_URL);
+    }).pipe(
+      Effect.provide(Server.layer),
+      Effect.ensuring(Effect.sync(() => vi.unstubAllGlobals())),
+    );
+
+  it.effect("reads a body that isn't JSON as null", () =>
+    Effect.gen(function* () {
+      assert.isNull(yield* status("<html>Not found</html>"));
+    }),
+  );
+
+  it.effect("is unreachable when the body is cut short", () =>
+    Effect.gen(function* () {
+      const error = yield* Effect.flip(
+        status(
+          new ReadableStream({
+            pull: (controller) => {
+              controller.error(new Error("connection reset"));
+            },
+          }),
+        ),
+      );
+      assert.instanceOf(error, ServerUnreachable);
     }),
   );
 });

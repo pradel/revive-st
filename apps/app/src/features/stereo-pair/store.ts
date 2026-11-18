@@ -35,21 +35,38 @@ function subscribe(listener: () => void): () => void {
   };
 }
 
-/**
- * Starts pairing `target` from `deviceID`'s screen, replacing a finished or
- * failed run there. A run still working is kept, and so is any other working
- * run either speaker is in: then nothing starts. Whether it started.
- */
-export function startPairing(deviceID: string, target: PairTarget): boolean {
+/** Whether a run still working has either of `target`'s speakers. */
+function isBusy(target: PairTarget): boolean {
   const members = [target.left.deviceID, target.right.deviceID];
-  const busy = [...runs.values()].some(
+  return [...runs.values()].some(
     (run) =>
       run.session.getView().kind === "working" &&
       [run.target.left.deviceID, run.target.right.deviceID].some((id) =>
         members.includes(id),
       ),
   );
-  if (busy) {
+}
+
+/**
+ * Runs the failed run started from `deviceID`'s screen again, unless another
+ * working run has either speaker. Whether it started.
+ */
+export function retryPairing(deviceID: string): boolean {
+  const run = runs.get(deviceID);
+  if (!run || isBusy(run.target)) {
+    return false;
+  }
+  run.session.retry();
+  return true;
+}
+
+/**
+ * Starts pairing `target` from `deviceID`'s screen, replacing a finished or
+ * failed run there. A run still working is kept, and so is any other working
+ * run either speaker is in: then nothing starts. Whether it started.
+ */
+export function startPairing(deviceID: string, target: PairTarget): boolean {
+  if (isBusy(target)) {
     return false;
   }
   const existing = runs.get(deviceID);

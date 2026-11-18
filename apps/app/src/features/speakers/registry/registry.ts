@@ -148,19 +148,14 @@ export function createSpeakerRegistry(
           a.name.localeCompare(b.name) || a.deviceID.localeCompare(b.deviceID),
       );
     // A pair is listed once, as its master, also while the master is
-    // connecting or offline. A reached partner that reports no pair, or
-    // another one, is listed on its own.
+    // connecting or offline. A partner that reported no pair, or another
+    // one, is listed on its own, also once it's offline.
     const byID = new Map(all.map((speaker) => [speaker.deviceID, speaker]));
     const partners = new Set(
       all.flatMap((speaker) => {
         const pair = pairLedBy(speaker);
         return pair
-          ? partnersOf(pair).filter((id) => {
-              const partner = byID.get(id);
-              return (
-                partner?.status !== "online" || partner.pair?.id === pair.id
-              );
-            })
+          ? partnersOf(pair).filter((id) => byID.get(id)?.pair?.id === pair.id)
           : [];
       }),
     );
@@ -175,13 +170,18 @@ export function createSpeakerRegistry(
     };
   }
 
-  /** `deviceID` and, for a pair's master, the partners its card stands for. */
+  /**
+   * `deviceID` and, for a pair's master, the partners its card stands for:
+   * those still in the pair, as they last reported.
+   */
   function withPartners(deviceID: string): string[] {
     const record = records.get(deviceID);
     const pair = record && pairLedBy(record);
     return [
       deviceID,
-      ...(pair ? partnersOf(pair) : []).filter((id) => records.has(id)),
+      ...(pair ? partnersOf(pair) : []).filter(
+        (id) => records.get(id)?.pair?.id === pair?.id,
+      ),
     ];
   }
 
@@ -280,7 +280,8 @@ export function createSpeakerRegistry(
             : `[speakers] ${deviceID} reaches its stereo partner again`,
         );
       }
-      update(deviceID, {
+      records.set(deviceID, {
+        ...record,
         status: "online",
         live: state,
         name: filled(state.name, record.name),
@@ -295,13 +296,15 @@ export function createSpeakerRegistry(
           const otherRecord = records.get(other);
           if (
             other !== deviceID &&
-            otherRecord?.status !== "online" &&
-            otherRecord?.pair?.id === former.id
+            otherRecord !== undefined &&
+            otherRecord.status !== "online" &&
+            otherRecord.pair?.id === former.id
           ) {
-            update(other, { pair: undefined });
+            records.set(other, { ...otherRecord, pair: undefined });
           }
         }
       }
+      changed();
     }
     // A speaker set up for another server reports its new address; the
     // radio checked for the old one no longer holds.
