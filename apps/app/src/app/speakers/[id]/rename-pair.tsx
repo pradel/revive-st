@@ -50,8 +50,15 @@ export default function RenamePair() {
     );
   }
 
-  // Mounted once the pair is known, so the draft starts from its name.
-  return <RenamePairForm master={master} pair={pair} />;
+  // Mounted once the pair is known, so the draft starts from its name; and
+  // again for another pair, so a draft is never sent to the wrong one.
+  return (
+    <RenamePairForm
+      key={`${master.deviceID}:${pair.id}`}
+      master={master}
+      pair={pair}
+    />
+  );
 }
 
 function RenamePairForm({
