@@ -38,6 +38,7 @@ import type { RadioStatus } from "@/features/speakers/lib/speaker-radio";
 import {
   pairSummary,
   reachedPartner,
+  settingsPath,
 } from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
@@ -139,7 +140,7 @@ export default function Index() {
   };
 
   const openSettings = (speaker: BoseSpeaker) => {
-    router.push(`/speakers/${encodeURIComponent(speaker.deviceID)}/settings`);
+    router.push(settingsPath(speaker));
   };
 
   const openSpeakerPicker = () => {
@@ -235,7 +236,8 @@ export default function Index() {
     },
   });
 
-  // A pair's partner counts: reached, it's not the household's Wi-Fi.
+  // A pair's partner counts: reached, the pair's settings still answer
+  // through it while its master is offline.
   const allOffline =
     !isScanning &&
     listedSpeakers.length > 0 &&
@@ -560,9 +562,10 @@ export default function Index() {
                 {offlineExpanded ? (
                   <View style={$cards}>
                     {offlineSpeakers.map((speaker) => {
-                      // Its master is offline, but its partner answers: the
-                      // partner's settings still open.
-                      const partner = reachedPartner(speaker, all);
+                      // Its master is offline, but the pair answers through
+                      // its partner: its settings can still unpair it.
+                      const throughPartner =
+                        reachedPartner(speaker, all) !== undefined;
                       return (
                         <SpeakerRow
                           key={speaker.deviceID}
@@ -570,26 +573,24 @@ export default function Index() {
                           detail={[
                             speakerStateLabel(speaker),
                             pairSummary(speaker),
-                            partner === undefined
-                              ? "Tap to try again"
-                              : "Tap for its other speaker",
+                            throughPartner
+                              ? "Tap for its settings"
+                              : "Tap to try again",
                           ]
                             .filter(Boolean)
                             .join(" · ")}
                           modelDrawing={speakerDrawing(speaker.type)}
                           accessibilityHint={
-                            partner === undefined
-                              ? "Tries to reach the speaker again"
-                              : "Opens the settings of the pair's other speaker"
+                            throughPartner
+                              ? "Opens the stereo pair's settings"
+                              : "Tries to reach the speaker again"
                           }
                           onPress={() => {
                             haptics.tap();
-                            if (partner === undefined) {
-                              speakerRegistry.retry(speaker.deviceID);
+                            if (throughPartner) {
+                              router.push(settingsPath(speaker));
                             } else {
-                              router.push(
-                                `/speakers/${encodeURIComponent(partner)}/settings`,
-                              );
+                              speakerRegistry.retry(speaker.deviceID);
                             }
                           }}
                           menu={unreachableMenu(speaker)}

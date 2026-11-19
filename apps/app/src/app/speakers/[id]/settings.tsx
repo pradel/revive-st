@@ -6,6 +6,7 @@ import {
 } from "bose-api-speaker-client";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
+import { Alert } from "react-native";
 
 import { useConfigureRun } from "@/features/configure/store";
 import { serverHost } from "@/features/server/server-url";
@@ -16,13 +17,18 @@ import {
 } from "@/features/speakers/components/SpeakerSettingsHeader";
 import { useSpeakerCommands } from "@/features/speakers/hooks/useSpeakerCommands";
 import { speakerDrawing } from "@/features/speakers/lib/drawing";
-import { pairLedBy, roleLabel } from "@/features/speakers/lib/stereo-pair";
+import {
+  isStalePair,
+  roleLabel,
+  roleOf,
+} from "@/features/speakers/lib/stereo-pair";
 import {
   speakerRegistry,
   useSpeaker,
   useSpeakers,
 } from "@/features/speakers/registry/store";
 import { haptics } from "@/lib/haptics";
+import { logger } from "@/lib/logger";
 import { Button } from "@/ui/ds/Button";
 import { EmptyState } from "@/ui/ds/EmptyState";
 import { icons } from "@/ui/ds/Icon";
@@ -90,6 +96,7 @@ export default function SpeakerSettings() {
     setAudioDspControlsMutation,
     setAudioProductToneControlsMutation,
     setAudioProductLevelControlsMutation,
+    leavePairMutation,
   } = useSpeakerCommands();
 
   const speaker = useSpeaker(id);
@@ -153,36 +160,52 @@ export default function SpeakerSettings() {
     Boolean(levelControls);
 
   const { pair } = speaker;
+  const pairRole = pair && roleOf(pair, speaker.deviceID);
   const pairMaster =
     pair && all.find((other) => other.deviceID === pair.masterDeviceID);
-  /**
-   * The pair this speaker is the partner in, whose presets its buttons play;
-   * not one its master no longer leads (or that isn't listed any more).
-   */
+  // Only this speaker still holds it, and only it can leave it.
+  const stalePair = isStalePair(speaker, all);
+  /** The pair this speaker is the partner in, whose presets its buttons play. */
   const partnerPair =
-    pair !== undefined &&
-    pair.masterDeviceID !== speaker.deviceID &&
-    pairMaster !== undefined &&
-    pairLedBy(pairMaster)?.id === pair.id
+    pair !== undefined && pair.masterDeviceID !== speaker.deviceID && !stalePair
       ? pair
       : undefined;
 
-  /** The pair this speaker leads or is the partner in, as listed. */
-  const listedPair = pairLedBy(speaker) ?? partnerPair;
-  /**
-   * Its other speakers, as last reported: not one that reported leaving it,
-   * even while it's offline; one not found yet is shown as such.
-   */
-  const pairMembers = (listedPair?.roles ?? [])
-    .filter((member) => member.deviceID !== speaker.deviceID)
-    .map((member) => ({
-      ...member,
-      record: all.find((other) => other.deviceID === member.deviceID),
-    }))
-    .filter(
-      ({ record }) =>
-        record === undefined || record.pair?.id === listedPair?.id,
+  const leavePair = () => {
+    if (pair === undefined) {
+      return;
+    }
+    Alert.alert(
+      `Leave ${pair.name}?`,
+      `${speaker.speakerName} then plays on its own again.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Leave pair",
+          style: "destructive",
+          onPress: () => {
+            haptics.tap();
+            leavePairMutation.mutate(
+              { deviceID: speaker.deviceID, pairID: pair.id },
+              {
+                onSuccess: () => {
+                  haptics.success();
+                },
+                onError: (error) => {
+                  logger.warn("[Pair] Failed to leave the pair:", error);
+                  haptics.error();
+                  Alert.alert(
+                    "Couldn't leave the pair",
+                    "Make sure the speaker is on and on the same Wi-Fi network as your phone, then try again.",
+                  );
+                },
+              },
+            );
+          },
+        },
+      ],
     );
+  };
 
   const settingUp = configureRun.view?.kind === "working";
   const radioCheckFailed = speaker.radio.kind === "unreachable";
@@ -444,56 +467,43 @@ export default function SpeakerSettings() {
           </FieldGroup.SectionFooter>
         </FormSection>
 
-        {listedPair && pairMembers.length > 0 ? (
+        {isSoundTouch10(speaker.type) ? (
           <FormSection title="Stereo pair">
-            {pairMembers.map((member) => (
+            {pair && stalePair ? (
+              <FormButtonRow
+                label={leavePairMutation.isPending ? "Leaving…" : "Leave pair"}
+                disabled={leavePairMutation.isPending}
+                onPress={leavePair}
+              />
+            ) : pair ? (
               <FormLinkRow
-                key={member.deviceID}
                 icon={formIcons.speaker}
-                label={member.record?.speakerName ?? member.deviceID}
-                description={[
-                  `${roleLabel(member.role)} speaker of ${listedPair.name}`,
-                  member.record === undefined
-                    ? "Not found yet"
-                    : member.record.status === "online"
-                      ? undefined
-                      : member.record.status === "connecting"
-                        ? "Connecting…"
-                        : "Offline",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-                // Its settings need it reached.
-                disabled={member.record?.status !== "online"}
+                label={pair.name}
+                description={
+                  pairRole ? `${roleLabel(pairRole)} speaker` : undefined
+                }
                 onPress={() => {
                   router.push(
-                    `/speakers/${encodeURIComponent(member.deviceID)}/settings`,
+                    `/speakers/${encodeURIComponent(pair.masterDeviceID)}/pair`,
                   );
                 }}
               />
-            ))}
+            ) : (
+              <FormLinkRow
+                icon={formIcons.speaker}
+                label="Pair with another SoundTouch 10"
+                onPress={() => {
+                  router.push("./create-pair");
+                }}
+              />
+            )}
             <FieldGroup.SectionFooter>
               <FormFooterText>
-                Volume, power and source set on either speaker of the pair apply
-                to both.
-              </FormFooterText>
-            </FieldGroup.SectionFooter>
-          </FormSection>
-        ) : null}
-
-        {pair === undefined && isSoundTouch10(speaker.type) ? (
-          <FormSection title="Stereo pair">
-            <FormLinkRow
-              icon={formIcons.speaker}
-              label="Pair with another SoundTouch 10"
-              onPress={() => {
-                router.push("./create-pair");
-              }}
-            />
-            <FieldGroup.SectionFooter>
-              <FormFooterText>
-                Two SoundTouch 10s can play as one stereo pair: one plays the
-                left channel, the other the right.
+                {pair && stalePair
+                  ? `${speaker.speakerName} still holds ${pair.name}, which its other speaker no longer reports. Leave it to play on ${speaker.speakerName} alone.`
+                  : pair
+                    ? "Volume, power and source set on either speaker of the pair apply to both."
+                    : "Two SoundTouch 10s can play as one stereo pair: one plays the left channel, the other the right."}
               </FormFooterText>
             </FieldGroup.SectionFooter>
           </FormSection>

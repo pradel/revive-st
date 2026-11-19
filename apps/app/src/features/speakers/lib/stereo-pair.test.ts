@@ -3,8 +3,10 @@ import { describe, expect, it } from "vite-plus/test";
 import type { BoseSpeaker } from "../registry/types";
 import {
   defaultPairName,
+  isStalePair,
   pairProblem,
   partnerProblem,
+  reachedPartner,
   validatePairName,
 } from "./stereo-pair";
 
@@ -148,5 +150,75 @@ describe("stereo pair names", () => {
     expect(validatePairName("  ")).toBeDefined();
     expect(validatePairName("x".repeat(65))).toBeDefined();
     expect(validatePairName(" Living room + Office ")).toBeUndefined();
+  });
+});
+
+describe("reachedPartner", () => {
+  const pair = {
+    id: "3271058",
+    name: "Living room + Office",
+    masterDeviceID: "0CAE7D6298E9",
+    roles: [
+      { deviceID: "0CAE7D6298E9", role: "LEFT" },
+      { deviceID: "EC1127C25A50", role: "RIGHT" },
+    ],
+  } as const;
+  const master = { deviceID: "0CAE7D6298E9", status: "offline", pair } as const;
+  const partner = { deviceID: "EC1127C25A50", status: "online", pair } as const;
+
+  it("finds the reached partner of an offline master's pair", () => {
+    expect(reachedPartner(master, [master, partner])).toBe(partner.deviceID);
+  });
+
+  it("finds none for a master that answers, or a partner offline, in another pair or in none", () => {
+    expect(
+      reachedPartner({ ...master, status: "online" }, [master, partner]),
+    ).toBeUndefined();
+    for (const other of [
+      { ...partner, status: "offline" as const },
+      { ...partner, pair: { ...pair, id: "2222222" } },
+      { ...partner, pair: undefined },
+    ]) {
+      expect(reachedPartner(master, [master, other])).toBeUndefined();
+    }
+  });
+});
+
+describe("isStalePair", () => {
+  const pair = {
+    id: "3271058",
+    name: "Living room + Office",
+    masterDeviceID: "0CAE7D6298E9",
+    roles: [
+      { deviceID: "0CAE7D6298E9", role: "LEFT" },
+      { deviceID: "EC1127C25A50", role: "RIGHT" },
+    ],
+  } as const;
+  const partner = { deviceID: "EC1127C25A50", pair } as const;
+  const master = { deviceID: "0CAE7D6298E9", pair, pairRead: true } as const;
+
+  it("calls a partner's pair stale once its master reports another pair, or none, or isn't listed", () => {
+    expect(
+      isStalePair(partner, [partner, { ...master, pair: undefined }]),
+    ).toBe(true);
+    expect(
+      isStalePair(partner, [
+        partner,
+        { ...master, pair: { ...pair, id: "2222222" } },
+      ]),
+    ).toBe(true);
+    expect(isStalePair(partner, [partner])).toBe(true);
+  });
+
+  it("doesn't while its master leads the pair, or hasn't said which pair it's in", () => {
+    expect(isStalePair(partner, [partner, master])).toBe(false);
+    // Just found, so it remembers no pair, and hasn't answered yet.
+    expect(
+      isStalePair(partner, [
+        partner,
+        { ...master, pair: undefined, pairRead: false },
+      ]),
+    ).toBe(false);
+    expect(isStalePair(master, [partner, master])).toBe(false);
   });
 });

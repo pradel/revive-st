@@ -86,9 +86,39 @@ export const pairLedBy = (speaker: {
 }): SpeakerPair | undefined =>
   speaker.pair?.masterDeviceID === speaker.deviceID ? speaker.pair : undefined;
 
+/** Where a listed speaker's settings open: the pair's own screen for its master. */
+export const settingsPath = (speaker: {
+  deviceID: string;
+  pair?: SpeakerPair;
+}) =>
+  pairLedBy(speaker)
+    ? (`/speakers/${encodeURIComponent(speaker.deviceID)}/pair` as const)
+    : (`/speakers/${encodeURIComponent(speaker.deviceID)}/settings` as const);
+
+/**
+ * Whether `speaker` holds a pair as its partner that only it still holds:
+ * its master has reported since it was reached and leads no such pair, or
+ * isn't listed any more. A master that hasn't said yet, and only remembers
+ * no pair (as one just found), doesn't make it stale.
+ */
+export const isStalePair = (
+  speaker: Pick<BoseSpeaker, "deviceID" | "pair">,
+  all: readonly Pick<BoseSpeaker, "deviceID" | "pair" | "pairRead">[],
+): boolean => {
+  const { pair } = speaker;
+  if (pair === undefined || pair.masterDeviceID === speaker.deviceID) {
+    return false;
+  }
+  const master = all.find((other) => other.deviceID === pair.masterDeviceID);
+  return (
+    master === undefined ||
+    (master.pairRead === true && pairLedBy(master)?.id !== pair.id)
+  );
+};
+
 /**
  * For a pair's master that isn't reached, a partner still in its pair that
- * is: its own settings still answer.
+ * is: the pair's settings still answer through it (to unpair it, say).
  */
 export const reachedPartner = (
   speaker: Pick<BoseSpeaker, "deviceID" | "pair" | "status">,
@@ -98,6 +128,7 @@ export const reachedPartner = (
   if (pair === undefined || speaker.status === "online") {
     return undefined;
   }
+  // A partner reporting another pair (or none) would unpair that instead.
   return partnersOf(pair).find((id) =>
     all.some(
       (other) =>
@@ -120,6 +151,12 @@ export const pairSummary = (
   }
   return isPartnerUnreachable(speaker) ? "Partner unreachable" : "Stereo pair";
 };
+
+export const roleOf = (
+  pair: SpeakerPair,
+  deviceID: string,
+): PairRole | undefined =>
+  pair.roles.find((role) => role.deviceID === deviceID)?.role;
 
 export const roleLabel = (role: PairRole): string =>
   role === "LEFT" ? "Left" : "Right";
