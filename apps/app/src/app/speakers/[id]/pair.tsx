@@ -176,9 +176,13 @@ export default function PairSettings() {
 
   const unpairing = unpairMutation.isPending;
 
-  // Both speakers report it; the pair's master is asked.
+  // Both speakers report it; the pair's master is asked. Only once it has
+  // said which pair it's in since it was reached: a balance kept from before
+  // a dropped connection may be another pair's.
   const balance =
-    master.status === "online" && master.balance?.balanceAvailable
+    master.status === "online" &&
+    master.pairRead === true &&
+    master.balance?.balanceAvailable
       ? master.balance
       : undefined;
 
