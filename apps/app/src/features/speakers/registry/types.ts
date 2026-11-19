@@ -2,6 +2,7 @@ import type {
   AudioDspControlsResponse,
   AudioProductLevelControlsResponse,
   AudioProductToneControlsResponse,
+  BalanceResponse,
   BassCapabilitiesResponse,
   CapabilitiesResponse,
   DeviceComponent,
@@ -49,6 +50,11 @@ export interface BoseSpeaker {
    * reached: renaming the pair needs what it reported.
    */
   pairRead?: boolean;
+  /**
+   * The pair's left/right balance (`balanceAvailable` once the pair plays);
+   * `null` when unpaired; unset until read. Only while reached.
+   */
+  balance?: BalanceResponse | null;
   // What it plays and its settings: only while reached.
   playStatus?: string;
   source?: string;

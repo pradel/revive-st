@@ -266,7 +266,8 @@ export function FormPickerRow<Value extends PickerItemValue>({
  * shown immediately; `onCommit` fires when the drag ends. On Android it uses
  * the app's thin track and round thumb, as on the speaker card. `formatValue`
  * words the value (e.g. "Max"); `showRange` labels the track's ends with
- * `min` and `max`, for scales that don't start at zero.
+ * `min` and `max`, for scales that don't start at zero, and `rangeLabels`
+ * with words instead (e.g. "Left" and "Right").
  */
 export function FormSliderRow({
   label,
@@ -277,6 +278,7 @@ export function FormSliderRow({
   saving,
   formatValue = String,
   showRange,
+  rangeLabels,
   onCommit,
 }: {
   label: string;
@@ -287,10 +289,13 @@ export function FormSliderRow({
   saving?: boolean;
   formatValue?: (value: number) => string;
   showRange?: boolean;
+  rangeLabels?: readonly [min: string, max: string];
   onCommit: (value: number) => void;
 }) {
   const draft = useSliderDraft(value, onCommit);
   const snap = (next: number) => Math.round((next - min) / step) * step + min;
+  const ends =
+    rangeLabels ?? (showRange ? [String(min), String(max)] : undefined);
 
   return (
     <Column spacing={4}>
@@ -340,13 +345,13 @@ export function FormSliderRow({
           />
         </ComposeSlider>
       )}
-      {showRange ? (
+      {ends ? (
         <Row alignment="center">
           <Text textStyle={caption} modifiers={labelModifiers}>
-            {String(min)}
+            {ends[0]}
           </Text>
           {iosSpacer}
-          <Text textStyle={caption}>{String(max)}</Text>
+          <Text textStyle={caption}>{ends[1]}</Text>
         </Row>
       ) : null}
     </Column>
