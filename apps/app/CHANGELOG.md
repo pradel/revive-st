@@ -1,5 +1,28 @@
 # @revive-st/app
 
+## 0.0.7
+
+### Patch Changes
+
+- Stereo pairs: two SoundTouch 10s play as one speaker, one left and one right. ([#148](https://github.com/pradel/revive-st/pull/148))
+  
+  - Pair them from a SoundTouch 10's settings: pick the other speaker, which side each plays and a name. The pair then shows as one speaker.
+  - The pair's settings rename it, set its left/right balance, unpair it, and open each speaker's own settings. The right speaker's preset buttons play the pair's presets.
+  - When the right speaker drops out, the pair shows "Partner unreachable" and can't be picked to play; the left one goes to standby about 30 seconds later.
+  - A speaker left holding a pair the other no longer reports can leave it from its settings.
+  - Setting up internet radio for a paired speaker on another server or account first asks to unpair it, as the pair wouldn't survive the move.
+  - Needs Revive ST server 0.0.6 or newer, for internet radio setup too. If you run your own server, update it first.
+
+- Settings links to the terms of service. ([`3fce6d7`](https://github.com/pradel/revive-st/commit/3fce6d785313f20d3657684867c1f375b27ce0b5))
+
+- Internet radio setup stops waiting on a server that doesn't answer, and stays on the server it started with when you pick another one meanwhile. ([#133](https://github.com/pradel/revive-st/pull/133))
+
+- The app's logs keep problems that happen right at launch. ([#135](https://github.com/pradel/revive-st/pull/135))
+
+- Starring stations quickly keeps every favorite, and never lists a station twice. ([#137](https://github.com/pradel/revive-st/pull/137))
+
+- A speaker that drops off the network shows as offline, and online again when it's back. ([#134](https://github.com/pradel/revive-st/pull/134))
+
 ## 0.0.6
 
 ### Patch Changes

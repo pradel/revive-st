@@ -1,5 +1,11 @@
 # @revive-st/api
 
+## 0.0.6
+
+### Patch Changes
+
+- SoundTouch 10 stereo pairs are stored on the server, so they stay paired when the speakers restart. App 0.0.7 needs this release: if you run your own server, update it before the app. ([#140](https://github.com/pradel/revive-st/pull/140))
+
 ## 0.0.5
 
 ### Patch Changes
