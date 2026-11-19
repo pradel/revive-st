@@ -732,6 +732,38 @@ describe("Speaker", () => {
       expect(result.isErr() && result.error).toBeInstanceOf(NetworkError);
     });
 
+    it("has no balance after a dropped connection until it's read again", async () => {
+      speaker.connect();
+      wsMock.onopen?.();
+      await speaker.initialize();
+      expect(speaker.getState().balance).toEqual(balance(0));
+
+      wsMock.onclose?.({ code: 1006 });
+      expect(speaker.getState().balance).toBeUndefined();
+
+      // Back, it reports its pair, but its balance read fails.
+      fetchMock.mockImplementation(async (input) => {
+        const url = input as string;
+        if (url.endsWith("/balance")) {
+          return Promise.resolve(new Response("", { status: 500 }));
+        }
+        return Promise.resolve(
+          new Response(
+            url.endsWith("/getGroup")
+              ? PAIRED_GROUP_XML
+              : "<status>OK</status>",
+            { status: 200 },
+          ),
+        );
+      });
+      vi.advanceTimersByTime(2000);
+      wsMock.onopen?.();
+      await vi.waitFor(() => {
+        expect(speaker.getState().group).toBeTruthy();
+      });
+      expect(speaker.getState().balance).toBeUndefined();
+    });
+
     it("reads the balance again when the speaker says it changed", async () => {
       const onStateUpdate = vi.fn();
       speaker = new Speaker({ ip: IP, deviceID: DEVICE_ID, onStateUpdate });

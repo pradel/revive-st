@@ -291,10 +291,13 @@ export class Speaker {
       },
       onDisconnect: () => {
         this.state.connectionState = "disconnected";
-        // Notifications are missed from now on: the pair is known again only
-        // once read on the next connection.
+        // Notifications are missed from now on: the pair, and its balance,
+        // are known again only once read on the next connection (the speaker
+        // may be in another pair by then).
         this.groupChanges += 1;
         this.state.group = undefined;
+        this.balanceChanges += 1;
+        this.state.balance = undefined;
         this.emitState();
         if (this.options.onDisconnect) {
           this.options.onDisconnect();
